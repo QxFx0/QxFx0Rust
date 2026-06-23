@@ -12,4 +12,4 @@ pub mod proposition;
 pub use seed::{seed_graph, verbalize_relation, verbalize_path, COVERED_TOPICS};
 pub use pathfinder::PathFinder;
 pub use gate::GeneratedPredicateGate;
-pub use composer::{ContextualComposer, PropositionParser, GraphEngagement, PropositionMode};
+pub use composer::{ContextualComposer, PropositionParser, GraphEngagement, PropositionMode, ParsedProposition};

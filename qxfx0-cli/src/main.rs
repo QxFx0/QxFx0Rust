@@ -1,17 +1,20 @@
 use clap::{Parser, Subcommand};
-use qxfx0_semantic::{seed_graph, ContextualComposer, PropositionParser, GraphEngagement, PropositionMode};
-use qxfx0_types::atom::AtomId;
-use qxfx0_types::field::FieldProfile;
+use qxfx0_types::system_state::SystemState;
+use qxfx0_pipeline::{TurnPipeline, TurnInput};
+use qxfx0_semantic::seed_graph;
 
 #[derive(Parser)]
 #[command(name = "qxfx0")]
 #[command(about = "Deterministic philosophical dialogue runtime")]
 struct Cli {
+    #[arg(long, default_value = "default", global = true)]
+    session_id: String,
+
+    #[arg(long, default_value = "qxfx0.db", global = true)]
+    db: String,
+
     #[command(subcommand)]
     command: Commands,
-
-    #[arg(long, default_value = "default")]
-    session_id: String,
 }
 
 #[derive(Subcommand)]
@@ -26,32 +29,20 @@ enum Commands {
     Discover { concept: String },
     /// Health check
     Doctor,
+    /// List sessions
+    Sessions,
     /// Show version
     Version,
 }
 
-fn process_turn(input: &str) -> String {
-    let graph = seed_graph();
-    let fp = FieldProfile::default();
-
-    // Parse proposition
-    let prop = PropositionParser::parse(input);
-
-    // Engage with graph
-    let engagement = GraphEngagement::engage(&graph, &prop);
-
-    // Compose response
-    let surface = ContextualComposer::compose(&graph, &fp, &prop, &engagement);
-
-    if surface.text.is_empty() {
-        format!("Я не нахожу достаточного материала по теме «{}».", prop.subject)
-    } else {
-        // Add authority prefix based on mode
-        match prop.mode {
-            PropositionMode::Define => {
-                format!("Известно, что {}", surface.text)
-            }
-            _ => surface.text,
+fn load_or_create_state(db: &qxfx0_persistence::Persistence, session_id: &str) -> SystemState {
+    match db.load_state(session_id).unwrap_or(None) {
+        Some(state) => state,
+        None => {
+            let mut state = SystemState::default();
+            state.session_id = session_id.to_string();
+            state.runtime_graph = seed_graph();
+            state
         }
     }
 }
@@ -62,12 +53,22 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Turn { text } => {
-            let response = process_turn(&text);
-            println!("{}", response);
+            let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+            let mut state = load_or_create_state(&db, &cli.session_id);
+            let input = TurnInput { raw_text: text, session_id: cli.session_id.clone() };
+            let output = TurnPipeline::process(&input, &mut state);
+            db.save_state(&cli.session_id, &state)?;
+            println!("{}", output.response);
+            if output.blocked {
+                eprintln!("[guard] blocked: {:?}", output.guard_status);
+            }
             Ok(())
         }
         Commands::Chat => {
+            let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+            let mut state = load_or_create_state(&db, &cli.session_id);
             println!("QxFx0 Rust v0.1.0 — интерактивный режим");
+            println!("Session: {}", cli.session_id);
             println!("Введите :quit для выхода\n");
             use std::io::{self, BufRead, Write};
             let stdin = io::stdin();
@@ -81,14 +82,17 @@ fn main() -> anyhow::Result<()> {
                 }
                 let line = line.trim();
                 if line == ":quit" || line == ":q" {
+                    db.save_state(&cli.session_id, &state)?;
                     println!("State saved. Bye.");
                     break;
                 }
                 if line.is_empty() {
                     continue;
                 }
-                let response = process_turn(line);
-                println!("{}\n", response);
+                let input = TurnInput { raw_text: line.to_string(), session_id: cli.session_id.clone() };
+                let output = TurnPipeline::process(&input, &mut state);
+                db.save_state(&cli.session_id, &state)?;
+                println!("{}\n", output.response);
             }
             Ok(())
         }
@@ -106,7 +110,23 @@ fn main() -> anyhow::Result<()> {
             println!("  Seed graph: {} atoms, {} relations", graph.atoms.len(), graph.edges.len());
             println!("  Relation types: {}", qxfx0_types::RelationType::ALL.len());
             println!("  Covered topics: {}", qxfx0_semantic::COVERED_TOPICS.len());
+            println!("  Morphology: 6 cases (nominative/genitive/dative/accusative/instrumental/prepositional)");
+            println!("  Pipeline: 6 stages (Prepare→Route→Render→Finalize→Guard→Persist)");
+            println!("  Persistence: SQLite");
             println!("  Status: OK");
+            Ok(())
+        }
+        Commands::Sessions => {
+            let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+            let sessions = db.list_sessions()?;
+            if sessions.is_empty() {
+                println!("No sessions found.");
+            } else {
+                for s in &sessions {
+                    println!("  {}", s);
+                }
+                println!("\n{} session(s)", sessions.len());
+            }
             Ok(())
         }
         Commands::Version => {

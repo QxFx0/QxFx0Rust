@@ -7,6 +7,11 @@ license.workspace = true
 
 [dependencies]
 qxfx0-types = { path = "../qxfx0-types" }
+qxfx0-self = { path = "../qxfx0-self" }
+qxfx0-semantic = { path = "../qxfx0-semantic" }
+qxfx0-commitment = { path = "../qxfx0-commitment" }
+qxfx0-guard = { path = "../qxfx0-guard" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tracing.workspace = true
