@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = [
+    "qxfx0-types",
+    "qxfx0-self",
+    "qxfx0-semantic",
+    "qxfx0-commitment",
+    "qxfx0-morphology",
+    "qxfx0-persistence",
+    "qxfx0-governance",
+    "qxfx0-guard",
+    "qxfx0-render",
+    "qxfx0-pipeline",
+    "qxfx0-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["QxFx0 Contributors"]
+license = "MIT"
+repository = "https://github.com/QxFx0/QxFx0Rust"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.9", features = ["v4", "serde"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+sha2 = "0.10"
+hex = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1.38", features = ["full"] }
+clap = { version = "4.5", features = ["derive"] }
+proptest = "1.4"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
