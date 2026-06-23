@@ -216,13 +216,19 @@ mod tests {
     fn test_adjunction_triangle_identities() {
         for a in [0.0, 0.5, 1.0, 3.14, -1.0] {
             assert!(Adjunction::triangle_left(a), "Left triangle failed for {a}");
-            assert!(Adjunction::triangle_right(a), "Right triangle failed for {a}");
+            assert!(
+                Adjunction::triangle_right(a),
+                "Right triangle failed for {a}"
+            );
         }
     }
 
     #[test]
     fn test_adjunction_reconcile() {
-        let field = Field { confidence: 0.8, ..Default::default() };
+        let field = Field {
+            confidence: 0.8,
+            ..Default::default()
+        };
         let result = Adjunction::reconcile(0.3, 0.7, &field);
         // High confidence → weighted toward formal
         assert!(result > 0.5, "High confidence should favor formal");
@@ -247,7 +253,10 @@ mod tests {
         let field = Field::default();
         let energy = Conatus::compute(&field);
         let violations = SelfBlanket::check(&field, energy);
-        assert!(violations.is_empty(), "Default field should have no violations");
+        assert!(
+            violations.is_empty(),
+            "Default field should have no violations"
+        );
     }
 
     #[test]

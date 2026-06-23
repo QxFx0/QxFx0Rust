@@ -1,6 +1,6 @@
-use qxfx0_types::*;
 use qxfx0_types::atom::{AtomGraph, AtomId, GeneratedSurface, PathProof, Relation};
 use qxfx0_types::field::FieldProfile;
+use qxfx0_types::*;
 
 /// Proposition parser — parses user input into typed proposition.
 #[derive(Debug, Clone, PartialEq)]
@@ -28,7 +28,8 @@ impl PropositionParser {
         let trimmed = lower.trim();
 
         // Define: "что такое X?"
-        if let Some(topic) = Self::extract_after(trimmed, &["что такое", "что есть", "определи"]) {
+        if let Some(topic) = Self::extract_after(trimmed, &["что такое", "что есть", "определи"])
+        {
             return ParsedProposition {
                 subject: Self::clean_topic(&topic),
                 object: None,
@@ -37,7 +38,8 @@ impl PropositionParser {
         }
 
         // Distinction: "в чем разница между X и Y?"
-        if trimmed.contains("разница между") || trimmed.contains("различие между") {
+        if trimmed.contains("разница между") || trimmed.contains("различие между")
+        {
             let after = if let Some(idx) = trimmed.find("между ") {
                 &trimmed[idx + 6..]
             } else {
@@ -54,7 +56,13 @@ impl PropositionParser {
         }
 
         // Challenge: reduction patterns
-        let challenge_patterns = ["это просто", "не более чем", "сводится к", "всего лишь", "это лишь"];
+        let challenge_patterns = [
+            "это просто",
+            "не более чем",
+            "сводится к",
+            "всего лишь",
+            "это лишь",
+        ];
         if challenge_patterns.iter().any(|p| trimmed.contains(p)) {
             // Extract subject — first word before the pattern
             for pattern in &challenge_patterns {
@@ -71,8 +79,19 @@ impl PropositionParser {
         }
 
         // Challenge: explicit markers
-        let challenge_markers = ["разве", "не согласен", "не согласна", "противореч", "неверно",
-            "ошибаешься", "не прав", "спорю", "возраж", "сомневаюсь", "оспариваю"];
+        let challenge_markers = [
+            "разве",
+            "не согласен",
+            "не согласна",
+            "противореч",
+            "неверно",
+            "ошибаешься",
+            "не прав",
+            "спорю",
+            "возраж",
+            "сомневаюсь",
+            "оспариваю",
+        ];
         if challenge_markers.iter().any(|m| trimmed.contains(m)) {
             return ParsedProposition {
                 subject: Self::extract_topic_or_unknown(trimmed),
@@ -82,9 +101,17 @@ impl PropositionParser {
         }
 
         // Reflect: "что ты думаешь о X?", "какова твоя мысль о X?"
-        let reflect_patterns = ["что ты думаешь о", "что думаешь о", "какова твоя мысль о",
-            "твое мнение о", "твоё мнение о", "как ты считаешь", "как ты видишь",
-            "поразмышляй о", "подумай о"];
+        let reflect_patterns = [
+            "что ты думаешь о",
+            "что думаешь о",
+            "какова твоя мысль о",
+            "твое мнение о",
+            "твоё мнение о",
+            "как ты считаешь",
+            "как ты видишь",
+            "поразмышляй о",
+            "подумай о",
+        ];
         for pattern in &reflect_patterns {
             if let Some(idx) = trimmed.find(pattern) {
                 let after = trimmed[idx + pattern.len()..].trim();
@@ -174,17 +201,26 @@ impl GraphEngagement {
         let rels = graph.relations_from(&topic);
 
         let supporting_types = [
-            RelationType::RelPresupposes, RelationType::RelRequires, RelationType::RelIncludes,
-            RelationType::RelMeans, RelationType::RelDetermines, RelationType::RelClaims,
+            RelationType::RelPresupposes,
+            RelationType::RelRequires,
+            RelationType::RelIncludes,
+            RelationType::RelMeans,
+            RelationType::RelDetermines,
+            RelationType::RelClaims,
         ];
         let contradicting_types = [
-            RelationType::RelContrastsWith, RelationType::RelDiffersFrom,
-            RelationType::RelNotReducibleTo, RelationType::RelIsNot, RelationType::RelNegates,
+            RelationType::RelContrastsWith,
+            RelationType::RelDiffersFrom,
+            RelationType::RelNotReducibleTo,
+            RelationType::RelIsNot,
+            RelationType::RelNegates,
             RelationType::RelDestroys,
         ];
         let qualifying_types = [
-            RelationType::RelLimitedBy, RelationType::RelStructures,
-            RelationType::RelPrescribes, RelationType::RelNecessaryFor,
+            RelationType::RelLimitedBy,
+            RelationType::RelStructures,
+            RelationType::RelPrescribes,
+            RelationType::RelNecessaryFor,
         ];
 
         let mut result = EngagementResult::default();
@@ -252,13 +288,17 @@ impl ContextualComposer {
         }
     }
 
-    fn compose_define(graph: &AtomGraph, fp: &FieldProfile, prop: &ParsedProposition) -> GeneratedSurface {
+    fn compose_define(
+        graph: &AtomGraph,
+        fp: &FieldProfile,
+        prop: &ParsedProposition,
+    ) -> GeneratedSurface {
         let topic = AtomId::new(prop.subject.clone());
         crate::pathfinder::PathFinder::compose_definition(graph, fp, 3, &topic)
     }
 
     fn compose_challenge(
-        graph: &AtomGraph,
+        _graph: &AtomGraph,
         _fp: &FieldProfile,
         prop: &ParsedProposition,
         engagement: &EngagementResult,
@@ -266,14 +306,18 @@ impl ContextualComposer {
         let topic = &prop.subject;
 
         // Build defense from supporting edges
-        let support_text = engagement.supporting.iter()
-            .map(|r| crate::verbalize_relation(r))
+        let support_text = engagement
+            .supporting
+            .iter()
+            .map(crate::verbalize_relation)
             .collect::<Vec<_>>()
             .join(". ");
 
         // Build counter from contradicting edges
-        let counter_text = engagement.contradicting.iter()
-            .map(|r| crate::verbalize_relation(r))
+        let counter_text = engagement
+            .contradicting
+            .iter()
+            .map(crate::verbalize_relation)
             .collect::<Vec<_>>()
             .join(". ");
 
@@ -290,20 +334,28 @@ impl ContextualComposer {
             response = format!("Возможно, ты прав. Я не нахожу достаточных оснований для своей позиции по вопросу о {}.", topic);
         }
 
-        let all_rels: Vec<Relation> = engagement.supporting.iter()
+        let all_rels: Vec<Relation> = engagement
+            .supporting
+            .iter()
             .chain(engagement.contradicting.iter())
             .cloned()
             .collect();
 
         GeneratedSurface {
             text: response,
-            paths: vec![PathProof { edges: all_rels.clone(), topic: topic.clone() }],
+            paths: vec![PathProof {
+                edges: all_rels.clone(),
+                topic: topic.clone(),
+            }],
             provenance: all_rels.iter().map(|r| r.source).collect(),
             depth_score: all_rels.len() as f64,
         }
     }
 
-    fn compose_connect(prop: &ParsedProposition, engagement: &EngagementResult) -> GeneratedSurface {
+    fn compose_connect(
+        prop: &ParsedProposition,
+        engagement: &EngagementResult,
+    ) -> GeneratedSurface {
         let subject = &prop.subject;
         let object = prop.object.as_deref().unwrap_or("");
 
@@ -316,14 +368,19 @@ impl ContextualComposer {
             };
         }
 
-        let path_text = engagement.path.iter()
-            .map(|r| crate::verbalize_relation(r))
+        let path_text = engagement
+            .path
+            .iter()
+            .map(crate::verbalize_relation)
             .collect::<Vec<_>>()
             .join(". ");
 
         GeneratedSurface {
             text: format!("Связь прослеживается: {}.", path_text),
-            paths: vec![PathProof { edges: engagement.path.clone(), topic: subject.clone() }],
+            paths: vec![PathProof {
+                edges: engagement.path.clone(),
+                topic: subject.clone(),
+            }],
             provenance: engagement.path.iter().map(|r| r.source).collect(),
             depth_score: engagement.path.len() as f64,
         }
@@ -337,7 +394,9 @@ impl ContextualComposer {
     ) -> GeneratedSurface {
         let topic = &prop.subject;
 
-        let all_rels: Vec<Relation> = engagement.supporting.iter()
+        let all_rels: Vec<Relation> = engagement
+            .supporting
+            .iter()
             .chain(engagement.qualifying.iter())
             .cloned()
             .collect();
@@ -348,26 +407,34 @@ impl ContextualComposer {
             return crate::pathfinder::PathFinder::compose_definition(graph, fp, 3, &topic_id);
         }
 
-        let rel_texts = all_rels.iter()
-            .map(|r| crate::verbalize_relation(r))
+        let rel_texts = all_rels
+            .iter()
+            .map(crate::verbalize_relation)
             .collect::<Vec<_>>()
             .join(". ");
 
         GeneratedSurface {
             text: format!("Когда я думаю о {}: {}.", topic, rel_texts),
-            paths: vec![PathProof { edges: all_rels.clone(), topic: topic.clone() }],
+            paths: vec![PathProof {
+                edges: all_rels.clone(),
+                topic: topic.clone(),
+            }],
             provenance: all_rels.iter().map(|r| r.source).collect(),
             depth_score: all_rels.len() as f64,
         }
     }
 
     fn compose_assert(prop: &ParsedProposition, engagement: &EngagementResult) -> GeneratedSurface {
-        let support_text = engagement.supporting.iter()
-            .map(|r| crate::verbalize_relation(r))
+        let support_text = engagement
+            .supporting
+            .iter()
+            .map(crate::verbalize_relation)
             .collect::<Vec<_>>()
             .join(". ");
-        let contra_text = engagement.contradicting.iter()
-            .map(|r| crate::verbalize_relation(r))
+        let contra_text = engagement
+            .contradicting
+            .iter()
+            .map(crate::verbalize_relation)
             .collect::<Vec<_>>()
             .join(". ");
 
@@ -378,14 +445,19 @@ impl ContextualComposer {
             (true, true) => "У меня нет устоявшейся позиции по этому вопросу.".to_string(),
         };
 
-        let all_rels: Vec<Relation> = engagement.supporting.iter()
+        let all_rels: Vec<Relation> = engagement
+            .supporting
+            .iter()
             .chain(engagement.contradicting.iter())
             .cloned()
             .collect();
 
         GeneratedSurface {
             text: response,
-            paths: vec![PathProof { edges: all_rels.clone(), topic: prop.subject.clone() }],
+            paths: vec![PathProof {
+                edges: all_rels.clone(),
+                topic: prop.subject.clone(),
+            }],
             provenance: all_rels.iter().map(|r| r.source).collect(),
             depth_score: all_rels.len() as f64,
         }

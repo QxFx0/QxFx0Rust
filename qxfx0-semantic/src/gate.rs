@@ -1,6 +1,4 @@
-use qxfx0_types::*;
 use qxfx0_types::atom::{PathProof, Relation, RelationSource};
-use qxfx0_types::RelationType;
 
 /// GeneratedPredicateGate — 5 gates for graph-generated predicates.
 /// All gates are pure, total, deterministic.
@@ -39,19 +37,27 @@ impl GeneratedPredicateGate {
     /// Gate G4: every edge's source is in the admissible set.
     /// SubstrateExtractedRaw is blocked.
     pub fn gate_source_whitelist(proof: &PathProof) -> GateResult {
-        let inadmissible: Vec<_> = proof.edges.iter()
+        let inadmissible: Vec<_> = proof
+            .edges
+            .iter()
             .filter(|e| e.source == RelationSource::SubstrateExtractedRaw)
             .collect();
         if inadmissible.is_empty() {
             GateResult::Pass
         } else {
-            GateResult::Fail(format!("edge has source=SubstrateExtractedRaw: {}", inadmissible[0].ru_original))
+            GateResult::Fail(format!(
+                "edge has source=SubstrateExtractedRaw: {}",
+                inadmissible[0].ru_original
+            ))
         }
     }
 
     /// Gate G5: no raw substrate edges.
     pub fn gate_non_substrate_output(proof: &PathProof) -> GateResult {
-        let has_raw = proof.edges.iter().any(|e| e.source == RelationSource::SubstrateExtractedRaw);
+        let has_raw = proof
+            .edges
+            .iter()
+            .any(|e| e.source == RelationSource::SubstrateExtractedRaw);
         if has_raw {
             GateResult::Fail("path contains raw substrate edge".into())
         } else {
@@ -127,6 +133,7 @@ pub struct GateVerdict {
 mod tests {
     use super::*;
     use qxfx0_types::atom::{AtomId, ObjectCase};
+    use qxfx0_types::RelationType;
 
     fn make_rel(from: &str, to: &str, topic: &str) -> Relation {
         Relation {
@@ -149,7 +156,10 @@ mod tests {
     #[test]
     fn test_gate_passes_valid_path() {
         let rel = make_rel("свобода", "выбор", "свобода");
-        let proof = PathProof { edges: vec![rel], topic: "свобода".into() };
+        let proof = PathProof {
+            edges: vec![rel],
+            topic: "свобода".into(),
+        };
         let verdict = GeneratedPredicateGate::validate_path(&proof);
         assert!(verdict.overall);
     }
@@ -157,14 +167,20 @@ mod tests {
     #[test]
     fn test_gate_fails_tautology() {
         let rel = make_rel("свобода", "свобода", "свобода");
-        let proof = PathProof { edges: vec![rel], topic: "свобода".into() };
+        let proof = PathProof {
+            edges: vec![rel],
+            topic: "свобода".into(),
+        };
         let verdict = GeneratedPredicateGate::validate_path(&proof);
         assert!(!verdict.overall);
     }
 
     #[test]
     fn test_gate_fails_empty() {
-        let proof = PathProof { edges: vec![], topic: "свобода".into() };
+        let proof = PathProof {
+            edges: vec![],
+            topic: "свобода".into(),
+        };
         let verdict = GeneratedPredicateGate::validate_path(&proof);
         assert!(!verdict.overall);
     }
@@ -173,7 +189,10 @@ mod tests {
     fn test_gate_fails_substrate() {
         let mut rel = make_rel("свобода", "выбор", "свобода");
         rel.source = RelationSource::SubstrateExtractedRaw;
-        let proof = PathProof { edges: vec![rel], topic: "свобода".into() };
+        let proof = PathProof {
+            edges: vec![rel],
+            topic: "свобода".into(),
+        };
         let verdict = GeneratedPredicateGate::validate_path(&proof);
         assert!(!verdict.overall);
     }

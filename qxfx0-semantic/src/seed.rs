@@ -1,14 +1,38 @@
-use qxfx0_types::*;
 use qxfx0_types::atom::PathProof;
+use qxfx0_types::*;
 
 /// 30 covered philosophical topics.
 pub const COVERED_TOPICS: &[&str] = &[
-    "свобода", "произвол", "ответственность", "истина", "мнение",
-    "память", "воспоминание", "сознание", "самосознание", "вера",
-    "красота", "долг", "доверие", "страх", "надежда",
-    "справедливость", "время", "разум", "бытие", "история",
-    "язык", "воля", "смерть", "одиночество", "любовь",
-    "труд", "покой", "власть", "правда", "молчание",
+    "свобода",
+    "произвол",
+    "ответственность",
+    "истина",
+    "мнение",
+    "память",
+    "воспоминание",
+    "сознание",
+    "самосознание",
+    "вера",
+    "красота",
+    "долг",
+    "доверие",
+    "страх",
+    "надежда",
+    "справедливость",
+    "время",
+    "разум",
+    "бытие",
+    "история",
+    "язык",
+    "воля",
+    "смерть",
+    "одиночество",
+    "любовь",
+    "труд",
+    "покой",
+    "власть",
+    "правда",
+    "молчание",
 ];
 
 /// Seed the AtomGraph with core philosophical relations.
@@ -17,15 +41,26 @@ pub fn seed_graph() -> AtomGraph {
 
     for topic in COVERED_TOPICS {
         let id = AtomId::new(topic.to_string());
-        graph.atoms.insert(id.clone(), Atom {
-            id: id.clone(),
-            display: topic.to_string(),
-            category: AtomCategory::CatTopic,
-        });
+        graph.atoms.insert(
+            id.clone(),
+            Atom {
+                id: id.clone(),
+                display: topic.to_string(),
+                category: AtomCategory::CatTopic,
+            },
+        );
     }
 
-    let rel = |from: &str, to: &str, rt: RelationType, case: ObjectCase, obj: &str, ru: &str, topic: &str,
-               rationale: Option<&str>, counter: Option<&str>, synthesis: Option<&str>| {
+    let rel = |from: &str,
+               to: &str,
+               rt: RelationType,
+               case: ObjectCase,
+               obj: &str,
+               ru: &str,
+               topic: &str,
+               rationale: Option<&str>,
+               counter: Option<&str>,
+               synthesis: Option<&str>| {
         Relation {
             from: AtomId::new(from.to_string()),
             to: AtomId::new(to.to_string()),
@@ -44,37 +79,68 @@ pub fn seed_graph() -> AtomGraph {
     };
 
     graph.add_relation(rel(
-        "свобода", "выбор", RelationType::RelPresupposes, ObjectCase::CaseAccusative,
-        "возможность выбора", "свобода предполагает возможность выбора", "свобода",
+        "свобода",
+        "выбор",
+        RelationType::RelPresupposes,
+        ObjectCase::CaseAccusative,
+        "возможность выбора",
+        "свобода предполагает возможность выбора",
+        "свобода",
         Some("без выбора действие не отличается от рефлекса"),
         Some("не любой выбор свободен: выбор под принуждением не делает действие свободным"),
         Some("свобода требует не только возможности, но и осознанности выбора"),
     ));
 
     graph.add_relation(rel(
-        "свобода", "ответственность", RelationType::RelLimitedBy, ObjectCase::CaseInstrumental,
-        "ответственностью", "свобода ограничена ответственностью", "свобода",
+        "свобода",
+        "ответственность",
+        RelationType::RelLimitedBy,
+        ObjectCase::CaseInstrumental,
+        "ответственностью",
+        "свобода ограничена ответственностью",
+        "свобода",
         Some("без ответственности свобода превращается в произвол"),
         Some("не любое ограничение убивает свободу — только произвольное"),
         Some("ответственность не враг свободы, а условие её осмысленности"),
     ));
 
     graph.add_relation(rel(
-        "свобода", "принуждение", RelationType::RelDetermines, ObjectCase::CaseAccusative,
-        "отсутствие принуждения", "свобода определяет отсутствие принуждения", "свобода",
-        None, None, None,
+        "свобода",
+        "принуждение",
+        RelationType::RelDetermines,
+        ObjectCase::CaseAccusative,
+        "отсутствие принуждения",
+        "свобода определяет отсутствие принуждения",
+        "свобода",
+        None,
+        None,
+        None,
     ));
 
     graph.add_relation(rel(
-        "свобода", "сознание", RelationType::RelRequires, ObjectCase::CaseAccusative,
-        "сознание", "свобода требует сознание", "свобода",
-        None, None, None,
+        "свобода",
+        "сознание",
+        RelationType::RelRequires,
+        ObjectCase::CaseAccusative,
+        "сознание",
+        "свобода требует сознание",
+        "свобода",
+        None,
+        None,
+        None,
     ));
 
     graph.add_relation(rel(
-        "свобода", "истина", RelationType::RelContrastsWith, ObjectCase::CaseAccusative,
-        "истина", "свобода контрастирует с истина", "свобода",
-        None, None, None,
+        "свобода",
+        "истина",
+        RelationType::RelContrastsWith,
+        ObjectCase::CaseAccusative,
+        "истина",
+        "свобода контрастирует с истина",
+        "свобода",
+        None,
+        None,
+        None,
     ));
 
     graph.add_relation(rel(
@@ -86,28 +152,57 @@ pub fn seed_graph() -> AtomGraph {
     ));
 
     graph.add_relation(rel(
-        "истина", "реальность", RelationType::RelClaims, ObjectCase::CaseAccusative,
-        "соответствие реальности", "истина претендует на соответствие реальности", "истина",
-        None, None, None,
+        "истина",
+        "реальность",
+        RelationType::RelClaims,
+        ObjectCase::CaseAccusative,
+        "соответствие реальности",
+        "истина претендует на соответствие реальности",
+        "истина",
+        None,
+        None,
+        None,
     ));
 
     graph.add_relation(rel(
-        "сознание", "самоотчёт", RelationType::RelIncludes, ObjectCase::CaseAccusative,
-        "способность к самоотчёту", "сознание включает способность к самоотчёту", "сознание",
-        Some("существо, не способное сказать «я чувствую это», может реагировать — но не осознавать"),
-        None, None,
+        "сознание",
+        "самоотчёт",
+        RelationType::RelIncludes,
+        ObjectCase::CaseAccusative,
+        "способность к самоотчёту",
+        "сознание включает способность к самоотчёту",
+        "сознание",
+        Some(
+            "существо, не способное сказать «я чувствую это», может реагировать — но не осознавать",
+        ),
+        None,
+        None,
     ));
 
     graph.add_relation(rel(
-        "сознание", "разум", RelationType::RelContrastsWith, ObjectCase::CaseAccusative,
-        "разум", "сознание контрастирует с разум", "сознание",
-        None, None, None,
+        "сознание",
+        "разум",
+        RelationType::RelContrastsWith,
+        ObjectCase::CaseAccusative,
+        "разум",
+        "сознание контрастирует с разум",
+        "сознание",
+        None,
+        None,
+        None,
     ));
 
     graph.add_relation(rel(
-        "ответственность", "долг", RelationType::RelRequires, ObjectCase::CaseAccusative,
-        "долг", "ответственность требует долг", "ответственность",
-        None, None, None,
+        "ответственность",
+        "долг",
+        RelationType::RelRequires,
+        ObjectCase::CaseAccusative,
+        "долг",
+        "ответственность требует долг",
+        "ответственность",
+        None,
+        None,
+        None,
     ));
 
     graph.add_relation(rel(
@@ -126,13 +221,20 @@ pub fn verbalize_relation(rel: &Relation) -> String {
     if let Some(verb) = &rel.verb_override {
         format!("{} {} {}", rel.from.as_str(), verb, rel.object_text)
     } else {
-        format!("{} {} {}", rel.from.as_str(), rel.rel_type.verb_ru(), rel.object_text)
+        format!(
+            "{} {} {}",
+            rel.from.as_str(),
+            rel.rel_type.verb_ru(),
+            rel.object_text
+        )
     }
 }
 
 /// Verbalize a path proof into text.
 pub fn verbalize_path(proof: &PathProof) -> String {
-    proof.edges.iter()
+    proof
+        .edges
+        .iter()
         .map(verbalize_relation)
         .collect::<Vec<_>>()
         .join(". ")

@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
-use qxfx0_types::system_state::SystemState;
-use qxfx0_pipeline::{TurnPipeline, TurnInput};
+use qxfx0_pipeline::{TurnInput, TurnPipeline};
 use qxfx0_semantic::seed_graph;
+use qxfx0_types::system_state::SystemState;
 
 #[derive(Parser)]
 #[command(name = "qxfx0")]
@@ -24,7 +24,10 @@ enum Commands {
     /// Interactive dialogue session
     Chat,
     /// Run self-play enrichment
-    Selfplay { #[arg(default_value = "10")] iterations: usize },
+    Selfplay {
+        #[arg(default_value = "10")]
+        iterations: usize,
+    },
     /// Discover relations for a concept
     Discover { concept: String },
     /// Health check
@@ -38,12 +41,11 @@ enum Commands {
 fn load_or_create_state(db: &qxfx0_persistence::Persistence, session_id: &str) -> SystemState {
     match db.load_state(session_id).unwrap_or(None) {
         Some(state) => state,
-        None => {
-            let mut state = SystemState::default();
-            state.session_id = session_id.to_string();
-            state.runtime_graph = seed_graph();
-            state
-        }
+        None => SystemState {
+            session_id: session_id.to_string(),
+            runtime_graph: seed_graph(),
+            ..Default::default()
+        },
     }
 }
 
@@ -55,7 +57,10 @@ fn main() -> anyhow::Result<()> {
         Commands::Turn { text } => {
             let db = qxfx0_persistence::Persistence::open(&cli.db)?;
             let mut state = load_or_create_state(&db, &cli.session_id);
-            let input = TurnInput { raw_text: text, session_id: cli.session_id.clone() };
+            let input = TurnInput {
+                raw_text: text,
+                session_id: cli.session_id.clone(),
+            };
             let output = TurnPipeline::process(&input, &mut state);
             db.save_state(&cli.session_id, &state)?;
             println!("{}", output.response);
@@ -89,7 +94,10 @@ fn main() -> anyhow::Result<()> {
                 if line.is_empty() {
                     continue;
                 }
-                let input = TurnInput { raw_text: line.to_string(), session_id: cli.session_id.clone() };
+                let input = TurnInput {
+                    raw_text: line.to_string(),
+                    session_id: cli.session_id.clone(),
+                };
                 let output = TurnPipeline::process(&input, &mut state);
                 db.save_state(&cli.session_id, &state)?;
                 println!("{}\n", output.response);
@@ -107,7 +115,11 @@ fn main() -> anyhow::Result<()> {
         Commands::Doctor => {
             let graph = seed_graph();
             println!("QxFx0 Rust v0.1.0 health check:");
-            println!("  Seed graph: {} atoms, {} relations", graph.atoms.len(), graph.edges.len());
+            println!(
+                "  Seed graph: {} atoms, {} relations",
+                graph.atoms.len(),
+                graph.edges.len()
+            );
             println!("  Relation types: {}", qxfx0_types::RelationType::ALL.len());
             println!("  Covered topics: {}", qxfx0_semantic::COVERED_TOPICS.len());
             println!("  Morphology: 6 cases (nominative/genitive/dative/accusative/instrumental/prepositional)");

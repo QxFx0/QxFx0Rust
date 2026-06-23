@@ -37,22 +37,62 @@ impl MorphologyData {
 
         // Nominative is identity — word maps to itself
         let topics = [
-            "свобода", "произвол", "ответственность", "истина", "мнение",
-            "память", "воспоминание", "сознание", "самосознание", "вера",
-            "красота", "долг", "доверие", "страх", "надежда",
-            "справедливость", "время", "разум", "бытие", "история",
-            "язык", "воля", "смерть", "одиночество", "любовь",
-            "труд", "покой", "власть", "правда", "молчание",
-            "смысл", "выбор", "сознание", "добро", "зло",
+            "свобода",
+            "произвол",
+            "ответственность",
+            "истина",
+            "мнение",
+            "память",
+            "воспоминание",
+            "сознание",
+            "самосознание",
+            "вера",
+            "красота",
+            "долг",
+            "доверие",
+            "страх",
+            "надежда",
+            "справедливость",
+            "время",
+            "разум",
+            "бытие",
+            "история",
+            "язык",
+            "воля",
+            "смерть",
+            "одиночество",
+            "любовь",
+            "труд",
+            "покой",
+            "власть",
+            "правда",
+            "молчание",
+            "смысл",
+            "выбор",
+            "сознание",
+            "добро",
+            "зло",
         ];
 
         for topic in &topics {
-            morph.nominative.insert(topic.to_string(), topic.to_string());
-            morph.genitive.insert(topic.to_string(), inflect_genitive(topic));
-            morph.dative.insert(topic.to_string(), inflect_dative(topic));
-            morph.accusative.insert(topic.to_string(), inflect_accusative(topic));
-            morph.instrumental.insert(topic.to_string(), inflect_instrumental(topic));
-            morph.prepositional.insert(topic.to_string(), inflect_prepositional(topic));
+            morph
+                .nominative
+                .insert(topic.to_string(), topic.to_string());
+            morph
+                .genitive
+                .insert(topic.to_string(), inflect_genitive(topic));
+            morph
+                .dative
+                .insert(topic.to_string(), inflect_dative(topic));
+            morph
+                .accusative
+                .insert(topic.to_string(), inflect_accusative(topic));
+            morph
+                .instrumental
+                .insert(topic.to_string(), inflect_instrumental(topic));
+            morph
+                .prepositional
+                .insert(topic.to_string(), inflect_prepositional(topic));
         }
 
         morph
@@ -172,9 +212,9 @@ fn inflect_accusative(w: &str) -> String {
     match lc {
         'а' => drop_last(w) + "у",
         'я' => drop_last(w) + "ю",
-        'ь' => drop_last(w) + "ь", // inanimate — same as nominative
+        'ь' => drop_last(w) + "ь",        // inanimate — same as nominative
         'о' | 'е' | 'й' => w.to_string(), // inanimate — same as nominative
-        _ => w.to_string(), // consonant — inanimate, same as nominative
+        _ => w.to_string(),               // consonant — inanimate, same as nominative
     }
 }
 
@@ -217,13 +257,27 @@ fn inflect_prepositional(w: &str) -> String {
 }
 
 fn is_consonant(c: char) -> bool {
-    !matches!(c, 'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я' | 'ь' | 'й')
+    !matches!(
+        c,
+        'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я' | 'ь' | 'й'
+    )
 }
 
 /// Strip a leading preposition from a phrase.
 /// "с ответственностью" → "ответственностью"
 pub fn strip_preposition(text: &str) -> String {
-    let prepositions = ["с ", "со ", "на ", "об ", "от ", "к ", "из ", "через ", "для ", "о "];
+    let prepositions = [
+        "с ",
+        "со ",
+        "на ",
+        "об ",
+        "от ",
+        "к ",
+        "из ",
+        "через ",
+        "для ",
+        "о ",
+    ];
     let lower = text.to_lowercase();
     for prep in &prepositions {
         if lower.starts_with(prep) {
@@ -247,14 +301,22 @@ mod tests {
     fn test_genitive_feminine_a() {
         let morph = MorphologyData::with_seed();
         let gen = morph.to_genitive("свобода");
-        assert!(gen.ends_with("ы") || gen.ends_with("и"), "genitive of -а should end in -ы or -и, got: {}", gen);
+        assert!(
+            gen.ends_with("ы") || gen.ends_with("и"),
+            "genitive of -а should end in -ы or -и, got: {}",
+            gen
+        );
     }
 
     #[test]
     fn test_instrumental_feminine_a() {
         let morph = MorphologyData::with_seed();
         let inst = morph.to_instrumental("свобода");
-        assert!(inst.ends_with("ой") || inst.ends_with("ей"), "instrumental of -а should end in -ой or -ей, got: {}", inst);
+        assert!(
+            inst.ends_with("ой") || inst.ends_with("ей"),
+            "instrumental of -а should end in -ой or -ей, got: {}",
+            inst
+        );
     }
 
     #[test]
@@ -282,7 +344,11 @@ mod tests {
     fn test_prepositional() {
         let morph = MorphologyData::with_seed();
         let prep = morph.to_prepositional("свобода");
-        assert!(prep.ends_with("е"), "prepositional should end in -е, got: {}", prep);
+        assert!(
+            prep.ends_with("е"),
+            "prepositional should end in -е, got: {}",
+            prep
+        );
     }
 
     #[test]
@@ -295,10 +361,23 @@ mod tests {
     #[test]
     fn test_all_cases_produce_output() {
         let morph = MorphologyData::with_seed();
-        for topic in ["свобода", "истина", "сознание", "ответственность"] {
-            for case in [Case::Nominative, Case::Genitive, Case::Dative, Case::Accusative, Case::Instrumental, Case::Prepositional] {
+        for topic in ["свобода", "истина", "сознание", "ответственность"]
+        {
+            for case in [
+                Case::Nominative,
+                Case::Genitive,
+                Case::Dative,
+                Case::Accusative,
+                Case::Instrumental,
+                Case::Prepositional,
+            ] {
                 let result = morph.to_case(case, topic);
-                assert!(!result.is_empty(), "case {:?} of {} should not be empty", case, topic);
+                assert!(
+                    !result.is_empty(),
+                    "case {:?} of {} should not be empty",
+                    case,
+                    topic
+                );
             }
         }
     }

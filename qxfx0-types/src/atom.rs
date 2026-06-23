@@ -104,7 +104,10 @@ impl AtomGraph {
 
     pub fn add_relation(&mut self, rel: Relation) {
         let idx = self.edges.len();
-        self.edges_from.entry(rel.from.clone()).or_default().push(idx);
+        self.edges_from
+            .entry(rel.from.clone())
+            .or_default()
+            .push(idx);
         self.edges_to.entry(rel.to.clone()).or_default().push(idx);
         self.edges.push(rel);
     }

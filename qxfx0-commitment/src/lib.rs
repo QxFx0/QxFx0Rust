@@ -21,7 +21,9 @@ impl CommitmentOps {
         }
 
         new_store.active.insert(cid.clone(), (payload, 0));
-        new_store.lineage.insert(cid.clone(), vec![LineageEvent::Committed { turn: 0 }]);
+        new_store
+            .lineage
+            .insert(cid.clone(), vec![LineageEvent::Committed { turn: 0 }]);
         (new_store, cid)
     }
 
@@ -36,7 +38,9 @@ impl CommitmentOps {
         new_store.next_id = store.next_id + 1;
 
         new_store.active.insert(cid.clone(), (payload, turn));
-        new_store.lineage.insert(cid.clone(), vec![LineageEvent::Committed { turn }]);
+        new_store
+            .lineage
+            .insert(cid.clone(), vec![LineageEvent::Committed { turn }]);
         (new_store, cid)
     }
 
@@ -64,7 +68,9 @@ impl CommitmentOps {
         let mut new_store = store.clone();
 
         if let Some((_, _)) = new_store.active.get(cid) {
-            new_store.active.insert(cid.clone(), (new_payload.clone(), turn));
+            new_store
+                .active
+                .insert(cid.clone(), (new_payload.clone(), turn));
             let lineage = new_store.lineage.entry(cid.clone()).or_default();
             lineage.push(LineageEvent::Revised { turn });
         }
@@ -93,13 +99,16 @@ impl CommitmentOps {
     /// Retrieve active commitments matching a query (word-set overlap).
     /// Returns up to 5 matches.
     pub fn retrieve(query: &str, store: &SemanticCommitmentStore) -> Vec<FactualClaimPayload> {
-        let query_words: BTreeSet<&str> = query.split_whitespace()
-            .filter(|w| w.len() >= 3)
-            .collect();
+        let query_words: BTreeSet<&str> =
+            query.split_whitespace().filter(|w| w.len() >= 3).collect();
 
-        let mut matches: Vec<(usize, FactualClaimPayload)> = store.active.values()
+        let mut matches: Vec<(usize, FactualClaimPayload)> = store
+            .active
+            .values()
             .map(|(payload, _)| {
-                let stmt_words: BTreeSet<&str> = payload.statement.split_whitespace()
+                let stmt_words: BTreeSet<&str> = payload
+                    .statement
+                    .split_whitespace()
                     .filter(|w| w.len() >= 3)
                     .collect();
                 let overlap = query_words.intersection(&stmt_words).count();
@@ -111,10 +120,7 @@ impl CommitmentOps {
         // Sort by overlap descending (deterministic via BTreeSet)
         matches.sort_by(|a, b| b.0.cmp(&a.0));
 
-        matches.into_iter()
-            .take(5)
-            .map(|(_, p)| p)
-            .collect()
+        matches.into_iter().take(5).map(|(_, p)| p).collect()
     }
 
     /// Detect whether the current turn engages or contradicts held commitments.
@@ -133,23 +139,33 @@ impl CommitmentOps {
         }
 
         // Find which commitment IDs are engaged
-        let query_words: BTreeSet<&str> = input_topic.split_whitespace()
+        let query_words: BTreeSet<&str> = input_topic
+            .split_whitespace()
             .filter(|w| w.len() >= 3)
             .collect();
 
-        let engaged_ids: Vec<CommitmentId> = store.active.iter()
+        let engaged_ids: Vec<CommitmentId> = store
+            .active
+            .iter()
             .filter(|(_, (payload, _))| {
-                let stmt_words: BTreeSet<&str> = payload.statement.split_whitespace()
+                let stmt_words: BTreeSet<&str> = payload
+                    .statement
+                    .split_whitespace()
                     .filter(|w| w.len() >= 3)
                     .collect();
-                !query_words.intersection(&stmt_words).collect::<Vec<_>>().is_empty()
+                !query_words
+                    .intersection(&stmt_words)
+                    .collect::<Vec<_>>()
+                    .is_empty()
             })
             .map(|(cid, _)| cid.clone())
             .collect();
 
         // Check for contradiction signals in input
-        let contradicted = input_topic.contains("не ") || input_topic.contains("противореч")
-            || input_topic.contains("ошиба") || input_topic.contains("не верно");
+        let contradicted = input_topic.contains("не ")
+            || input_topic.contains("противореч")
+            || input_topic.contains("ошиба")
+            || input_topic.contains("не верно");
 
         let match_kind = if contradicted {
             MatchKind::ContradictedStrong
@@ -172,7 +188,9 @@ impl CommitmentOps {
     ) -> SemanticCommitmentStore {
         let mut new_store = store.clone();
 
-        let to_promote: Vec<CommitmentId> = new_store.quarantine.iter()
+        let to_promote: Vec<CommitmentId> = new_store
+            .quarantine
+            .iter()
             .filter(|(_, (payload, _))| payload.topic == topic)
             .map(|(cid, _)| cid.clone())
             .collect();
@@ -288,7 +306,11 @@ mod tests {
         let (store, right) = CommitmentOps::commit(make_payload("a", "a is not x"), &store);
 
         let store = CommitmentOps::contradict(
-            &left, &right, ContradictionKind::ContradictionStatement, 2, &store
+            &left,
+            &right,
+            ContradictionKind::ContradictionStatement,
+            2,
+            &store,
         );
 
         assert_eq!(store.contradictions.len(), 1);

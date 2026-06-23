@@ -1,14 +1,12 @@
-use qxfx0_types::*;
-use qxfx0_types::system_state::*;
-use qxfx0_types::atom::AtomId;
-use qxfx0_types::field::FieldProfile;
-use qxfx0_self::{Conatus, Adjunction, SelfBlanket};
-use qxfx0_semantic::{
-    seed_graph, ContextualComposer, PropositionParser, GraphEngagement,
-    PropositionMode, PathFinder, COVERED_TOPICS,
-};
 use qxfx0_commitment::CommitmentOps;
 use qxfx0_guard::ContentQualityGate;
+use qxfx0_self::{Conatus, SelfBlanket};
+use qxfx0_semantic::{
+    seed_graph, ContextualComposer, GraphEngagement, PropositionMode, PropositionParser,
+};
+use qxfx0_types::field::FieldProfile;
+use qxfx0_types::system_state::*;
+use qxfx0_types::*;
 
 /// 6-stage TurnPipeline: Prepare → Route → Render → Finalize → Guard → Persist
 pub struct TurnPipeline;
@@ -208,15 +206,21 @@ mod tests {
         let mut state = SystemState::default();
 
         // Turn 1: define свобода
-        TurnPipeline::process(&TurnInput {
-            raw_text: "что такое свобода?".into(),
-            session_id: "test".into(),
-        }, &mut state);
+        TurnPipeline::process(
+            &TurnInput {
+                raw_text: "что такое свобода?".into(),
+                session_id: "test".into(),
+            },
+            &mut state,
+        );
 
         // Verify commitment store was updated
         assert!(state.semantic_commitments.is_some());
         let store = state.semantic_commitments.as_ref().unwrap();
-        assert!(!store.active.is_empty(), "Should have active commitments after turn 1");
+        assert!(
+            !store.active.is_empty(),
+            "Should have active commitments after turn 1"
+        );
     }
 
     #[test]
@@ -224,24 +228,33 @@ mod tests {
         let mut state = SystemState::default();
 
         // Turn 1
-        let out1 = TurnPipeline::process(&TurnInput {
-            raw_text: "что такое свобода?".into(),
-            session_id: "multi".into(),
-        }, &mut state);
+        let out1 = TurnPipeline::process(
+            &TurnInput {
+                raw_text: "что такое свобода?".into(),
+                session_id: "multi".into(),
+            },
+            &mut state,
+        );
         assert!(!out1.response.is_empty());
 
         // Turn 2 — challenge
-        let out2 = TurnPipeline::process(&TurnInput {
-            raw_text: "свобода это просто отсутствие ограничений".into(),
-            session_id: "multi".into(),
-        }, &mut state);
+        let out2 = TurnPipeline::process(
+            &TurnInput {
+                raw_text: "свобода это просто отсутствие ограничений".into(),
+                session_id: "multi".into(),
+            },
+            &mut state,
+        );
         assert_eq!(out2.family, CanonicalMoveFamily::CMConfront);
 
         // Turn 3 — reflect
-        let out3 = TurnPipeline::process(&TurnInput {
-            raw_text: "что ты думаешь об ответственности?".into(),
-            session_id: "multi".into(),
-        }, &mut state);
+        let out3 = TurnPipeline::process(
+            &TurnInput {
+                raw_text: "что ты думаешь об ответственности?".into(),
+                session_id: "multi".into(),
+            },
+            &mut state,
+        );
         assert!(!out3.response.is_empty());
 
         assert_eq!(state.turn_count, 3);
@@ -262,7 +275,10 @@ mod tests {
         let out1 = TurnPipeline::process(&input, &mut state1);
         let out2 = TurnPipeline::process(&input, &mut state2);
 
-        assert_eq!(out1.response, out2.response, "Same input should produce same output");
+        assert_eq!(
+            out1.response, out2.response,
+            "Same input should produce same output"
+        );
         assert_eq!(out1.family, out2.family);
     }
 
@@ -270,10 +286,13 @@ mod tests {
     fn test_pipeline_guard_blocks_empty() {
         let mut state = SystemState::default();
         // Empty input should be blocked
-        let output = TurnPipeline::process(&TurnInput {
-            raw_text: "".into(),
-            session_id: "test".into(),
-        }, &mut state);
+        let output = TurnPipeline::process(
+            &TurnInput {
+                raw_text: "".into(),
+                session_id: "test".into(),
+            },
+            &mut state,
+        );
         // Empty input → topic "неизвестный" → graph has no relations → empty response → blocked
         assert!(output.blocked || output.response.contains("не нахожу"));
     }

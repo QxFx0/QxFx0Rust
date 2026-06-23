@@ -42,8 +42,8 @@ pub enum PropositionType {
 
 impl PropositionType {
     pub fn to_move_family(&self) -> CanonicalMoveFamily {
-        use PropositionType::*;
         use CanonicalMoveFamily::*;
+        use PropositionType::*;
         match self {
             DefinitionalQ | ConceptKnowledgeQ => CMDefine,
             DistinctionQ => CMDistinguish,

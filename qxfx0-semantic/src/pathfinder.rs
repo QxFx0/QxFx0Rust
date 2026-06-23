@@ -1,5 +1,4 @@
-use qxfx0_types::*;
-use qxfx0_types::atom::{AtomGraph, AtomId, Relation, PathProof, GeneratedSurface};
+use qxfx0_types::atom::{AtomGraph, AtomId, GeneratedSurface, PathProof, Relation};
 use qxfx0_types::field::FieldProfile;
 use qxfx0_types::RelationType;
 
@@ -22,7 +21,7 @@ impl PathFinder {
                     edges: vec![rel.clone()],
                     topic: start.as_str().to_string(),
                 },
-                score: Self::score_path(&FieldProfile::default(), &[rel.clone()]),
+                score: Self::score_path(&FieldProfile::default(), std::slice::from_ref(rel)),
             });
         }
 
@@ -37,7 +36,10 @@ impl PathFinder {
                                 edges: vec![e1.clone(), e2.clone()],
                                 topic: start.as_str().to_string(),
                             },
-                            score: Self::score_path(&FieldProfile::default(), &[e1.clone(), e2.clone()]),
+                            score: Self::score_path(
+                                &FieldProfile::default(),
+                                &[e1.clone(), e2.clone()],
+                            ),
                         });
                     }
                 }
@@ -49,7 +51,10 @@ impl PathFinder {
 
     /// Score a path: sum of edge biases minus length penalty.
     pub fn score_path(fp: &FieldProfile, edges: &[Relation]) -> PathScore {
-        let bias_sum: f64 = edges.iter().map(|e| Self::relation_type_bias(fp, e.rel_type)).sum();
+        let bias_sum: f64 = edges
+            .iter()
+            .map(|e| Self::relation_type_bias(fp, e.rel_type))
+            .sum();
         let penalty = edges.len() as f64 * 0.15;
         let total = bias_sum - penalty;
         PathScore {
@@ -133,20 +138,37 @@ impl PathFinder {
     pub fn rank_paths(paths: Vec<RankedPath>) -> Vec<RankedPath> {
         let mut sorted = paths;
         sorted.sort_by(|a, b| {
-            let a_bonus = a.proof.edges.first()
+            let a_bonus = a
+                .proof
+                .edges
+                .first()
                 .map(|e| if e.rationale.is_some() { 2.0 } else { 0.0 })
                 .unwrap_or(0.0);
-            let b_bonus = b.proof.edges.first()
+            let b_bonus = b
+                .proof
+                .edges
+                .first()
                 .map(|e| if e.rationale.is_some() { 2.0 } else { 0.0 })
                 .unwrap_or(0.0);
             let a_total = a.score.total + a_bonus;
             let b_total = b.score.total + b_bonus;
 
-            b_total.partial_cmp(&a_total)
+            b_total
+                .partial_cmp(&a_total)
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| {
-                    let a_key = a.proof.edges.first().map(|e| e.ru_original.as_str()).unwrap_or("");
-                    let b_key = b.proof.edges.first().map(|e| e.ru_original.as_str()).unwrap_or("");
+                    let a_key = a
+                        .proof
+                        .edges
+                        .first()
+                        .map(|e| e.ru_original.as_str())
+                        .unwrap_or("");
+                    let b_key = b
+                        .proof
+                        .edges
+                        .first()
+                        .map(|e| e.ru_original.as_str())
+                        .unwrap_or("");
                     a_key.cmp(b_key)
                 })
         });
@@ -154,14 +176,25 @@ impl PathFinder {
     }
 
     /// Select top-N paths after ranking.
-    pub fn select_top_paths(n: usize, fp: &FieldProfile, graph: &AtomGraph, start: &AtomId, max_len: usize) -> Vec<RankedPath> {
+    pub fn select_top_paths(
+        n: usize,
+        _fp: &FieldProfile,
+        graph: &AtomGraph,
+        start: &AtomId,
+        max_len: usize,
+    ) -> Vec<RankedPath> {
         let paths = Self::find_paths(graph, max_len, start);
         let ranked = Self::rank_paths(paths);
         ranked.into_iter().take(n).collect()
     }
 
     /// Compose a definition for a topic using a specific graph.
-    pub fn compose_definition(graph: &AtomGraph, fp: &FieldProfile, n: usize, topic: &AtomId) -> GeneratedSurface {
+    pub fn compose_definition(
+        graph: &AtomGraph,
+        fp: &FieldProfile,
+        n: usize,
+        topic: &AtomId,
+    ) -> GeneratedSurface {
         let paths = Self::select_top_paths(n, fp, graph, topic, 1);
 
         if paths.is_empty() {
@@ -202,7 +235,8 @@ impl PathFinder {
                 RelationType::RelIsNot,
                 RelationType::RelNegates,
             ];
-            let counter_text = graph.relations_from(topic)
+            let counter_text = graph
+                .relations_from(topic)
                 .iter()
                 .filter(|r| counter_types.contains(&r.rel_type))
                 .map(|r| crate::verbalize_relation(r))

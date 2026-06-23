@@ -1,6 +1,5 @@
 use qxfx0_types::system_state::SystemState;
-use rusqlite::{Connection, params};
-use serde_json;
+use rusqlite::{params, Connection};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -36,8 +35,7 @@ pub struct Persistence {
 impl Persistence {
     /// Open or create a database at the given path.
     pub fn open(path: &str) -> Result<Self, PersistenceError> {
-        let conn = Connection::open(path)
-            .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
+        let conn = Connection::open(path).map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         conn.execute_batch(SCHEMA_SQL)
             .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         Ok(Persistence { conn })
@@ -45,15 +43,19 @@ impl Persistence {
 
     /// Open an in-memory database (for tests).
     pub fn open_memory() -> Result<Self, PersistenceError> {
-        let conn = Connection::open_in_memory()
-            .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
+        let conn =
+            Connection::open_in_memory().map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         conn.execute_batch(SCHEMA_SQL)
             .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         Ok(Persistence { conn })
     }
 
     /// Save system state for a session.
-    pub fn save_state(&self, session_id: &str, state: &SystemState) -> Result<(), PersistenceError> {
+    pub fn save_state(
+        &self,
+        session_id: &str,
+        state: &SystemState,
+    ) -> Result<(), PersistenceError> {
         let json = serde_json::to_string(state)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
 
@@ -67,9 +69,10 @@ impl Persistence {
 
     /// Load system state for a session.
     pub fn load_state(&self, session_id: &str) -> Result<Option<SystemState>, PersistenceError> {
-        let mut stmt = self.conn.prepare(
-            "SELECT state_json FROM runtime_sessions WHERE id = ?1"
-        ).map_err(|e| PersistenceError::SQLite(e.to_string()))?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT state_json FROM runtime_sessions WHERE id = ?1")
+            .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
 
         let result = stmt.query_row(params![session_id], |row| {
             let json: String = row.get(0)?;
@@ -89,25 +92,31 @@ impl Persistence {
 
     /// List all session IDs.
     pub fn list_sessions(&self) -> Result<Vec<String>, PersistenceError> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id FROM runtime_sessions ORDER BY last_active DESC"
-        ).map_err(|e| PersistenceError::SQLite(e.to_string()))?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id FROM runtime_sessions ORDER BY last_active DESC")
+            .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
 
-        let sessions = stmt.query_map([], |row| {
-            let id: String = row.get(0)?;
-            Ok(id)
-        }).map_err(|e| PersistenceError::SQLite(e.to_string()))?;
+        let sessions = stmt
+            .query_map([], |row| {
+                let id: String = row.get(0)?;
+                Ok(id)
+            })
+            .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
 
-        sessions.collect::<Result<Vec<_>, _>>()
+        sessions
+            .collect::<Result<Vec<_>, _>>()
             .map_err(|e| PersistenceError::SQLite(e.to_string()))
     }
 
     /// Delete a session.
     pub fn delete_session(&self, session_id: &str) -> Result<(), PersistenceError> {
-        self.conn.execute(
-            "DELETE FROM runtime_sessions WHERE id = ?1",
-            params![session_id],
-        ).map_err(|e| PersistenceError::SQLite(e.to_string()))?;
+        self.conn
+            .execute(
+                "DELETE FROM runtime_sessions WHERE id = ?1",
+                params![session_id],
+            )
+            .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         Ok(())
     }
 }
@@ -178,7 +187,13 @@ mod tests {
 
         db.save_state("graph-test", &state).unwrap();
         let loaded = db.load_state("graph-test").unwrap().unwrap();
-        assert_eq!(loaded.runtime_graph.atoms.len(), state.runtime_graph.atoms.len());
-        assert_eq!(loaded.runtime_graph.edges.len(), state.runtime_graph.edges.len());
+        assert_eq!(
+            loaded.runtime_graph.atoms.len(),
+            state.runtime_graph.atoms.len()
+        );
+        assert_eq!(
+            loaded.runtime_graph.edges.len(),
+            state.runtime_graph.edges.len()
+        );
     }
 }

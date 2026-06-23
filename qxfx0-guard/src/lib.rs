@@ -15,7 +15,9 @@ impl ContentQualityGate {
         }
 
         // Check 2: template placeholders
-        let placeholders = ["{topic}", "{left}", "{right}", "{style}", "{move}", "{slot}"];
+        let placeholders = [
+            "{topic}", "{left}", "{right}", "{style}", "{move}", "{slot}",
+        ];
         for ph in &placeholders {
             if rendered.contains(ph) {
                 return QualityVerdict::Block(format!("незаполненный шаблон: {}", ph));
@@ -41,19 +43,22 @@ impl ContentQualityGate {
         // Check 4: topic relevance (only for 50+ tokens to avoid false positives)
         let tokens: Vec<&str> = rendered.split_whitespace().collect();
         if !topic.is_empty() && tokens.len() >= 50 {
-            let topic_tokens: Vec<&str> = topic.split_whitespace()
-                .filter(|t| t.len() >= 3)
-                .collect();
+            let topic_tokens: Vec<&str> =
+                topic.split_whitespace().filter(|t| t.len() >= 3).collect();
             let lower = rendered.to_lowercase();
             let has_overlap = topic_tokens.iter().any(|t| lower.contains(t));
             if !has_overlap {
-                return QualityVerdict::Block(format!("нулевое совпадение с темой: {}", topic.to_lowercase()));
+                return QualityVerdict::Block(format!(
+                    "нулевое совпадение с темой: {}",
+                    topic.to_lowercase()
+                ));
             }
         }
 
         // Check 5: content density (only for 16+ tokens)
         if tokens.len() >= 16 {
-            let content_words = tokens.iter()
+            let content_words = tokens
+                .iter()
                 .filter(|t| {
                     let t = t.trim_matches(|c: char| !c.is_alphabetic());
                     t.len() >= 2 && !is_stop_word(t)
@@ -67,11 +72,21 @@ impl ContentQualityGate {
 
         // Check 6: semantic saturation (only for 20+ tokens)
         if tokens.len() >= 20 {
-            let bigrams: Vec<(&str, &str)> = tokens.windows(2)
-                .filter_map(|w| if w.len() == 2 { Some((w[0], w[1])) } else { None })
+            let bigrams: Vec<(&str, &str)> = tokens
+                .windows(2)
+                .filter_map(|w| {
+                    if w.len() == 2 {
+                        Some((w[0], w[1]))
+                    } else {
+                        None
+                    }
+                })
                 .collect();
             if !bigrams.is_empty() {
-                let unique = bigrams.iter().collect::<std::collections::BTreeSet<_>>().len();
+                let unique = bigrams
+                    .iter()
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .len();
                 let repeat_ratio = 1.0 - unique as f64 / bigrams.len() as f64;
                 if repeat_ratio > 0.8 {
                     return QualityVerdict::Block("высокая повторяемость".into());
@@ -105,23 +120,48 @@ impl ContentQualityGate {
         }
 
         // Metadata leak
-        let leak_patterns = ["{topic}", "{left}", "{right}", "{style}", "{move}", "{slot}"];
-        let found: Vec<_> = leak_patterns.iter().filter(|p| rendered.contains(*p)).collect();
+        let leak_patterns = [
+            "{topic}", "{left}", "{right}", "{style}", "{move}", "{slot}",
+        ];
+        let found: Vec<_> = leak_patterns
+            .iter()
+            .filter(|p| rendered.contains(*p))
+            .collect();
         if !found.is_empty() {
-            return GuardStatus::InvariantBlock(format!("утечка метаданных: {}", found.iter().map(|s| **s).collect::<Vec<_>>().join(", ")));
+            return GuardStatus::InvariantBlock(format!(
+                "утечка метаданных: {}",
+                found.iter().map(|s| **s).collect::<Vec<_>>().join(", ")
+            ));
         }
 
         // Toxicity (basic)
-        let toxic = ["ты должен", "ты обязан", "это глупо", "ты неправ", "бред", "чушь", "идиот", "тупой"];
+        let toxic = [
+            "ты должен",
+            "ты обязан",
+            "это глупо",
+            "ты неправ",
+            "бред",
+            "чушь",
+            "идиот",
+            "тупой",
+        ];
         let lower = rendered.to_lowercase();
         let found_toxic: Vec<_> = toxic.iter().filter(|t| lower.contains(*t)).collect();
         if !found_toxic.is_empty() {
-            return GuardStatus::InvariantBlock(format!("токсичные паттерны: {}", found_toxic.iter().map(|s| **s).collect::<Vec<_>>().join(", ")));
+            return GuardStatus::InvariantBlock(format!(
+                "токсичные паттерны: {}",
+                found_toxic
+                    .iter()
+                    .map(|s| **s)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
         }
 
         // Stuck repetition (advisory, not blocking)
         let normalized = lower.trim();
-        let match_count = history.iter()
+        let match_count = history
+            .iter()
             .take(5)
             .filter(|h| h.trim().to_lowercase() == normalized)
             .count();
@@ -142,7 +182,11 @@ impl ContentQualityGate {
             || matches!(quality, QualityVerdict::Block(_));
 
         if blocked {
-            ("Извини, я сейчас перенастраиваю ход мысли. Можем продолжить через секунду?".to_string(), true)
+            (
+                "Извини, я сейчас перенастраиваю ход мысли. Можем продолжить через секунду?"
+                    .to_string(),
+                true,
+            )
         } else {
             (rendered.to_string(), false)
         }
@@ -157,16 +201,96 @@ pub enum QualityVerdict {
 
 fn is_stop_word(word: &str) -> bool {
     const STOP_WORDS: &[&str] = &[
-        "что", "это", "как", "так", "его", "ей", "этом", "этот",
-        "эта", "эти", "для", "при", "или", "но", "не", "ни", "же", "ли", "бы",
-        "то", "вот", "там", "тут", "где", "когда", "потому", "потому что",
-        "если", "чтобы", "все", "всё", "всех", "всего", "еще", "ещё", "уже", "только",
-        "было", "будет", "есть", "нет", "да", "над", "под", "за",
-        "из", "от", "до", "по", "в", "с", "к", "у", "о", "об",
-        "и", "а", "ну", "вы", "ты", "он", "она", "оно", "они", "мы",
-        "мой", "моя", "твой", "твоя", "свой", "своя", "их", "наш", "ваш",
-        "который", "которая", "которое", "которые", "тобой", "тому", "тем", "сам", "сама", "само", "сами",
-        "один", "одна", "одно", "два", "три",
+        "что",
+        "это",
+        "как",
+        "так",
+        "его",
+        "ей",
+        "этом",
+        "этот",
+        "эта",
+        "эти",
+        "для",
+        "при",
+        "или",
+        "но",
+        "не",
+        "ни",
+        "же",
+        "ли",
+        "бы",
+        "то",
+        "вот",
+        "там",
+        "тут",
+        "где",
+        "когда",
+        "потому",
+        "потому что",
+        "если",
+        "чтобы",
+        "все",
+        "всё",
+        "всех",
+        "всего",
+        "еще",
+        "ещё",
+        "уже",
+        "только",
+        "было",
+        "будет",
+        "есть",
+        "нет",
+        "да",
+        "над",
+        "под",
+        "за",
+        "из",
+        "от",
+        "до",
+        "по",
+        "в",
+        "с",
+        "к",
+        "у",
+        "о",
+        "об",
+        "и",
+        "а",
+        "ну",
+        "вы",
+        "ты",
+        "он",
+        "она",
+        "оно",
+        "они",
+        "мы",
+        "мой",
+        "моя",
+        "твой",
+        "твоя",
+        "свой",
+        "своя",
+        "их",
+        "наш",
+        "ваш",
+        "который",
+        "которая",
+        "которое",
+        "которые",
+        "тобой",
+        "тому",
+        "тем",
+        "сам",
+        "сама",
+        "само",
+        "сами",
+        "один",
+        "одна",
+        "одно",
+        "два",
+        "три",
     ];
     STOP_WORDS.contains(&word)
 }
@@ -177,7 +301,8 @@ mod tests {
 
     #[test]
     fn test_pass_valid_content() {
-        let verdict = ContentQualityGate::evaluate("свобода", "свобода предполагает возможность выбора");
+        let verdict =
+            ContentQualityGate::evaluate("свобода", "свобода предполагает возможность выбора");
         assert_eq!(verdict, QualityVerdict::Pass);
     }
 
@@ -220,7 +345,8 @@ mod tests {
 
     #[test]
     fn test_finalize_passes_good() {
-        let (text, blocked) = ContentQualityGate::finalize_output("свобода", "свобода предполагает выбор", &[]);
+        let (text, blocked) =
+            ContentQualityGate::finalize_output("свобода", "свобода предполагает выбор", &[]);
         assert!(!blocked);
         assert_eq!(text, "свобода предполагает выбор");
     }

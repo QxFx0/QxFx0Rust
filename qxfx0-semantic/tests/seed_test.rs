@@ -5,7 +5,10 @@ use qxfx0_types::atom::AtomId;
 fn test_seed_graph_has_relations() {
     let graph = seed_graph();
     assert!(!graph.edges.is_empty(), "Seed graph should have relations");
-    assert!(graph.edges.len() >= 11, "Should have at least 11 seed relations");
+    assert!(
+        graph.edges.len() >= 11,
+        "Should have at least 11 seed relations"
+    );
 }
 
 #[test]
@@ -18,9 +21,13 @@ fn test_svoboda_has_presupposes_and_limited_by() {
     let graph = seed_graph();
     let svoboda = AtomId::new("свобода");
     let rels = graph.relations_from(&svoboda);
-    let has_presupposes = rels.iter().any(|r| r.rel_type == qxfx0_types::RelationType::RelPresupposes);
-    let has_limited_by = rels.iter().any(|r| r.rel_type == qxfx0_types::RelationType::RelLimitedBy);
-    
+    let has_presupposes = rels
+        .iter()
+        .any(|r| r.rel_type == qxfx0_types::RelationType::RelPresupposes);
+    let has_limited_by = rels
+        .iter()
+        .any(|r| r.rel_type == qxfx0_types::RelationType::RelLimitedBy);
+
     assert!(has_presupposes, "свобода should have RelPresupposes");
     assert!(has_limited_by, "свобода should have RelLimitedBy");
 }
@@ -34,10 +41,13 @@ fn test_verbalize_svoboda_presupposes() {
         .iter()
         .find(|r| r.rel_type == qxfx0_types::RelationType::RelPresupposes)
         .expect("should find RelPresupposes");
-    
+
     let text = verbalize_relation(rel);
     assert!(text.contains("свобода"), "Should mention свобода");
-    assert!(text.contains("предполагает"), "Should use verb предполагает");
+    assert!(
+        text.contains("предполагает"),
+        "Should use verb предполагает"
+    );
     assert!(text.contains("выбор"), "Should mention выбор");
 }
 
@@ -52,5 +62,9 @@ fn test_deterministic_graph() {
 
 #[test]
 fn test_relation_type_count() {
-    assert_eq!(qxfx0_types::RelationType::ALL.len(), 47, "Should have 47 relation types");
+    assert_eq!(
+        qxfx0_types::RelationType::ALL.len(),
+        47,
+        "Should have 47 relation types"
+    );
 }

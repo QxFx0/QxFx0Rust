@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 
 use crate::atom::AtomGraph;
 use crate::field::Field;
-use crate::move_family::CanonicalMoveFamily;
 use crate::illocutionary_force::IllocutionaryForce;
+use crate::move_family::CanonicalMoveFamily;
 
 /// System state — the persistent state of a dialogue session.
 /// Uses BTreeMap throughout for deterministic iteration.
@@ -91,10 +91,19 @@ pub enum CommitmentOrigin {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LineageEvent {
-    Committed { turn: usize },
-    Revised { turn: usize },
-    Retracted { turn: usize, reason: RetractionReason },
-    Promoted { turn: usize },
+    Committed {
+        turn: usize,
+    },
+    Revised {
+        turn: usize,
+    },
+    Retracted {
+        turn: usize,
+        reason: RetractionReason,
+    },
+    Promoted {
+        turn: usize,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
