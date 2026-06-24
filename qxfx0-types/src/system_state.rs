@@ -27,12 +27,44 @@ impl Default for DialogueState {
     }
 }
 
-/// Semantic state — graph, commitments, field.
+/// Essence state — Σ-typed commitment trajectory (persisted in SemanticState).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EssenceState {
+    pub witnesses: Vec<EssenceWitness>,
+    pub angst: f64,
+    pub trajectory_committed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EssenceWitness {
+    pub turn: usize,
+    pub mode: String,
+    pub statement: String,
+}
+
+/// Adjunction state — categorical balance between Holistic and Formal.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AdjunctionState {
+    /// Last holistic proposal value.
+    pub holistic_value: f64,
+    /// Last formal proposal value.
+    pub formal_value: f64,
+    /// Last reconciled value (weighted by confidence).
+    pub reconciled_value: f64,
+    /// Whether the last turn was holistic-dominant.
+    pub holistic_dominant: bool,
+}
+
+/// Semantic state — graph, commitments, field, self-layer state.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SemanticState {
     pub field: Field,
     pub runtime_graph: AtomGraph,
     pub semantic_commitments: Option<SemanticCommitmentStore>,
+    /// Essence trajectory — the system's commitment history.
+    pub essence: EssenceState,
+    /// Adjunction balance — Holistic ⊣ Formal categorical state.
+    pub adjunction: AdjunctionState,
 }
 
 /// System state — the persistent state of a dialogue session.

@@ -15,7 +15,7 @@ impl Conatus {
     pub const W_COHERENCE: f64 = 1.0;
     pub const W_TRUST: f64 = 0.5;
     pub const LAMBDA: f64 = 0.1;
-    pub const STRUCTURAL_FLOOR: f64 = 7.0;
+    pub const STRUCTURAL_FLOOR: f64 = 0.5;
 
     /// Compute conatus energy from field components.
     /// All intermediate values are clamped to [0, ∞) for log safety.
