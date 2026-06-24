@@ -33,7 +33,7 @@ impl TurnPipeline {
     pub fn process(input: &TurnInput, state: &mut SystemState) -> TurnOutput {
         // ── Stage 1: Prepare ──
         let prop = PropositionParser::parse(&input.raw_text);
-        let field = &state.field;
+        let field = &state.semantic.field;
         let conatus_energy = Conatus::compute(field);
 
         // Self-blanket check
@@ -52,10 +52,10 @@ impl TurnPipeline {
         };
 
         // ── Stage 3: Render ──
-        let graph = if state.runtime_graph.edges.is_empty() {
+        let graph = if state.semantic.runtime_graph.edges.is_empty() {
             seed_graph()
         } else {
-            state.runtime_graph.clone()
+            state.semantic.runtime_graph.clone()
         };
 
         let engagement = GraphEngagement::engage(&graph, &prop);
@@ -64,7 +64,7 @@ impl TurnPipeline {
         let mut response = surface.text;
 
         // Add commitment reference if available
-        if let Some(ref store) = state.semantic_commitments {
+        if let Some(ref store) = state.semantic.semantic_commitments {
             let prior = CommitmentOps::retrieve(&prop.subject, store);
             if let Some(first) = prior.first() {
                 let prefix = match prop.mode {
@@ -88,13 +88,14 @@ impl TurnPipeline {
         }
 
         // ── Stage 4: Finalize ──
-        state.turn_count += 1;
-        state.last_family = family;
-        state.last_topic = prop.subject.clone();
-        state.history.push(response.clone());
+        state.dialogue.turn_count += 1;
+        state.dialogue.last_family = family;
+        state.dialogue.last_topic = prop.subject.clone();
+        state.dialogue.history.push(response.clone());
 
         // Update commitment store
-        let turn_seq = state.turn_count;
+        let turn_seq = state.dialogue.turn_count;
+        let mut new_commitments = false;
         if !response.is_empty() {
             let payload = FactualClaimPayload {
                 statement: response.clone(),
@@ -105,16 +106,44 @@ impl TurnPipeline {
                 topic: prop.subject.clone(),
             };
 
-            let store = state.semantic_commitments.clone().unwrap_or_default();
+            let store = state
+                .semantic
+                .semantic_commitments
+                .clone()
+                .unwrap_or_default();
             let (new_store, _) = CommitmentOps::commit_observation(payload, &store);
-            state.semantic_commitments = Some(new_store);
+            state.semantic.semantic_commitments = Some(new_store);
+            new_commitments = true;
+        }
+
+        // ── Graph Enrichment (F1 fix) ──
+        // Write engagement-derived relations back to the runtime graph
+        if new_commitments && !engagement.supporting.is_empty() {
+            for rel in &engagement.supporting {
+                // Only add if not already present (dedup by ru_original)
+                let exists = state
+                    .semantic
+                    .runtime_graph
+                    .edges
+                    .iter()
+                    .any(|e| e.ru_original == rel.ru_original);
+                if !exists {
+                    state.semantic.runtime_graph.add_relation(rel.clone());
+                }
+            }
+        }
+
+        // ── Post-stage validation (D1 fix) ──
+        let post_violations = Self::validate_state(state);
+        if !post_violations.is_empty() {
+            tracing::warn!("Post-stage state violations: {:?}", post_violations);
         }
 
         // ── Stage 5: Guard ──
         let (final_text, blocked) = ContentQualityGate::finalize_output(
             &prop.subject,
             &response,
-            &state.history[..state.history.len().saturating_sub(1)],
+            &state.dialogue.history[..state.dialogue.history.len().saturating_sub(1)],
         );
 
         let guard_status = if blocked {
@@ -125,7 +154,7 @@ impl TurnPipeline {
 
         // Update response if blocked
         if blocked {
-            if let Some(last) = state.history.last_mut() {
+            if let Some(last) = state.dialogue.history.last_mut() {
                 *last = final_text.clone();
             }
         }
@@ -133,7 +162,7 @@ impl TurnPipeline {
         // ── Stage 6: Persist (caller's responsibility) ──
         // State is mutated in-place; caller should save to persistence.
 
-        let commitment_engaged = if let Some(ref store) = state.semantic_commitments {
+        let commitment_engaged = if let Some(ref store) = state.semantic.semantic_commitments {
             let eng = CommitmentOps::detect_engagement(store, &prop.subject);
             !eng.engaged_ids.is_empty()
         } else {
@@ -147,6 +176,30 @@ impl TurnPipeline {
             blocked,
             commitment_engaged,
         }
+    }
+
+    /// Validate structural integrity of SystemState after pipeline stages.
+    fn validate_state(state: &SystemState) -> Vec<String> {
+        let mut violations = Vec::new();
+
+        if state.dialogue.turn_count > 10000 {
+            violations.push("turn_count_unreasonable".into());
+        }
+        if state.dialogue.history.len() != state.dialogue.turn_count {
+            violations.push("history_length_mismatch".into());
+        }
+        if state.session_id.is_empty() {
+            violations.push("session_id_empty".into());
+        }
+        // Check graph integrity: no self-loops
+        for edge in &state.semantic.runtime_graph.edges {
+            if edge.from == edge.to {
+                violations.push(format!("self_loop: {}", edge.ru_original));
+                break;
+            }
+        }
+
+        violations
     }
 
     /// Route to a canonical move family based on proposition mode.
@@ -177,7 +230,7 @@ mod tests {
         assert!(!output.response.is_empty());
         assert_eq!(output.family, CanonicalMoveFamily::CMDefine);
         assert!(!output.blocked);
-        assert_eq!(state.turn_count, 1);
+        assert_eq!(state.dialogue.turn_count, 1);
     }
 
     #[test]
@@ -215,8 +268,8 @@ mod tests {
         );
 
         // Verify commitment store was updated
-        assert!(state.semantic_commitments.is_some());
-        let store = state.semantic_commitments.as_ref().unwrap();
+        assert!(state.semantic.semantic_commitments.is_some());
+        let store = state.semantic.semantic_commitments.as_ref().unwrap();
         assert!(
             !store.active.is_empty(),
             "Should have active commitments after turn 1"
@@ -257,8 +310,8 @@ mod tests {
         );
         assert!(!out3.response.is_empty());
 
-        assert_eq!(state.turn_count, 3);
-        assert_eq!(state.history.len(), 3);
+        assert_eq!(state.dialogue.turn_count, 3);
+        assert_eq!(state.dialogue.history.len(), 3);
     }
 
     #[test]

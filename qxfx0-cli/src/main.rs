@@ -43,7 +43,10 @@ fn load_or_create_state(db: &qxfx0_persistence::Persistence, session_id: &str) -
         Some(state) => state,
         None => SystemState {
             session_id: session_id.to_string(),
-            runtime_graph: seed_graph(),
+            semantic: qxfx0_types::system_state::SemanticState {
+                runtime_graph: seed_graph(),
+                ..Default::default()
+            },
             ..Default::default()
         },
     }

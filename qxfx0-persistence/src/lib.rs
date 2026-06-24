@@ -18,6 +18,12 @@ PRAGMA journal_mode=WAL;
 PRAGMA busy_timeout=5000;
 PRAGMA foreign_keys=ON;
 
+CREATE TABLE IF NOT EXISTS schema_version (
+    version INTEGER PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+    description TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS runtime_sessions (
     id TEXT PRIMARY KEY,
     started_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -25,6 +31,10 @@ CREATE TABLE IF NOT EXISTS runtime_sessions (
     state_json TEXT NOT NULL DEFAULT '{}',
     state_revision INTEGER NOT NULL DEFAULT 0
 );
+";
+
+const MIGRATION_001: &str = "
+INSERT OR IGNORE INTO schema_version (version, description) VALUES (1, 'initial schema');
 ";
 
 /// Persistence layer — SQLite session state storage.
@@ -38,6 +48,8 @@ impl Persistence {
         let conn = Connection::open(path).map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         conn.execute_batch(SCHEMA_SQL)
             .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
+        conn.execute_batch(MIGRATION_001)
+            .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         Ok(Persistence { conn })
     }
 
@@ -46,6 +58,8 @@ impl Persistence {
         let conn =
             Connection::open_in_memory().map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         conn.execute_batch(SCHEMA_SQL)
+            .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
+        conn.execute_batch(MIGRATION_001)
             .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         Ok(Persistence { conn })
     }
@@ -61,7 +75,7 @@ impl Persistence {
 
         self.conn.execute(
             "INSERT OR REPLACE INTO runtime_sessions (id, state_json, last_active, state_revision) VALUES (?1, ?2, datetime('now'), ?3)",
-            params![session_id, json, state.turn_count],
+            params![session_id, json, state.dialogue.turn_count],
         ).map_err(|e| PersistenceError::SQLite(e.to_string()))?;
 
         Ok(())
@@ -119,6 +133,17 @@ impl Persistence {
             .map_err(|e| PersistenceError::SQLite(e.to_string()))?;
         Ok(())
     }
+
+    /// Get the current schema version.
+    pub fn schema_version(&self) -> Result<i64, PersistenceError> {
+        let version: i64 = self
+            .conn
+            .query_row("SELECT MAX(version) FROM schema_version", [], |row| {
+                row.get(0)
+            })
+            .unwrap_or(0);
+        Ok(version)
+    }
 }
 
 #[cfg(test)]
@@ -137,8 +162,11 @@ mod tests {
         let db = Persistence::open_memory().unwrap();
         let state = SystemState {
             session_id: "test".into(),
-            turn_count: 3,
-            history: vec!["привет".into(), "что такое свобода?".into()],
+            dialogue: DialogueState {
+                turn_count: 3,
+                history: vec!["привет".into(), "что такое свобода?".into()],
+                ..Default::default()
+            },
             ..Default::default()
         };
 
@@ -147,8 +175,8 @@ mod tests {
         assert!(loaded.is_some());
         let loaded = loaded.unwrap();
         assert_eq!(loaded.session_id, "test");
-        assert_eq!(loaded.turn_count, 3);
-        assert_eq!(loaded.history.len(), 2);
+        assert_eq!(loaded.dialogue.turn_count, 3);
+        assert_eq!(loaded.dialogue.history.len(), 2);
     }
 
     #[test]
@@ -180,20 +208,26 @@ mod tests {
         let db = Persistence::open_memory().unwrap();
         let state = SystemState {
             session_id: "graph-test".into(),
-            turn_count: 1,
-            runtime_graph: qxfx0_semantic::seed_graph(),
+            dialogue: DialogueState {
+                turn_count: 1,
+                ..Default::default()
+            },
+            semantic: SemanticState {
+                runtime_graph: qxfx0_semantic::seed_graph(),
+                ..Default::default()
+            },
             ..Default::default()
         };
 
         db.save_state("graph-test", &state).unwrap();
         let loaded = db.load_state("graph-test").unwrap().unwrap();
         assert_eq!(
-            loaded.runtime_graph.atoms.len(),
-            state.runtime_graph.atoms.len()
+            loaded.semantic.runtime_graph.atoms.len(),
+            state.semantic.runtime_graph.atoms.len()
         );
         assert_eq!(
-            loaded.runtime_graph.edges.len(),
-            state.runtime_graph.edges.len()
+            loaded.semantic.runtime_graph.edges.len(),
+            state.semantic.runtime_graph.edges.len()
         );
     }
 }

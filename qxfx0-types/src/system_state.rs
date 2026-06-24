@@ -6,36 +6,50 @@ use crate::field::Field;
 use crate::illocutionary_force::IllocutionaryForce;
 use crate::move_family::CanonicalMoveFamily;
 
-/// System state — the persistent state of a dialogue session.
-/// Uses BTreeMap throughout for deterministic iteration.
+/// Dialogue state — multi-turn context, history, last routing.
+/// Dialogue state — multi-turn context, history, last routing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SystemState {
-    pub session_id: String,
+pub struct DialogueState {
     pub turn_count: usize,
     pub history: Vec<String>,
     pub last_family: CanonicalMoveFamily,
     pub last_topic: String,
-    pub field: Field,
-    pub runtime_graph: AtomGraph,
-    pub semantic_commitments: Option<SemanticCommitmentStore>,
-    pub last_turn_decision: Option<TurnDecision>,
 }
 
-impl Default for SystemState {
+impl Default for DialogueState {
     fn default() -> Self {
-        SystemState {
-            session_id: String::new(),
+        DialogueState {
             turn_count: 0,
             history: Vec::new(),
             last_family: CanonicalMoveFamily::CMGround,
             last_topic: String::new(),
-            field: Field::default(),
-            runtime_graph: AtomGraph::default(),
-            semantic_commitments: None,
-            last_turn_decision: None,
         }
     }
 }
+
+/// Semantic state — graph, commitments, field.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
+pub struct SemanticState {
+    pub field: Field,
+    pub runtime_graph: AtomGraph,
+    pub semantic_commitments: Option<SemanticCommitmentStore>,
+}
+
+
+/// System state — the persistent state of a dialogue session.
+/// Sub-structured for clarity (F4 fix).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
+pub struct SystemState {
+    pub session_id: String,
+    pub dialogue: DialogueState,
+    pub semantic: SemanticState,
+    pub last_turn_decision: Option<TurnDecision>,
+}
+
+
+// SystemState uses sub-structs: access via state.dialogue.*, state.semantic.*
 
 /// Turn decision — routing + force + guard status.
 #[derive(Debug, Clone, Serialize, Deserialize)]

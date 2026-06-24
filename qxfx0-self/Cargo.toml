@@ -10,3 +10,4 @@ qxfx0-types = { path = "../qxfx0-types" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+ordered-float.workspace = true
