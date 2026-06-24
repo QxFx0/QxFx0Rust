@@ -11,6 +11,8 @@ qxfx0-self = { path = "../qxfx0-self" }
 qxfx0-semantic = { path = "../qxfx0-semantic" }
 qxfx0-commitment = { path = "../qxfx0-commitment" }
 qxfx0-guard = { path = "../qxfx0-guard" }
+qxfx0-render = { path = "../qxfx0-render" }
+qxfx0-governance = { path = "../qxfx0-governance" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

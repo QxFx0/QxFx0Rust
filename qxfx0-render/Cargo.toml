@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 qxfx0-types = { path = "../qxfx0-types" }
+qxfx0-semantic = { path = "../qxfx0-semantic" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

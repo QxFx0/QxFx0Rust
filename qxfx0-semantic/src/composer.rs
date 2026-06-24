@@ -247,7 +247,7 @@ impl GraphEngagement {
     }
 
     /// BFS shortest path between two atoms (depth ≤ 3).
-    fn bfs_path(graph: &AtomGraph, from: &AtomId, to: &AtomId) -> Vec<Relation> {
+    pub fn bfs_path(graph: &AtomGraph, from: &AtomId, to: &AtomId) -> Vec<Relation> {
         // Direct edge
         for rel in graph.relations_from(from) {
             if rel.to == *to {
