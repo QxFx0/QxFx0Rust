@@ -315,6 +315,139 @@ impl TurnPipeline {
                             syn_rel.synthesis.clone();
                     }
                 }
+
+                // CF-2 fix: NOVEL ATOM CREATION — system creates new concepts from Self Layer
+                // When high conatus + holistic mode → synthesise new concept from supporting + contradicting
+                if conatus_energy > 5.0 && fp.is_holistic() && !engagement.supporting.is_empty() {
+                    let topic_atom = AtomId::new(prop.subject.clone());
+
+                    // Find a supporting and a contradicting edge
+                    let support = &engagement.supporting[0];
+                    let counter = engagement.contradicting.first();
+
+                    if let Some(counter) = counter {
+                        // Novel concept: synthesis of topic + counter object
+                        let novel_concept_name = format!(
+                            "{}_через_{}",
+                            prop.subject,
+                            counter
+                                .object_text
+                                .split_whitespace()
+                                .next()
+                                .unwrap_or("контраст")
+                        );
+                        let novel_atom_id = AtomId::new(novel_concept_name.clone());
+
+                        // Only create if not already exists
+                        if !state
+                            .semantic
+                            .runtime_graph
+                            .atoms
+                            .contains_key(&novel_atom_id)
+                        {
+                            // Create the novel atom
+                            state.semantic.runtime_graph.atoms.insert(
+                                novel_atom_id.clone(),
+                                qxfx0_types::atom::Atom {
+                                    id: novel_atom_id.clone(),
+                                    display: novel_concept_name.clone(),
+                                    category: qxfx0_types::atom::AtomCategory::CatConcept,
+                                },
+                            );
+
+                            // Create relation: topic --RelTransformsInto--> novel_concept
+                            let transform_rel = Relation {
+                            from: topic_atom.clone(),
+                            to: novel_atom_id.clone(),
+                            rel_type: RelationType::RelTransformsInto,
+                            object_case: qxfx0_types::atom::ObjectCase::CaseAccusative,
+                            object_text: novel_concept_name.clone(),
+                            verb_override: None,
+                            ru_original: format!(
+                                "{} преобразуется в {}",
+                                prop.subject, novel_concept_name
+                            ),
+                            en_original: String::new(),
+                            source: qxfx0_types::atom::RelationSource::PromotedSubstrate,
+                            topic: prop.subject.clone(),
+                            rationale: Some(format!(
+                                "синтез из противоречия: {} vs {} (conatus={:.1}, holistic={})",
+                                support.object_text,
+                                counter.object_text,
+                                conatus_energy,
+                                fp.is_holistic()
+                            )),
+                            counter: Some(counter.ru_original.clone()),
+                            synthesis: Some(format!(
+                                "именно поэтому {} обретает новый смысл через преодоление противоречия",
+                                prop.subject
+                            )),
+                        };
+                            state.semantic.runtime_graph.add_relation(transform_rel);
+                            enriched_count += 1;
+
+                            tracing::info!(
+                                "Novel atom created: {} (conatus={:.1})",
+                                novel_concept_name,
+                                conatus_energy
+                            );
+                        }
+                    }
+                }
+
+                // Step 4: Adjunction::reconcile output influences graph construction
+                // When holistic_dominant → create associative (RelRelatedTo) edges
+                // When formal_dominant → create structural (RelStructures) edges
+                if holistic_dominant && !engagement.supporting.is_empty() {
+                    let topic_atom = AtomId::new(prop.subject.clone());
+                    let existing_related = state
+                        .semantic
+                        .runtime_graph
+                        .relations_from(&topic_atom)
+                        .iter()
+                        .filter(|r| r.rel_type == RelationType::RelRelatedTo)
+                        .count();
+
+                    if existing_related == 0 && !engagement.qualifying.is_empty() {
+                        let qual = &engagement.qualifying[0];
+                        let assoc_rel = Relation {
+                            from: topic_atom.clone(),
+                            to: qual.to.clone(),
+                            rel_type: RelationType::RelRelatedTo,
+                            object_case: qxfx0_types::atom::ObjectCase::CaseInstrumental,
+                            object_text: qual.object_text.clone(),
+                            verb_override: None,
+                            ru_original: format!("{} связана с {}", prop.subject, qual.object_text),
+                            en_original: String::new(),
+                            source: qxfx0_types::atom::RelationSource::PromotedSubstrate,
+                            topic: prop.subject.clone(),
+                            rationale: Some(format!(
+                                "ассоциативная связь (holistic dominant, salience={:.2})",
+                                salience
+                            )),
+                            counter: None,
+                            synthesis: None,
+                        };
+                        state.semantic.runtime_graph.add_relation(assoc_rel);
+                        enriched_count += 1;
+                    }
+                }
+            }
+
+            // Step 5: Essence feedback into Field for next turn
+            // More witnesses → higher consolidation (system becomes more structured)
+            // More contradictions in commitments → higher counterfactual
+            if state.semantic.essence.trajectory_committed {
+                let witness_count = state.semantic.essence.witnesses.len() as f64;
+                state.semantic.field.consolidation =
+                    (state.semantic.field.consolidation + witness_count * 0.01).min(1.0);
+
+                // Count contradictions in commitment store
+                if let Some(ref store) = state.semantic.semantic_commitments {
+                    let contradiction_count = store.contradictions.len() as f64;
+                    state.semantic.field.counterfactual =
+                        (state.semantic.field.counterfactual + contradiction_count * 0.05).min(1.0);
+                }
             }
         }
 

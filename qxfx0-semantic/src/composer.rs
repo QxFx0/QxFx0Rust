@@ -272,7 +272,8 @@ impl GraphEngagement {
 pub struct ContextualComposer;
 
 impl ContextualComposer {
-    /// Compose a contextual response based on proposition mode.
+    /// Compose a contextual response based on proposition mode + Self Layer state.
+    /// CF-5 fix: branches generation by conatus/salience/essence signals.
     pub fn compose(
         graph: &AtomGraph,
         fp: &FieldProfile,
@@ -280,10 +281,32 @@ impl ContextualComposer {
         engagement: &EngagementResult,
     ) -> GeneratedSurface {
         match prop.mode {
-            PropositionMode::Define => Self::compose_define(graph, fp, prop),
+            PropositionMode::Define => {
+                // CF-5: Conatus determines how many paths to explore
+                let n = if fp.conatus_energy > 10.0 {
+                    5
+                } else if fp.conatus_energy > 5.0 {
+                    3
+                } else {
+                    1
+                };
+                // CF-5: Salience determines holistic vs formal phrasing
+                if fp.is_holistic() {
+                    Self::compose_define_holistic(graph, fp, n, prop)
+                } else {
+                    Self::compose_define(graph, fp, n, prop)
+                }
+            }
             PropositionMode::Challenge => Self::compose_challenge(graph, fp, prop, engagement),
             PropositionMode::Connect => Self::compose_connect(prop, engagement),
-            PropositionMode::Reflect => Self::compose_reflect(graph, fp, prop, engagement),
+            PropositionMode::Reflect => {
+                // CF-5: Essence anchoring determines depth of reflection
+                if fp.anchors_to_trajectory() {
+                    Self::compose_reflect_deep(graph, fp, prop, engagement)
+                } else {
+                    Self::compose_reflect(graph, fp, prop, engagement)
+                }
+            }
             PropositionMode::Assert => Self::compose_assert(prop, engagement),
         }
     }
@@ -291,10 +314,80 @@ impl ContextualComposer {
     fn compose_define(
         graph: &AtomGraph,
         fp: &FieldProfile,
+        n: usize,
         prop: &ParsedProposition,
     ) -> GeneratedSurface {
         let topic = AtomId::new(prop.subject.clone());
-        crate::pathfinder::PathFinder::compose_definition(graph, fp, 3, &topic)
+        crate::pathfinder::PathFinder::compose_definition(graph, fp, n, &topic)
+    }
+
+    /// CF-5: Holistic define — associative, intuitive phrasing.
+    /// Uses resonance-favored relation types and broader exploration.
+    fn compose_define_holistic(
+        graph: &AtomGraph,
+        fp: &FieldProfile,
+        n: usize,
+        prop: &ParsedProposition,
+    ) -> GeneratedSurface {
+        let topic = AtomId::new(prop.subject.clone());
+        let mut surface = crate::pathfinder::PathFinder::compose_definition(graph, fp, n, &topic);
+
+        // Holistic mode: prepend intuitive framing
+        if !surface.text.is_empty() {
+            surface.text = format!("Когда я чувствую {}: {}", prop.subject, surface.text);
+        }
+
+        surface
+    }
+
+    /// CF-5: Deep reflection — anchored to essence trajectory.
+    /// Includes commitment references and synthesis from prior turns.
+    fn compose_reflect_deep(
+        graph: &AtomGraph,
+        fp: &FieldProfile,
+        prop: &ParsedProposition,
+        engagement: &EngagementResult,
+    ) -> GeneratedSurface {
+        let topic = &prop.subject;
+
+        let all_rels: Vec<Relation> = engagement
+            .supporting
+            .iter()
+            .chain(engagement.qualifying.iter())
+            .cloned()
+            .collect();
+
+        if all_rels.is_empty() {
+            let topic_id = AtomId::new(topic.clone());
+            return crate::pathfinder::PathFinder::compose_definition(graph, fp, 3, &topic_id);
+        }
+
+        // Deep reflection: include synthesis from relations
+        let mut rel_texts = Vec::new();
+        for rel in &all_rels {
+            let text = crate::verbalize_relation(rel);
+            rel_texts.push(text);
+            // Include rationale if present (essence trajectory depth)
+            if let Some(ref rationale) = rel.rationale {
+                rel_texts.push(format!("потому что {}", rationale));
+            }
+            // Include synthesis if present
+            if let Some(ref synthesis) = rel.synthesis {
+                rel_texts.push(format!("именно поэтому {}", synthesis));
+            }
+        }
+
+        let full_text = rel_texts.join(". ");
+
+        GeneratedSurface {
+            text: format!("Возвращаясь к {}: {}.", topic, full_text),
+            paths: vec![PathProof {
+                edges: all_rels.clone(),
+                topic: topic.clone(),
+            }],
+            provenance: all_rels.iter().map(|r| r.source).collect(),
+            depth_score: all_rels.len() as f64,
+        }
     }
 
     fn compose_challenge(

@@ -14,7 +14,7 @@ impl PathFinder {
     pub fn find_paths(graph: &AtomGraph, max_len: usize, start: &AtomId) -> Vec<RankedPath> {
         let mut paths = Vec::new();
 
-        // Length 1
+        // Length 1: topic → relation → object
         for rel in graph.relations_from(start) {
             paths.push(RankedPath {
                 proof: PathProof {
@@ -41,6 +41,33 @@ impl PathFinder {
                                 &[e1.clone(), e2.clone()],
                             ),
                         });
+                    }
+                }
+            }
+        }
+
+        if max_len >= 3 {
+            // Length 3: start → e1 → mid1 → e2 → mid2 → e3 → obj
+            for e1 in graph.relations_from(start) {
+                let mid1 = &e1.to;
+                for e2 in graph.relations_from(mid1) {
+                    if e2.to == *start {
+                        continue;
+                    }
+                    let mid2 = &e2.to;
+                    for e3 in graph.relations_from(mid2) {
+                        if e3.to != *start && e3.to != *mid1 {
+                            paths.push(RankedPath {
+                                proof: PathProof {
+                                    edges: vec![e1.clone(), e2.clone(), e3.clone()],
+                                    topic: start.as_str().to_string(),
+                                },
+                                score: Self::score_path(
+                                    &FieldProfile::default(),
+                                    &[e1.clone(), e2.clone(), e3.clone()],
+                                ),
+                            });
+                        }
                     }
                 }
             }
@@ -195,7 +222,9 @@ impl PathFinder {
         n: usize,
         topic: &AtomId,
     ) -> GeneratedSurface {
-        let paths = Self::select_top_paths(n, fp, graph, topic, 1);
+        // CF-4 fix: use conatus-driven path depth instead of hardcoded 1
+        let depth = fp.path_depth();
+        let paths = Self::select_top_paths(n, fp, graph, topic, depth);
 
         if paths.is_empty() {
             return GeneratedSurface {
