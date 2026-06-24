@@ -28,26 +28,22 @@ impl Default for DialogueState {
 }
 
 /// Semantic state — graph, commitments, field.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SemanticState {
     pub field: Field,
     pub runtime_graph: AtomGraph,
     pub semantic_commitments: Option<SemanticCommitmentStore>,
 }
 
-
 /// System state — the persistent state of a dialogue session.
 /// Sub-structured for clarity (F4 fix).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SystemState {
     pub session_id: String,
     pub dialogue: DialogueState,
     pub semantic: SemanticState,
     pub last_turn_decision: Option<TurnDecision>,
 }
-
 
 // SystemState uses sub-structs: access via state.dialogue.*, state.semantic.*
 
