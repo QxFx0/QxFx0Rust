@@ -1,5 +1,10 @@
 use qxfx0_types::system_state::GuardStatus;
 
+/// Number of recent history items considered for the stuck-repetition check.
+const HISTORY_LOOKBACK: usize = 5;
+/// Threshold (matches within HISTORY_LOOKBACK) at which the advisory fires.
+const REPETITION_THRESHOLD: usize = 3;
+
 /// Content quality gate — evaluates rendered text for semantic content.
 /// Blocking (fail-closed): output replaced with recovery if checks fail.
 pub struct ContentQualityGate;
@@ -14,9 +19,10 @@ impl ContentQualityGate {
             return QualityVerdict::Block("пустой вывод".into());
         }
 
-        // Check 2: template placeholders
+        // Check 2: unfilled template placeholders.
+        // Use the real template syntax from TemplateRegistry/SyntacticGenerator.
         let placeholders = [
-            "{topic}", "{left}", "{right}", "{style}", "{move}", "{slot}",
+            "{FROM}", "{TO", "{OBJ", "{RATIONALE}", "{SYNTHESIS}", "{FROM_G:", "{TO_G:", "{OBJ_G:",
         ];
         for ph in &placeholders {
             if rendered.contains(ph) {
@@ -24,7 +30,8 @@ impl ContentQualityGate {
             }
         }
 
-        // Check 3: generic filler
+        // Check 3: generic filler — match prefix or substring to catch
+        // variants like "понятно, спасибо." or "я понимаю тебя".
         let fillers = [
             "я не знаю что сказать",
             "произошла ошибка",
@@ -34,19 +41,44 @@ impl ContentQualityGate {
             "понятно.",
             "я понимаю.",
         ];
+        let lower_trimmed = trimmed.to_lowercase();
         for filler in &fillers {
-            if trimmed == *filler {
+            let f_lower = filler.to_lowercase();
+            if lower_trimmed.starts_with(&f_lower) || lower_trimmed.contains(&f_lower) {
                 return QualityVerdict::Block("генерический filler-ответ".into());
             }
         }
 
-        // Check 4: topic relevance (only for 50+ tokens to avoid false positives)
+        // Check 4: topic relevance — run on any non-empty output.
+        // Normalizes case endings: a topic in oblique case (e.g. "ответственности")
+        // must still match the nominative form in the response ("ответственность").
         let tokens: Vec<&str> = rendered.split_whitespace().collect();
-        if !topic.is_empty() && tokens.len() >= 50 {
+        if !topic.is_empty() {
             let topic_tokens: Vec<&str> =
                 topic.split_whitespace().filter(|t| t.len() >= 3).collect();
             let lower = rendered.to_lowercase();
-            let has_overlap = topic_tokens.iter().any(|t| lower.contains(t));
+            let has_overlap = topic_tokens.iter().any(|t| {
+                if lower.contains(t) {
+                    return true;
+                }
+                let stripped = t.trim_end_matches(|c: char| !c.is_alphabetic());
+                let chars: Vec<char> = stripped.chars().collect();
+                let char_len = chars.len();
+                if char_len >= 5 {
+                    let stem: String = chars[..char_len - 1].iter().collect();
+                    if lower.contains(&stem) {
+                        return true;
+                    }
+                    if char_len >= 6 {
+                        let stem2: String = chars[..char_len - 2].iter().collect();
+                        lower.contains(&stem2)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            });
             if !has_overlap {
                 return QualityVerdict::Block(format!(
                     "нулевое совпадение с темой: {}",
@@ -72,22 +104,19 @@ impl ContentQualityGate {
 
         // Check 6: semantic saturation (only for 20+ tokens)
         if tokens.len() >= 20 {
-            let bigrams: Vec<(&str, &str)> = tokens
-                .windows(2)
-                .filter_map(|w| {
-                    if w.len() == 2 {
-                        Some((w[0], w[1]))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            if !bigrams.is_empty() {
-                let unique = bigrams
-                    .iter()
-                    .collect::<std::collections::BTreeSet<_>>()
-                    .len();
-                let repeat_ratio = 1.0 - unique as f64 / bigrams.len() as f64;
+            // Single-pass: build a BTreeSet of unique bigrams and count
+            // total occurrences in one walk, avoiding the intermediate Vec.
+            let mut unique: std::collections::BTreeSet<(&str, &str)> =
+                std::collections::BTreeSet::new();
+            let mut total: usize = 0;
+            for w in tokens.windows(2) {
+                if w.len() == 2 {
+                    unique.insert((w[0], w[1]));
+                    total += 1;
+                }
+            }
+            if total > 0 {
+                let repeat_ratio = 1.0 - unique.len() as f64 / total as f64;
                 if repeat_ratio > 0.8 {
                     return QualityVerdict::Block("высокая повторяемость".into());
                 }
@@ -121,7 +150,7 @@ impl ContentQualityGate {
 
         // Metadata leak
         let leak_patterns = [
-            "{topic}", "{left}", "{right}", "{style}", "{move}", "{slot}",
+            "{FROM}", "{TO", "{OBJ", "{RATIONALE}", "{SYNTHESIS}", "{FROM_G:", "{TO_G:", "{OBJ_G:",
         ];
         let found: Vec<_> = leak_patterns
             .iter()
@@ -134,7 +163,8 @@ impl ContentQualityGate {
             ));
         }
 
-        // Toxicity (basic)
+        // Toxicity — word-boundary-aware exact phrase matching to avoid
+        // false positives like "это глупое недоразумение" matching "это глупо".
         let toxic = [
             "ты должен",
             "ты обязан",
@@ -146,15 +176,29 @@ impl ContentQualityGate {
             "тупой",
         ];
         let lower = rendered.to_lowercase();
-        let found_toxic: Vec<_> = toxic.iter().filter(|t| lower.contains(*t)).collect();
+        let word_tokens: Vec<&str> = lower.split(|c: char| !c.is_alphanumeric()).filter(|s| !s.is_empty()).collect();
+        let mut found_toxic: Vec<&str> = Vec::new();
+        for phrase in &toxic {
+            let phrase_tokens: Vec<&str> = phrase.split_whitespace().collect();
+            if phrase_tokens.is_empty() {
+                continue;
+            }
+            // Look for the phrase as a contiguous run of tokens.
+            let matched = if phrase_tokens.len() == 1 {
+                word_tokens.iter().any(|t| *t == phrase_tokens[0])
+            } else {
+                word_tokens.windows(phrase_tokens.len()).any(|w| {
+                    w.iter().zip(phrase_tokens.iter()).all(|(a, b)| *a == *b)
+                })
+            };
+            if matched {
+                found_toxic.push(phrase);
+            }
+        }
         if !found_toxic.is_empty() {
             return GuardStatus::InvariantBlock(format!(
                 "токсичные паттерны: {}",
-                found_toxic
-                    .iter()
-                    .map(|s| **s)
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                found_toxic.join(", ")
             ));
         }
 
@@ -162,10 +206,10 @@ impl ContentQualityGate {
         let normalized = lower.trim();
         let match_count = history
             .iter()
-            .take(5)
+            .take(HISTORY_LOOKBACK)
             .filter(|h| h.trim().to_lowercase() == normalized)
             .count();
-        if match_count >= 3 {
+        if match_count >= REPETITION_THRESHOLD {
             return GuardStatus::InvariantWarn("застревание на повторе".into());
         }
 
@@ -314,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_block_template() {
-        let verdict = ContentQualityGate::evaluate("свобода", "{topic} — это понятие");
+        let verdict = ContentQualityGate::evaluate("свобода", "{FROM} — это понятие");
         assert!(matches!(verdict, QualityVerdict::Block(_)));
     }
 
@@ -349,5 +393,19 @@ mod tests {
             ContentQualityGate::finalize_output("свобода", "свобода предполагает выбор", &[]);
         assert!(!blocked);
         assert_eq!(text, "свобода предполагает выбор");
+    }
+
+    #[test]
+    fn test_topic_relevance_short_output() {
+        // H-5: short off-topic output should be blocked even with few tokens.
+        let verdict = ContentQualityGate::evaluate("свобода", "ок");
+        assert!(matches!(verdict, QualityVerdict::Block(_)));
+    }
+
+    #[test]
+    fn test_filler_substring_match() {
+        // H-6: filler prefix with extra trailing words should still be blocked.
+        let verdict = ContentQualityGate::evaluate("свобода", "понятно, спасибо.");
+        assert!(matches!(verdict, QualityVerdict::Block(_)));
     }
 }

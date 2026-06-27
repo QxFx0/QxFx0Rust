@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 /// Russian morphology engine — replaces GF (Grammatical Framework).
 /// Handles 6-case inflection for philosophical dialogue.
@@ -39,7 +40,17 @@ impl MorphologyData {
     }
 
     /// Create with seed data covering philosophical terms + common objects.
+    ///
+    /// The seed dictionary is static; this method returns a clone of a
+    /// process-wide cached instance built once on first call.
     pub fn with_seed() -> Self {
+        seed_cached().clone()
+    }
+
+    /// Internal: build the seed dictionary once and cache it in a `OnceLock`.
+    /// Subsequent calls return a clone of the cached value, avoiding the
+    /// repeated allocation of the static seed data.
+    fn build_seed() -> Self {
         let mut morph = Self::new();
 
         // Feminine nouns ending in -а/-я
@@ -56,10 +67,28 @@ impl MorphologyData {
             "любовь",
             "власть",
             "правда",
-            "смысл",
+            "воспроизводимость",
+            "реальность",
+            "способность",
+            "осмысленность",
+            "вседозволенность",
+            // New: epistemology, ethics, metaphysics, aesthetics
+            "интуиция", "необходимость", "случайность",
+            "добродетель", "совесть", "культура",
+            "традиция", "гармония", "причина",
+            "сущность", "свобода", "эмоция",
+            "интерпретация", "коммуникация", "мудрость",
+            "природа", "игра", "жизнь",
+            "работа", "дружба", "семья", "музыка",
+            "наука", "технология",
+            "личность", "мотивация", "демократия",
+            "политика", "экономика",
+            "привязанность", "дисциплина", "информация",
+            "скорость", "ревность",
+            "система", "этика",
         ];
         // Feminine ending in -ь
-        let feminine_soft = ["доверие", "мысль"];
+        let feminine_soft = ["мысль"];
         // Masculine consonant-ending
         let masculine_consonant = [
             "произвол",
@@ -71,9 +100,23 @@ impl MorphologyData {
             "труд",
             "покой",
             "выбор",
+            "самоотчёт",
+            "рефлекс",
+            "закон",
+            "нейрон",
+            "свидетель",
+            // New: metaphysics, social, mind
+            "опыт", "прогресс", "порядок",
+            "хаос", "поступок", "знак",
+            "символ", "человек",
+            "дом", "стресс", "ресурс", "обмен", "конфликт",
+            "интерес", "прогресс",
+            "успех", "талант",
+            "гнев", "метод", "процесс", "результат",
+            "диалог", "спор",
         ];
         // Masculine ending in -ь
-        let masculine_soft = ["смысл"];
+        let masculine_soft: &[&str] = &[];
         // Neuter ending in -о/-е
         let neuter = [
             "мнение",
@@ -87,6 +130,23 @@ impl MorphologyData {
             "зло",
             "принуждение",
             "отсутствие",
+            "доверие",
+            "будущее",
+            "последствие",
+            "действие",
+            "условие",
+            // New: epistemology, aesthetics, mind, language
+            "знание", "понимание", "сомнение",
+            "убеждение", "доказательство", "заблуждение",
+            "существование", "воображение", "мышление",
+            "желание", "значение", "творчество",
+            "искусство", "прекрасное", "общество",
+            "восприятие", "следствие", "понятие",
+            "страдание", "чувство",
+            "образование", "путешествие", "здоровье", "познание",
+            "развитие", "равенство", "государство",
+            "отношение", "уважение", "внимание", "призвание",
+            "качество", "спокойствие",
         ];
         // Irregulars
         let irregulars: &[(&str, &str, &str, &str, &str, &str)] = &[
@@ -100,6 +160,37 @@ impl MorphologyData {
                 "истории",
             ),
             ("смерть", "смерти", "смерти", "смерть", "смертью", "смерти"),
+            // 3rd declension feminine (-ь stem)
+            ("совесть", "совести", "совести", "совесть", "совестью", "совести"),
+            ("честь", "чести", "чести", "честь", "честью", "чести"),
+            ("любовь", "любви", "любви", "любовь", "любовью", "любви"),
+            ("мысль", "мысли", "мысли", "мысль", "мыслью", "мысли"),
+            ("власть", "власти", "власти", "власть", "властью", "власти"),
+            ("память", "памяти", "памяти", "память", "памятью", "памяти"),
+            ("добродетель", "добродетели", "добродетели", "добродетель", "добродетелью", "добродетели"),
+            ("возможность", "возможности", "возможности", "возможность", "возможностью", "возможности"),
+            ("необходимость", "необходимости", "необходимости", "необходимость", "необходимостью", "необходимости"),
+            ("случайность", "случайности", "случайности", "случайность", "случайностью", "случайности"),
+            // Irregular masculine neuter
+            ("время", "времени", "времени", "время", "временем", "времени"),
+            ("знание", "знания", "знанию", "знание", "знанием", "знании"),
+            ("сознание", "сознания", "сознанию", "сознание", "сознанием", "сознании"),
+            ("воспоминание", "воспоминания", "воспоминанию", "воспоминание", "воспоминанием", "воспоминании"),
+            ("понимание", "понимания", "пониманию", "понимание", "пониманием", "понимании"),
+            ("желание", "желания", "желанию", "желание", "желанием", "желании"),
+            ("существование", "существования", "существованию", "существование", "существованием", "существовании"),
+            ("значение", "значения", "значению", "значение", "значением", "значении"),
+            ("творчество", "творчества", "творчеству", "творчество", "творчеством", "творчестве"),
+            ("искусство", "искусства", "искусству", "искусство", "искусством", "искусстве"),
+            ("общество", "общества", "обществу", "общество", "обществом", "обществе"),
+            ("мышление", "мышления", "мышлению", "мышление", "мышлением", "мышлении"),
+            ("жизнь", "жизни", "жизни", "жизнь", "жизнью", "жизни"),
+            ("счастье", "счастья", "счастью", "счастье", "счастьем", "счастье"),
+            ("смысл", "смысла", "смыслу", "смысл", "смыслом", "смысле"),
+            ("отношения", "отношений", "отношениям", "отношения", "отношениями", "отношениях"),
+            ("радость", "радости", "радости", "радость", "радостью", "радости"),
+            ("грусть", "грусти", "грусти", "грусть", "грустью", "грусти"),
+            ("мораль", "морали", "морали", "мораль", "моралью", "морали"),
         ];
 
         for word in feminine_a {
@@ -168,6 +259,15 @@ impl MorphologyData {
     }
 
     /// Detect gender from word ending.
+    ///
+    /// Note on non-Cyrillic input: any character outside the Cyrillic
+    /// vowel-ending heuristic (`а/я/о/е/ё/ь`) defaults to `Gender::Masculine`.
+    /// This means ASCII English words such as `"freedom"` are classified
+    /// masculine and will be inflected with the Russian masculine-consonant
+    /// rule (e.g. `freedomа`, `freedomу`). This is intentional: the
+    /// morphology engine is designed for Russian dialogue, and downstream
+    /// callers should reject non-Cyrillic words before invoking `to_case`
+    /// when such inputs are possible.
     pub fn detect_gender(word: &str) -> Gender {
         let lc = word.chars().last().unwrap_or(' ');
         match lc {
@@ -221,19 +321,24 @@ fn last_char(w: &str) -> char {
 fn inflect_feminine_a(w: &str) -> InflectedForms {
     // -а → -ы/-и (gen, 7-letter rule), -е (dat/prep), -у (acc), -ой (inst)
     let stem = drop_last(w);
-    // 7-letter spelling rule: after к/г/х/ж/ш/щ/ч use -и instead of -ы
-    let gen_suffix = if stem.ends_with(['к', 'г', 'х', 'ж', 'ш', 'щ', 'ч']) {
-        "и"
-    } else {
-        "ы"
-    };
+    // Soft stem detection:
+    //   - -ия words (мотивация, демократия, интуиция...)
+    //   - -ость/-есть → 3rd declension pattern (личность, совесть...)
+    //   - 7-letter spelling rule: after к/г/х/ж/ш/щ/ч use -и
+    let is_soft = stem.ends_with('и')
+        || w.ends_with("ость")
+        || w.ends_with("есть")
+        || stem.ends_with(['к', 'г', 'х', 'ж', 'ш', 'щ', 'ч']);
+    let gen_suffix = if is_soft { "и" } else { "ы" };
+    // Dative/Prepositional: -и only for genuine -ия stems, otherwise -е
+    let datprep_suffix = if stem.ends_with('и') { "и" } else { "е" };
     InflectedForms {
         nom: w.into(),
         gen: format!("{}{}", stem, gen_suffix),
-        dat: format!("{}е", stem),
+        dat: format!("{}{}", stem, datprep_suffix),
         acc: format!("{}у", stem),
         inst: format!("{}ой", stem),
-        prep: format!("{}е", stem),
+        prep: format!("{}{}", stem, datprep_suffix),
     }
 }
 
@@ -342,6 +447,13 @@ fn heuristic_inflect(case: Case, word: &str) -> String {
         Case::Instrumental => forms.inst,
         Case::Prepositional => forms.prep,
     }
+}
+
+/// Process-wide cache of the seed dictionary. Initialized lazily on first
+/// access; subsequent reads return the same `MorphologyData` clone.
+fn seed_cached() -> &'static MorphologyData {
+    static SEED: OnceLock<MorphologyData> = OnceLock::new();
+    SEED.get_or_init(MorphologyData::build_seed)
 }
 
 /// Strip a leading preposition from a phrase.
@@ -538,5 +650,16 @@ mod tests {
             MorphologyData::detect_gender("справедливость"),
             Gender::Feminine
         );
+    }
+
+    #[test]
+    fn test_morphology_no_duplicate_seed() {
+        let morph = MorphologyData::with_seed();
+        // "смысл" — masculine consonant, irregular entry gives correct inflection.
+        assert_ne!(morph.to_genitive("смысл"), "смыслы");
+        assert_ne!(morph.to_instrumental("смысл"), "смыслой");
+        assert_eq!(morph.to_genitive("смысл"), "смысла");
+        assert_eq!(morph.to_instrumental("смысл"), "смыслом");
+        assert_eq!(morph.to_prepositional("смысл"), "смысле");
     }
 }

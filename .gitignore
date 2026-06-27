@@ -1,2 +1,5 @@
 /target
-Cargo.lock
+*.db
+*.log
+.forge/
+.agent2048/

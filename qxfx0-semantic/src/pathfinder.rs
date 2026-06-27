@@ -1,6 +1,7 @@
 use qxfx0_types::atom::{AtomGraph, AtomId, GeneratedSurface, PathProof, Relation};
 use qxfx0_types::field::FieldProfile;
 use qxfx0_types::RelationType;
+use std::collections::BTreeSet;
 
 /// Path finder — graph traversal with field-biased ranking.
 /// Finds admissible paths through the AtomStore relation graph.
@@ -48,26 +49,45 @@ impl PathFinder {
 
         if max_len >= 3 {
             // Length 3: start → e1 → mid1 → e2 → mid2 → e3 → obj
+            // Use BTreeSet per path to prevent cycles and dedup by edge triple.
+            let mut seen_paths: BTreeSet<(AtomId, RelationType, AtomId, AtomId, RelationType, AtomId, AtomId, RelationType, AtomId)> = BTreeSet::new();
             for e1 in graph.relations_from(start) {
                 let mid1 = &e1.to;
                 for e2 in graph.relations_from(mid1) {
-                    if e2.to == *start {
-                        continue;
-                    }
                     let mid2 = &e2.to;
+                    let mut visited = BTreeSet::new();
+                    visited.insert(start.clone());
+                    visited.insert(mid1.clone());
+                    visited.insert(mid2.clone());
                     for e3 in graph.relations_from(mid2) {
-                        if e3.to != *start && e3.to != *mid1 {
-                            paths.push(RankedPath {
-                                proof: PathProof {
-                                    edges: vec![e1.clone(), e2.clone(), e3.clone()],
-                                    topic: start.as_str().to_string(),
-                                },
-                                score: Self::score_path(
-                                    &FieldProfile::default(),
-                                    &[e1.clone(), e2.clone(), e3.clone()],
-                                ),
-                            });
+                        if visited.contains(&e3.to) {
+                            continue;
                         }
+                        let key = (
+                            e1.from.clone(),
+                            e1.rel_type,
+                            e1.to.clone(),
+                            e2.from.clone(),
+                            e2.rel_type,
+                            e2.to.clone(),
+                            e3.from.clone(),
+                            e3.rel_type,
+                            e3.to.clone(),
+                        );
+                        // tuple of 9 elements: from1, rt1, to1, from2, rt2, to2, from3, rt3, to3
+                        if !seen_paths.insert(key) {
+                            continue;
+                        }
+                        paths.push(RankedPath {
+                            proof: PathProof {
+                                edges: vec![e1.clone(), e2.clone(), e3.clone()],
+                                topic: start.as_str().to_string(),
+                            },
+                            score: Self::score_path(
+                                &FieldProfile::default(),
+                                &[e1.clone(), e2.clone(), e3.clone()],
+                            ),
+                        });
                     }
                 }
             }
@@ -180,9 +200,7 @@ impl PathFinder {
             let a_total = a.score.total + a_bonus;
             let b_total = b.score.total + b_bonus;
 
-            b_total
-                .partial_cmp(&a_total)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            b_total.total_cmp(&a_total)
                 .then_with(|| {
                     let a_key = a
                         .proof
@@ -257,20 +275,13 @@ impl PathFinder {
             };
 
             // Find counter-paths
-            let counter_types = [
-                RelationType::RelContrastsWith,
-                RelationType::RelDiffersFrom,
-                RelationType::RelNotReducibleTo,
-                RelationType::RelIsNot,
-                RelationType::RelNegates,
-            ];
             let counter_text = graph
                 .relations_from(topic)
                 .iter()
-                .filter(|r| counter_types.contains(&r.rel_type))
+                .filter(|r| r.rel_type.is_counter())
                 .map(|r| crate::verbalize_relation(r))
-                .next()
-                .unwrap_or_default();
+                .collect::<Vec<_>>()
+                .join(". ");
 
             // Build synthesis from rationale
             let first_edge = rp.proof.edges.first();

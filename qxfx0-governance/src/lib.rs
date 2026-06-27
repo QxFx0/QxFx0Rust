@@ -1,102 +1,23 @@
-use qxfx0_types::system_state::GuardStatus;
+pub use qxfx0_types::governance::{GovernanceEvent, GovernanceEventType, GovernanceLog};
+pub use qxfx0_types::system_state::GuardStatus;
+
 use serde::{Deserialize, Serialize};
-
-/// Governance event — append-only history entry.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GovernanceEvent {
-    pub turn: usize,
-    pub event_type: GovernanceEventType,
-    pub family: qxfx0_types::CanonicalMoveFamily,
-    pub guard_status: GuardStatus,
-    pub timestamp: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum GovernanceEventType {
-    TurnCompleted,
-    GuardBlocked,
-    GuardWarning,
-    CommitmentRevised,
-    CommitmentContradicted,
-    GraphEnriched { new_relations: usize },
-}
-
-/// Governance log — append-only history of governance events.
-/// Deterministic: events are stored in order, never modified.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct GovernanceLog {
-    pub events: Vec<GovernanceEvent>,
-}
-
-impl GovernanceLog {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Append an event (immutable — never modify existing events).
-    pub fn append(&mut self, event: GovernanceEvent) {
-        self.events.push(event);
-    }
-
-    /// Get the last N events.
-    pub fn recent(&self, n: usize) -> &[GovernanceEvent] {
-        let start = self.events.len().saturating_sub(n);
-        &self.events[start..]
-    }
-
-    /// Count events by type.
-    pub fn count_by_type(&self, event_type: &GovernanceEventType) -> usize {
-        self.events
-            .iter()
-            .filter(|e| std::mem::discriminant(&e.event_type) == std::mem::discriminant(event_type))
-            .count()
-    }
-
-    /// Total event count.
-    pub fn len(&self) -> usize {
-        self.events.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.events.is_empty()
-    }
-
-    /// Check if any turn was blocked by guard.
-    pub fn has_blocks(&self) -> bool {
-        self.events
-            .iter()
-            .any(|e| matches!(e.event_type, GovernanceEventType::GuardBlocked))
-    }
-
-    /// Replay gate — verify that the event log is consistent.
-    /// Returns violations (empty = ok).
-    pub fn replay_check(&self) -> Vec<String> {
-        let mut violations = Vec::new();
-
-        for (i, event) in self.events.iter().enumerate() {
-            // Turns should be monotonically non-decreasing
-            if i > 0 && event.turn < self.events[i - 1].turn {
-                violations.push(format!(
-                    "turn regression at event {}: {} < {}",
-                    i,
-                    event.turn,
-                    self.events[i - 1].turn
-                ));
-            }
-
-            // GuardBlocked should have InvariantBlock status
-            if matches!(event.event_type, GovernanceEventType::GuardBlocked)
-                && !matches!(event.guard_status, GuardStatus::InvariantBlock(_))
-            {
-                violations.push(format!("GuardBlocked event {} has non-block status", i));
-            }
-        }
-
-        violations
-    }
-}
+use std::collections::BTreeSet;
 
 /// Authority map — delegation chains with escalation prevention.
+///
+/// Delegation semantics
+/// --------------------
+/// A delegation `from -> to` with permissions `[P]` means that `to` is
+/// granted permission `P`.  `has_permission(principal, P)` checks whether
+/// `principal` receives `P` directly from any delegator, or transitively
+/// from an ancestor in the delegation graph (i.e. it follows the chain
+/// upward from `principal` to whoever delegated to them, and so on).
+///
+/// Cycle prevention
+/// ----------------
+/// `delegate` rejects any edge that would create a cycle of arbitrary
+/// length, not just a 2-cycle.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AuthorityMap {
     pub delegations: Vec<DelegationEntry>,
@@ -116,6 +37,7 @@ impl AuthorityMap {
     }
 
     /// Add a delegation. Prevents escalation (can't delegate up).
+    /// Rejects self-delegation and any cycle of arbitrary length.
     pub fn delegate(
         &mut self,
         from: &str,
@@ -128,15 +50,11 @@ impl AuthorityMap {
             return Err("self-delegation not allowed".into());
         }
 
-        // Prevent escalation: if `to` already delegates to `from`, this would create a cycle
-        if self
-            .delegations
-            .iter()
-            .any(|d| d.from == to && d.to == from)
-        {
+        // Prevent cycles of any length
+        if self.would_create_cycle(from, to) {
             return Err(format!(
-                "escalation prevented: {} already delegates to {}",
-                to, from
+                "escalation prevented: adding {} -> {} would create a delegation cycle",
+                from, to
             ));
         }
 
@@ -149,27 +67,49 @@ impl AuthorityMap {
         Ok(())
     }
 
-    /// Check if a principal has a permission (directly or via delegation chain).
-    /// The chain is followed from the principal UPWARDS (from → to means
-    /// "from delegates to to", so "to" inherits "from"'s permissions).
-    pub fn has_permission(&self, principal: &str, permission: &str) -> bool {
-        // Check if anyone delegates TO this principal with this permission
-        if self
-            .delegations
-            .iter()
-            .any(|d| d.to == principal && d.permissions.contains(&permission.to_string()))
-        {
-            return true;
-        }
+    /// Return true if adding `from -> to` would create a cycle.
+    fn would_create_cycle(&self, from: &str, to: &str) -> bool {
+        let mut stack = vec![to.to_string()];
+        let mut visited = BTreeSet::new();
 
-        // Follow the chain: if principal delegates to someone who has the permission
-        let mut current = principal;
-        for _ in 0..10 {
-            let delegate = self.delegations.iter().find(|d| d.from == current);
-            match delegate {
-                Some(d) if d.permissions.contains(&permission.to_string()) => return true,
-                Some(d) => current = &d.to,
-                None => break,
+        while let Some(node) = stack.pop() {
+            if !visited.insert(node.clone()) {
+                continue;
+            }
+            if node == from {
+                return true;
+            }
+            for d in &self.delegations {
+                if d.from == node {
+                    stack.push(d.to.clone());
+                }
+            }
+        }
+        false
+    }
+
+    /// Check if a principal has a permission (directly or via delegation chain).
+    ///
+    /// Standard delegation semantics: a principal has a permission if any
+    /// delegator in their ancestor chain granted it to them.  The search
+    /// follows delegations **to** the current principal and then ascends to
+    /// the delegator, tracking visited nodes to avoid infinite loops.
+    pub fn has_permission(&self, principal: &str, permission: &str) -> bool {
+        let mut stack = vec![principal.to_string()];
+        let mut visited = BTreeSet::new();
+
+        while let Some(current) = stack.pop() {
+            if !visited.insert(current.clone()) {
+                continue;
+            }
+
+            for d in &self.delegations {
+                if d.to == current {
+                    if d.permissions.contains(&permission.to_string()) {
+                        return true;
+                    }
+                    stack.push(d.from.clone());
+                }
             }
         }
         false
@@ -256,12 +196,14 @@ mod tests {
     }
 
     #[test]
-    fn test_authority_delegate() {
+    fn test_has_permission_standard_semantics() {
         let mut auth = AuthorityMap::new();
         auth.delegate("system", "render", vec!["generate".into()], 1)
             .unwrap();
-        assert!(auth.has_permission("system", "generate"));
-        assert!(!auth.has_permission("system", "delete"));
+        // The delegatee has the permission; the delegator does not.
+        assert!(auth.has_permission("render", "generate"));
+        assert!(!auth.has_permission("system", "generate"));
+        assert!(!auth.has_permission("render", "delete"));
     }
 
     #[test]
@@ -288,9 +230,20 @@ mod tests {
             .unwrap();
         auth.delegate("mid", "leaf", vec!["read".into()], 2)
             .unwrap();
-        // leaf should have read via chain
+        // leaf should have read via direct delegation from mid
         assert!(auth.has_permission("leaf", "read"));
         assert!(!auth.has_permission("leaf", "write"));
+    }
+
+    #[test]
+    fn test_governance_3cycle_rejected() {
+        let mut auth = AuthorityMap::new();
+        auth.delegate("A", "B", vec!["read".into()], 1).unwrap();
+        auth.delegate("B", "C", vec!["read".into()], 2).unwrap();
+        // C → A would close the cycle A → B → C → A
+        let result = auth.delegate("C", "A", vec!["write".into()], 3);
+        assert!(result.is_err(), "3-cycle must be rejected");
+        assert!(result.unwrap_err().contains("escalation"));
     }
 
     #[test]

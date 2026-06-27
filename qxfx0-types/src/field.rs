@@ -1,11 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-/// 5-component right-hemispheric observation Field.
+/// 4-component right-hemispheric observation Field.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Field {
     pub resonance: f64,
-    pub atmosphere_valence: f64,
-    pub atmosphere_arousal: f64,
     pub confidence: f64,
     pub consolidation: f64,
     pub counterfactual: f64,
@@ -15,8 +13,6 @@ impl Default for Field {
     fn default() -> Self {
         Field {
             resonance: 0.5,
-            atmosphere_valence: 0.0,
-            atmosphere_arousal: 0.0,
             confidence: 0.5,
             consolidation: 0.5,
             counterfactual: 0.5,
@@ -78,10 +74,11 @@ impl FieldProfile {
 
     /// Determine path depth based on Conatus energy.
     /// High energy → 3 (deep), medium → 2, low → 1 (shallow).
+    /// Thresholds calibrated for Conatus::compute() range [0, ~1.73].
     pub fn path_depth(&self) -> usize {
-        if self.conatus_energy > 10.0 {
+        if self.conatus_energy > 1.2 {
             3
-        } else if self.conatus_energy > 5.0 {
+        } else if self.conatus_energy > 0.6 {
             2
         } else {
             1

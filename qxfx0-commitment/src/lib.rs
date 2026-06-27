@@ -1,47 +1,63 @@
 use qxfx0_types::system_state::*;
 use std::collections::BTreeSet;
 
+/// Result of a commit operation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommitResult {
+    /// A new commitment was created.
+    New(CommitmentId),
+    /// The id already existed; no insertion occurred.
+    Duplicate(CommitmentId),
+}
+
 /// Commitment store operations — commit, revise, retract, contradict.
 /// All operations are pure (return new store, don't mutate).
 pub struct CommitmentOps;
 
 impl CommitmentOps {
     /// Create a new commitment from a parsed observation.
-    /// No-op if the id already exists in either active or quarantine.
+    /// Returns `CommitResult::Duplicate` if the id already exists in either active or quarantine
+    /// and leaves `next_id` unchanged.
     pub fn commit(
         payload: FactualClaimPayload,
         store: &SemanticCommitmentStore,
-    ) -> (SemanticCommitmentStore, CommitmentId) {
+    ) -> (SemanticCommitmentStore, CommitResult) {
         let cid = CommitmentId(store.next_id);
-        let mut new_store = store.clone();
-        new_store.next_id = store.next_id + 1;
 
-        if new_store.active.contains_key(&cid) || new_store.quarantine.contains_key(&cid) {
-            return (new_store, cid);
+        if store.active.contains_key(&cid) || store.quarantine.contains_key(&cid) {
+            return (store.clone(), CommitResult::Duplicate(cid));
         }
 
+        let mut new_store = store.clone();
+        new_store.next_id = store.next_id + 1;
         new_store.active.insert(cid.clone(), (payload, 0));
         new_store
             .lineage
             .insert(cid.clone(), vec![LineageEvent::Committed { turn: 0 }]);
-        (new_store, cid)
+        (new_store, CommitResult::New(cid))
     }
 
     /// Commit an observation with turn sequence.
+    /// Returns `CommitResult::Duplicate` if the id already exists in either active or quarantine
+    /// and leaves `next_id` unchanged.
     pub fn commit_observation(
         payload: FactualClaimPayload,
         store: &SemanticCommitmentStore,
-    ) -> (SemanticCommitmentStore, CommitmentId) {
+    ) -> (SemanticCommitmentStore, CommitResult) {
         let cid = CommitmentId(store.next_id);
         let turn = payload.turn_seq;
+
+        if store.active.contains_key(&cid) || store.quarantine.contains_key(&cid) {
+            return (store.clone(), CommitResult::Duplicate(cid));
+        }
+
         let mut new_store = store.clone();
         new_store.next_id = store.next_id + 1;
-
         new_store.active.insert(cid.clone(), (payload, turn));
         new_store
             .lineage
             .insert(cid.clone(), vec![LineageEvent::Committed { turn }]);
-        (new_store, cid)
+        (new_store, CommitResult::New(cid))
     }
 
     /// Quarantine an observation (suppressed claim).
@@ -59,23 +75,26 @@ impl CommitmentOps {
     }
 
     /// Revise a commitment — replace payload, record lineage.
+    /// Returns `Err` if the cid is not found in `active`.
     pub fn revise(
         cid: &CommitmentId,
         new_payload: FactualClaimPayload,
         turn: usize,
         store: &SemanticCommitmentStore,
-    ) -> SemanticCommitmentStore {
+    ) -> Result<SemanticCommitmentStore, String> {
         let mut new_store = store.clone();
 
-        if let Some((_, _)) = new_store.active.get(cid) {
-            new_store
-                .active
-                .insert(cid.clone(), (new_payload.clone(), turn));
-            let lineage = new_store.lineage.entry(cid.clone()).or_default();
-            lineage.push(LineageEvent::Revised { turn });
+        if !new_store.active.contains_key(cid) {
+            return Err(format!("cid {:?} not found in active commitments", cid));
         }
 
         new_store
+            .active
+            .insert(cid.clone(), (new_payload.clone(), turn));
+        let lineage = new_store.lineage.entry(cid.clone()).or_default();
+        lineage.push(LineageEvent::Revised { turn });
+
+        Ok(new_store)
     }
 
     /// Record a contradiction between two commitments.
@@ -111,19 +130,32 @@ impl CommitmentOps {
                     .split_whitespace()
                     .filter(|w| w.len() >= 3)
                     .collect();
-                let overlap = query_words.intersection(&stmt_words).count();
-                (overlap, payload.clone())
+                let exact = query_words.intersection(&stmt_words).count();
+                // Stem-based match: first 5 characters, char-safe for UTF-8.
+                let stem_overlap: usize = query_words
+                    .iter()
+                    .filter(|qw| qw.chars().count() >= 5)
+                    .map(|qw| {
+                        let qw_chars: Vec<char> = qw.chars().collect();
+                        let stem: String = qw_chars[..5].iter().collect();
+                        stmt_words.iter().filter(|sw| {
+                            let sw_chars: Vec<char> = sw.chars().collect();
+                            sw_chars.len() >= 5 && sw_chars[..5].iter().collect::<String>() == stem
+                        }).count()
+                    })
+                    .sum();
+                (exact * 2 + stem_overlap, payload.clone())
             })
             .filter(|(overlap, _)| *overlap > 0)
             .collect();
 
-        // Sort by overlap descending (deterministic via BTreeSet)
         matches.sort_by_key(|b| std::cmp::Reverse(b.0));
-
         matches.into_iter().take(5).map(|(_, p)| p).collect()
     }
 
     /// Detect whether the current turn engages or contradicts held commitments.
+    /// Contradiction detection includes both Russian and English keywords,
+    /// and routes through semantic signals where available.
     pub fn detect_engagement(
         store: &SemanticCommitmentStore,
         input_topic: &str,
@@ -162,10 +194,18 @@ impl CommitmentOps {
             .collect();
 
         // Check for contradiction signals in input
-        let contradicted = input_topic.contains("не ")
-            || input_topic.contains("противореч")
-            || input_topic.contains("ошиба")
-            || input_topic.contains("не верно");
+        let lower = input_topic.to_lowercase();
+        let contradicted = lower.contains("не ")
+            || lower.contains("противореч")
+            || lower.contains("ошиба")
+            || lower.contains("не верно")
+            || lower.contains("contradict")
+            || lower.contains("wrong")
+            || lower.contains("error")
+            || lower.contains("refute")
+            || lower.contains("oppose")
+            || lower.contains("deny")
+            || lower.contains("incorrect");
 
         let match_kind = if contradicted {
             MatchKind::ContradictedStrong
@@ -220,7 +260,6 @@ pub enum MatchKind {
     NoMatch,
     EngagedOnly,
     ContradictedStrong,
-    ContradictedWeak,
 }
 
 #[cfg(test)]
@@ -242,11 +281,42 @@ mod tests {
     fn test_commit_creates_active() {
         let store = SemanticCommitmentStore::default();
         let payload = make_payload("свобода", "свобода предполагает выбор");
-        let (new_store, cid) = CommitmentOps::commit(payload, &store);
+        let (new_store, result) = CommitmentOps::commit(payload, &store);
 
-        assert!(new_store.active.contains_key(&cid));
+        assert_eq!(result, CommitResult::New(CommitmentId(0)));
+        assert!(new_store.active.contains_key(&CommitmentId(0)));
         assert_eq!(new_store.next_id, 1);
-        assert_eq!(new_store.lineage.get(&cid).unwrap().len(), 1);
+        assert_eq!(new_store.lineage.get(&CommitmentId(0)).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_commit_duplicate_no_id_skip() {
+        let mut store = SemanticCommitmentStore::default();
+        // Force a collision: next_id points to an existing key.
+        store.active.insert(CommitmentId(0), (make_payload("a", "b"), 0));
+        store.next_id = 0;
+
+        let payload = make_payload("свобода", "свобода предполагает выбор");
+        let (store2, result) = CommitmentOps::commit(payload, &store);
+
+        assert_eq!(result, CommitResult::Duplicate(CommitmentId(0)));
+        assert_eq!(store2.next_id, 0, "next_id must not advance on duplicate");
+        assert_eq!(store2.active.len(), 1, "duplicate should not insert");
+    }
+
+    #[test]
+    fn test_commit_observation_dedup() {
+        let mut store = SemanticCommitmentStore::default();
+        // Force a collision: next_id points to an existing key.
+        store.active.insert(CommitmentId(0), (make_payload("x", "y"), 0));
+        store.next_id = 0;
+
+        let mut payload = make_payload("topic", "stmt");
+        payload.turn_seq = 2;
+        let (store, result) = CommitmentOps::commit_observation(payload.clone(), &store);
+        assert_eq!(result, CommitResult::Duplicate(CommitmentId(0)));
+        assert_eq!(store.next_id, 0, "next_id must not advance on duplicate");
+        assert_eq!(store.active.len(), 1, "duplicate should not insert");
     }
 
     #[test]
@@ -286,13 +356,25 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_engagement_contradiction_english() {
+        let store = SemanticCommitmentStore::default();
+        let payload = make_payload("свобода", "свобода предполагает выбор");
+        let (store, _) = CommitmentOps::commit(payload, &store);
+
+        let eng = CommitmentOps::detect_engagement(&store, "that is wrong about свобода");
+        assert!(eng.contradicted);
+        assert_eq!(eng.match_kind, MatchKind::ContradictedStrong);
+    }
+
+    #[test]
     fn test_revise_updates_payload() {
         let store = SemanticCommitmentStore::default();
         let payload = make_payload("истина", "истина — это соответствие");
-        let (store, cid) = CommitmentOps::commit(payload, &store);
+        let (store, result) = CommitmentOps::commit(payload, &store);
+        let CommitResult::New(cid) = result else { panic!("expected New") };
 
         let new_payload = make_payload("истина", "истина — это воспроизводимость");
-        let store = CommitmentOps::revise(&cid, new_payload, 2, &store);
+        let store = CommitmentOps::revise(&cid, new_payload, 2, &store).unwrap();
 
         let updated = store.active.get(&cid).unwrap();
         assert!(updated.0.statement.contains("воспроизводимость"));
@@ -300,10 +382,20 @@ mod tests {
     }
 
     #[test]
+    fn test_revise_missing_cid_returns_err() {
+        let store = SemanticCommitmentStore::default();
+        let new_payload = make_payload("x", "y");
+        let result = CommitmentOps::revise(&CommitmentId(99), new_payload, 2, &store);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_contradict_records_event() {
         let store = SemanticCommitmentStore::default();
-        let (store, left) = CommitmentOps::commit(make_payload("a", "a is x"), &store);
-        let (store, right) = CommitmentOps::commit(make_payload("a", "a is not x"), &store);
+        let (store, left_res) = CommitmentOps::commit(make_payload("a", "a is x"), &store);
+        let CommitResult::New(left) = left_res else { panic!("expected New") };
+        let (store, right_res) = CommitmentOps::commit(make_payload("a", "a is not x"), &store);
+        let CommitResult::New(right) = right_res else { panic!("expected New") };
 
         let store = CommitmentOps::contradict(
             &left,

@@ -1,13 +1,14 @@
-use ordered_float::OrderedFloat;
+pub mod deliberation;
+
 use qxfx0_types::field::Field;
+use qxfx0_types::system_state::*;
+use sha2::{Digest, Sha256};
 
 /// Conatus energy functional:
 /// C(b,v) = w_m·log(1+m) + w_c·log(1+c) + w_t·log(1+t) − λ·|v|
 ///
 /// Spinozan striving — the system's drive to continue being what it is.
 /// Higher = more coherent self. Death = Markov blanket violation.
-///
-/// Uses OrderedFloat for deterministic comparison across platforms.
 pub struct Conatus;
 
 impl Conatus {
@@ -19,7 +20,15 @@ impl Conatus {
 
     /// Compute conatus energy from field components.
     /// All intermediate values are clamped to [0, ∞) for log safety.
+    /// If any field component is NaN or infinite, returns 0.0.
     pub fn compute(field: &Field) -> f64 {
+        if !field.resonance.is_finite()
+            || !field.confidence.is_finite()
+            || !field.consolidation.is_finite()
+            || !field.counterfactual.is_finite()
+        {
+            return 0.0;
+        }
         let m = field.resonance.max(0.0);
         let c = field.consolidation.max(0.0);
         let t = field.confidence.max(0.0);
@@ -29,11 +38,6 @@ impl Conatus {
             + Self::W_COHERENCE * (1.0 + c).ln()
             + Self::W_TRUST * (1.0 + t).ln()
             - Self::LAMBDA * v
-    }
-
-    /// Compute conatus energy as OrderedFloat for deterministic ordering.
-    pub fn compute_ordered(field: &Field) -> OrderedFloat<f64> {
-        OrderedFloat(Self::compute(field))
     }
 
     /// Check if conatus gate fires (energy below threshold).
@@ -62,55 +66,30 @@ impl Formal {
     }
 }
 
+/// Combine holistic and formal field modes into a single scalar factor.
+///
+/// For non-degenerate fields (where `holistic * formal >= 0.01`), this
+/// returns `1.0`. For degenerate fields where the composed product falls
+/// below `0.01`, it returns `composed / 0.01`, which preserves a finite
+/// scaled value without claiming an identity.
+///
+/// This helper intentionally does not model a categorical adjunction —
+/// it is a normalization utility that prevents division by zero while
+/// keeping the non-degenerate path transparent.
+pub fn combine_modes(field: &Field) -> f64 {
+    let h = Holistic::from_field(field);
+    let f = Formal::from_field(field);
+    let composed = h.0 * f.0;
+    composed / composed.max(0.01)
+}
+
 /// Adjunction: Holistic ⊣ Formal
 ///
-/// Models the categorical adjunction between holistic (right-hemispheric)
-/// and formal (left-hemispheric) processing modes.
-///
-/// unit: a → Formal(Holistic(a)) — lift a value into the composite
-/// counit: Holistic(Formal(a)) → a — extract from the composite
-///
-/// These are NOT identity functions — they apply field-weighted transformations.
+/// Provides the `reconcile` helper for blending holistic and formal
+/// proposals into a unified plan.
 pub struct Adjunction;
 
 impl Adjunction {
-    /// Unit: a → Formal(Holistic(a))
-    /// Lifts a plain value through the adjunction, composing holistic then formal.
-    pub fn unit(a: f64, field: &Field) -> f64 {
-        let h = Holistic::from_field(field);
-        let f = Formal::from_field(field);
-        // Compose: holistic transforms, then formal wraps
-        let holistic_val = a * h.0;
-        let formal_val = holistic_val * f.0;
-        // Normalise to preserve magnitude
-        let norm = (h.0 * f.0).max(0.01);
-        formal_val / norm
-    }
-
-    /// Counit: Holistic(Formal(a)) → a
-    /// Extracts a value from the composite by inverting the transformation.
-    pub fn counit(a: f64, field: &Field) -> f64 {
-        let h = Holistic::from_field(field);
-        let f = Formal::from_field(field);
-        // Invert: formal unwraps, then holistic extracts
-        let formal_val = a * f.0;
-        let holistic_val = formal_val * h.0;
-        let norm = (h.0 * f.0).max(0.01);
-        holistic_val / norm
-    }
-
-    /// Triangle identity 1: counit . unit = id (within tolerance)
-    pub fn triangle_left(a: f64, field: &Field) -> bool {
-        let composed = Self::counit(Self::unit(a, field), field);
-        (composed - a).abs() < 1e-10
-    }
-
-    /// Triangle identity 2: unit . counit = id (within tolerance)
-    pub fn triangle_right(a: f64, field: &Field) -> bool {
-        let composed = Self::unit(Self::counit(a, field), field);
-        (composed - a).abs() < 1e-10
-    }
-
     /// Reconcile holistic and formal proposals into a plan.
     /// Weighted by field confidence — high confidence → formal, low → holistic.
     pub fn reconcile(holistic: f64, formal: f64, field: &Field) -> f64 {
@@ -120,21 +99,7 @@ impl Adjunction {
 }
 
 /// Essence — Σ-typed commitment trajectory.
-/// Unconditionally active (law-driven, not flag-gated).
-#[derive(Debug, Clone, PartialEq)]
-pub struct Essence {
-    pub witnesses: Vec<EssenceWitness>,
-    pub angst: f64,
-    pub trajectory_committed: bool,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct EssenceWitness {
-    pub turn: usize,
-    pub mode: EssenceMode,
-    pub statement: String,
-}
-
+/// Operational mode for pipeline routing (runtime, not commitment mode).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EssenceMode {
     Define,
@@ -143,39 +108,181 @@ pub enum EssenceMode {
     Commit,
 }
 
-impl Default for Essence {
+/// Essence modulation parameters (tunable).
+#[derive(Debug, Clone)]
+pub struct EssenceModulation {
+    pub angst_commitment_threshold: f64,
+    pub angst_accrual_rate: f64,
+    pub angst_decay_rate: f64,
+    pub angst_accrual_divergence_floor: f64,
+    pub conatus_floor_window: usize,
+    pub conatus_structural_floor: f64,
+    pub trajectory_capacity: usize,
+}
+
+impl Default for EssenceModulation {
     fn default() -> Self {
-        Essence {
-            witnesses: Vec::new(),
-            angst: 0.0,
-            trajectory_committed: false,
+        EssenceModulation {
+            angst_commitment_threshold: 0.75,
+            angst_accrual_rate: 0.05,
+            angst_decay_rate: 0.02,
+            angst_accrual_divergence_floor: 0.5,
+            conatus_floor_window: 8,
+            // Calibrated for Conatus::compute() range [0, ~1.5] (Rust version uses
+            // Field components in [0,1], not the log-scale [~5,~20] of the Haskell
+            // version). A value of 0.5 means: every witness in the last 8 turns
+            // must have conatus < 0.5 for ConatusErosion to trigger.
+            conatus_structural_floor: 0.5,
+            trajectory_capacity: 32,
         }
     }
 }
 
-impl Essence {
-    pub fn should_commit(&self, conatus_energy: f64, angst: f64) -> bool {
-        conatus_energy > Conatus::STRUCTURAL_FLOOR && angst < 0.9
+/// Ingest one turn's deliberation into the trajectory.
+pub fn witness_essence(
+    em: &EssenceModulation,
+    turn: usize,
+    conatus_scalar: f64,
+    state: &mut EssenceState,
+    mode: EssenceMode,
+    statement: String,
+    salience_driver: &str,
+    reconcile_rule: &str,
+    agreement: &str,
+    divergence: f64,
+) {
+    if state.capacity == 0 {
+        state.capacity = em.trajectory_capacity;
     }
 
-    pub fn witness(&mut self, turn: usize, mode: EssenceMode, statement: String) {
-        self.witnesses.push(EssenceWitness {
-            turn,
-            mode,
-            statement,
-        });
-        self.trajectory_committed = true;
+    state.witnesses.push(EssenceWitness {
+        turn,
+        mode: format!("{:?}", mode),
+        statement,
+        salience_driver: salience_driver.to_string(),
+        reconcile_rule: reconcile_rule.to_string(),
+        agreement: agreement.to_string(),
+        divergence,
+        conatus_scalar,
+    });
+
+    while state.witnesses.len() > state.capacity {
+        state.witnesses.remove(0);
     }
 
-    pub fn validate_plan(&self, _proposed: &str) -> Result<(), String> {
-        Ok(())
+    // Update angst
+    if divergence == 0.0 {
+        state.angst = (state.angst - em.angst_decay_rate).max(0.0);
+    } else if divergence >= em.angst_accrual_divergence_floor {
+        state.angst = (state.angst + em.angst_accrual_rate).min(1.0);
     }
 
-    pub fn collapse(&mut self) {
-        self.witnesses.clear();
-        self.angst = 0.0;
-        self.trajectory_committed = false;
+    // Update conatus floor
+    state.conatus_floor = state.conatus_floor.min(conatus_scalar);
+
+    state.trajectory_committed = true;
+}
+
+/// Sliding-window commitment check.
+pub fn should_commit_essence(em: &EssenceModulation, state: &EssenceState) -> Option<CommitmentTrigger> {
+    let angst_fires = state.angst >= em.angst_commitment_threshold;
+
+    let window = em.conatus_floor_window;
+    let ws = &state.witnesses;
+    let start = if ws.len() > window { ws.len() - window } else { 0 };
+    let last_n: Vec<&EssenceWitness> = ws[start..].iter().collect();
+    let all_sub_floor = last_n.len() >= window
+        && last_n.iter().all(|w| w.conatus_scalar < em.conatus_structural_floor);
+
+    match (angst_fires, all_sub_floor) {
+        (true, _) => Some(CommitmentTrigger::TriggerAngstThreshold),
+        (false, true) => Some(CommitmentTrigger::TriggerConatusErosion),
+        _ => None,
     }
+}
+
+/// Deterministic mode extraction from trajectory.
+pub fn extract_commitment_mode(state: &EssenceState) -> CommitmentMode {
+    let ws = &state.witnesses;
+    let n = ws.len() as f64;
+    if n == 0.0 {
+        return CommitmentMode::Contemplative;
+    }
+
+    let mut integrative = 0usize;
+    let mut dialogical = 0usize;
+    let mut contemplative = 0usize;
+
+    for w in ws {
+        match (w.agreement.as_str(), w.reconcile_rule.as_str()) {
+            (_, "RuleHolisticAdvantage") => dialogical += 1,
+            (_, "RuleFormalAdvantage") => contemplative += 1,
+            _ => integrative += 1,
+        }
+    }
+
+    let a_rate = integrative as f64 / n;
+    let h_rate = dialogical as f64 / n;
+    let f_rate = contemplative as f64 / n;
+
+    let candidates = [
+        (CommitmentMode::Integrative, a_rate),
+        (CommitmentMode::Dialogical, h_rate),
+        (CommitmentMode::Contemplative, f_rate),
+    ];
+
+    let (best, best_rate) = candidates
+        .iter()
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+        .unwrap();
+
+    if *best_rate > 0.0 { *best } else { CommitmentMode::Contemplative }
+}
+
+/// Commit the essence trajectory.
+pub fn commit_essence(
+    turn: usize,
+    trigger: CommitmentTrigger,
+    state: &EssenceState,
+) -> EssenceCommitment {
+    let mode = extract_commitment_mode(state);
+    let hash = hash_witnesses(&state.witnesses);
+    EssenceCommitment {
+        mode,
+        trigger,
+        committed_at: turn,
+        witness_hash: hash,
+    }
+}
+
+/// SHA-256 hash of the witness sequence for tamper detection.
+/// Uses fixed-precision f64 formatting for deterministic hashing across Rust versions.
+fn hash_witnesses(witnesses: &[EssenceWitness]) -> String {
+    let mut hasher = Sha256::new();
+    for w in witnesses {
+        hasher.update(format!(
+            "{}|{}|{}|{}|{}|{:.17}|{}|{:.17}",
+            w.turn, w.mode, w.salience_driver, w.reconcile_rule, w.agreement,
+            w.divergence, w.statement, w.conatus_scalar
+        ).as_bytes());
+    }
+    format!("sha256:{:x}", hasher.finalize())
+}
+
+/// Anomaly-3: self-referential collapse of essence trajectory.
+pub fn collapse_essence(turn: usize, state: &mut EssenceState) -> EssenceResetEvent {
+    let event = EssenceResetEvent {
+        turn,
+        previous_angst: state.angst,
+        previous_witness_count: state.witnesses.len(),
+    };
+    state.witnesses.clear();
+    state.angst = 0.0;
+    state.conatus_floor = f64::MAX;
+    state.trajectory_committed = false;
+    state.commitment = None;
+    state.reset_events.push(event.clone());
+    event
 }
 
 /// Self blanket — structural invariants for self-preservation.
@@ -195,6 +302,9 @@ impl SelfBlanket {
         }
         if !(0.0..=1.0).contains(&field.consolidation) {
             violations.push("consolidation_out_of_range".into());
+        }
+        if !(0.0..=1.0).contains(&field.counterfactual) {
+            violations.push("counterfactual_out_of_range".into());
         }
         violations
     }
@@ -221,11 +331,30 @@ mod tests {
     }
 
     #[test]
-    fn test_conatus_ordered_deterministic() {
-        let field = Field::default();
-        let e1 = Conatus::compute_ordered(&field);
-        let e2 = Conatus::compute_ordered(&field);
-        assert_eq!(e1, e2);
+    fn test_nan_conatus_returns_zero() {
+        assert_eq!(
+            Conatus::compute(&Field {
+                resonance: f64::NAN,
+                ..Default::default()
+            }),
+            0.0
+        );
+
+        assert_eq!(
+            Conatus::compute(&Field {
+                confidence: f64::INFINITY,
+                ..Default::default()
+            }),
+            0.0
+        );
+
+        assert_eq!(
+            Conatus::compute(&Field {
+                counterfactual: f64::NEG_INFINITY,
+                ..Default::default()
+            }),
+            0.0
+        );
     }
 
     #[test]
@@ -242,55 +371,37 @@ mod tests {
     }
 
     #[test]
-    fn test_adjunction_unit_counit_not_identity() {
+    fn test_adjunction_roundtrip_non_degenerate() {
+        let field = Field {
+            confidence: 0.5,
+            resonance: 0.5,
+            consolidation: 0.5,
+            counterfactual: 0.5,
+        };
+        let h = Holistic::from_field(&field).0;
+        let f = Formal::from_field(&field).0;
+        assert!(
+            h * f >= 0.01,
+            "test assumes a non-degenerate composed weight"
+        );
+        assert!(
+            (combine_modes(&field) - 1.0).abs() < 1e-10,
+            "combine_modes should return identity factor for non-degenerate fields"
+        );
+    }
+
+    #[test]
+    fn test_adjunction_factor_for_non_degenerate_field() {
         let field = Field {
             confidence: 0.3,
             resonance: 0.8,
             ..Default::default()
         };
-        let a = 0.5;
-        let u = Adjunction::unit(a, &field);
-        // unit should transform the value (not identity)
+        let result = combine_modes(&field);
         assert!(
-            (u - a).abs() < 1e-10,
-            "unit should normalise back to original"
+            (result - 1.0).abs() < 1e-10,
+            "combine_modes should return 1.0 for non-degenerate fields"
         );
-    }
-
-    #[test]
-    fn test_adjunction_triangle_identities() {
-        let field = Field::default();
-        for a in [0.0, 0.5, 1.0, 3.14] {
-            assert!(
-                Adjunction::triangle_left(a, &field),
-                "Left triangle failed for {a}"
-            );
-            assert!(
-                Adjunction::triangle_right(a, &field),
-                "Right triangle failed for {a}"
-            );
-        }
-    }
-
-    #[test]
-    fn test_adjunction_triangle_with_asymmetric_field() {
-        let field = Field {
-            confidence: 0.2,
-            resonance: 0.9,
-            consolidation: 0.7,
-            counterfactual: 0.8,
-            ..Default::default()
-        };
-        for a in [0.0, 0.5, 1.0, 3.14] {
-            assert!(
-                Adjunction::triangle_left(a, &field),
-                "Left triangle failed for {a} with asymmetric field"
-            );
-            assert!(
-                Adjunction::triangle_right(a, &field),
-                "Right triangle failed for {a} with asymmetric field"
-            );
-        }
     }
 
     #[test]
@@ -305,12 +416,52 @@ mod tests {
 
     #[test]
     fn test_essence_lifecycle() {
-        let mut essence = Essence::default();
-        assert!(!essence.trajectory_committed);
-        essence.witness(1, EssenceMode::Define, "свобода".into());
-        assert!(essence.trajectory_committed);
-        essence.collapse();
-        assert!(!essence.trajectory_committed);
+        let mut state = EssenceState::default();
+        let em = EssenceModulation::default();
+        assert!(!state.trajectory_committed);
+        witness_essence(&em, 1, 10.0, &mut state,
+            EssenceMode::Define, "свобода".into(),
+            "DrivenByField", "RuleAgreement", "FullAgreement", 0.0);
+        assert!(state.trajectory_committed);
+        assert_eq!(state.witnesses.len(), 1);
+        collapse_essence(2, &mut state);
+        assert!(!state.trajectory_committed);
+        assert!(state.witnesses.is_empty());
+    }
+
+    #[test]
+    fn test_essence_should_commit_angst() {
+        let mut state = EssenceState::default();
+        state.angst = 0.8;
+        for _ in 0..8 {
+            state.witnesses.push(EssenceWitness {
+                turn: 1, mode: "Define".into(), statement: "test".into(),
+                salience_driver: "field".into(), reconcile_rule: "RuleAgreement".into(),
+                agreement: "FullAgreement".into(), divergence: 0.0, conatus_scalar: 1.0,
+            });
+        }
+        let em = EssenceModulation::default();
+        let trigger = should_commit_essence(&em, &state);
+        assert!(trigger.is_some());
+        assert!(matches!(trigger.unwrap(), CommitmentTrigger::TriggerAngstThreshold));
+    }
+
+    #[test]
+    fn test_essence_should_commit_conatus_erosion() {
+        let mut state = EssenceState::default();
+        state.angst = 0.1;
+        for _ in 0..8 {
+            state.witnesses.push(EssenceWitness {
+                turn: 1, mode: "Define".into(), statement: "test".into(),
+                salience_driver: "field".into(), reconcile_rule: "RuleAgreement".into(),
+                agreement: "FullAgreement".into(), divergence: 0.0,
+                conatus_scalar: 0.4, // below conatus_structural_floor = 0.5
+            });
+        }
+        let em = EssenceModulation::default();
+        let trigger = should_commit_essence(&em, &state);
+        assert!(trigger.is_some());
+        assert!(matches!(trigger.unwrap(), CommitmentTrigger::TriggerConatusErosion));
     }
 
     #[test]
@@ -325,6 +476,16 @@ mod tests {
         let field = Field::default();
         let violations = SelfBlanket::check(&field, -1.0);
         assert!(violations.contains(&"negative_conatus_energy".into()));
+    }
+
+    #[test]
+    fn test_self_blanket_counterfactual_out_of_range() {
+        let field = Field {
+            counterfactual: 1.5,
+            ..Default::default()
+        };
+        let violations = SelfBlanket::check(&field, Conatus::compute(&field));
+        assert!(violations.contains(&"counterfactual_out_of_range".into()));
     }
 
     #[test]

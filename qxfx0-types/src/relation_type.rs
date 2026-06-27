@@ -164,3 +164,48 @@ impl fmt::Display for RelationType {
         write!(f, "{:?}", self)
     }
 }
+
+impl RelationType {
+    /// Single source of truth for "is this a counter/opposition relation?"
+    /// Used by PathFinder, ConjugateComposer, and DiscourseComposer.
+    pub fn is_counter(self) -> bool {
+        matches!(
+            self,
+            RelationType::RelContrastsWith
+                | RelationType::RelDiffersFrom
+                | RelationType::RelNegates
+                | RelationType::RelNotReducibleTo
+                | RelationType::RelIsNot
+                | RelationType::RelDestroys
+        )
+    }
+
+    /// Single source of truth for "is this a supporting/grounding relation?"
+    pub fn is_supporting(self) -> bool {
+        matches!(
+            self,
+            RelationType::RelPresupposes
+                | RelationType::RelRequires
+                | RelationType::RelIncludes
+                | RelationType::RelMeans
+                | RelationType::RelDetermines
+                | RelationType::RelClaims
+                | RelationType::RelSupports
+                | RelationType::RelNecessaryFor
+                | RelationType::RelReliesOn
+        )
+    }
+
+    /// Single source of truth for "is this a qualifying/limiting relation?"
+    pub fn is_qualifying(self) -> bool {
+        matches!(
+            self,
+            RelationType::RelLimitedBy
+                | RelationType::RelStructures
+                | RelationType::RelPrescribes
+                | RelationType::RelTransforms
+                | RelationType::RelTransformsInto
+                | RelationType::RelOrientsToward
+        )
+    }
+}

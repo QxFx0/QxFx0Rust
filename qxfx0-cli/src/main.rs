@@ -1,7 +1,5 @@
 use clap::{Parser, Subcommand};
-use qxfx0_pipeline::{TurnInput, TurnPipeline};
-use qxfx0_semantic::seed_graph;
-use qxfx0_types::system_state::SystemState;
+use qxfx0_cli::{load_or_create_state, run_turn};
 
 #[derive(Parser)]
 #[command(name = "qxfx0")]
@@ -38,20 +36,6 @@ enum Commands {
     Version,
 }
 
-fn load_or_create_state(db: &qxfx0_persistence::Persistence, session_id: &str) -> SystemState {
-    match db.load_state(session_id).unwrap_or(None) {
-        Some(state) => state,
-        None => SystemState {
-            session_id: session_id.to_string(),
-            semantic: qxfx0_types::system_state::SemanticState {
-                runtime_graph: seed_graph(),
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-    }
-}
-
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     let cli = Cli::parse();
@@ -59,22 +43,15 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Turn { text } => {
             let db = qxfx0_persistence::Persistence::open(&cli.db)?;
-            let mut state = load_or_create_state(&db, &cli.session_id);
-            let input = TurnInput {
-                raw_text: text,
-                session_id: cli.session_id.clone(),
-            };
-            let output = TurnPipeline::process(&input, &mut state);
-            db.save_state(&cli.session_id, &state)?;
-            println!("{}", output.response);
-            if output.blocked {
-                eprintln!("[guard] blocked: {:?}", output.guard_status);
-            }
+            // H4: persist before printing so a failed save never leaves the
+            // user staring at a response the system has already lost.
+            let response = run_turn(&db, &cli.session_id, &text)?;
+            println!("{}", response);
             Ok(())
         }
         Commands::Chat => {
             let db = qxfx0_persistence::Persistence::open(&cli.db)?;
-            let mut state = load_or_create_state(&db, &cli.session_id);
+            let mut state = load_or_create_state(&db, &cli.session_id)?;
             println!("QxFx0 Rust v0.1.0 — интерактивный режим");
             println!("Session: {}", cli.session_id);
             println!("Введите :quit для выхода\n");
@@ -86,6 +63,7 @@ fn main() -> anyhow::Result<()> {
                 stdout.flush()?;
                 let mut line = String::new();
                 if stdin.lock().read_line(&mut line)? == 0 {
+                    // H2: EOF (Ctrl+D) — break out and persist unconditionally.
                     break;
                 }
                 let line = line.trim();
@@ -97,14 +75,16 @@ fn main() -> anyhow::Result<()> {
                 if line.is_empty() {
                     continue;
                 }
-                let input = TurnInput {
+                let input = qxfx0_pipeline::TurnInput {
                     raw_text: line.to_string(),
                     session_id: cli.session_id.clone(),
                 };
-                let output = TurnPipeline::process(&input, &mut state);
+                let output = qxfx0_pipeline::process_turn(&input, &mut state);
                 db.save_state(&cli.session_id, &state)?;
                 println!("{}\n", output.response);
             }
+            // H2: always persist on exit, including EOF / non-:quit paths.
+            db.save_state(&cli.session_id, &state)?;
             Ok(())
         }
         Commands::Selfplay { iterations } => {
@@ -116,7 +96,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Doctor => {
-            let graph = seed_graph();
+            let graph = qxfx0_semantic::seed_graph();
             println!("QxFx0 Rust v0.1.0 health check:");
             println!(
                 "  Seed graph: {} atoms, {} relations",

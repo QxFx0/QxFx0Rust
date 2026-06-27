@@ -1,6 +1,7 @@
 pub mod atom;
 pub mod field;
 pub mod frame;
+pub mod governance;
 pub mod illocutionary_force;
 pub mod move_family;
 pub mod proposition_type;
@@ -8,9 +9,13 @@ pub mod relation_type;
 pub mod semantic_intent;
 pub mod system_state;
 
-pub use atom::{Atom, AtomCategory, AtomGraph, AtomId, ObjectCase, Relation, RelationSource};
+pub use atom::{
+    Atom, AtomCategory, AtomGraph, AtomId, ConjugateVector, ObjectCase, Relation, RelationSource,
+    SenseField, SenseVector,
+};
 pub use field::Field;
 pub use frame::SemanticFrame;
+pub use governance::{GovernanceEvent, GovernanceEventType, GovernanceLog};
 pub use illocutionary_force::IllocutionaryForce;
 pub use move_family::CanonicalMoveFamily;
 pub use proposition_type::PropositionType;

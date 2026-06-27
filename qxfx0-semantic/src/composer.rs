@@ -1,6 +1,5 @@
 use qxfx0_types::atom::{AtomGraph, AtomId, GeneratedSurface, PathProof, Relation};
 use qxfx0_types::field::FieldProfile;
-use qxfx0_types::*;
 
 /// Proposition parser — parses user input into typed proposition.
 #[derive(Debug, Clone, PartialEq)]
@@ -200,39 +199,16 @@ impl GraphEngagement {
         let topic = AtomId::new(prop.subject.clone());
         let rels = graph.relations_from(&topic);
 
-        let supporting_types = [
-            RelationType::RelPresupposes,
-            RelationType::RelRequires,
-            RelationType::RelIncludes,
-            RelationType::RelMeans,
-            RelationType::RelDetermines,
-            RelationType::RelClaims,
-        ];
-        let contradicting_types = [
-            RelationType::RelContrastsWith,
-            RelationType::RelDiffersFrom,
-            RelationType::RelNotReducibleTo,
-            RelationType::RelIsNot,
-            RelationType::RelNegates,
-            RelationType::RelDestroys,
-        ];
-        let qualifying_types = [
-            RelationType::RelLimitedBy,
-            RelationType::RelStructures,
-            RelationType::RelPrescribes,
-            RelationType::RelNecessaryFor,
-        ];
-
         let mut result = EngagementResult::default();
 
         for rel in rels.iter() {
-            if supporting_types.contains(&rel.rel_type) {
+            if rel.rel_type.is_supporting() {
                 result.supporting.push((*rel).clone());
             }
-            if contradicting_types.contains(&rel.rel_type) {
+            if rel.rel_type.is_counter() {
                 result.contradicting.push((*rel).clone());
             }
-            if qualifying_types.contains(&rel.rel_type) {
+            if rel.rel_type.is_qualifying() {
                 result.qualifying.push((*rel).clone());
             }
         }
@@ -248,19 +224,31 @@ impl GraphEngagement {
 
     /// BFS shortest path between two atoms (depth ≤ 3).
     pub fn bfs_path(graph: &AtomGraph, from: &AtomId, to: &AtomId) -> Vec<Relation> {
-        // Direct edge
+        use std::collections::VecDeque;
+
+        // Direct edge (depth 1)
         for rel in graph.relations_from(from) {
             if rel.to == *to {
                 return vec![rel.clone()];
             }
         }
 
-        // Two-hop
-        for e1 in graph.relations_from(from) {
-            for e2 in graph.relations_from(&e1.to) {
-                if e2.to == *to && e2.to != *from {
-                    return vec![e1.clone(), e2.clone()];
+        // BFS bounded to depth 3 using VecDeque
+        let mut queue: VecDeque<(AtomId, Vec<Relation>)> = VecDeque::new();
+        queue.push_back((from.clone(), Vec::new()));
+
+        while let Some((current, path)) = queue.pop_front() {
+            let depth = path.len();
+            if depth >= 3 {
+                continue;
+            }
+            for rel in graph.relations_from(&current) {
+                let mut new_path = path.clone();
+                new_path.push(rel.clone());
+                if rel.to == *to {
+                    return new_path;
                 }
+                queue.push_back((rel.to.clone(), new_path));
             }
         }
 
@@ -283,9 +271,9 @@ impl ContextualComposer {
         match prop.mode {
             PropositionMode::Define => {
                 // CF-5: Conatus determines how many paths to explore
-                let n = if fp.conatus_energy > 10.0 {
+                let n = if fp.conatus_energy > 1.2 {
                     5
-                } else if fp.conatus_energy > 5.0 {
+                } else if fp.conatus_energy > 0.6 {
                     3
                 } else {
                     1
@@ -330,14 +318,7 @@ impl ContextualComposer {
         prop: &ParsedProposition,
     ) -> GeneratedSurface {
         let topic = AtomId::new(prop.subject.clone());
-        let mut surface = crate::pathfinder::PathFinder::compose_definition(graph, fp, n, &topic);
-
-        // Holistic mode: prepend intuitive framing
-        if !surface.text.is_empty() {
-            surface.text = format!("Когда я чувствую {}: {}", prop.subject, surface.text);
-        }
-
-        surface
+        crate::pathfinder::PathFinder::compose_definition(graph, fp, n, &topic)
     }
 
     /// CF-5: Deep reflection — anchored to essence trajectory.
@@ -380,7 +361,7 @@ impl ContextualComposer {
         let full_text = rel_texts.join(". ");
 
         GeneratedSurface {
-            text: format!("Возвращаясь к {}: {}.", topic, full_text),
+            text: full_text,
             paths: vec![PathProof {
                 edges: all_rels.clone(),
                 topic: topic.clone(),
@@ -416,15 +397,16 @@ impl ContextualComposer {
 
         let mut response = String::new();
         if !support_text.is_empty() {
-            response.push_str("Я удерживаю позицию. ");
             response.push_str(&support_text);
         }
         if !counter_text.is_empty() {
-            response.push_str(". Но ");
+            if !response.is_empty() {
+                response.push_str(". Но ");
+            }
             response.push_str(&counter_text);
         }
         if response.is_empty() {
-            response = format!("Возможно, ты прав. Я не нахожу достаточных оснований для своей позиции по вопросу о {}.", topic);
+            response = format!("По вопросу о {} у меня нет устоявшейся позиции в графе.", topic);
         }
 
         let all_rels: Vec<Relation> = engagement
@@ -507,7 +489,7 @@ impl ContextualComposer {
             .join(". ");
 
         GeneratedSurface {
-            text: format!("Когда я думаю о {}: {}.", topic, rel_texts),
+            text: rel_texts,
             paths: vec![PathProof {
                 edges: all_rels.clone(),
                 topic: topic.clone(),
@@ -532,10 +514,10 @@ impl ContextualComposer {
             .join(". ");
 
         let response = match (support_text.is_empty(), contra_text.is_empty()) {
-            (false, false) => format!("Я вижу это иначе. {}. Но {}.", support_text, contra_text),
-            (false, true) => format!("Я вижу это так: {}.", support_text),
-            (true, false) => format!("Я не могу согласиться. {}.", contra_text),
-            (true, true) => "У меня нет устоявшейся позиции по этому вопросу.".to_string(),
+            (false, false) => format!("{}. Но {}.", support_text, contra_text),
+            (false, true) => support_text,
+            (true, false) => contra_text,
+            (true, true) => "В графе нет данных по этому вопросу.".to_string(),
         };
 
         let all_rels: Vec<Relation> = engagement

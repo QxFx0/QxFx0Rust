@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// 16 SemanticIntent variants — classified from user input.
+/// 17 SemanticIntent variants — classified from user input.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SemanticIntent {
     IntentDefine(String),
