@@ -27,6 +27,8 @@ use qxfx0_types::atom::AtomId;
 use qxfx0_types::field::FieldProfile;
 use qxfx0_types::system_state::*;
 use qxfx0_types::*;
+use serde::Serialize;
+use std::fmt;
 
 /// Hard bounds for persistent per-session graph growth. Seed data is far
 /// below these limits; they protect long-running sessions with novel inputs.
@@ -679,11 +681,21 @@ pub fn guard_stage(
     ))
 }
 
+/// Uninhabited because the in-memory governance append has no failure path.
+#[derive(Debug, Serialize)]
+pub enum PersistStageError {}
+
+impl fmt::Display for PersistStageError {
+    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
+    }
+}
+
 /// Stage 7: Persist — governance log archiving.
 pub fn persist_stage(
     state: &mut SystemState,
     guarded: GuardedTurnContext,
-) -> Result<PersistedTurnContext, String> {
+) -> Result<PersistedTurnContext, PersistStageError> {
     let blocked = guarded.blocked();
     let family = guarded.family();
 
@@ -763,31 +775,11 @@ mod tests {
         let planned = plan_shadow_stage(&mut state, routed).unwrap();
         let rendered = render_stage(&mut state, planned).unwrap();
 
-        let graph_before = state.semantic.runtime_graph.edges.len();
-        let essence_witnesses_before = state.semantic.essence.witnesses.len();
-        let commitments_before = state
-            .semantic
-            .semantic_commitments
-            .as_ref()
-            .map(|store| store.active.len())
-            .unwrap_or(0);
-
         let finalized = finalize_stage(&mut state, rendered).unwrap();
         let guarded = guard_stage(&mut state, finalized).unwrap();
 
         assert!(guarded.blocked(), "guard should block empty input");
         assert_eq!(guarded.family(), CanonicalMoveFamily::CMRepair);
         assert!(guarded.rejection().is_some());
-        assert!(state.semantic.runtime_graph.edges.len() >= graph_before);
-        assert!(state.semantic.essence.witnesses.len() >= essence_witnesses_before);
-        assert!(
-            state
-                .semantic
-                .semantic_commitments
-                .as_ref()
-                .map(|store| store.active.len())
-                .unwrap_or(0)
-                >= commitments_before
-        );
     }
 }

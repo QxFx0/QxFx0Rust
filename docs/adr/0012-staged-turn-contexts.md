@@ -37,7 +37,7 @@ remain stable.
 
 ## Follow-up
 
-The next change inserts `SelectedTurnContext` and a shadow `PlanOutcome`
+The next change inserts `PlannedTurnContext` and a shadow `PlanOutcome`
 between routing and rendering. `PlanOutcome::Ready` and
 `PlanOutcome::Fallback` must be disjoint, ready claims must be non-empty, and
 propositions must have one canonical storage location.

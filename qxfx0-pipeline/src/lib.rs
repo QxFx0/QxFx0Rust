@@ -26,7 +26,7 @@ use qxfx0_types::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::time::Instant;
-use turn_context::{PersistedTurnContext, StageTraceContext, TurnInputContext};
+use turn_context::{StageTraceContext, TurnInputContext};
 
 pub(crate) const CHALLENGE_PATTERNS: &[&str] = &[
     "это просто",
@@ -128,17 +128,18 @@ fn session_invariant_output(state: &SystemState, reason: &str) -> TurnOutput {
     }
 }
 
-fn execute_stage<I, O, F>(
+fn execute_stage<I, O, E, F>(
     trace: &mut Option<&mut execution_trace::PipelineTrace>,
     stage_name: &str,
     state: &mut SystemState,
     input: I,
     stage: F,
-) -> Result<O, String>
+) -> Result<O, E>
 where
     I: Serialize,
     O: Serialize + StageTraceContext,
-    F: FnOnce(&mut SystemState, I) -> Result<O, String>,
+    E: Serialize,
+    F: FnOnce(&mut SystemState, I) -> Result<O, E>,
 {
     if trace.is_none() {
         return stage(state, input);
@@ -364,14 +365,10 @@ fn process_turn_internal(
     }
 
     // Stage 7: Persist
-    let guarded_for_output = guarded.clone();
     let persisted =
         match execute_stage(&mut trace, "persist", state, guarded, stages::persist_stage) {
             Ok(context) => context,
-            Err(error) => {
-                tracing::warn!("persist_stage failed: {error}");
-                PersistedTurnContext::new(guarded_for_output)
-            }
+            Err(never) => match never {},
         };
 
     let context = persisted.guarded();

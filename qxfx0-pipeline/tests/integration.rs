@@ -316,8 +316,7 @@ fn test_fsm_state_transitions_across_turns() {
 fn test_blocked_turn_preserves_state() {
     let mut state = test_state("block");
 
-    let field_before = state.semantic.field.clone();
-    let essence_before = state.semantic.essence.witnesses.len();
+    let semantic_before = serde_json::to_value(&state.semantic).unwrap();
 
     let input = TurnInput {
         session_id: "block".into(),
@@ -326,11 +325,10 @@ fn test_blocked_turn_preserves_state() {
     let output = process_turn(&input, &mut state);
 
     assert!(output.blocked);
-    assert_eq!(state.semantic.field, field_before);
     assert_eq!(
-        state.semantic.essence.witnesses.len(),
-        essence_before,
-        "blocked turn should not add witnesses"
+        serde_json::to_value(&state.semantic).unwrap(),
+        semantic_before,
+        "blocked turn must roll back the complete persistent semantic state"
     );
     assert_eq!(state.dialogue.turn_count, 1);
     assert_eq!(state.dialogue.history.len(), 1);
