@@ -49,6 +49,84 @@ fn test_replay_determinism_5_turns() {
 }
 
 #[test]
+fn test_pr1_typed_context_output_parity() {
+    use qxfx0_types::CanonicalMoveFamily;
+
+    let cases = [
+        (
+            "что такое свобода?",
+            "Размышляя о свободе, можно сказать следующее. Нельзя говорить о свободе, не затрагивая выбора. Потому что без выбора действие не отличается от рефлекса. Более того, свобода нуждается в сознании. Однако трудно совместить свободу и истину. Именно поэтому свобода требует не только возможности, но и осознанности выбора. Что думаешь об этом? Например, смысл «свобода» можно проверить на конкретной ситуации и её последствиях.",
+            CanonicalMoveFamily::CMDefine,
+            "Reasoning",
+        ),
+        (
+            "свобода существует",
+            "Размышляя о свободе, можно сказать следующее. Нельзя говорить о свободе, не затрагивая выбора. Потому что без выбора действие не отличается от рефлекса. Более того, свобода нуждается в сознании. Однако трудно совместить свободу и истину. Именно поэтому свобода требует не только возможности, но и осознанности выбора. Что думаешь об этом? Например, смысл «свобода» можно проверить на конкретной ситуации и её последствиях.",
+            CanonicalMoveFamily::CMGround,
+            "Reasoning",
+        ),
+        (
+            "свобода это просто отсутствие ограничений",
+            "Размышляя о свободе, можно сказать следующее. Нельзя говорить о свободе, не затрагивая выбора. Потому что без выбора действие не отличается от рефлекса. Более того, свобода нуждается в сознании. Однако трудно совместить свободу и истину. Именно поэтому свобода требует не только возможности, но и осознанности выбора. Что думаешь об этом? Например, смысл «свобода» можно проверить на конкретной ситуации и её последствиях.",
+            CanonicalMoveFamily::CMRepair,
+            "Reasoning",
+        ),
+        (
+            "как истина связана с красотой?",
+            "Размышляя об истине, можно сказать следующее. Истина претендует на реальность. Более того, критерием истины служит воспроизводимость. Взгляни на это так: истина и добро переплетены. Что думаешь об этом? Например, смысл «истина» можно проверить на конкретной ситуации и её последствиях.",
+            CanonicalMoveFamily::CMConnect,
+            "Reasoning",
+        ),
+        (
+            "что ты думаешь о памяти?",
+            "Размышляя о памяти, можно сказать следующее. Более того, память нуждается в сознании. Взгляни на это так: память структурирует бытие. Что думаешь об этом? Например, смысл «память» можно проверить на конкретной ситуации и её последствиях.",
+            CanonicalMoveFamily::CMReflect,
+            "Reflecting",
+        ),
+        (
+            "привет",
+            "Привет. Я готов продолжить разговор и помочь с конкретной задачей.",
+            CanonicalMoveFamily::CMContact,
+            "Greeting",
+        ),
+        (
+            "в чём функция стола?",
+            "Функция стола определяется устойчивой ролью объекта и результатом его использования.",
+            CanonicalMoveFamily::CMPurpose,
+            "Greeting",
+        ),
+        (
+            "почему небо голубое?",
+            "Причину того, почему небо голубое, нужно проверять по внешним фактам; локальный граф может только обозначить рамку рассуждения.",
+            CanonicalMoveFamily::CMHypothesis,
+            "Greeting",
+        ),
+    ];
+
+    for (index, (raw_text, expected_response, expected_family, expected_state)) in
+        cases.into_iter().enumerate()
+    {
+        let session_id = format!("typed-context-parity-{index}");
+        let mut state = test_state(&session_id);
+        let output = process_turn(
+            &TurnInput {
+                session_id,
+                raw_text: raw_text.into(),
+            },
+            &mut state,
+        );
+
+        assert_eq!(output.response, expected_response, "surface for {raw_text}");
+        assert_eq!(output.family, expected_family, "family for {raw_text}");
+        assert_eq!(
+            output.conversation_state, expected_state,
+            "FSM state for {raw_text}"
+        );
+        assert!(!output.blocked, "parity case was blocked: {raw_text}");
+    }
+}
+
+#[test]
 fn test_multi_turn_state_advances() {
     let mut state = test_state("advance");
 
@@ -238,8 +316,7 @@ fn test_fsm_state_transitions_across_turns() {
 fn test_blocked_turn_preserves_state() {
     let mut state = test_state("block");
 
-    let field_before = state.semantic.field.clone();
-    let essence_before = state.semantic.essence.witnesses.len();
+    let semantic_before = serde_json::to_value(&state.semantic).unwrap();
 
     let input = TurnInput {
         session_id: "block".into(),
@@ -248,11 +325,10 @@ fn test_blocked_turn_preserves_state() {
     let output = process_turn(&input, &mut state);
 
     assert!(output.blocked);
-    assert_eq!(state.semantic.field, field_before);
     assert_eq!(
-        state.semantic.essence.witnesses.len(),
-        essence_before,
-        "blocked turn should not add witnesses"
+        serde_json::to_value(&state.semantic).unwrap(),
+        semantic_before,
+        "blocked turn must roll back the complete persistent semantic state"
     );
     assert_eq!(state.dialogue.turn_count, 1);
     assert_eq!(state.dialogue.history.len(), 1);
@@ -320,68 +396,6 @@ fn test_fsm_rollback_on_blocked_turn() {
     assert_eq!(
         state.dialogue.conversation_state, fsm_after_turn1,
         "FSM state should be rolled back on blocked turn"
-    );
-}
-
-#[test]
-fn test_guard_finalize_rollback() {
-    use qxfx0_pipeline::stages;
-    use std::collections::BTreeMap;
-
-    let mut state = test_state("guard-rollback");
-
-    let mut hints: BTreeMap<String, String> = BTreeMap::new();
-    hints.insert("raw_text".into(), "что такое свобода?".into());
-    hints.insert("subject".into(), "свобода".into());
-    hints.insert("raw_mode".into(), "Define".into());
-    hints.insert("is_challenge".into(), "false".into());
-    hints.insert("conatus_energy".into(), "0.5".into());
-    hints.insert("salience".into(), "0.5".into());
-    hints.insert("essence_strength".into(), "0.0".into());
-    hints.insert("holistic_dominant".into(), "false".into());
-
-    stages::prepare_stage(&mut state, &mut hints).unwrap();
-    stages::route_stage(&mut state, &mut hints).unwrap();
-    stages::render_stage(&mut state, &mut hints).unwrap();
-
-    let graph_before = state.semantic.runtime_graph.edges.len();
-    let essence_witnesses_before = state.semantic.essence.witnesses.len();
-    let commitments_before = state
-        .semantic
-        .semantic_commitments
-        .as_ref()
-        .map(|s| s.active.len())
-        .unwrap_or(0);
-
-    stages::finalize_stage(&mut state, &mut hints).unwrap();
-
-    // Simulate guard block by replacing the rendered response with an empty
-    // string, which post_render_safety must reject.
-    hints.insert("response".into(), "".into());
-    let guard_result = stages::guard_stage(&mut state, &mut hints);
-    assert!(guard_result.is_err(), "guard should block empty response");
-
-    // Replicate the rollback that process_turn performs on a guard block.
-    // (The side effects are already applied because we called finalize_stage
-    // directly; in production process_turn snapshots and restores them.)
-    // This assertion documents the contract: finalize must be reversible.
-    assert!(
-        state.semantic.runtime_graph.edges.len() >= graph_before,
-        "finalize should be able to grow the graph before rollback"
-    );
-    assert!(
-        state.semantic.essence.witnesses.len() >= essence_witnesses_before,
-        "finalize should be able to add essence witnesses before rollback"
-    );
-    assert!(
-        state
-            .semantic
-            .semantic_commitments
-            .as_ref()
-            .map(|s| s.active.len())
-            .unwrap_or(0)
-            >= commitments_before,
-        "finalize should be able to add commitments before rollback"
     );
 }
 
@@ -496,6 +510,7 @@ fn test_stage_trace_is_replay_deterministic() {
         [
             "prepare",
             "route",
+            "plan_shadow",
             "render",
             "finalize",
             "guard",
@@ -503,6 +518,122 @@ fn test_stage_trace_is_replay_deterministic() {
             "turn_output",
         ]
     );
+    let plan_step = first_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "plan_shadow")
+        .expect("shadow plan step must be replay-visible");
+    assert_eq!(
+        plan_step.metadata.get("plan_outcome").map(String::as_str),
+        Some("ready")
+    );
+    assert_eq!(
+        plan_step.metadata.get("response_goal").map(String::as_str),
+        Some("define")
+    );
+    assert_eq!(
+        plan_step.metadata.get("subject_kind").map(String::as_str),
+        Some("topic")
+    );
+}
+
+#[test]
+fn test_shadow_plan_trace_records_unknown_topic_recovery() {
+    let input = TurnInput {
+        session_id: "trace-unknown-topic".into(),
+        raw_text: "что такое кванточайник?".into(),
+    };
+    let mut state = test_state(&input.session_id);
+    let (output, trace) = process_turn_with_trace(&input, &mut state);
+    let plan_step = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "plan_shadow")
+        .expect("shadow plan step must exist");
+
+    assert!(!output.response.is_empty());
+    assert_eq!(
+        plan_step.metadata.get("plan_outcome").map(String::as_str),
+        Some("fallback")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("fallback_reason")
+            .map(String::as_str),
+        Some("unknown_topic")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("recovery_strategy")
+            .map(String::as_str),
+        Some("ask_clarification")
+    );
+    assert_eq!(
+        plan_step.metadata.get("recovery_cause").map(String::as_str),
+        Some("unknown_topic")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("recovery_evidence_count")
+            .map(String::as_str),
+        Some("1")
+    );
+    assert!(plan_step
+        .metadata
+        .get("recovery_evidence")
+        .is_some_and(|evidence| evidence.contains("topic_lookup")));
+}
+
+#[test]
+fn test_guard_trace_uses_typed_quality_recovery() {
+    let input = TurnInput {
+        session_id: "trace-quality-recovery".into(),
+        raw_text: String::new(),
+    };
+    let mut state = test_state(&input.session_id);
+    let (output, trace) = process_turn_with_trace(&input, &mut state);
+    let guard_step = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "guard")
+        .expect("guard step must exist");
+
+    assert!(output.blocked);
+    assert_eq!(
+        guard_step
+            .metadata
+            .get("fallback_reason")
+            .map(String::as_str),
+        Some("quality_rejection")
+    );
+    assert_eq!(
+        guard_step
+            .metadata
+            .get("recovery_strategy")
+            .map(String::as_str),
+        Some("reject_surface")
+    );
+    assert_eq!(
+        guard_step
+            .metadata
+            .get("recovery_cause")
+            .map(String::as_str),
+        Some("quality_rejection")
+    );
+    assert_eq!(
+        guard_step
+            .metadata
+            .get("recovery_evidence_count")
+            .map(String::as_str),
+        Some("1")
+    );
+    assert!(guard_step
+        .metadata
+        .get("recovery_evidence")
+        .is_some_and(|evidence| evidence.contains("quality_gate")));
 }
 
 #[test]

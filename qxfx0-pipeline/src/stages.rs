@@ -1,9 +1,12 @@
-//! Pipeline stages — synchronous, sequential processing.
-//! Each stage takes &mut SystemState + &mut hints and returns Result<(), String>.
+//! Pipeline stages — synchronous, sequential processing over typed contexts.
 
 use crate::conversation_fsm::{
     fsm_state_discriminant, fsm_state_from_discriminant, initial_state, proposition_to_event,
     transition as fsm_transition,
+};
+use crate::turn_context::{
+    FinalizedTurnContext, GuardedTurnContext, PersistedTurnContext, PlannedTurnContext,
+    PreparedTurnContext, RenderedTurnContext, RoutedTurnContext, TurnInputContext,
 };
 use qxfx0_commitment::{CommitResult, CommitmentOps};
 use qxfx0_guard::ContentQualityGate;
@@ -17,16 +20,15 @@ use qxfx0_self::{
 use qxfx0_semantic::{
     cached_semantic_network, derive_atoms, network::activate as network_activate,
     normalize_punctuation, seed_graph, ContentSelector, DiscourseComposer, DiscourseStyle,
-    PropositionParser, SenseDecomposer, Verbosity,
+    FallbackReason, PropositionMode, PropositionParser, QualityGatePhase, RecoveryEvidence,
+    RecoveryTrace, SenseDecomposer, Verbosity,
 };
 use qxfx0_types::atom::AtomId;
 use qxfx0_types::field::FieldProfile;
 use qxfx0_types::system_state::*;
 use qxfx0_types::*;
-use std::collections::BTreeMap;
-
-/// Shared hints passed between stages.
-pub type Hints = BTreeMap<String, String>;
+use serde::Serialize;
+use std::fmt;
 
 /// Hard bounds for persistent per-session graph growth. Seed data is far
 /// below these limits; they protect long-running sessions with novel inputs.
@@ -34,8 +36,10 @@ pub const MAX_RUNTIME_ATOMS: usize = 10_000;
 pub const MAX_RUNTIME_EDGES: usize = 20_000;
 
 /// Stage 1: Prepare — Self Layer: Conatus, Salience, Deliberation.
-pub fn prepare_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), String> {
-    // Subject/mode already parsed in process_turn and stashed in hints.
+pub fn prepare_stage(
+    state: &mut SystemState,
+    input: TurnInputContext,
+) -> Result<PreparedTurnContext, String> {
     let field = state.semantic.field.clone();
     let conatus_energy = Conatus::compute(&field);
     let salience = Salience::compute(&field);
@@ -94,61 +98,33 @@ pub fn prepare_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), S
         legitimacy: deliberation.plan.confidence,
     });
 
-    hints.insert("conatus_energy".into(), conatus_energy.to_string());
-    hints.insert("salience".into(), salience.to_string());
-    hints.insert("holistic_dominant".into(), holistic_dominant.to_string());
-    hints.insert("essence_strength".into(), essence_strength.to_string());
-    hints.insert(
-        "deliberation_family".into(),
-        format!("{:?}", deliberation.plan.family),
-    );
-    hints.insert(
-        "deliberation_rule".into(),
-        format!("{:?}", deliberation.trace.rule),
-    );
-
     // W3: Populate has_enough — true when the subject exists in the runtime graph,
     // meaning we have enough semantic context to reason about it.
-    let subject = hints.get("subject").cloned().unwrap_or_default();
     let has_enough = state
         .semantic
         .runtime_graph
         .atoms
-        .contains_key(&AtomId::new(subject));
-    hints.insert("has_enough".into(), has_enough.to_string());
+        .contains_key(&AtomId::new(input.subject()));
 
-    Ok(())
+    Ok(PreparedTurnContext::new(
+        input,
+        conatus_energy,
+        salience,
+        holistic_dominant,
+        essence_strength,
+        deliberation.plan.family,
+        deliberation.trace.rule,
+        has_enough,
+    ))
 }
 
 /// Stage 2: Route — FSM-driven move family selection (persisted across turns).
-pub fn route_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), String> {
-    let mode_str = hints.get("raw_mode").cloned().unwrap_or_default();
-    let has_info = hints
-        .get("has_enough")
-        .map(|s| s == "true")
-        .unwrap_or(false);
-
-    let short_mode = if mode_str.contains("Challenge") {
-        "Challenge"
-    } else if mode_str.contains("Define") {
-        "Define"
-    } else if mode_str.contains("Reflect") {
-        "Reflect"
-    } else if mode_str.contains("Assert") {
-        "Assert"
-    } else if mode_str.contains("Connect") {
-        "Connect"
-    } else if mode_str.contains("Greeting") {
-        "Greeting"
-    } else if mode_str.contains("Purpose") {
-        "Purpose"
-    } else if mode_str.contains("WorldCause") {
-        "WorldCause"
-    } else {
-        "Other"
-    };
-
-    let event = proposition_to_event(short_mode, has_info);
+pub fn route_stage(
+    state: &mut SystemState,
+    prepared: PreparedTurnContext,
+) -> Result<RoutedTurnContext, String> {
+    let mode = prepared.input().mode();
+    let event = proposition_to_event(mode, prepared.has_enough());
 
     // Restore FSM state from discriminant (or use initial).
     let current = match state
@@ -176,52 +152,52 @@ pub fn route_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), Str
     // Route-driven family selection: FSM mode determines the move family,
     // overriding the deliberation's family (which is the prepare-stage proposal).
     // This ensures distinct propositions map to distinct families.
-    let family = match short_mode {
-        "Challenge" => CanonicalMoveFamily::CMRepair,
-        "Define" => CanonicalMoveFamily::CMDefine,
-        "Connect" => CanonicalMoveFamily::CMConnect,
-        "Assert" => CanonicalMoveFamily::CMGround,
-        "Reflect" => CanonicalMoveFamily::CMReflect,
-        "Greeting" => CanonicalMoveFamily::CMContact,
-        "Purpose" => CanonicalMoveFamily::CMPurpose,
-        "WorldCause" => CanonicalMoveFamily::CMHypothesis,
-        _ => match &state.last_turn_decision {
-            Some(decision) => decision.family,
-            None => CanonicalMoveFamily::CMGround,
-        },
-    };
+    let family = family_for_mode(mode);
 
-    hints.insert("family".into(), format!("{:?}", family));
-    hints.insert("conversation_state".into(), format!("{:?}", next));
-    Ok(())
+    Ok(RoutedTurnContext::new(prepared, family, next))
 }
 
-/// Stage 3: Render — compose response from graph (2-level cascade: Conjugate → ContentSelector).
-pub fn render_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), String> {
-    let raw = hints.get("raw_text").cloned().unwrap_or_default();
-    let subject = hints.get("subject").cloned().unwrap_or_default();
-    let is_challenge = hints
-        .get("is_challenge")
-        .map(|s| s == "true")
-        .unwrap_or(false);
+fn family_for_mode(mode: PropositionMode) -> CanonicalMoveFamily {
+    match mode {
+        PropositionMode::Challenge => CanonicalMoveFamily::CMRepair,
+        PropositionMode::Define => CanonicalMoveFamily::CMDefine,
+        PropositionMode::Connect => CanonicalMoveFamily::CMConnect,
+        PropositionMode::Assert => CanonicalMoveFamily::CMGround,
+        PropositionMode::Reflect => CanonicalMoveFamily::CMReflect,
+        PropositionMode::Greeting => CanonicalMoveFamily::CMContact,
+        PropositionMode::Purpose => CanonicalMoveFamily::CMPurpose,
+        PropositionMode::WorldCause => CanonicalMoveFamily::CMHypothesis,
+    }
+}
+
+/// Stage 3: build an observational plan without changing renderer authority.
+pub fn plan_shadow_stage(
+    _state: &mut SystemState,
+    routed: RoutedTurnContext,
+) -> Result<PlannedTurnContext, String> {
+    let shadow_plan = crate::shadow_plan::build_shadow_plan(&routed);
+    Ok(PlannedTurnContext::new(routed, shadow_plan))
+}
+
+/// Stage 4: Render — compose response from graph (2-level cascade: Conjugate → ContentSelector).
+pub fn render_stage(
+    state: &mut SystemState,
+    planned: PlannedTurnContext,
+) -> Result<RenderedTurnContext, String> {
+    let routed = planned.routed();
+    let raw = routed.prepared().input().raw_text().to_owned();
+    let subject = routed.prepared().input().subject().to_owned();
+    let mode = routed.prepared().input().mode();
+    let is_challenge = routed.prepared().input().is_challenge();
 
     // Seed the runtime graph once if empty — persist it so subsequent turns
     // render against the full semantic graph, not a near-empty one.
     if state.semantic.runtime_graph.edges.is_empty() {
         state.semantic.runtime_graph = seed_graph();
     }
-    let conatus_energy: f64 = hints
-        .get("conatus_energy")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0.5);
-    let salience: f64 = hints
-        .get("salience")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0.5);
-    let essence_strength: f64 = hints
-        .get("essence_strength")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0.0);
+    let conatus_energy = routed.prepared().conatus_energy();
+    let salience = routed.prepared().salience();
+    let essence_strength = routed.prepared().essence_strength();
 
     let fp = FieldProfile::from_self(
         &state.semantic.field,
@@ -229,20 +205,26 @@ pub fn render_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), St
         salience,
         essence_strength,
     );
-    hints.insert("path_depth".into(), fp.path_depth().to_string());
+    let path_depth = fp.path_depth();
 
     // Specialized intents must reach their typed frames directly. The
     // generic discourse composer intentionally emits an introduction even
     // with no predicates, so these frames cannot be implemented as a late
     // fallback.
-    let mode = hints.get("raw_mode").cloned().unwrap_or_default();
-    if mode.contains("Greeting") || mode.contains("Purpose") || mode.contains("WorldCause") {
+    if matches!(
+        mode,
+        PropositionMode::Greeting | PropositionMode::Purpose | PropositionMode::WorldCause
+    ) {
         let mut prop = PropositionParser::parse(&raw);
         prop.subject = subject.clone();
         let frame = RenderEngine::frame_from_proposition(&prop);
         let response = RenderEngine::render_frame(&frame, &mut state.semantic, &fp, "");
-        hints.insert("response".into(), normalize_punctuation(&response));
-        return Ok(());
+        return Ok(RenderedTurnContext::new(
+            planned,
+            normalize_punctuation(&response),
+            path_depth,
+            false,
+        ));
     }
 
     let sn = cached_semantic_network(&mut state.semantic);
@@ -251,10 +233,7 @@ pub fn render_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), St
     let sense_vectors = SenseDecomposer::decompose(&raw, graph);
 
     // Build style from Self Layer state
-    let holistic_dominant = hints
-        .get("holistic_dominant")
-        .map(|s| s == "true")
-        .unwrap_or(false);
+    let holistic_dominant = routed.prepared().holistic_dominant();
     let angst: f64 = state.semantic.essence.angst;
     let essence_committed = state.semantic.essence.commitment.is_some();
     let style = style_from_state(
@@ -277,6 +256,7 @@ pub fn render_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), St
 
     // Topic continuity: if we have a prior topic and it's different,
     // look for bridging predicates that connect last_topic → current topic.
+    let mut has_bridge = false;
     if let Some(ref last_topic) = state.dialogue.last_topic {
         if last_topic != &subject {
             let bridge = qxfx0_semantic::GraphEngagement::bfs_path(
@@ -285,7 +265,7 @@ pub fn render_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), St
                 &AtomId::new(subject.clone()),
             );
             if !bridge.is_empty() {
-                hints.insert("has_bridge".into(), "true".into());
+                has_bridge = true;
                 // Boost consolidation when topics are bridged — the system
                 // is building a coherent narrative thread.
                 state.semantic.field.consolidation =
@@ -316,8 +296,7 @@ pub fn render_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), St
 
     // Fallback: RenderEngine (frame-based rendering if both composers failed)
     if response.is_empty() {
-        let raw_text = hints.get("raw_text").cloned().unwrap_or_default();
-        let prop = PropositionParser::parse(&raw_text);
+        let prop = PropositionParser::parse(&raw);
         let frame = RenderEngine::frame_from_proposition(&prop);
         response = RenderEngine::render_frame(&frame, &mut state.semantic, &fp, "");
     }
@@ -326,8 +305,12 @@ pub fn render_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), St
             "Я не знаю этот смысл, но он вызывает определенный резонанс в моей системе.".into();
     }
 
-    hints.insert("response".into(), normalize_punctuation(&response));
-    Ok(())
+    Ok(RenderedTurnContext::new(
+        planned,
+        normalize_punctuation(&response),
+        path_depth,
+        has_bridge,
+    ))
 }
 
 fn style_from_state(
@@ -386,51 +369,35 @@ fn style_from_state(
     }
 }
 
-/// Stage 4: Finalize — witness + commitment + graph growth + derive_atoms.
-pub fn finalize_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), String> {
+/// Stage 5: Finalize — witness + commitment + graph growth + derive_atoms.
+pub fn finalize_stage(
+    state: &mut SystemState,
+    rendered: RenderedTurnContext,
+) -> Result<FinalizedTurnContext, String> {
     let edge_count_before = state.semantic.runtime_graph.edges.len();
-    let response = hints.get("response").cloned().unwrap_or_default();
-    let subject = hints.get("subject").cloned().unwrap_or_default();
-    let mode_str = hints.get("raw_mode").cloned().unwrap_or_default();
+    let response = rendered.response().to_owned();
+    let subject = rendered.routed().prepared().input().subject().to_owned();
+    let mode = rendered.routed().prepared().input().mode();
 
-    let essence_mode = if mode_str.contains("Challenge") || mode_str.contains("Assert") {
-        EssenceMode::Defend
-    } else if mode_str.contains("Define")
-        || mode_str.contains("Reflect")
-        || mode_str.contains("Purpose")
-        || mode_str.contains("WorldCause")
-    {
-        EssenceMode::Define
-    } else if mode_str.contains("Connect") {
-        EssenceMode::Revise
-    } else {
-        EssenceMode::Commit
+    let essence_mode = match mode {
+        PropositionMode::Challenge | PropositionMode::Assert => EssenceMode::Defend,
+        PropositionMode::Define
+        | PropositionMode::Reflect
+        | PropositionMode::Purpose
+        | PropositionMode::WorldCause => EssenceMode::Define,
+        PropositionMode::Connect => EssenceMode::Revise,
+        PropositionMode::Greeting => EssenceMode::Commit,
     };
 
     let turn = state.dialogue.turn_count + 1;
-    let conatus_energy: f64 = hints
-        .get("conatus_energy")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(1.0);
-    let holistic_dominant = hints
-        .get("holistic_dominant")
-        .map(|v| v == "true")
-        .unwrap_or(false);
-    let salience: f64 = hints
-        .get("salience")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0.5);
+    let conatus_energy = rendered.routed().prepared().conatus_energy();
+    let holistic_dominant = rendered.routed().prepared().holistic_dominant();
+    let salience = rendered.routed().prepared().salience();
 
-    // Use the real deliberation trace from prepare_stage hints, not synthesized values.
-    let driver = hints
-        .get("deliberation_rule")
-        .cloned()
-        .unwrap_or_else(|| "RuleFormalAdvantage".into());
+    // Preserve the existing witness surface while carrying the rule as an enum.
+    let driver = format!("{:?}", rendered.routed().prepared().deliberation_rule());
     let reconcile_rule = &driver;
-    let agreement = hints
-        .get("deliberation_rule")
-        .map(|_| "PartialAgreement")
-        .unwrap_or("NoAgreement");
+    let agreement = "PartialAgreement";
     let divergence = if holistic_dominant {
         salience.abs()
     } else {
@@ -590,14 +557,29 @@ pub fn finalize_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), 
         state.semantic.cached_edge_count = 0;
     }
 
-    Ok(())
+    Ok(FinalizedTurnContext::new(rendered))
 }
 
-/// Stage 5: Guard — content quality + post-render safety.
-pub fn guard_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), String> {
-    let response = hints.get("response").cloned().unwrap_or_default();
-    let topic = hints.get("subject").cloned().unwrap_or_default();
-    let raw_input = hints.get("raw_text").cloned().unwrap_or_default();
+/// Stage 6: Guard — content quality + post-render safety.
+pub fn guard_stage(
+    state: &mut SystemState,
+    finalized: FinalizedTurnContext,
+) -> Result<GuardedTurnContext, String> {
+    let response = finalized.rendered().response().to_owned();
+    let topic = finalized
+        .rendered()
+        .routed()
+        .prepared()
+        .input()
+        .subject()
+        .to_owned();
+    let raw_input = finalized
+        .rendered()
+        .routed()
+        .prepared()
+        .input()
+        .raw_text()
+        .to_owned();
     let history: &[String] = &state.dialogue.history;
 
     let guard_config = qxfx0_guard::GuardConfig::default();
@@ -614,46 +596,67 @@ pub fn guard_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), Str
             guard_status: status.clone(),
             legitimacy: 0.0,
         });
-        hints.insert("family".into(), "CMRepair".into());
-        hints.insert("guard_status".into(), format!("{:?}", status));
-        hints.insert("blocked".into(), "true".into());
-        return Err(reason.into());
+        return Ok(GuardedTurnContext::new(
+            finalized,
+            CanonicalMoveFamily::CMRepair,
+            status,
+            true,
+            Some(reason.into()),
+            Some(RecoveryTrace::enabled(
+                FallbackReason::QualityRejection,
+                RecoveryEvidence::QualityGate {
+                    phase: QualityGatePhase::Input,
+                    detail: reason.into(),
+                },
+            )),
+        ));
     }
 
     let safety_status = ContentQualityGate::post_render_safety(&response, history, &guard_config);
     if matches!(&safety_status, GuardStatus::InvariantBlock(_)) {
-        let status_debug = format!("{:?}", safety_status);
+        let recovery_detail = format!("{safety_status:?}");
         state.last_turn_decision = Some(TurnDecision {
             family: CanonicalMoveFamily::CMRepair,
             force: IllocutionaryForce::IFAssert,
-            guard_status: safety_status,
+            guard_status: safety_status.clone(),
             legitimacy: 0.0,
         });
-        hints.insert("family".into(), "CMRepair".into());
-        hints.insert("guard_status".into(), status_debug);
-        hints.insert("blocked".into(), "true".into());
-        return Err("Blocked by post-render safety".into());
+        return Ok(GuardedTurnContext::new(
+            finalized,
+            CanonicalMoveFamily::CMRepair,
+            safety_status,
+            true,
+            Some("Blocked by post-render safety".into()),
+            Some(RecoveryTrace::enabled(
+                FallbackReason::QualityRejection,
+                RecoveryEvidence::QualityGate {
+                    phase: QualityGatePhase::PostRenderSafety,
+                    detail: recovery_detail,
+                },
+            )),
+        ));
     }
 
     let verdict = ContentQualityGate::evaluate(&topic, &response);
-    let (blocked, status) = match verdict {
-        qxfx0_guard::QualityVerdict::Block(reason) => (true, GuardStatus::Blocked(reason)),
+    let (blocked, status, recovery_detail) = match verdict {
+        qxfx0_guard::QualityVerdict::Block(reason) => {
+            let detail = reason.clone();
+            (true, GuardStatus::Blocked(reason), Some(detail))
+        }
         qxfx0_guard::QualityVerdict::Pass => {
             let status = if matches!(safety_status, GuardStatus::InvariantWarn(_)) {
                 safety_status
             } else {
                 GuardStatus::Allowed
             };
-            (false, status)
+            (false, status, None)
         }
     };
 
     let family = if blocked {
-        hints.insert("family".into(), "CMRepair".into());
         CanonicalMoveFamily::CMRepair
     } else {
-        let family_str = hints.get("family").cloned().unwrap_or_default();
-        CanonicalMoveFamily::from_hint(&family_str)
+        finalized.rendered().routed().family()
     };
 
     state.last_turn_decision = Some(TurnDecision {
@@ -663,21 +666,38 @@ pub fn guard_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), Str
         legitimacy: if blocked { 0.0 } else { 1.0 },
     });
 
-    hints.insert("guard_status".into(), format!("{:?}", status));
-    hints.insert("blocked".into(), blocked.to_string());
+    let rejection = blocked.then(|| "Blocked by content quality gate".into());
+    let recovery = recovery_detail.map(|detail| {
+        RecoveryTrace::enabled(
+            FallbackReason::QualityRejection,
+            RecoveryEvidence::QualityGate {
+                phase: QualityGatePhase::ContentQuality,
+                detail,
+            },
+        )
+    });
+    Ok(GuardedTurnContext::new(
+        finalized, family, status, blocked, rejection, recovery,
+    ))
+}
 
-    if blocked {
-        Err("Blocked by content quality gate".into())
-    } else {
-        Ok(())
+/// Uninhabited because the in-memory governance append has no failure path.
+#[derive(Debug, Serialize)]
+pub enum PersistStageError {}
+
+impl fmt::Display for PersistStageError {
+    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
     }
 }
 
-/// Stage 6: Persist — governance log archiving.
-pub fn persist_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), String> {
-    let blocked = hints.get("blocked").map(|s| s == "true").unwrap_or(false);
-    let family_str = hints.get("family").cloned().unwrap_or_default();
-    let family = CanonicalMoveFamily::from_hint(&family_str);
+/// Stage 7: Persist — governance log archiving.
+pub fn persist_stage(
+    state: &mut SystemState,
+    guarded: GuardedTurnContext,
+) -> Result<PersistedTurnContext, PersistStageError> {
+    let blocked = guarded.blocked();
+    let family = guarded.family();
 
     let warned = state
         .last_turn_decision
@@ -709,6 +729,57 @@ pub fn persist_stage(state: &mut SystemState, hints: &mut Hints) -> Result<(), S
     state.governance_log.append(event);
     state.governance_log.trim(10_000);
 
-    hints.insert("governance_events".into(), "1".into());
-    Ok(())
+    Ok(PersistedTurnContext::new(guarded))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_proposition_mode_has_a_typed_move_family() {
+        let cases = [
+            (PropositionMode::Define, CanonicalMoveFamily::CMDefine),
+            (PropositionMode::Assert, CanonicalMoveFamily::CMGround),
+            (PropositionMode::Challenge, CanonicalMoveFamily::CMRepair),
+            (PropositionMode::Connect, CanonicalMoveFamily::CMConnect),
+            (PropositionMode::Reflect, CanonicalMoveFamily::CMReflect),
+            (PropositionMode::Greeting, CanonicalMoveFamily::CMContact),
+            (PropositionMode::Purpose, CanonicalMoveFamily::CMPurpose),
+            (
+                PropositionMode::WorldCause,
+                CanonicalMoveFamily::CMHypothesis,
+            ),
+        ];
+
+        for (mode, expected) in cases {
+            assert_eq!(family_for_mode(mode), expected);
+        }
+    }
+
+    #[test]
+    fn guard_rejection_is_a_typed_outcome_after_finalize() {
+        let mut state = SystemState {
+            session_id: "guard-rollback".into(),
+            ..SystemState::default()
+        };
+        let raw_text = String::new();
+        let input = TurnInputContext::new(
+            state.session_id.clone(),
+            raw_text.clone(),
+            PropositionParser::parse(&raw_text),
+            false,
+        );
+        let prepared = prepare_stage(&mut state, input).unwrap();
+        let routed = route_stage(&mut state, prepared).unwrap();
+        let planned = plan_shadow_stage(&mut state, routed).unwrap();
+        let rendered = render_stage(&mut state, planned).unwrap();
+
+        let finalized = finalize_stage(&mut state, rendered).unwrap();
+        let guarded = guard_stage(&mut state, finalized).unwrap();
+
+        assert!(guarded.blocked(), "guard should block empty input");
+        assert_eq!(guarded.family(), CanonicalMoveFamily::CMRepair);
+        assert!(guarded.rejection().is_some());
+    }
 }
