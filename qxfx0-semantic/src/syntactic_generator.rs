@@ -143,13 +143,8 @@ pub fn detect_gender(word: &str) -> &'static str {
     match last {
         'а' | 'я' => "f",
         'о' | 'е' => "n",
-        'ь' => {
-            if s.ends_with("ость") || s.ends_with("есть") || s.ends_with("знь") {
-                "f"
-            } else {
-                "m"
-            }
-        }
+        'ь' if s.ends_with("ость") || s.ends_with("есть") || s.ends_with("знь") => "f",
+        'ь' => "m",
         _ => "m",
     }
 }
