@@ -183,7 +183,7 @@ cargo build --workspace --release
 target/release/qxfx0 --db /tmp/qxfx0-doctor.db doctor
 ```
 
-The workspace currently contains 353 Rust tests across unit, integration, migration, CLI replay and soak coverage. The count may increase; the commands above are the authoritative release gate.
+The workspace currently contains 358 Rust tests across unit, integration, migration, CLI replay and soak coverage. The count may increase; the commands above are the authoritative release gate.
 
 ## Operational limits
 

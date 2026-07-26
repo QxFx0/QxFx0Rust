@@ -411,7 +411,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-cli"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -436,7 +436,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-code"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "serde",
  "thiserror",
@@ -444,7 +444,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-commitment"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-types",
  "serde",
@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-governance"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-types",
  "serde",
@@ -462,7 +462,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-guard"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-types",
  "serde",
@@ -472,7 +472,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-morphology"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-types",
  "serde",
@@ -482,7 +482,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-persistence"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-semantic",
  "qxfx0-types",
@@ -494,7 +494,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-pipeline"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-commitment",
  "qxfx0-guard",
@@ -511,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-render"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-semantic",
  "qxfx0-types",
@@ -522,7 +522,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-self"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-types",
  "serde",
@@ -531,7 +531,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-semantic"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "qxfx0-morphology",
  "qxfx0-types",
@@ -542,7 +542,7 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-types"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
