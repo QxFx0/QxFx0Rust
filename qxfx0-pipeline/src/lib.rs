@@ -8,7 +8,8 @@ mod conjugate_pipeline;
 pub mod conversation_fsm;
 #[path = "tracing.rs"]
 pub mod execution_trace;
-pub mod stages;
+mod stages;
+pub mod turn_context;
 #[cfg(test)]
 mod vector_pipeline;
 
@@ -22,9 +23,9 @@ use qxfx0_types::atom::AtomId;
 use qxfx0_types::system_state::*;
 use qxfx0_types::*;
 use serde::Serialize;
-use stages::Hints;
 use std::collections::BTreeMap;
 use std::time::Instant;
+use turn_context::{PersistedTurnContext, StageTraceContext, TurnInputContext};
 
 pub(crate) const CHALLENGE_PATTERNS: &[&str] = &[
     "это просто",
@@ -77,22 +78,21 @@ pub struct TurnOutput {
     pub conversation_state: String,
 }
 
-/// Build a recovery output after a stage failure, using the rolled-back state.
-fn recovery_output(state: &SystemState, hints: &Hints) -> TurnOutput {
-    let family_str = hints.get("family").cloned().unwrap_or_default();
-    let family = CanonicalMoveFamily::from_hint(&family_str);
-    let conversation_state = hints
-        .get("conversation_state")
-        .cloned()
+#[derive(Debug, Clone, Default)]
+struct RecoverySnapshot {
+    family: Option<CanonicalMoveFamily>,
+    conversation_state: Option<ConversationState>,
+    conatus_energy: Option<f64>,
+    path_depth: Option<usize>,
+}
+
+/// Build a recovery output after a stage fault, using the rolled-back state.
+fn recovery_output(state: &SystemState, recovery: &RecoverySnapshot) -> TurnOutput {
+    let family = recovery.family.unwrap_or(CanonicalMoveFamily::CMGround);
+    let conversation_state = recovery
+        .conversation_state
+        .map(|value| format!("{:?}", value))
         .unwrap_or_else(|| format!("{:?}", family));
-    let conatus_energy = hints
-        .get("conatus_energy")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0.0);
-    let path_depth = hints
-        .get("path_depth")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
 
     TurnOutput {
         response: "QxFx0: внутренняя ошибка обработки, состояние восстановлено.".into(),
@@ -101,8 +101,8 @@ fn recovery_output(state: &SystemState, hints: &Hints) -> TurnOutput {
         blocked: true,
         commitment_engaged: false,
         governance_events: state.governance_log.len(),
-        conatus_energy,
-        path_depth,
+        conatus_energy: recovery.conatus_energy.unwrap_or(0.0),
+        path_depth: recovery.path_depth.unwrap_or(0),
         holistic_dominant: state.semantic.adjunction.holistic_dominant,
         conversation_state,
     }
@@ -127,33 +127,40 @@ fn session_invariant_output(state: &SystemState, reason: &str) -> TurnOutput {
     }
 }
 
-fn execute_stage<F>(
+fn execute_stage<I, O, F>(
     trace: &mut Option<&mut execution_trace::PipelineTrace>,
     stage_name: &str,
     state: &mut SystemState,
-    hints: &mut Hints,
+    input: I,
     stage: F,
-) -> Result<(), String>
+) -> Result<O, String>
 where
-    F: FnOnce(&mut SystemState, &mut Hints) -> Result<(), String>,
+    I: Serialize,
+    O: Serialize + StageTraceContext,
+    F: FnOnce(&mut SystemState, I) -> Result<O, String>,
 {
     if trace.is_none() {
-        return stage(state, hints);
+        return stage(state, input);
     }
 
-    let input_digest = execution_trace::calculate_stable_digest(&(&*state, &*hints))
+    let input_digest = execution_trace::calculate_stable_digest(&(&*state, &input))
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     let start = Instant::now();
-    let result = stage(state, hints);
-    let output_digest = execution_trace::calculate_stable_digest(&(&*state, &*hints, &result))
+    let result = stage(state, input);
+    let output_digest = execution_trace::calculate_stable_digest(&(&*state, &result))
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     let mut metadata = BTreeMap::new();
     metadata.insert(
         "status".into(),
-        if result.is_ok() { "ok" } else { "error" }.into(),
+        result
+            .as_ref()
+            .map_or("error", StageTraceContext::trace_status)
+            .into(),
     );
-    if let Some(family) = hints.get("family") {
-        metadata.insert("family".into(), family.clone());
+    if let Ok(output) = &result {
+        if let Some(family) = output.trace_family() {
+            metadata.insert("family".into(), format!("{:?}", family));
+        }
     }
     if let Some(trace) = trace.as_deref_mut() {
         trace.record_step(
@@ -233,11 +240,9 @@ fn process_turn_internal(
     }
 
     let snapshot = state.clone();
-    let mut hints: Hints = BTreeMap::new();
-    hints.insert("raw_text".into(), input.raw_text.clone());
-    hints.insert("session_id".into(), input.session_id.clone());
+    let mut recovery = RecoverySnapshot::default();
 
-    // Parse once, stash subject/mode/is_challenge for all stages.
+    // Parse once and retain the typed proposition throughout the pipeline.
     let mut prop = PropositionParser::parse(&input.raw_text);
 
     // Normalize subject to nominative form using the runtime graph.
@@ -262,90 +267,105 @@ fn process_turn_internal(
         &state.semantic.runtime_graph,
     );
 
-    hints.insert("subject".into(), prop.subject.clone());
-    hints.insert("raw_mode".into(), format!("{:?}", prop.mode));
     let is_challenge = detect_challenge(&input.raw_text);
-    hints.insert("is_challenge".into(), is_challenge.to_string());
+    let input_context = TurnInputContext::new(
+        input.session_id.clone(),
+        input.raw_text.clone(),
+        prop,
+        is_challenge,
+    );
 
     // Stage 1: Prepare
-    if let Err(e) = execute_stage(
+    let prepared = match execute_stage(
         &mut trace,
         "prepare",
         state,
-        &mut hints,
+        input_context,
         stages::prepare_stage,
     ) {
-        tracing::error!("prepare_stage failed: {e}");
-        *state = snapshot;
-        return recovery_output(state, &hints);
-    }
+        Ok(context) => context,
+        Err(error) => {
+            tracing::error!("prepare_stage failed: {error}");
+            *state = snapshot;
+            return recovery_output(state, &recovery);
+        }
+    };
+    recovery.conatus_energy = Some(prepared.conatus_energy());
 
     // Stage 2: Route
-    if let Err(e) = execute_stage(&mut trace, "route", state, &mut hints, stages::route_stage) {
-        tracing::error!("route_stage failed: {e}");
-        *state = snapshot;
-        return recovery_output(state, &hints);
-    }
+    let routed = match execute_stage(&mut trace, "route", state, prepared, stages::route_stage) {
+        Ok(context) => context,
+        Err(error) => {
+            tracing::error!("route_stage failed: {error}");
+            *state = snapshot;
+            return recovery_output(state, &recovery);
+        }
+    };
+    recovery.family = Some(routed.family());
+    recovery.conversation_state = Some(routed.conversation_state());
 
     // Stage 3: Render
-    if let Err(e) = execute_stage(
-        &mut trace,
-        "render",
-        state,
-        &mut hints,
-        stages::render_stage,
-    ) {
-        tracing::error!("render_stage failed: {e}");
-        *state = snapshot;
-        return recovery_output(state, &hints);
-    }
+    let rendered = match execute_stage(&mut trace, "render", state, routed, stages::render_stage) {
+        Ok(context) => context,
+        Err(error) => {
+            tracing::error!("render_stage failed: {error}");
+            *state = snapshot;
+            return recovery_output(state, &recovery);
+        }
+    };
+    recovery.path_depth = Some(rendered.path_depth());
 
     // Stage 4: Finalize
-    if let Err(e) = execute_stage(
+    let finalized = match execute_stage(
         &mut trace,
         "finalize",
         state,
-        &mut hints,
+        rendered,
         stages::finalize_stage,
     ) {
-        tracing::error!("finalize_stage failed: {e}");
-        *state = snapshot;
-        return recovery_output(state, &hints);
-    }
+        Ok(context) => context,
+        Err(error) => {
+            tracing::error!("finalize_stage failed: {error}");
+            *state = snapshot;
+            return recovery_output(state, &recovery);
+        }
+    };
 
     // Stage 5: Guard
-    let guard_result = execute_stage(&mut trace, "guard", state, &mut hints, stages::guard_stage);
-    if let Err(e) = &guard_result {
-        // A guard rejection is an expected turn outcome, not a pipeline
-        // failure. It must still be archived and returned as a safe response.
-        tracing::warn!("guard rejected turn: {e}");
+    let guarded = match execute_stage(&mut trace, "guard", state, finalized, stages::guard_stage) {
+        Ok(context) => context,
+        Err(error) => {
+            tracing::error!("guard_stage failed: {error}");
+            *state = snapshot;
+            return recovery_output(state, &recovery);
+        }
+    };
+    if let Some(rejection) = guarded.rejection() {
+        // A guard rejection is an expected turn outcome, not a pipeline fault.
+        tracing::warn!("guard rejected turn: {rejection}");
     }
 
     // Stage 6: Persist
-    if let Err(e) = execute_stage(
-        &mut trace,
-        "persist",
-        state,
-        &mut hints,
-        stages::persist_stage,
-    ) {
-        tracing::warn!("persist_stage failed: {e}");
-    }
+    let guarded_for_output = guarded.clone();
+    let persisted =
+        match execute_stage(&mut trace, "persist", state, guarded, stages::persist_stage) {
+            Ok(context) => context,
+            Err(error) => {
+                tracing::warn!("persist_stage failed: {error}");
+                PersistedTurnContext::new(guarded_for_output)
+            }
+        };
 
-    let mut response = hints
-        .get("response")
-        .cloned()
-        .unwrap_or_else(|| "QxFx0: обработка завершена.".into());
-    let family_str = hints.get("family").cloned().unwrap_or_default();
-    let family = CanonicalMoveFamily::from_hint(&family_str);
-    let guard_status = match &state.last_turn_decision {
-        Some(decision) => decision.guard_status.clone(),
-        None => GuardStatus::Allowed,
-    };
-    let blocked = matches!(
-        guard_status,
-        GuardStatus::Blocked(_) | GuardStatus::InvariantBlock(_)
-    ) || guard_result.is_err();
+    let context = persisted.guarded();
+    let mut response = context.finalized().rendered().response().to_owned();
+    let family = context.family();
+    let guard_status = context.guard_status().clone();
+    let blocked = context.blocked();
+    let routed = context.finalized().rendered().routed();
+    let subject = routed.prepared().input().subject().to_owned();
+    let conversation_state = format!("{:?}", routed.conversation_state());
+    let conatus_energy = routed.prepared().conatus_energy();
+    let path_depth = context.finalized().rendered().path_depth();
 
     // A rejected response must not mutate semantic/self state. Governance and
     // the explicit blocked decision remain, then dialogue bookkeeping below
@@ -365,7 +385,7 @@ fn process_turn_internal(
     // history, but skip field adjustments (the response was rejected).
     state.dialogue.turn_count += 1;
     state.dialogue.last_family = family;
-    state.dialogue.last_topic = Some(prop.subject.clone());
+    state.dialogue.last_topic = Some(subject.clone());
     state.dialogue.history.push(response.clone());
     if state.dialogue.history.len() > 10_000 {
         let excess = state.dialogue.history.len() - 10_000;
@@ -379,7 +399,7 @@ fn process_turn_internal(
             .semantic
             .runtime_graph
             .atoms
-            .contains_key(&AtomId::new(prop.subject.clone()));
+            .contains_key(&AtomId::new(subject.clone()));
         if topic_in_graph {
             state.semantic.field.confidence = (state.semantic.field.confidence + 0.1).min(1.0);
             state.semantic.field.resonance = (state.semantic.field.resonance + 0.05).min(1.0);
@@ -404,24 +424,8 @@ fn process_turn_internal(
             (state.semantic.field.atmosphere.arousal - 0.02).max(0.0);
     }
 
-    // W10: conversation_state carries the FSM state (from route_stage), not the move family.
-    let conversation_state = hints
-        .get("conversation_state")
-        .cloned()
-        .unwrap_or_else(|| format!("{:?}", family));
-
-    let conatus_energy: f64 = hints
-        .get("conatus_energy")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0.0);
-
-    let path_depth: usize = hints
-        .get("path_depth")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
-
     let commitment_engaged = if let Some(store) = &state.semantic.semantic_commitments {
-        let eng = qxfx0_commitment::CommitmentOps::detect_engagement(store, &prop.subject);
+        let eng = qxfx0_commitment::CommitmentOps::detect_engagement(store, &subject);
         !eng.engaged_ids.is_empty()
     } else {
         false
