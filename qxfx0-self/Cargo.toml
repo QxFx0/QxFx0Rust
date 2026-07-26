@@ -9,3 +9,6 @@ license.workspace = true
 qxfx0-types = { path = "../qxfx0-types" }
 serde.workspace = true
 sha2.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
