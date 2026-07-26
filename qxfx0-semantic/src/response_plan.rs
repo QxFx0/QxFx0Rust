@@ -359,6 +359,25 @@ pub enum SemanticProposition {
     ExternalReference(ExternalSubject),
 }
 
+impl SemanticProposition {
+    /// Returns the canonical semantic slots when this proposition is a
+    /// topic-grounded predicate. Other proposition forms deliberately have no
+    /// synthetic slot representation.
+    pub fn canonical_slots(&self) -> Option<(&SemanticId, &SemanticId, &SemanticId)> {
+        match self {
+            Self::CanonicalPredicate {
+                subject,
+                relation,
+                object,
+            } => Some((subject, relation, object)),
+            Self::Counterpoint { .. }
+            | Self::Consequence { .. }
+            | Self::DialogueAct(_)
+            | Self::ExternalReference(_) => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlannedClaim {
     id: ClaimId,
@@ -483,6 +502,15 @@ pub enum DialogueObligation {
     ContinueContact,
 }
 
+impl DialogueObligation {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::CheckAgreement { .. } => "check_agreement",
+            Self::ContinueContact => "continue_contact",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DerivationRule {
@@ -491,6 +519,18 @@ pub enum DerivationRule {
     AddedConsequence,
     AppliedDialogueContract,
     GroundedExternalReference,
+}
+
+impl DerivationRule {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::SelectedAdmittedPredicate => "selected_admitted_predicate",
+            Self::AddedCounterpoint => "added_counterpoint",
+            Self::AddedConsequence => "added_consequence",
+            Self::AppliedDialogueContract => "applied_dialogue_contract",
+            Self::GroundedExternalReference => "grounded_external_reference",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
