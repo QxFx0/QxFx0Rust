@@ -1,6 +1,6 @@
 //! QxFx0 Pipeline — synchronous sequential turn processing.
 //!
-//! 6 stages: Prepare → Route → Render → Finalize → Guard → Persist.
+//! 7 stages: Prepare → Route → PlanShadow → Render → Finalize → Guard → Persist.
 //! No async, no Tokio, no external middleware — pure synchronous call chain.
 
 #[cfg(test)]
@@ -8,6 +8,7 @@ mod conjugate_pipeline;
 pub mod conversation_fsm;
 #[path = "tracing.rs"]
 pub mod execution_trace;
+pub mod shadow_plan;
 mod stages;
 pub mod turn_context;
 #[cfg(test)]
@@ -161,6 +162,7 @@ where
         if let Some(family) = output.trace_family() {
             metadata.insert("family".into(), format!("{:?}", family));
         }
+        metadata.extend(output.trace_metadata());
     }
     if let Some(trace) = trace.as_deref_mut() {
         trace.record_step(
@@ -174,7 +176,7 @@ where
     result
 }
 
-/// Process a single turn synchronously through all 6 stages.
+/// Process a single turn synchronously through all 7 stages.
 ///
 /// If any stage before the guard fails, the state is rolled back to its
 /// pre-turn snapshot and a blocked recovery output is returned. This prevents
@@ -304,8 +306,24 @@ fn process_turn_internal(
     recovery.family = Some(routed.family());
     recovery.conversation_state = Some(routed.conversation_state());
 
-    // Stage 3: Render
-    let rendered = match execute_stage(&mut trace, "render", state, routed, stages::render_stage) {
+    // Stage 3: Shadow plan (observational; renderer authority is unchanged)
+    let planned = match execute_stage(
+        &mut trace,
+        "plan_shadow",
+        state,
+        routed,
+        stages::plan_shadow_stage,
+    ) {
+        Ok(context) => context,
+        Err(error) => {
+            tracing::error!("plan_shadow_stage failed: {error}");
+            *state = snapshot;
+            return recovery_output(state, &recovery);
+        }
+    };
+
+    // Stage 4: Render
+    let rendered = match execute_stage(&mut trace, "render", state, planned, stages::render_stage) {
         Ok(context) => context,
         Err(error) => {
             tracing::error!("render_stage failed: {error}");
@@ -315,7 +333,7 @@ fn process_turn_internal(
     };
     recovery.path_depth = Some(rendered.path_depth());
 
-    // Stage 4: Finalize
+    // Stage 5: Finalize
     let finalized = match execute_stage(
         &mut trace,
         "finalize",
@@ -331,7 +349,7 @@ fn process_turn_internal(
         }
     };
 
-    // Stage 5: Guard
+    // Stage 6: Guard
     let guarded = match execute_stage(&mut trace, "guard", state, finalized, stages::guard_stage) {
         Ok(context) => context,
         Err(error) => {
@@ -345,7 +363,7 @@ fn process_turn_internal(
         tracing::warn!("guard rejected turn: {rejection}");
     }
 
-    // Stage 6: Persist
+    // Stage 7: Persist
     let guarded_for_output = guarded.clone();
     let persisted =
         match execute_stage(&mut trace, "persist", state, guarded, stages::persist_stage) {

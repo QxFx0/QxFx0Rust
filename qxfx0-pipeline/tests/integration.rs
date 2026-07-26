@@ -512,6 +512,7 @@ fn test_stage_trace_is_replay_deterministic() {
         [
             "prepare",
             "route",
+            "plan_shadow",
             "render",
             "finalize",
             "guard",
@@ -519,6 +520,122 @@ fn test_stage_trace_is_replay_deterministic() {
             "turn_output",
         ]
     );
+    let plan_step = first_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "plan_shadow")
+        .expect("shadow plan step must be replay-visible");
+    assert_eq!(
+        plan_step.metadata.get("plan_outcome").map(String::as_str),
+        Some("ready")
+    );
+    assert_eq!(
+        plan_step.metadata.get("response_goal").map(String::as_str),
+        Some("define")
+    );
+    assert_eq!(
+        plan_step.metadata.get("subject_kind").map(String::as_str),
+        Some("topic")
+    );
+}
+
+#[test]
+fn test_shadow_plan_trace_records_unknown_topic_recovery() {
+    let input = TurnInput {
+        session_id: "trace-unknown-topic".into(),
+        raw_text: "что такое кванточайник?".into(),
+    };
+    let mut state = test_state(&input.session_id);
+    let (output, trace) = process_turn_with_trace(&input, &mut state);
+    let plan_step = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "plan_shadow")
+        .expect("shadow plan step must exist");
+
+    assert!(!output.response.is_empty());
+    assert_eq!(
+        plan_step.metadata.get("plan_outcome").map(String::as_str),
+        Some("fallback")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("fallback_reason")
+            .map(String::as_str),
+        Some("unknown_topic")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("recovery_strategy")
+            .map(String::as_str),
+        Some("ask_clarification")
+    );
+    assert_eq!(
+        plan_step.metadata.get("recovery_cause").map(String::as_str),
+        Some("unknown_topic")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("recovery_evidence_count")
+            .map(String::as_str),
+        Some("1")
+    );
+    assert!(plan_step
+        .metadata
+        .get("recovery_evidence")
+        .is_some_and(|evidence| evidence.contains("topic_lookup")));
+}
+
+#[test]
+fn test_guard_trace_uses_typed_quality_recovery() {
+    let input = TurnInput {
+        session_id: "trace-quality-recovery".into(),
+        raw_text: String::new(),
+    };
+    let mut state = test_state(&input.session_id);
+    let (output, trace) = process_turn_with_trace(&input, &mut state);
+    let guard_step = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "guard")
+        .expect("guard step must exist");
+
+    assert!(output.blocked);
+    assert_eq!(
+        guard_step
+            .metadata
+            .get("fallback_reason")
+            .map(String::as_str),
+        Some("quality_rejection")
+    );
+    assert_eq!(
+        guard_step
+            .metadata
+            .get("recovery_strategy")
+            .map(String::as_str),
+        Some("reject_surface")
+    );
+    assert_eq!(
+        guard_step
+            .metadata
+            .get("recovery_cause")
+            .map(String::as_str),
+        Some("quality_rejection")
+    );
+    assert_eq!(
+        guard_step
+            .metadata
+            .get("recovery_evidence_count")
+            .map(String::as_str),
+        Some("1")
+    );
+    assert!(guard_step
+        .metadata
+        .get("recovery_evidence")
+        .is_some_and(|evidence| evidence.contains("quality_gate")));
 }
 
 #[test]

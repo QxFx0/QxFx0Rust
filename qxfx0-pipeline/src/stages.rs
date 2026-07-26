@@ -5,8 +5,8 @@ use crate::conversation_fsm::{
     transition as fsm_transition,
 };
 use crate::turn_context::{
-    FinalizedTurnContext, GuardedTurnContext, PersistedTurnContext, PreparedTurnContext,
-    RenderedTurnContext, RoutedTurnContext, TurnInputContext,
+    FinalizedTurnContext, GuardedTurnContext, PersistedTurnContext, PlannedTurnContext,
+    PreparedTurnContext, RenderedTurnContext, RoutedTurnContext, TurnInputContext,
 };
 use qxfx0_commitment::{CommitResult, CommitmentOps};
 use qxfx0_guard::ContentQualityGate;
@@ -20,7 +20,8 @@ use qxfx0_self::{
 use qxfx0_semantic::{
     cached_semantic_network, derive_atoms, network::activate as network_activate,
     normalize_punctuation, seed_graph, ContentSelector, DiscourseComposer, DiscourseStyle,
-    PropositionMode, PropositionParser, SenseDecomposer, Verbosity,
+    FallbackReason, PropositionMode, PropositionParser, QualityGatePhase, RecoveryEvidence,
+    RecoveryTrace, SenseDecomposer, Verbosity,
 };
 use qxfx0_types::atom::AtomId;
 use qxfx0_types::field::FieldProfile;
@@ -167,11 +168,21 @@ fn family_for_mode(mode: PropositionMode) -> CanonicalMoveFamily {
     }
 }
 
-/// Stage 3: Render — compose response from graph (2-level cascade: Conjugate → ContentSelector).
+/// Stage 3: build an observational plan without changing renderer authority.
+pub fn plan_shadow_stage(
+    _state: &mut SystemState,
+    routed: RoutedTurnContext,
+) -> Result<PlannedTurnContext, String> {
+    let shadow_plan = crate::shadow_plan::build_shadow_plan(&routed);
+    Ok(PlannedTurnContext::new(routed, shadow_plan))
+}
+
+/// Stage 4: Render — compose response from graph (2-level cascade: Conjugate → ContentSelector).
 pub fn render_stage(
     state: &mut SystemState,
-    routed: RoutedTurnContext,
+    planned: PlannedTurnContext,
 ) -> Result<RenderedTurnContext, String> {
+    let routed = planned.routed();
     let raw = routed.prepared().input().raw_text().to_owned();
     let subject = routed.prepared().input().subject().to_owned();
     let mode = routed.prepared().input().mode();
@@ -207,7 +218,7 @@ pub fn render_stage(
         let frame = RenderEngine::frame_from_proposition(&prop);
         let response = RenderEngine::render_frame(&frame, &mut state.semantic, &fp, "");
         return Ok(RenderedTurnContext::new(
-            routed,
+            planned,
             normalize_punctuation(&response),
             path_depth,
             false,
@@ -293,7 +304,7 @@ pub fn render_stage(
     }
 
     Ok(RenderedTurnContext::new(
-        routed,
+        planned,
         normalize_punctuation(&response),
         path_depth,
         has_bridge,
@@ -356,7 +367,7 @@ fn style_from_state(
     }
 }
 
-/// Stage 4: Finalize — witness + commitment + graph growth + derive_atoms.
+/// Stage 5: Finalize — witness + commitment + graph growth + derive_atoms.
 pub fn finalize_stage(
     state: &mut SystemState,
     rendered: RenderedTurnContext,
@@ -547,7 +558,7 @@ pub fn finalize_stage(
     Ok(FinalizedTurnContext::new(rendered))
 }
 
-/// Stage 5: Guard — content quality + post-render safety.
+/// Stage 6: Guard — content quality + post-render safety.
 pub fn guard_stage(
     state: &mut SystemState,
     finalized: FinalizedTurnContext,
@@ -589,11 +600,19 @@ pub fn guard_stage(
             status,
             true,
             Some(reason.into()),
+            Some(RecoveryTrace::enabled(
+                FallbackReason::QualityRejection,
+                RecoveryEvidence::QualityGate {
+                    phase: QualityGatePhase::Input,
+                    detail: reason.into(),
+                },
+            )),
         ));
     }
 
     let safety_status = ContentQualityGate::post_render_safety(&response, history, &guard_config);
     if matches!(&safety_status, GuardStatus::InvariantBlock(_)) {
+        let recovery_detail = format!("{safety_status:?}");
         state.last_turn_decision = Some(TurnDecision {
             family: CanonicalMoveFamily::CMRepair,
             force: IllocutionaryForce::IFAssert,
@@ -606,19 +625,29 @@ pub fn guard_stage(
             safety_status,
             true,
             Some("Blocked by post-render safety".into()),
+            Some(RecoveryTrace::enabled(
+                FallbackReason::QualityRejection,
+                RecoveryEvidence::QualityGate {
+                    phase: QualityGatePhase::PostRenderSafety,
+                    detail: recovery_detail,
+                },
+            )),
         ));
     }
 
     let verdict = ContentQualityGate::evaluate(&topic, &response);
-    let (blocked, status) = match verdict {
-        qxfx0_guard::QualityVerdict::Block(reason) => (true, GuardStatus::Blocked(reason)),
+    let (blocked, status, recovery_detail) = match verdict {
+        qxfx0_guard::QualityVerdict::Block(reason) => {
+            let detail = reason.clone();
+            (true, GuardStatus::Blocked(reason), Some(detail))
+        }
         qxfx0_guard::QualityVerdict::Pass => {
             let status = if matches!(safety_status, GuardStatus::InvariantWarn(_)) {
                 safety_status
             } else {
                 GuardStatus::Allowed
             };
-            (false, status)
+            (false, status, None)
         }
     };
 
@@ -636,12 +665,21 @@ pub fn guard_stage(
     });
 
     let rejection = blocked.then(|| "Blocked by content quality gate".into());
+    let recovery = recovery_detail.map(|detail| {
+        RecoveryTrace::enabled(
+            FallbackReason::QualityRejection,
+            RecoveryEvidence::QualityGate {
+                phase: QualityGatePhase::ContentQuality,
+                detail,
+            },
+        )
+    });
     Ok(GuardedTurnContext::new(
-        finalized, family, status, blocked, rejection,
+        finalized, family, status, blocked, rejection, recovery,
     ))
 }
 
-/// Stage 6: Persist — governance log archiving.
+/// Stage 7: Persist — governance log archiving.
 pub fn persist_stage(
     state: &mut SystemState,
     guarded: GuardedTurnContext,
@@ -722,7 +760,8 @@ mod tests {
         );
         let prepared = prepare_stage(&mut state, input).unwrap();
         let routed = route_stage(&mut state, prepared).unwrap();
-        let rendered = render_stage(&mut state, routed).unwrap();
+        let planned = plan_shadow_stage(&mut state, routed).unwrap();
+        let rendered = render_stage(&mut state, planned).unwrap();
 
         let graph_before = state.semantic.runtime_graph.edges.len();
         let essence_witnesses_before = state.semantic.essence.witnesses.len();

@@ -4,11 +4,13 @@
 //! already-routed turn. Public accessors expose only immutable stage evidence.
 
 use crate::conversation_fsm::ConversationState;
+use crate::shadow_plan::ShadowPlanOutcome;
 use qxfx0_self::deliberation::ReconcileRule;
-use qxfx0_semantic::{ParsedProposition, PropositionMode};
+use qxfx0_semantic::{ParsedProposition, PlanOutcome, PropositionMode, RecoveryTrace};
 use qxfx0_types::system_state::GuardStatus;
 use qxfx0_types::CanonicalMoveFamily;
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TurnInputContext {
@@ -161,8 +163,31 @@ impl RoutedTurnContext {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RenderedTurnContext {
+pub struct PlannedTurnContext {
     routed: RoutedTurnContext,
+    shadow_plan: ShadowPlanOutcome,
+}
+
+impl PlannedTurnContext {
+    pub(crate) fn new(routed: RoutedTurnContext, shadow_plan: ShadowPlanOutcome) -> Self {
+        Self {
+            routed,
+            shadow_plan,
+        }
+    }
+
+    pub fn routed(&self) -> &RoutedTurnContext {
+        &self.routed
+    }
+
+    pub fn shadow_plan(&self) -> &ShadowPlanOutcome {
+        &self.shadow_plan
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RenderedTurnContext {
+    planned: PlannedTurnContext,
     response: String,
     path_depth: usize,
     has_bridge: bool,
@@ -170,21 +195,25 @@ pub struct RenderedTurnContext {
 
 impl RenderedTurnContext {
     pub(crate) fn new(
-        routed: RoutedTurnContext,
+        planned: PlannedTurnContext,
         response: String,
         path_depth: usize,
         has_bridge: bool,
     ) -> Self {
         Self {
-            routed,
+            planned,
             response,
             path_depth,
             has_bridge,
         }
     }
 
+    pub fn planned(&self) -> &PlannedTurnContext {
+        &self.planned
+    }
+
     pub fn routed(&self) -> &RoutedTurnContext {
-        &self.routed
+        self.planned.routed()
     }
 
     pub fn response(&self) -> &str {
@@ -222,6 +251,7 @@ pub struct GuardedTurnContext {
     guard_status: GuardStatus,
     blocked: bool,
     rejection: Option<String>,
+    recovery: Option<RecoveryTrace>,
 }
 
 impl GuardedTurnContext {
@@ -231,6 +261,7 @@ impl GuardedTurnContext {
         guard_status: GuardStatus,
         blocked: bool,
         rejection: Option<String>,
+        recovery: Option<RecoveryTrace>,
     ) -> Self {
         Self {
             finalized,
@@ -238,6 +269,7 @@ impl GuardedTurnContext {
             guard_status,
             blocked,
             rejection,
+            recovery,
         }
     }
 
@@ -259,6 +291,10 @@ impl GuardedTurnContext {
 
     pub fn rejection(&self) -> Option<&str> {
         self.rejection.as_deref()
+    }
+
+    pub fn recovery(&self) -> Option<&RecoveryTrace> {
+        self.recovery.as_ref()
     }
 }
 
@@ -285,6 +321,10 @@ pub(crate) trait StageTraceContext {
     fn trace_status(&self) -> &'static str {
         "ok"
     }
+
+    fn trace_metadata(&self) -> BTreeMap<String, String> {
+        BTreeMap::new()
+    }
 }
 
 impl StageTraceContext for PreparedTurnContext {}
@@ -292,6 +332,38 @@ impl StageTraceContext for PreparedTurnContext {}
 impl StageTraceContext for RoutedTurnContext {
     fn trace_family(&self) -> Option<CanonicalMoveFamily> {
         Some(self.family())
+    }
+}
+
+impl StageTraceContext for PlannedTurnContext {
+    fn trace_family(&self) -> Option<CanonicalMoveFamily> {
+        Some(self.routed().family())
+    }
+
+    fn trace_metadata(&self) -> BTreeMap<String, String> {
+        let mut metadata = BTreeMap::from([(
+            "plan_outcome".into(),
+            self.shadow_plan().kind().as_str().into(),
+        )]);
+        match self.shadow_plan() {
+            PlanOutcome::Ready(plan) => {
+                metadata.insert("plan_version".into(), plan.version().as_str().into());
+                metadata.insert("response_goal".into(), plan.goal().as_str().into());
+                metadata.insert("subject_kind".into(), plan.subject().kind().into());
+            }
+            PlanOutcome::Fallback(plan) => {
+                metadata.insert("plan_version".into(), plan.version().as_str().into());
+                metadata.insert("response_goal".into(), plan.goal().as_str().into());
+                append_recovery_metadata(&mut metadata, plan.recovery());
+                metadata.insert(
+                    "subject_kind".into(),
+                    plan.subject()
+                        .map_or("none", qxfx0_semantic::FallbackSubject::kind)
+                        .into(),
+                );
+            }
+        }
+        metadata
     }
 }
 
@@ -319,10 +391,38 @@ impl StageTraceContext for GuardedTurnContext {
             "ok"
         }
     }
+
+    fn trace_metadata(&self) -> BTreeMap<String, String> {
+        self.recovery().map_or_else(BTreeMap::new, |recovery| {
+            let mut metadata = BTreeMap::new();
+            append_recovery_metadata(&mut metadata, recovery);
+            metadata
+        })
+    }
 }
 
 impl StageTraceContext for PersistedTurnContext {
     fn trace_family(&self) -> Option<CanonicalMoveFamily> {
         Some(self.guarded().family())
     }
+}
+
+fn append_recovery_metadata(metadata: &mut BTreeMap<String, String>, recovery: &RecoveryTrace) {
+    let cause = recovery.cause().as_str();
+    metadata.insert("fallback_reason".into(), cause.into());
+    metadata.insert("recovery_cause".into(), cause.into());
+    metadata.insert("recovery_policy".into(), recovery.policy().as_str().into());
+    metadata.insert(
+        "recovery_strategy".into(),
+        recovery.strategy().as_str().into(),
+    );
+    metadata.insert(
+        "recovery_evidence_count".into(),
+        recovery.evidence().len().to_string(),
+    );
+    metadata.insert(
+        "recovery_evidence".into(),
+        serde_json::to_string(recovery.evidence())
+            .unwrap_or_else(|error| format!("serialization_error:{error}")),
+    );
 }
