@@ -21,7 +21,8 @@ Tasks to complete:
 5. Ensure cargo build and cargo test pass — all 85+ existing tests plus new ones
 
 Read all existing code first, understand the patterns, then extend. Do NOT break existing tests.
-  Writer:   ✏️ accounts/fireworks/models/kimi-k2p7-code
+  Writer:   ✏️ QxFx0
+  Writer model: accounts/fireworks/models/kimi-k2p7-code
   Reviewer: 🔍 accounts/fireworks/models/glm-5p2
   Max rounds: 3
 

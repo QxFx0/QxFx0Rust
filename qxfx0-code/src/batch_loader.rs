@@ -1,6 +1,6 @@
-//! Batch loader — converts Kimi-generated batch data into CodeGraph atoms.
+//! Batch loader — converts QxFx0 batch data into CodeGraph atoms.
 //!
-//! Kimi batches use a simpler schema (no TypedParam/return_type).
+//! QxFx0 batches use a simpler schema (no TypedParam/return_type).
 //! This loader parses signatures to extract type information where possible
 //! and creates CodeAtom entries compatible with our CodeGraph.
 
@@ -21,7 +21,7 @@ pub struct AtomInput<'a> {
     pub tags: &'a [&'a str],
 }
 
-/// Convert a simple atom (from Kimi batch format) into our CodeAtom.
+/// Convert a simple atom (from QxFx0 batch format) into our CodeAtom.
 /// Parses the signature string to extract return type and params heuristically.
 pub fn convert_atom(input: &AtomInput) -> CodeAtom {
     let (params, return_type) = parse_signature(input.signature, input.lang, input.name);
@@ -44,7 +44,7 @@ pub fn convert_atom(input: &AtomInput) -> CodeAtom {
     }
 }
 
-/// Convert a simple relation (from Kimi batch format) into our CodeRelation.
+/// Convert a simple relation (from QxFx0 batch format) into our CodeRelation.
 pub fn convert_relation(
     from: &str,
     to: &str,

@@ -1,6 +1,6 @@
-//! Registry builder — loads Kimi-generated batch data into CodeGraph.
+//! Registry builder — loads QxFx0 batch data into CodeGraph.
 //!
-//! Since Kimi batches are separate crate files with their own schema,
+//! Since QxFx0 batches are separate crate files with their own schema,
 //! we define the atom/relation data inline here using `convert_atom`.
 //! In production, this would be generated from the batch crate's `build_batch()`.
 
