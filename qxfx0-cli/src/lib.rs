@@ -5,7 +5,7 @@
 
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_pipeline::{process_turn, TurnInput};
-use qxfx0_semantic::seed_graph;
+use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
 use serde::Serialize;
 use std::time::Instant;
@@ -188,6 +188,45 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
             graph_violations.join("; ")
         },
     });
+
+    match argued_topic_registry() {
+        Ok(registry) => {
+            let metrics = registry.metrics();
+            let missing_topics = registry
+                .topics()
+                .filter(|topic| !graph.atoms.contains_key(topic.topic()))
+                .map(|topic| topic.topic().as_str())
+                .collect::<Vec<_>>();
+            report.checks.push(DoctorCheck {
+                name: "Content plan assets",
+                passed: missing_topics.is_empty(),
+                details: if missing_topics.is_empty() {
+                    format!(
+                        concat!(
+                            "recognition_topics_total={}, content_predicates_total={}, ",
+                            "argued_topics_admitted={}, argued_predicates_admitted={}, ",
+                            "profile_enabled={}"
+                        ),
+                        metrics.recognition_topics_total,
+                        metrics.content_predicates_total,
+                        metrics.argued_topics_admitted,
+                        metrics.argued_predicates_admitted,
+                        metrics.profile_enabled,
+                    )
+                } else {
+                    format!(
+                        "admitted topics absent from seed graph: {}",
+                        missing_topics.join(", ")
+                    )
+                },
+            });
+        }
+        Err(error) => report.checks.push(DoctorCheck {
+            name: "Content plan assets",
+            passed: false,
+            details: error.into(),
+        }),
+    }
 
     let templates = qxfx0_semantic::TemplateRegistry::load();
     let template_violations = templates.validate();
@@ -511,7 +550,16 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 5);
+        assert_eq!(report.checks.len(), 6);
+        let content_assets = report
+            .checks
+            .iter()
+            .find(|check| check.name == "Content plan assets")
+            .expect("content plan assets check");
+        assert!(content_assets.details.contains("argued_topics_admitted=30"));
+        assert!(content_assets
+            .details
+            .contains("content_predicates_total=69"));
         let _ = std::fs::remove_file(path);
     }
 
