@@ -17,7 +17,8 @@ impl ConjugatePipeline {
             return String::new();
         }
         let is_challenge = Self::detect_challenge(input);
-        let surface = ConjugateComposer::compose_with_challenge(graph, &sense_vectors, is_challenge);
+        let surface =
+            ConjugateComposer::compose_with_challenge(graph, &sense_vectors, is_challenge);
         surface.text
     }
 

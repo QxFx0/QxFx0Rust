@@ -1,9 +1,25 @@
 use qxfx0_types::system_state::GuardStatus;
 
-/// Number of recent history items considered for the stuck-repetition check.
-const HISTORY_LOOKBACK: usize = 5;
-/// Threshold (matches within HISTORY_LOOKBACK) at which the advisory fires.
-const REPETITION_THRESHOLD: usize = 3;
+mod heuristics;
+use heuristics::*;
+
+/// Configuration for content-quality and safety checks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GuardConfig {
+    /// Maximum accepted user input length, in Unicode scalar values.
+    pub max_input_length: usize,
+    /// Maximum allowed length of a rendered response, in bytes.
+    pub max_render_length: usize,
+}
+
+impl Default for GuardConfig {
+    fn default() -> Self {
+        Self {
+            max_input_length: 8192,
+            max_render_length: 5000,
+        }
+    }
+}
 
 /// Content quality gate — evaluates rendered text for semantic content.
 /// Blocking (fail-closed): output replaced with recovery if checks fail.
@@ -20,107 +36,30 @@ impl ContentQualityGate {
         }
 
         // Check 2: unfilled template placeholders.
-        // Use the real template syntax from TemplateRegistry/SyntacticGenerator.
-        let placeholders = [
-            "{FROM}", "{TO", "{OBJ", "{RATIONALE}", "{SYNTHESIS}", "{FROM_G:", "{TO_G:", "{OBJ_G:",
-        ];
-        for ph in &placeholders {
-            if rendered.contains(ph) {
-                return QualityVerdict::Block(format!("незаполненный шаблон: {}", ph));
-            }
+        if let Some(reason) = check_template_placeholders(rendered) {
+            return QualityVerdict::Block(reason);
         }
 
-        // Check 3: generic filler — match prefix or substring to catch
-        // variants like "понятно, спасибо." or "я понимаю тебя".
-        let fillers = [
-            "я не знаю что сказать",
-            "произошла ошибка",
-            "не удалось сгенерировать ответ",
-            "[пусто]",
-            "[нет данных]",
-            "понятно.",
-            "я понимаю.",
-        ];
-        let lower_trimmed = trimmed.to_lowercase();
-        for filler in &fillers {
-            let f_lower = filler.to_lowercase();
-            if lower_trimmed.starts_with(&f_lower) || lower_trimmed.contains(&f_lower) {
-                return QualityVerdict::Block("генерический filler-ответ".into());
-            }
+        // Check 3: generic filler
+        if let Some(reason) = check_generic_fillers(rendered) {
+            return QualityVerdict::Block(reason);
         }
 
-        // Check 4: topic relevance — run on any non-empty output.
-        // Normalizes case endings: a topic in oblique case (e.g. "ответственности")
-        // must still match the nominative form in the response ("ответственность").
+        // Check 4: topic relevance
+        if let Some(reason) = check_topic_relevance(topic, rendered) {
+            return QualityVerdict::Block(reason);
+        }
+
         let tokens: Vec<&str> = rendered.split_whitespace().collect();
-        if !topic.is_empty() {
-            let topic_tokens: Vec<&str> =
-                topic.split_whitespace().filter(|t| t.len() >= 3).collect();
-            let lower = rendered.to_lowercase();
-            let has_overlap = topic_tokens.iter().any(|t| {
-                if lower.contains(t) {
-                    return true;
-                }
-                let stripped = t.trim_end_matches(|c: char| !c.is_alphabetic());
-                let chars: Vec<char> = stripped.chars().collect();
-                let char_len = chars.len();
-                if char_len >= 5 {
-                    let stem: String = chars[..char_len - 1].iter().collect();
-                    if lower.contains(&stem) {
-                        return true;
-                    }
-                    if char_len >= 6 {
-                        let stem2: String = chars[..char_len - 2].iter().collect();
-                        lower.contains(&stem2)
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            });
-            if !has_overlap {
-                return QualityVerdict::Block(format!(
-                    "нулевое совпадение с темой: {}",
-                    topic.to_lowercase()
-                ));
-            }
+
+        // Check 5: content density
+        if let Some(reason) = check_content_density(&tokens) {
+            return QualityVerdict::Block(reason);
         }
 
-        // Check 5: content density (only for 16+ tokens)
-        if tokens.len() >= 16 {
-            let content_words = tokens
-                .iter()
-                .filter(|t| {
-                    let t = t.trim_matches(|c: char| !c.is_alphabetic());
-                    t.len() >= 2 && !is_stop_word(t)
-                })
-                .count();
-            let density = content_words as f64 / tokens.len() as f64;
-            if density < 0.15 {
-                return QualityVerdict::Block("низкая плотность содержания".into());
-            }
-        }
-
-        // Check 6: semantic saturation (only for 20+ tokens)
-        if tokens.len() >= 20 {
-            // Single-pass: build a BTreeSet of unique bigrams and count
-            // total occurrences in one walk, avoiding the intermediate Vec.
-            let mut unique: std::collections::BTreeSet<(&str, &str)> =
-                std::collections::BTreeSet::new();
-            let mut total: usize = 0;
-            for w in tokens.windows(2) {
-                if w.len() == 2 {
-                    unique.insert((w[0], w[1]));
-                    total += 1;
-                }
-            }
-            if total > 0 {
-                let repeat_ratio = 1.0 - unique.len() as f64 / total as f64;
-                if repeat_ratio > 0.8 {
-                    return QualityVerdict::Block("высокая повторяемость".into());
-                }
-            }
+        // Check 6: semantic saturation
+        if let Some(reason) = check_semantic_saturation(&tokens) {
+            return QualityVerdict::Block(reason);
         }
 
         QualityVerdict::Pass
@@ -135,7 +74,11 @@ impl ContentQualityGate {
     }
 
     /// Post-render safety check — structural checks (empty, metadata, toxicity, length, injection).
-    pub fn post_render_safety(rendered: &str, history: &[String]) -> GuardStatus {
+    pub fn post_render_safety(
+        rendered: &str,
+        history: &[String],
+        config: &GuardConfig,
+    ) -> GuardStatus {
         let trimmed = rendered.trim();
 
         // Empty
@@ -144,73 +87,23 @@ impl ContentQualityGate {
         }
 
         // Too long
-        if rendered.len() > 5000 {
+        if rendered.len() > config.max_render_length {
             return GuardStatus::InvariantBlock("слишком длинный вывод".into());
         }
 
         // Metadata leak
-        let leak_patterns = [
-            "{FROM}", "{TO", "{OBJ", "{RATIONALE}", "{SYNTHESIS}", "{FROM_G:", "{TO_G:", "{OBJ_G:",
-        ];
-        let found: Vec<_> = leak_patterns
-            .iter()
-            .filter(|p| rendered.contains(*p))
-            .collect();
-        if !found.is_empty() {
-            return GuardStatus::InvariantBlock(format!(
-                "утечка метаданных: {}",
-                found.iter().map(|s| **s).collect::<Vec<_>>().join(", ")
-            ));
+        if let Some(reason) = check_metadata_leaks(rendered) {
+            return GuardStatus::InvariantBlock(reason);
         }
 
-        // Toxicity — word-boundary-aware exact phrase matching to avoid
-        // false positives like "это глупое недоразумение" matching "это глупо".
-        let toxic = [
-            "ты должен",
-            "ты обязан",
-            "это глупо",
-            "ты неправ",
-            "бред",
-            "чушь",
-            "идиот",
-            "тупой",
-        ];
-        let lower = rendered.to_lowercase();
-        let word_tokens: Vec<&str> = lower.split(|c: char| !c.is_alphanumeric()).filter(|s| !s.is_empty()).collect();
-        let mut found_toxic: Vec<&str> = Vec::new();
-        for phrase in &toxic {
-            let phrase_tokens: Vec<&str> = phrase.split_whitespace().collect();
-            if phrase_tokens.is_empty() {
-                continue;
-            }
-            // Look for the phrase as a contiguous run of tokens.
-            let matched = if phrase_tokens.len() == 1 {
-                word_tokens.iter().any(|t| *t == phrase_tokens[0])
-            } else {
-                word_tokens.windows(phrase_tokens.len()).any(|w| {
-                    w.iter().zip(phrase_tokens.iter()).all(|(a, b)| *a == *b)
-                })
-            };
-            if matched {
-                found_toxic.push(phrase);
-            }
-        }
-        if !found_toxic.is_empty() {
-            return GuardStatus::InvariantBlock(format!(
-                "токсичные паттерны: {}",
-                found_toxic.join(", ")
-            ));
+        // Toxicity
+        if let Some(reason) = check_toxicity(rendered) {
+            return GuardStatus::InvariantBlock(reason);
         }
 
         // Stuck repetition (advisory, not blocking)
-        let normalized = lower.trim();
-        let match_count = history
-            .iter()
-            .take(HISTORY_LOOKBACK)
-            .filter(|h| h.trim().to_lowercase() == normalized)
-            .count();
-        if match_count >= REPETITION_THRESHOLD {
-            return GuardStatus::InvariantWarn("застревание на повторе".into());
+        if let Some(reason) = check_stuck_repetition(rendered, history) {
+            return GuardStatus::InvariantWarn(reason);
         }
 
         GuardStatus::InvariantOk
@@ -218,8 +111,13 @@ impl ContentQualityGate {
 
     /// Finalize output — apply safety + quality gates.
     /// Returns (final_text, was_blocked).
-    pub fn finalize_output(topic: &str, rendered: &str, history: &[String]) -> (String, bool) {
-        let safety = Self::post_render_safety(rendered, history);
+    pub fn finalize_output(
+        topic: &str,
+        rendered: &str,
+        history: &[String],
+        config: &GuardConfig,
+    ) -> (String, bool) {
+        let safety = Self::post_render_safety(rendered, history, config);
         let quality = Self::evaluate(topic, rendered);
 
         let blocked = matches!(safety, GuardStatus::InvariantBlock(_))
@@ -241,102 +139,6 @@ impl ContentQualityGate {
 pub enum QualityVerdict {
     Pass,
     Block(String),
-}
-
-fn is_stop_word(word: &str) -> bool {
-    const STOP_WORDS: &[&str] = &[
-        "что",
-        "это",
-        "как",
-        "так",
-        "его",
-        "ей",
-        "этом",
-        "этот",
-        "эта",
-        "эти",
-        "для",
-        "при",
-        "или",
-        "но",
-        "не",
-        "ни",
-        "же",
-        "ли",
-        "бы",
-        "то",
-        "вот",
-        "там",
-        "тут",
-        "где",
-        "когда",
-        "потому",
-        "потому что",
-        "если",
-        "чтобы",
-        "все",
-        "всё",
-        "всех",
-        "всего",
-        "еще",
-        "ещё",
-        "уже",
-        "только",
-        "было",
-        "будет",
-        "есть",
-        "нет",
-        "да",
-        "над",
-        "под",
-        "за",
-        "из",
-        "от",
-        "до",
-        "по",
-        "в",
-        "с",
-        "к",
-        "у",
-        "о",
-        "об",
-        "и",
-        "а",
-        "ну",
-        "вы",
-        "ты",
-        "он",
-        "она",
-        "оно",
-        "они",
-        "мы",
-        "мой",
-        "моя",
-        "твой",
-        "твоя",
-        "свой",
-        "своя",
-        "их",
-        "наш",
-        "ваш",
-        "который",
-        "которая",
-        "которое",
-        "которые",
-        "тобой",
-        "тому",
-        "тем",
-        "сам",
-        "сама",
-        "само",
-        "сами",
-        "один",
-        "одна",
-        "одно",
-        "два",
-        "три",
-    ];
-    STOP_WORDS.contains(&word)
 }
 
 #[cfg(test)]
@@ -370,41 +172,44 @@ mod tests {
 
     #[test]
     fn test_safety_toxic() {
-        let status = ContentQualityGate::post_render_safety("ты должен это сделать", &[]);
+        let cfg = GuardConfig::default();
+        let status = ContentQualityGate::post_render_safety("ты должен это сделать", &[], &cfg);
         assert!(matches!(status, GuardStatus::InvariantBlock(_)));
     }
 
     #[test]
     fn test_safety_ok() {
-        let status = ContentQualityGate::post_render_safety("свобода предполагает выбор", &[]);
+        let cfg = GuardConfig::default();
+        let status =
+            ContentQualityGate::post_render_safety("свобода предполагает выбор", &[], &cfg);
         assert_eq!(status, GuardStatus::InvariantOk);
     }
 
     #[test]
     fn test_finalize_blocks_bad() {
-        let (text, blocked) = ContentQualityGate::finalize_output("свобода", "", &[]);
+        let cfg = GuardConfig::default();
+        let (text, blocked) = ContentQualityGate::finalize_output("свобода", "", &[], &cfg);
         assert!(blocked);
         assert!(text.contains("перенастраиваю"));
     }
 
     #[test]
     fn test_finalize_passes_good() {
+        let cfg = GuardConfig::default();
         let (text, blocked) =
-            ContentQualityGate::finalize_output("свобода", "свобода предполагает выбор", &[]);
+            ContentQualityGate::finalize_output("свобода", "свобода предполагает выбор", &[], &cfg);
         assert!(!blocked);
         assert_eq!(text, "свобода предполагает выбор");
     }
 
     #[test]
     fn test_topic_relevance_short_output() {
-        // H-5: short off-topic output should be blocked even with few tokens.
         let verdict = ContentQualityGate::evaluate("свобода", "ок");
         assert!(matches!(verdict, QualityVerdict::Block(_)));
     }
 
     #[test]
     fn test_filler_substring_match() {
-        // H-6: filler prefix with extra trailing words should still be blocked.
         let verdict = ContentQualityGate::evaluate("свобода", "понятно, спасибо.");
         assert!(matches!(verdict, QualityVerdict::Block(_)));
     }

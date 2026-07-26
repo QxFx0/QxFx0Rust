@@ -27,6 +27,7 @@ pub enum ConversationEvent {
     ReadyToReason,
     NeedsMoreContext,
     ChallengeReceived,
+    ReflectRequest,
     EndConversation,
 }
 
@@ -46,13 +47,17 @@ pub fn transition(state: ConversationState, event: ConversationEvent) -> Convers
         (Idle, ReadyToReason) => Reasoning,
         (Idle, ChallengeReceived) => Reasoning,
         (Idle, InsufficientInfo) => Clarifying,
+        (Idle, ReflectRequest) => Reflecting,
         (Greeting, UserMessage) => InformationGathering,
+        (Greeting, ReflectRequest) => Reflecting,
         (InformationGathering, InsufficientInfo) => Clarifying,
         (Clarifying, UserMessage) => InformationGathering,
         (InformationGathering, ReadyToReason) => Reasoning,
         (Reasoning, NeedsMoreContext) => InformationGathering,
         (Reasoning, ChallengeReceived) => Reasoning,
+        (Reasoning, ReflectRequest) => Reflecting,
         (Reflecting, UserMessage) => InformationGathering,
+        (Reflecting, ReflectRequest) => Reflecting,
         (Reasoning, EndConversation) => Concluding,
         (Active, EndConversation) => Concluding,
         (Concluding, StartConversation) => Greeting,
@@ -77,9 +82,14 @@ pub fn is_active(state: ConversationState) -> bool {
 pub fn proposition_to_event(mode: &str, has_enough_info: bool) -> ConversationEvent {
     match mode {
         "Challenge" => ConversationEvent::ChallengeReceived,
-        "Define" | "Reflect" | "Connect" if has_enough_info => ConversationEvent::ReadyToReason,
-        "Define" | "Reflect" | "Connect" => ConversationEvent::UserMessage,
+        "Reflect" if has_enough_info => ConversationEvent::ReflectRequest,
+        "Reflect" => ConversationEvent::UserMessage,
+        "Define" | "Connect" if has_enough_info => ConversationEvent::ReadyToReason,
+        "Define" | "Connect" => ConversationEvent::UserMessage,
         "Assert" if has_enough_info => ConversationEvent::ReadyToReason,
+        "Purpose" | "WorldCause" if has_enough_info => ConversationEvent::ReadyToReason,
+        "Greeting" => ConversationEvent::StartConversation,
+        "Purpose" | "WorldCause" => ConversationEvent::UserMessage,
         "Assert" | "Other" => ConversationEvent::UserMessage,
         _ => ConversationEvent::UserMessage,
     }
@@ -193,7 +203,45 @@ mod tests {
         ] {
             let d = fsm_state_discriminant(state);
             let restored = fsm_state_from_discriminant(d).unwrap();
-            assert_eq!(*state, restored, "discriminant roundtrip failed for {:?}", state);
+            assert_eq!(
+                *state, restored,
+                "discriminant roundtrip failed for {:?}",
+                state
+            );
         }
+    }
+
+    #[test]
+    fn idle_to_reflecting() {
+        let s = ConversationState::Idle;
+        let s = transition(s, ConversationEvent::ReflectRequest);
+        assert_eq!(s, ConversationState::Reflecting);
+    }
+
+    #[test]
+    fn reasoning_to_reflecting() {
+        let s = ConversationState::Reasoning;
+        let s = transition(s, ConversationEvent::ReflectRequest);
+        assert_eq!(s, ConversationState::Reflecting);
+    }
+
+    #[test]
+    fn reflecting_loops_on_reflect() {
+        let s = ConversationState::Reflecting;
+        let s = transition(s, ConversationEvent::ReflectRequest);
+        assert_eq!(s, ConversationState::Reflecting);
+    }
+
+    #[test]
+    fn reflecting_to_info_gathering() {
+        let s = ConversationState::Reflecting;
+        let s = transition(s, ConversationEvent::UserMessage);
+        assert_eq!(s, ConversationState::InformationGathering);
+    }
+
+    #[test]
+    fn proposition_reflect_maps_to_reflect_request() {
+        let event = proposition_to_event("Reflect", true);
+        assert_eq!(event, ConversationEvent::ReflectRequest);
     }
 }

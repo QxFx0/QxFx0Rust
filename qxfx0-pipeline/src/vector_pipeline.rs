@@ -1,4 +1,4 @@
-use qxfx0_semantic::{ConjugateComposer, SenseDecomposer, seed_graph};
+use qxfx0_semantic::{seed_graph, ConjugateComposer, SenseDecomposer};
 use qxfx0_types::atom::{AtomGraph, SenseVector};
 use qxfx0_types::system_state::*;
 
@@ -28,6 +28,10 @@ impl VectorTurnPipeline {
     /// Process a turn through the vector pipeline.
     /// Decomposes input into sense vectors, then composes a conjugate response.
     pub fn process(input: &VectorTurnInput, state: &mut SystemState) -> VectorTurnOutput {
+        if state.session_id.is_empty() {
+            state.session_id = input.session_id.clone();
+        }
+        let session_matches = state.session_id == input.session_id;
         let graph = if state.semantic.runtime_graph.edges.is_empty() {
             seed_graph()
         } else {
@@ -55,7 +59,7 @@ impl VectorTurnPipeline {
         state.dialogue.history.push(surface.text.clone());
 
         // Stage 4: Guard — check for empty response
-        let blocked = surface.text.is_empty();
+        let blocked = surface.text.is_empty() || !session_matches;
 
         VectorTurnOutput {
             response: surface.text,
@@ -67,10 +71,7 @@ impl VectorTurnPipeline {
     }
 
     /// Process a turn with a custom graph (for testing).
-    pub fn process_with_graph(
-        input: &VectorTurnInput,
-        graph: &AtomGraph,
-    ) -> VectorTurnOutput {
+    pub fn process_with_graph(input: &VectorTurnInput, graph: &AtomGraph) -> VectorTurnOutput {
         let sense_vectors = SenseDecomposer::decompose(&input.raw_text, graph);
         let surface = ConjugateComposer::compose(graph, &sense_vectors);
         let blocked = surface.text.is_empty();
@@ -98,6 +99,9 @@ mod tests {
         let output = VectorTurnPipeline::process_with_graph(&input, &graph);
         assert!(!output.response.is_empty());
         assert!(!output.sense_vectors.is_empty());
+        assert!(output.resonance >= 0.0);
+        assert!(output.depth > 0);
+        assert!(!output.blocked);
         // Deterministic output — no canned openings
         assert!(!output.response.contains("Когда я думаю о"));
         assert!(!output.response.contains("Я вижу это так:"));

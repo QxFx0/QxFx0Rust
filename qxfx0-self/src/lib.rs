@@ -9,12 +9,16 @@ use sha2::{Digest, Sha256};
 ///
 /// Spinozan striving — the system's drive to continue being what it is.
 /// Higher = more coherent self. Death = Markov blanket violation.
+///
+/// The arousal component of Atmosphere contributes as an additive boost:
+/// higher arousal → higher conatus (the system is more "awake").
 pub struct Conatus;
 
 impl Conatus {
     pub const W_MEANING: f64 = 1.0;
     pub const W_COHERENCE: f64 = 1.0;
     pub const W_TRUST: f64 = 0.5;
+    pub const W_AROUSAL: f64 = 0.3;
     pub const LAMBDA: f64 = 0.1;
     pub const STRUCTURAL_FLOOR: f64 = 0.5;
 
@@ -26,6 +30,7 @@ impl Conatus {
             || !field.confidence.is_finite()
             || !field.consolidation.is_finite()
             || !field.counterfactual.is_finite()
+            || !field.atmosphere.arousal.is_finite()
         {
             return 0.0;
         }
@@ -33,10 +38,12 @@ impl Conatus {
         let c = field.consolidation.max(0.0);
         let t = field.confidence.max(0.0);
         let v = (field.counterfactual - 0.5).abs();
+        let a = field.atmosphere.arousal.max(0.0);
 
         Self::W_MEANING * (1.0 + m).ln()
             + Self::W_COHERENCE * (1.0 + c).ln()
             + Self::W_TRUST * (1.0 + t).ln()
+            + Self::W_AROUSAL * (1.0 + a).ln()
             - Self::LAMBDA * v
     }
 
@@ -138,18 +145,25 @@ impl Default for EssenceModulation {
     }
 }
 
+/// Witness input — groups the 6 contextual parameters of `witness_essence`
+/// into a single struct to reduce argument count below the clippy threshold.
+#[derive(Debug, Clone)]
+pub struct WitnessInput<'a> {
+    pub mode: EssenceMode,
+    pub statement: String,
+    pub salience_driver: &'a str,
+    pub reconcile_rule: &'a str,
+    pub agreement: &'a str,
+    pub divergence: f64,
+}
+
 /// Ingest one turn's deliberation into the trajectory.
 pub fn witness_essence(
     em: &EssenceModulation,
     turn: usize,
     conatus_scalar: f64,
     state: &mut EssenceState,
-    mode: EssenceMode,
-    statement: String,
-    salience_driver: &str,
-    reconcile_rule: &str,
-    agreement: &str,
-    divergence: f64,
+    input: &WitnessInput,
 ) {
     if state.capacity == 0 {
         state.capacity = em.trajectory_capacity;
@@ -157,12 +171,12 @@ pub fn witness_essence(
 
     state.witnesses.push(EssenceWitness {
         turn,
-        mode: format!("{:?}", mode),
-        statement,
-        salience_driver: salience_driver.to_string(),
-        reconcile_rule: reconcile_rule.to_string(),
-        agreement: agreement.to_string(),
-        divergence,
+        mode: format!("{:?}", input.mode),
+        statement: input.statement.clone(),
+        salience_driver: input.salience_driver.to_string(),
+        reconcile_rule: input.reconcile_rule.to_string(),
+        agreement: input.agreement.to_string(),
+        divergence: input.divergence,
         conatus_scalar,
     });
 
@@ -171,9 +185,9 @@ pub fn witness_essence(
     }
 
     // Update angst
-    if divergence == 0.0 {
+    if input.divergence == 0.0 {
         state.angst = (state.angst - em.angst_decay_rate).max(0.0);
-    } else if divergence >= em.angst_accrual_divergence_floor {
+    } else if input.divergence >= em.angst_accrual_divergence_floor {
         state.angst = (state.angst + em.angst_accrual_rate).min(1.0);
     }
 
@@ -184,15 +198,24 @@ pub fn witness_essence(
 }
 
 /// Sliding-window commitment check.
-pub fn should_commit_essence(em: &EssenceModulation, state: &EssenceState) -> Option<CommitmentTrigger> {
+pub fn should_commit_essence(
+    em: &EssenceModulation,
+    state: &EssenceState,
+) -> Option<CommitmentTrigger> {
     let angst_fires = state.angst >= em.angst_commitment_threshold;
 
     let window = em.conatus_floor_window;
     let ws = &state.witnesses;
-    let start = if ws.len() > window { ws.len() - window } else { 0 };
+    let start = if ws.len() > window {
+        ws.len() - window
+    } else {
+        0
+    };
     let last_n: Vec<&EssenceWitness> = ws[start..].iter().collect();
     let all_sub_floor = last_n.len() >= window
-        && last_n.iter().all(|w| w.conatus_scalar < em.conatus_structural_floor);
+        && last_n
+            .iter()
+            .all(|w| w.conatus_scalar < em.conatus_structural_floor);
 
     match (angst_fires, all_sub_floor) {
         (true, _) => Some(CommitmentTrigger::TriggerAngstThreshold),
@@ -234,9 +257,14 @@ pub fn extract_commitment_mode(state: &EssenceState) -> CommitmentMode {
     let (best, best_rate) = candidates
         .iter()
         .max_by(|a, b| a.1.total_cmp(&b.1))
-        .unwrap();
+        .copied()
+        .expect("candidates is non-empty");
 
-    if *best_rate > 0.0 { *best } else { CommitmentMode::Contemplative }
+    if best_rate > 0.0 {
+        best
+    } else {
+        CommitmentMode::Contemplative
+    }
 }
 
 /// Commit the essence trajectory.
@@ -260,11 +288,20 @@ pub fn commit_essence(
 fn hash_witnesses(witnesses: &[EssenceWitness]) -> String {
     let mut hasher = Sha256::new();
     for w in witnesses {
-        hasher.update(format!(
-            "{}|{}|{}|{}|{}|{:.17}|{}|{:.17}",
-            w.turn, w.mode, w.salience_driver, w.reconcile_rule, w.agreement,
-            w.divergence, w.statement, w.conatus_scalar
-        ).as_bytes());
+        hasher.update(
+            format!(
+                "{}|{}|{}|{}|{}|{:.17}|{}|{:.17}",
+                w.turn,
+                w.mode,
+                w.salience_driver,
+                w.reconcile_rule,
+                w.agreement,
+                w.divergence,
+                w.statement,
+                w.conatus_scalar
+            )
+            .as_bytes(),
+        );
     }
     format!("sha256:{:x}", hasher.finalize())
 }
@@ -306,6 +343,12 @@ impl SelfBlanket {
         if !(0.0..=1.0).contains(&field.counterfactual) {
             violations.push("counterfactual_out_of_range".into());
         }
+        if !(-1.0..=1.0).contains(&field.atmosphere.valence) {
+            violations.push("atmosphere_valence_out_of_range".into());
+        }
+        if !(0.0..=1.0).contains(&field.atmosphere.arousal) {
+            violations.push("atmosphere_arousal_out_of_range".into());
+        }
         violations
     }
 }
@@ -315,7 +358,9 @@ pub struct Salience;
 
 impl Salience {
     pub fn compute(field: &Field) -> f64 {
-        field.resonance * 0.4 + (1.0 - field.confidence) * 0.3 + field.counterfactual * 0.3
+        field.resonance * 0.35 + (1.0 - field.confidence) * 0.25 + field.counterfactual * 0.25
+            - field.consolidation * 0.15
+            + field.atmosphere.arousal * 0.15
     }
 }
 
@@ -377,6 +422,7 @@ mod tests {
             resonance: 0.5,
             consolidation: 0.5,
             counterfactual: 0.5,
+            ..Default::default()
         };
         let h = Holistic::from_field(&field).0;
         let f = Formal::from_field(&field).0;
@@ -419,9 +465,15 @@ mod tests {
         let mut state = EssenceState::default();
         let em = EssenceModulation::default();
         assert!(!state.trajectory_committed);
-        witness_essence(&em, 1, 10.0, &mut state,
-            EssenceMode::Define, "свобода".into(),
-            "DrivenByField", "RuleAgreement", "FullAgreement", 0.0);
+        let input = WitnessInput {
+            mode: EssenceMode::Define,
+            statement: "свобода".into(),
+            salience_driver: "DrivenByField",
+            reconcile_rule: "RuleAgreement",
+            agreement: "FullAgreement",
+            divergence: 0.0,
+        };
+        witness_essence(&em, 1, 10.0, &mut state, &input);
         assert!(state.trajectory_committed);
         assert_eq!(state.witnesses.len(), 1);
         collapse_essence(2, &mut state);
@@ -431,37 +483,56 @@ mod tests {
 
     #[test]
     fn test_essence_should_commit_angst() {
-        let mut state = EssenceState::default();
-        state.angst = 0.8;
+        let mut state = EssenceState {
+            angst: 0.8,
+            ..EssenceState::default()
+        };
         for _ in 0..8 {
             state.witnesses.push(EssenceWitness {
-                turn: 1, mode: "Define".into(), statement: "test".into(),
-                salience_driver: "field".into(), reconcile_rule: "RuleAgreement".into(),
-                agreement: "FullAgreement".into(), divergence: 0.0, conatus_scalar: 1.0,
+                turn: 1,
+                mode: "Define".into(),
+                statement: "test".into(),
+                salience_driver: "field".into(),
+                reconcile_rule: "RuleAgreement".into(),
+                agreement: "FullAgreement".into(),
+                divergence: 0.0,
+                conatus_scalar: 1.0,
             });
         }
         let em = EssenceModulation::default();
         let trigger = should_commit_essence(&em, &state);
         assert!(trigger.is_some());
-        assert!(matches!(trigger.unwrap(), CommitmentTrigger::TriggerAngstThreshold));
+        assert!(matches!(
+            trigger.unwrap(),
+            CommitmentTrigger::TriggerAngstThreshold
+        ));
     }
 
     #[test]
     fn test_essence_should_commit_conatus_erosion() {
-        let mut state = EssenceState::default();
-        state.angst = 0.1;
+        let mut state = EssenceState {
+            angst: 0.1,
+            ..EssenceState::default()
+        };
         for _ in 0..8 {
             state.witnesses.push(EssenceWitness {
-                turn: 1, mode: "Define".into(), statement: "test".into(),
-                salience_driver: "field".into(), reconcile_rule: "RuleAgreement".into(),
-                agreement: "FullAgreement".into(), divergence: 0.0,
+                turn: 1,
+                mode: "Define".into(),
+                statement: "test".into(),
+                salience_driver: "field".into(),
+                reconcile_rule: "RuleAgreement".into(),
+                agreement: "FullAgreement".into(),
+                divergence: 0.0,
                 conatus_scalar: 0.4, // below conatus_structural_floor = 0.5
             });
         }
         let em = EssenceModulation::default();
         let trigger = should_commit_essence(&em, &state);
         assert!(trigger.is_some());
-        assert!(matches!(trigger.unwrap(), CommitmentTrigger::TriggerConatusErosion));
+        assert!(matches!(
+            trigger.unwrap(),
+            CommitmentTrigger::TriggerConatusErosion
+        ));
     }
 
     #[test]
