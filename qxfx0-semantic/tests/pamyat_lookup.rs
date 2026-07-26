@@ -32,7 +32,10 @@ fn test_decompose_single_pamyat() {
     assert!(
         vectors.iter().any(|v| v.atom_id.as_str() == "память"),
         "Decompose 'память' should find atom 'память', got: {:?}",
-        vectors.iter().map(|v| v.atom_id.as_str()).collect::<Vec<_>>()
+        vectors
+            .iter()
+            .map(|v| v.atom_id.as_str())
+            .collect::<Vec<_>>()
     );
 }
 
@@ -49,12 +52,18 @@ fn test_decompose_pamyat_i_vospominanie() {
     assert!(
         has_pamyat,
         "Should find 'память', got: {:?}",
-        vectors.iter().map(|v| v.atom_id.as_str()).collect::<Vec<_>>()
+        vectors
+            .iter()
+            .map(|v| v.atom_id.as_str())
+            .collect::<Vec<_>>()
     );
     assert!(
         has_vospominanie,
         "Should find 'воспоминание', got: {:?}",
-        vectors.iter().map(|v| v.atom_id.as_str()).collect::<Vec<_>>()
+        vectors
+            .iter()
+            .map(|v| v.atom_id.as_str())
+            .collect::<Vec<_>>()
     );
 }
 

@@ -63,11 +63,7 @@ fn test_deterministic_graph() {
 
 #[test]
 fn test_relation_type_count() {
-    assert_eq!(
-        RelationType::ALL.len(),
-        47,
-        "Should have 47 relation types"
-    );
+    assert_eq!(RelationType::ALL.len(), 47, "Should have 47 relation types");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -111,32 +107,32 @@ fn test_pamyat_has_proper_edges() {
 
     // память requires сознание
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelRequires
-            && r.to.as_str() == "сознание"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelRequires && r.to.as_str() == "сознание"),
         "память should require сознание"
     );
     // память includes воспоминание
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelIncludes
-            && r.to.as_str() == "воспоминание"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelIncludes && r.to.as_str() == "воспоминание"),
         "память should include воспоминание"
     );
     // память structures бытие
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelStructures
-            && r.to.as_str() == "бытие"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelStructures && r.to.as_str() == "бытие"),
         "память should structure бытие"
     );
     // память expresses through язык
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelExpresses
-            && r.to.as_str() == "язык"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelExpresses && r.to.as_str() == "язык"),
         "память should express through язык"
     );
     // память preserves история
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelPreserves
-            && r.to.as_str() == "история"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelPreserves && r.to.as_str() == "история"),
         "память should preserve история"
     );
 }
@@ -149,20 +145,20 @@ fn test_vospominanie_has_proper_edges() {
 
     // воспоминание requires время
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelRequires
-            && r.to.as_str() == "время"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelRequires && r.to.as_str() == "время"),
         "воспоминание should require время"
     );
     // воспоминание requires сознание
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelRequires
-            && r.to.as_str() == "сознание"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelRequires && r.to.as_str() == "сознание"),
         "воспоминание should require сознание"
     );
     // воспоминание reconstructs память
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelReconstructs
-            && r.to.as_str() == "память"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelReconstructs && r.to.as_str() == "память"),
         "воспоминание should reconstruct память"
     );
 }
@@ -175,32 +171,32 @@ fn test_pomnit_has_proper_edges() {
 
     // помнить requires память
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelRequires
-            && r.to.as_str() == "память"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelRequires && r.to.as_str() == "память"),
         "помнить should require память"
     );
     // помнить evokes воспоминание
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelEvokes
-            && r.to.as_str() == "воспоминание"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelEvokes && r.to.as_str() == "воспоминание"),
         "помнить should evoke воспоминание"
     );
     // помнить requires сознание
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelRequires
-            && r.to.as_str() == "сознание"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelRequires && r.to.as_str() == "сознание"),
         "помнить should require сознание"
     );
     // помнить depends on время
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelDependsOn
-            && r.to.as_str() == "время"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelDependsOn && r.to.as_str() == "время"),
         "помнить should depend on время"
     );
     // помнить requires самосознание
     assert!(
-        rels.iter().any(|r| r.rel_type == RelationType::RelRequires
-            && r.to.as_str() == "самосознание"),
+        rels.iter()
+            .any(|r| r.rel_type == RelationType::RelRequires && r.to.as_str() == "самосознание"),
         "помнить should require самосознание"
     );
 }
@@ -210,11 +206,15 @@ fn test_verbalize_uses_ru_original_for_genitive() {
     let graph = seed_graph();
     let svoboda = AtomId::new("свобода");
     let rels = graph.relations_from(&svoboda);
-    let rel = rels.iter().find(|r| {
-        r.rel_type == RelationType::RelRequires && r.to.as_str() == "сознание"
-    }).expect("свобода should have RelRequires->сознание");
+    let rel = rels
+        .iter()
+        .find(|r| r.rel_type == RelationType::RelRequires && r.to.as_str() == "сознание")
+        .expect("свобода should have RelRequires->сознание");
     let text = verbalize_relation(rel);
-    assert_eq!(text, "свобода требует сознания", "verbalize_relation must use ru_original with correct genitive case");
+    assert_eq!(
+        text, "свобода требует сознания",
+        "verbalize_relation must use ru_original with correct genitive case"
+    );
 }
 
 #[test]
@@ -223,10 +223,16 @@ fn test_conjugate_compose_uses_correct_grammar() {
     let graph = seed_graph();
     let vectors = SenseDecomposer::decompose("свобода", &graph);
     let surface = ConjugateComposer::compose(&graph, &vectors);
-    assert!(surface.text.contains("свобода требует сознания"),
-        "Expected genitive 'сознания', got: {}", surface.text);
-    assert!(surface.text.contains("свобода контрастирует с истиной"),
-        "Expected instrumental 'истиной', got: {}", surface.text);
+    assert!(
+        surface.text.contains("свобода требует сознания"),
+        "Expected genitive 'сознания', got: {}",
+        surface.text
+    );
+    assert!(
+        surface.text.contains("свобода контрастирует с истиной"),
+        "Expected instrumental 'истиной', got: {}",
+        surface.text
+    );
 }
 
 #[test]
@@ -234,11 +240,15 @@ fn test_verbalize_uses_ru_original_for_instrumental() {
     let graph = seed_graph();
     let svoboda = AtomId::new("свобода");
     let rels = graph.relations_from(&svoboda);
-    let rel = rels.iter().find(|r| {
-        r.rel_type == RelationType::RelContrastsWith && r.to.as_str() == "истина"
-    }).expect("свобода should have RelContrastsWith->истина");
+    let rel = rels
+        .iter()
+        .find(|r| r.rel_type == RelationType::RelContrastsWith && r.to.as_str() == "истина")
+        .expect("свобода should have RelContrastsWith->истина");
     let text = verbalize_relation(rel);
-    assert_eq!(text, "свобода контрастирует с истиной", "verbalize_relation must use ru_original with correct instrumental case");
+    assert_eq!(
+        text, "свобода контрастирует с истиной",
+        "verbalize_relation must use ru_original with correct instrumental case"
+    );
 }
 
 #[test]
