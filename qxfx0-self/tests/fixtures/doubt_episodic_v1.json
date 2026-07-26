@@ -1,0 +1,28 @@
+{
+  "policy": { "clarification_threshold": 0.75 },
+  "cases": [
+    {
+      "input": { "confidence": 0.1, "driver": "Resonance" },
+      "expected_score": 0.9
+    },
+    {
+      "input": { "confidence": 0.8, "driver": "ConatusGate" },
+      "expected_score": 0.9
+    },
+    {
+      "input": { "confidence": 0.5, "driver": "Counterfactual" },
+      "expected_score": 0.7
+    }
+  ],
+  "recall": {
+    "config": { "capacity": 4, "recall_window_turns": 50, "recall_limit": 3 },
+    "current_turn": 12,
+    "topic": "freedom",
+    "events": [
+      { "id": 1, "turn": 5, "kind": "UserInput", "topic": "freedom" },
+      { "id": 2, "turn": 10, "kind": "SystemDecision", "topic": "freedom" },
+      { "id": 3, "turn": 11, "kind": "SystemDecision", "topic": "memory" }
+    ],
+    "expected_route": "SuppressedByRecentDecision"
+  }
+}

@@ -1,4 +1,5 @@
 pub mod atom;
+pub mod cognitive;
 pub mod field;
 pub mod frame;
 pub mod governance;
@@ -15,6 +16,7 @@ pub use atom::{
     Atom, AtomCategory, AtomGraph, AtomId, ConjugateVector, ObjectCase, Relation, RelationSource,
     SenseField, SenseVector,
 };
+pub use cognitive::{DoubtDriver, DoubtInput, DoubtRoute, DoubtScore, EpisodicEvent, EpisodicKind};
 pub use field::{derive_field_confidence, Atmosphere, Field, FieldProfile, NarrativeTone};
 pub use frame::SemanticFrame;
 pub use governance::{GovernanceEvent, GovernanceEventType, GovernanceLog};
