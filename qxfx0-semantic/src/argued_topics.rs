@@ -103,26 +103,29 @@ impl ArguedTopicRegistry {
                 continue;
             }
             let columns = line.split('\t').collect::<Vec<_>>();
-            if columns.len() != 8 {
+            if !(7..=8).contains(&columns.len()) {
                 return Err(format!(
-                    "argued_topics.tsv line {} has {} columns, expected 8",
+                    "argued_topics.tsv line {} has {} columns, expected 7 or 8",
                     line_index + 1,
                     columns.len()
                 ));
             }
-            let [topic, predicate_id, subject_id, relation_id, object_id, thesis, counterpoint, consequence] =
-                columns.as_slice()
-            else {
-                unreachable!("column count checked above")
-            };
+            let topic = columns[0];
+            let predicate_id = columns[1];
+            let subject_id = columns[2];
+            let relation_id = columns[3];
+            let object_id = columns[4];
+            let thesis = columns[5];
+            let counterpoint = columns[6];
+            let consequence = columns.get(7).copied().unwrap_or_default();
             for (name, value) in [
-                ("topic", topic),
-                ("predicate_id", predicate_id),
-                ("subject_id", subject_id),
-                ("relation_id", relation_id),
-                ("object_id", object_id),
-                ("thesis", thesis),
-                ("counterpoint", counterpoint),
+                ("topic", &topic),
+                ("predicate_id", &predicate_id),
+                ("subject_id", &subject_id),
+                ("relation_id", &relation_id),
+                ("object_id", &object_id),
+                ("thesis", &thesis),
+                ("counterpoint", &counterpoint),
             ] {
                 if value.trim().is_empty() {
                     return Err(format!(
@@ -131,7 +134,7 @@ impl ArguedTopicRegistry {
                     ));
                 }
             }
-            if !COVERED_TOPICS.contains(topic) {
+            if !COVERED_TOPICS.contains(&topic) {
                 return Err(format!("admitted topic '{topic}' is not recognized"));
             }
             if !thesis.to_lowercase().starts_with(&topic.to_lowercase()) {
@@ -141,7 +144,7 @@ impl ArguedTopicRegistry {
             evidence_record = evidence_record
                 .checked_add(1)
                 .ok_or_else(|| "too many argued topic records".to_string())?;
-            let primary_ref = PredicateRef::try_new(*predicate_id)?;
+            let primary_ref = PredicateRef::try_new(predicate_id)?;
             let counterpoint_ref = PredicateRef::try_new(format!("{predicate_id}.counterpoint"))?;
             let consequence_ref = (!consequence.is_empty())
                 .then(|| PredicateRef::try_new(format!("{predicate_id}.consequence")))
@@ -160,23 +163,23 @@ impl ArguedTopicRegistry {
 
             let thesis_statement = AdmittedStatement {
                 predicate_ref: primary_ref.clone(),
-                surface: (*thesis).into(),
+                surface: thesis.into(),
             };
             let counterpoint_statement = AdmittedStatement {
                 predicate_ref: counterpoint_ref,
-                surface: (*counterpoint).into(),
+                surface: counterpoint.into(),
             };
             let consequence_statement = consequence_ref.map(|predicate_ref| AdmittedStatement {
                 predicate_ref,
-                surface: (*consequence).into(),
+                surface: consequence.into(),
             });
             let entry = ArguedTopic {
-                topic: AtomId::new(*topic),
+                topic: AtomId::new(topic),
                 primary_predicate_ref: primary_ref,
                 primary_proposition: SemanticProposition::CanonicalPredicate {
-                    subject: SemanticId::try_new(*subject_id)?,
-                    relation: SemanticId::try_new(*relation_id)?,
-                    object: SemanticId::try_new(*object_id)?,
+                    subject: SemanticId::try_new(subject_id)?,
+                    relation: SemanticId::try_new(relation_id)?,
+                    object: SemanticId::try_new(object_id)?,
                 },
                 thesis: thesis_statement,
                 counterpoint: counterpoint_statement,
@@ -184,7 +187,7 @@ impl ArguedTopicRegistry {
                 evidence_record,
             };
             content_predicates_total += entry.statement_count();
-            if topics.insert((*topic).into(), entry).is_some() {
+            if topics.insert(topic.into(), entry).is_some() {
                 return Err(format!("duplicate argued topic '{topic}'"));
             }
         }

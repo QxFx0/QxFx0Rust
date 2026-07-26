@@ -3,32 +3,32 @@
 # topic, primary predicate and canonical slots are semantic authority; surfaces are renderer leaves only.
 topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_surface	consequence_surface
 свобода	freedom_choice	svoboda	predpolagaet	vozmozhnost_vybora	свобода предполагает возможность выбора	не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным	свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу
-произвол	arbitrariness_absence_constraints	proizvol	vyrazhaet	otsutstvie_ogranicheniy	произвол выражает отсутствие ограничений	произвол разрушает доверие между субъектами	
-ответственность	responsibility_accountability	otvetstvennost	eto_neobhodimost	otvechat_za_svoi_deystviya	ответственность — это необходимость отвечать за свои действия	ответственность связана с обязательствами перед другими	
+произвол	arbitrariness_absence_constraints	proizvol	vyrazhaet	otsutstvie_ogranicheniy	произвол выражает отсутствие ограничений	произвол разрушает доверие между субъектами
+ответственность	responsibility_accountability	otvetstvennost	eto_neobhodimost	otvechat_za_svoi_deystviya	ответственность — это необходимость отвечать за свои действия	ответственность связана с обязательствами перед другими
 истина	truth_reality	istina	pretenduet	sootvetstvie_realnosti	истина претендует на соответствие реальности	доступ к реальности всегда опосредован наблюдателем — и наблюдатель не может выйти за пределы себя	истина — не обладание, а дисциплина проверки: то, что выдерживает воспроизведение, ближе к истине
 мнение	opinion_position	mnenie	vyrazhaet	pozitsiyu_subekta	мнение выражает позицию субъекта	субъективность мнения не означает его ложности — она означает его ограниченность перспективой	ценность мнения не в безличной истине, а в том, чью позицию оно раскрывает
-память	memory_information_process	pamyat	eto	protsess_zapominaniya_hraneniya_i_vosproizvedeniya_informatsii	память это процесс запоминания хранения и воспроизведения информации	память реконструирует а не просто копирует	
+память	memory_information_process	pamyat	eto	protsess_zapominaniya_hraneniya_i_vosproizvedeniya_informatsii	память это процесс запоминания хранения и воспроизведения информации	память реконструирует а не просто копирует
 воспоминание	recollection_new_frame	vospominanie	vosstanavlivaet	perezhitoe_v_novoy_ramke	воспоминание восстанавливает пережитое в новой рамке	реконструкция неизбежно привносит настоящее — мы вспоминаем не то, что пережили, а то, кем стали после пережитого	два человека, пережившие одно событие, помнят его по-разному — и оба правдивы в своей памяти
-сознание	consciousness_awareness	soznanie	eto	sposobnost_osoznavat_okruzhayushchiy_mir_i_samogo_sebya	сознание это способность осознавать окружающий мир и самого себя	сознание имеет аспект от первого лица	
-самосознание	self_awareness_reflexivity	samosoznanie	vyrazhaet	refleksivnost_subekta	самосознание выражает рефлексивность субъекта	самосознание предполагает наличие сознания как своего основания	
+сознание	consciousness_awareness	soznanie	eto	sposobnost_osoznavat_okruzhayushchiy_mir_i_samogo_sebya	сознание это способность осознавать окружающий мир и самого себя	сознание имеет аспект от первого лица
+самосознание	self_awareness_reflexivity	samosoznanie	vyrazhaet	refleksivnost_subekta	самосознание выражает рефлексивность субъекта	самосознание предполагает наличие сознания как своего основания
 вера	faith_acceptance	vera	trebuet	prinyatiya_bez_dokazatelstva	вера требует принятия без полного доказательства	принятие без доказательств не означает принятия вопреки доказательствам — вера, игнорирующая факты, перестаёт быть верой и становится самообманом	вера — не замена знанию, а решение действовать в условиях неполноты
-красота	beauty_experience	krasota	vyzyvaet	esteticheskoe_perezhivanie	красота вызывает эстетическое переживание	красота зависит от воспринимающего и культурной рамки	
+красота	beauty_experience	krasota	vyzyvaet	esteticheskoe_perezhivanie	красота вызывает эстетическое переживание	красота зависит от воспринимающего и культурной рамки
 долг	duty_action_singular	dolg	predpisyvaet	deystvie_nezavisimo	долг предписывает действие независимо от желания	долг, лишённый внутреннего согласия, превращается в принуждение — и перестаёт быть моральным	зрелый долг — не подчинение внешнему правилу, а принятие правила как своего
 доверие	trust_experience	doverie	stroitsya	cherez_opyt	доверие строится через повторяемый позитивный опыт	доверие уязвимо: один провал может разрушить то, что строилось годами — потому что доверие асимметрично	доверие — не ставка на гарантию, а решение принять риск
-страх	fear_action	strah	mozhet	paralizovat_deystvie	страх может парализовать действие или мобилизовать его	страх сигнализирует об угрозе целостности субъекта	
-надежда	hope_action	nadezhda	podderzhivaet	deystvie_neopredelennost	надежда поддерживает действие в условиях неопределённости	надежда ориентирует на возможность будущего	
+страх	fear_action	strah	mozhet	paralizovat_deystvie	страх может парализовать действие или мобилизовать его	страх сигнализирует об угрозе целостности субъекта
+надежда	hope_action	nadezhda	podderzhivaet	deystvie_neopredelennost	надежда поддерживает действие в условиях неопределённости	надежда ориентирует на возможность будущего
 справедливость	justice_proportionality	spravedlivost	trebuet	sorazmernosti	справедливость требует соразмерности между деянием и воздаянием	соразмерность трудно измерить: как взвесить страдание или измерить ущерб намерению?	справедливость — не точная формула, а направление: стремление к соразмерности важнее точности
-время	time_irreversible	vremya	neobratimo	proshloe_nedostupno	время необратимо — прошлое недоступно для изменения	время задаёт порядок следования событий	
-разум	reason_proof	razum	otlichaetsya	ot_intuitsii	разум отличается от интуиции потребностью в доказательстве	разум способен к обобщению и абстракции	
-бытие	being_existence	bytie	oboznachaet	fakt_sushchestvovaniya	бытие обозначает сам факт существования	бытие рассматривается как условие возможности любого суждения	
-история	history_viewpoint	istoriya	zavisit	ot_tochki_zreniya	история зависит от точки зрения рассказчика	история связывает прошлое с настоящим через интерпретацию	
-язык	language_thought	yazyk	svyazan	s_myshleniem	язык связан с мышлением — он не только выражает, но и формирует мысль	язык структурирует опыт через различение и именование	
+время	time_irreversible	vremya	neobratimo	proshloe_nedostupno	время необратимо — прошлое недоступно для изменения	время задаёт порядок следования событий
+разум	reason_proof	razum	otlichaetsya	ot_intuitsii	разум отличается от интуиции потребностью в доказательстве	разум способен к обобщению и абстракции
+бытие	being_existence	bytie	oboznachaet	fakt_sushchestvovaniya	бытие обозначает сам факт существования	бытие рассматривается как условие возможности любого суждения
+история	history_viewpoint	istoriya	zavisit	ot_tochki_zreniya	история зависит от точки зрения рассказчика	история связывает прошлое с настоящим через интерпретацию
+язык	language_thought	yazyk	svyazan	s_myshleniem	язык связан с мышлением — он не только выражает, но и формирует мысль	язык структурирует опыт через различение и именование
 воля	will_goal	volya	napravlyaet	deystvie_k_tseli	воля направляет действие к выбранной цели	сила воли не бесконечна — она истощается, как мышца, и требует восстановления	воля — не характер, а практика: она тренируется через повторение, а не даётся от рождения
-смерть	death_cessation	smert	oboznachaet	prekrashchenie_sushchestvovaniya	смерть обозначает необратимое прекращение существования	смерть задаёт границу, через которую жизнь обретает конечную форму	
-одиночество	loneliness_absence	odinochestvo	vyrazhaet	otsutstvie_drugogo	одиночество выражает отсутствие значимого другого	одиночество может быть избрано или навязано обстоятельствами	
-любовь	love_other	lyubov	napravlena	na_drugogo	любовь направлена на конкретного другого как на безусловно ценного	любовь предполагает уязвимость и риск потери	
-труд	labor_resources	trud	svyazan	s_potrebnostyu	труд связан с потребностью и распределением ресурсов	труд преобразует материал через целенаправленное усилие	
-покой	rest_absence	pokoy	oboznachaet	otsutstvie_dvizheniya	покой обозначает отсутствие движения и напряжения	покой необходим для восстановления и интеграции опыта	
-власть	power_influence	vlast	oznachaet	vliyat_na_drugih	власть означает способность влиять на действия других	власть определяет, чья воля становится законом	
-правда	truthfulness_facts	pravda	pretenduet	na_sootvetstvie_faktam	правда претендует на соответствие фактам	правда отличается от истины личной вовлечённостью рассказчика	
-молчание	silence_speech	molchanie	kontrastiruet	s_rechyu	молчание контрастирует с речью, но не тождественно пустоте	молчание может быть актом отказа или знаком присутствия	
+смерть	death_cessation	smert	oboznachaet	prekrashchenie_sushchestvovaniya	смерть обозначает необратимое прекращение существования	смерть задаёт границу, через которую жизнь обретает конечную форму
+одиночество	loneliness_absence	odinochestvo	vyrazhaet	otsutstvie_drugogo	одиночество выражает отсутствие значимого другого	одиночество может быть избрано или навязано обстоятельствами
+любовь	love_other	lyubov	napravlena	na_drugogo	любовь направлена на конкретного другого как на безусловно ценного	любовь предполагает уязвимость и риск потери
+труд	labor_resources	trud	svyazan	s_potrebnostyu	труд связан с потребностью и распределением ресурсов	труд преобразует материал через целенаправленное усилие
+покой	rest_absence	pokoy	oboznachaet	otsutstvie_dvizheniya	покой обозначает отсутствие движения и напряжения	покой необходим для восстановления и интеграции опыта
+власть	power_influence	vlast	oznachaet	vliyat_na_drugih	власть означает способность влиять на действия других	власть определяет, чья воля становится законом
+правда	truthfulness_facts	pravda	pretenduet	na_sootvetstvie_faktam	правда претендует на соответствие фактам	правда отличается от истины личной вовлечённостью рассказчика
+молчание	silence_speech	molchanie	kontrastiruet	s_rechyu	молчание контрастирует с речью, но не тождественно пустоте	молчание может быть актом отказа или знаком присутствия
