@@ -102,7 +102,7 @@ Example output:
 It exits non-zero if any check fails:
 
 ```text
-QxFx0 Rust v0.1.0 health check:
+QxFx0 Rust v0.1.1 health check:
   [OK] SQLite: schema v7, quick_check/foreign keys/session states valid
   [OK] Seed graph: 142 atoms, 276 relations, 107 covered topics
   [OK] Templates: 127 templates for 33 types; direct coverage 22/23 used relation types
@@ -182,6 +182,9 @@ cargo test --workspace --all-targets
 cargo build --workspace --release
 target/release/qxfx0 --db /tmp/qxfx0-doctor.db doctor
 ```
+
+CI and local release checks use the Rust 1.93.1 toolchain pinned in
+`rust-toolchain.toml`, including the matching `clippy` and `rustfmt` components.
 
 The workspace currently contains 358 Rust tests across unit, integration, migration, CLI replay and soak coverage. The count may increase; the commands above are the authoritative release gate.
 
