@@ -3,6 +3,7 @@
 //! Flattened hierarchical states for compile-time deterministic routing.
 //! State transitions driven by proposition mode + context availability.
 
+use qxfx0_semantic::PropositionMode;
 use serde::{Deserialize, Serialize};
 
 /// Flat conversation states (hierarchical states flattened for runtime).
@@ -78,20 +79,24 @@ pub fn is_active(state: ConversationState) -> bool {
     )
 }
 
-/// Map a user proposition mode to a conversation event for the FSM.
-pub fn proposition_to_event(mode: &str, has_enough_info: bool) -> ConversationEvent {
+/// Map a typed user proposition mode to a conversation event for the FSM.
+pub fn proposition_to_event(mode: PropositionMode, has_enough_info: bool) -> ConversationEvent {
     match mode {
-        "Challenge" => ConversationEvent::ChallengeReceived,
-        "Reflect" if has_enough_info => ConversationEvent::ReflectRequest,
-        "Reflect" => ConversationEvent::UserMessage,
-        "Define" | "Connect" if has_enough_info => ConversationEvent::ReadyToReason,
-        "Define" | "Connect" => ConversationEvent::UserMessage,
-        "Assert" if has_enough_info => ConversationEvent::ReadyToReason,
-        "Purpose" | "WorldCause" if has_enough_info => ConversationEvent::ReadyToReason,
-        "Greeting" => ConversationEvent::StartConversation,
-        "Purpose" | "WorldCause" => ConversationEvent::UserMessage,
-        "Assert" | "Other" => ConversationEvent::UserMessage,
-        _ => ConversationEvent::UserMessage,
+        PropositionMode::Challenge => ConversationEvent::ChallengeReceived,
+        PropositionMode::Reflect if has_enough_info => ConversationEvent::ReflectRequest,
+        PropositionMode::Reflect => ConversationEvent::UserMessage,
+        PropositionMode::Define | PropositionMode::Connect if has_enough_info => {
+            ConversationEvent::ReadyToReason
+        }
+        PropositionMode::Define | PropositionMode::Connect => ConversationEvent::UserMessage,
+        PropositionMode::Assert if has_enough_info => ConversationEvent::ReadyToReason,
+        PropositionMode::Purpose | PropositionMode::WorldCause if has_enough_info => {
+            ConversationEvent::ReadyToReason
+        }
+        PropositionMode::Greeting => ConversationEvent::StartConversation,
+        PropositionMode::Purpose | PropositionMode::WorldCause | PropositionMode::Assert => {
+            ConversationEvent::UserMessage
+        }
     }
 }
 
@@ -241,7 +246,34 @@ mod tests {
 
     #[test]
     fn proposition_reflect_maps_to_reflect_request() {
-        let event = proposition_to_event("Reflect", true);
+        let event = proposition_to_event(PropositionMode::Reflect, true);
         assert_eq!(event, ConversationEvent::ReflectRequest);
+    }
+
+    #[test]
+    fn all_proposition_modes_have_typed_events() {
+        let cases = [
+            (PropositionMode::Define, ConversationEvent::ReadyToReason),
+            (PropositionMode::Assert, ConversationEvent::ReadyToReason),
+            (
+                PropositionMode::Challenge,
+                ConversationEvent::ChallengeReceived,
+            ),
+            (PropositionMode::Connect, ConversationEvent::ReadyToReason),
+            (PropositionMode::Reflect, ConversationEvent::ReflectRequest),
+            (
+                PropositionMode::Greeting,
+                ConversationEvent::StartConversation,
+            ),
+            (PropositionMode::Purpose, ConversationEvent::ReadyToReason),
+            (
+                PropositionMode::WorldCause,
+                ConversationEvent::ReadyToReason,
+            ),
+        ];
+
+        for (mode, expected) in cases {
+            assert_eq!(proposition_to_event(mode, true), expected);
+        }
     }
 }

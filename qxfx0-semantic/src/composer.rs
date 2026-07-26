@@ -1,15 +1,16 @@
 use qxfx0_types::atom::{AtomGraph, AtomId, GeneratedSurface, PathProof, Relation};
 use qxfx0_types::field::FieldProfile;
+use serde::{Deserialize, Serialize};
 
 /// Proposition parser — parses user input into typed proposition.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParsedProposition {
     pub subject: String,
     pub object: Option<String>,
     pub mode: PropositionMode,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PropositionMode {
     Define,
     Assert,
