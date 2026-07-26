@@ -20,6 +20,7 @@ qxfx0-governance = { path = "../qxfx0-governance" }
 qxfx0-guard = { path = "../qxfx0-guard" }
 qxfx0-render = { path = "../qxfx0-render" }
 qxfx0-pipeline = { path = "../qxfx0-pipeline" }
+qxfx0-code = { path = "../qxfx0-code" }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -27,3 +28,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
 rusqlite.workspace = true
+ctrlc = "3.4"
