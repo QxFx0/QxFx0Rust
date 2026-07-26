@@ -63,6 +63,16 @@ impl ArguedTopic {
         self.consequence.as_ref()
     }
 
+    /// Resolve a grounded leaf only inside this topic's admitted predicate
+    /// boundary. A renderer must not use the wider semantic graph as a
+    /// substitute for this lookup.
+    pub fn statement_for(&self, predicate_ref: &PredicateRef) -> Option<&AdmittedStatement> {
+        std::iter::once(&self.thesis)
+            .chain(std::iter::once(&self.counterpoint))
+            .chain(self.consequence.iter())
+            .find(|statement| statement.predicate_ref() == predicate_ref)
+    }
+
     pub fn evidence_record(&self) -> u16 {
         self.evidence_record
     }

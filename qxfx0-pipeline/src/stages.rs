@@ -6,11 +6,13 @@ use crate::conversation_fsm::{
 };
 use crate::turn_context::{
     FinalizedTurnContext, GuardedTurnContext, PersistedTurnContext, PlannedTurnContext,
-    PreparedTurnContext, RenderedTurnContext, RoutedTurnContext, TurnInputContext,
+    PreparedTurnContext, RenderEvidence, RenderedTurnContext, RendererSource, RoutedTurnContext,
+    TurnInputContext,
 };
+use crate::RendererAuthority;
 use qxfx0_commitment::{CommitResult, CommitmentOps};
 use qxfx0_guard::ContentQualityGate;
-use qxfx0_render::RenderEngine;
+use qxfx0_render::{content_plan::render_audited_plan, RenderEngine};
 use qxfx0_self::{
     collapse_essence, commit_essence,
     deliberation::{self, DeliberationModulation, Plan},
@@ -20,8 +22,8 @@ use qxfx0_self::{
 use qxfx0_semantic::{
     cached_semantic_network, derive_atoms, network::activate as network_activate,
     normalize_punctuation, seed_graph, ContentSelector, DiscourseComposer, DiscourseStyle,
-    FallbackReason, PropositionMode, PropositionParser, QualityGatePhase, RecoveryEvidence,
-    RecoveryTrace, SenseDecomposer, Verbosity,
+    FallbackReason, PlanOutcome, PlanSubject, PropositionMode, PropositionParser, QualityGatePhase,
+    RecoveryEvidence, RecoveryTrace, SenseDecomposer, Verbosity,
 };
 use qxfx0_types::atom::AtomId;
 use qxfx0_types::field::FieldProfile;
@@ -183,6 +185,7 @@ pub fn plan_shadow_stage(
 pub fn render_stage(
     state: &mut SystemState,
     planned: PlannedTurnContext,
+    renderer_authority: RendererAuthority,
 ) -> Result<RenderedTurnContext, String> {
     let routed = planned.routed();
     let raw = routed.prepared().input().raw_text().to_owned();
@@ -190,11 +193,6 @@ pub fn render_stage(
     let mode = routed.prepared().input().mode();
     let is_challenge = routed.prepared().input().is_challenge();
 
-    // Seed the runtime graph once if empty — persist it so subsequent turns
-    // render against the full semantic graph, not a near-empty one.
-    if state.semantic.runtime_graph.edges.is_empty() {
-        state.semantic.runtime_graph = seed_graph();
-    }
     let conatus_energy = routed.prepared().conatus_energy();
     let salience = routed.prepared().salience();
     let essence_strength = routed.prepared().essence_strength();
@@ -206,6 +204,37 @@ pub fn render_stage(
         essence_strength,
     );
     let path_depth = fp.path_depth();
+
+    // Build the plan surface in both modes. In shadow mode it remains trace
+    // evidence only; in audited mode it gains authority only for an admitted
+    // topic-backed Ready plan. This function never reads the raw graph.
+    let (plan_surface, plan_render_error) = match audited_plan_surface(&planned) {
+        Ok(surface) => (surface, None),
+        Err(error) => (None, Some(error)),
+    };
+    if renderer_authority == RendererAuthority::AuditedPlan {
+        if let Some(surface) = &plan_surface {
+            return Ok(RenderedTurnContext::new(
+                planned,
+                normalize_punctuation(surface),
+                path_depth,
+                false,
+                RenderEvidence {
+                    renderer_authority,
+                    renderer_source: RendererSource::AuditedPlan,
+                    plan_surface_available: true,
+                    plan_surface_matches_output: Some(true),
+                    plan_render_error: None,
+                },
+            ));
+        }
+    }
+
+    // Legacy rendering still depends on the runtime graph. The plan-authority
+    // return above deliberately happens before this access.
+    if state.semantic.runtime_graph.edges.is_empty() {
+        state.semantic.runtime_graph = seed_graph();
+    }
 
     // Specialized intents must reach their typed frames directly. The
     // generic discourse composer intentionally emits an introduction even
@@ -224,6 +253,18 @@ pub fn render_stage(
             normalize_punctuation(&response),
             path_depth,
             false,
+            RenderEvidence {
+                renderer_authority,
+                renderer_source: legacy_renderer_source(
+                    renderer_authority,
+                    plan_render_error.is_some(),
+                ),
+                plan_surface_available: plan_surface.is_some(),
+                plan_surface_matches_output: plan_surface
+                    .as_deref()
+                    .map(|surface| surface == normalize_punctuation(&response)),
+                plan_render_error,
+            },
         ));
     }
 
@@ -310,7 +351,39 @@ pub fn render_stage(
         normalize_punctuation(&response),
         path_depth,
         has_bridge,
+        RenderEvidence {
+            renderer_authority,
+            renderer_source: legacy_renderer_source(
+                renderer_authority,
+                plan_render_error.is_some(),
+            ),
+            plan_surface_available: plan_surface.is_some(),
+            plan_surface_matches_output: plan_surface
+                .as_deref()
+                .map(|surface| surface == normalize_punctuation(&response)),
+            plan_render_error,
+        },
     ))
+}
+
+fn audited_plan_surface(planned: &PlannedTurnContext) -> Result<Option<String>, String> {
+    match planned.shadow_plan() {
+        PlanOutcome::Ready(plan) if matches!(plan.subject(), PlanSubject::Topic(_)) => {
+            render_audited_plan(plan).map(Some)
+        }
+        PlanOutcome::Ready(_) | PlanOutcome::Fallback(_) => Ok(None),
+    }
+}
+
+fn legacy_renderer_source(
+    renderer_authority: RendererAuthority,
+    plan_render_failed: bool,
+) -> RendererSource {
+    if renderer_authority == RendererAuthority::AuditedPlan && plan_render_failed {
+        RendererSource::LegacyFallback
+    } else {
+        RendererSource::LegacyGraph
+    }
 }
 
 fn style_from_state(
@@ -773,7 +846,7 @@ mod tests {
         let prepared = prepare_stage(&mut state, input).unwrap();
         let routed = route_stage(&mut state, prepared).unwrap();
         let planned = plan_shadow_stage(&mut state, routed).unwrap();
-        let rendered = render_stage(&mut state, planned).unwrap();
+        let rendered = render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();
 
         let finalized = finalize_stage(&mut state, rendered).unwrap();
         let guarded = guard_stage(&mut state, finalized).unwrap();

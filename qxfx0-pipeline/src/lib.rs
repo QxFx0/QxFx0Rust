@@ -65,6 +65,25 @@ pub struct TurnInput {
     pub raw_text: String,
 }
 
+/// Selects which component has authority over content-admitted response
+/// surfaces. The default keeps the existing renderer authoritative while
+/// recording plan-to-surface comparison evidence in the trace.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum RendererAuthority {
+    #[default]
+    LegacyShadow,
+    AuditedPlan,
+}
+
+impl RendererAuthority {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::LegacyShadow => "legacy_shadow",
+            Self::AuditedPlan => "audited_plan",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct TurnOutput {
     pub response: String,
@@ -183,7 +202,16 @@ where
 /// pre-turn snapshot and a blocked recovery output is returned. This prevents
 /// partial side effects from corrupting the session.
 pub fn process_turn(input: &TurnInput, state: &mut SystemState) -> TurnOutput {
-    process_turn_internal(input, state, None)
+    process_turn_with_renderer(input, state, RendererAuthority::LegacyShadow)
+}
+
+/// Process a turn with an explicit renderer-authority feature flag.
+pub fn process_turn_with_renderer(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+) -> TurnOutput {
+    process_turn_internal(input, state, None, renderer_authority)
 }
 
 /// Process a turn and return a stage-level trace with cross-process stable
@@ -192,6 +220,15 @@ pub fn process_turn(input: &TurnInput, state: &mut SystemState) -> TurnOutput {
 pub fn process_turn_with_trace(
     input: &TurnInput,
     state: &mut SystemState,
+) -> (TurnOutput, execution_trace::PipelineTrace) {
+    process_turn_with_trace_and_renderer(input, state, RendererAuthority::LegacyShadow)
+}
+
+/// Process a turn with trace evidence and explicit renderer authority.
+pub fn process_turn_with_trace_and_renderer(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
     let request_id = execution_trace::calculate_stable_digest(&(
         input,
@@ -203,7 +240,7 @@ pub fn process_turn_with_trace(
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     let start = Instant::now();
     let mut trace = execution_trace::PipelineTrace::new(&request_id);
-    let output = process_turn_internal(input, state, Some(&mut trace));
+    let output = process_turn_internal(input, state, Some(&mut trace), renderer_authority);
     let final_digest = execution_trace::calculate_stable_digest(&(&*state, &output))
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     trace.record_step(
@@ -224,6 +261,7 @@ fn process_turn_internal(
     input: &TurnInput,
     state: &mut SystemState,
     mut trace: Option<&mut execution_trace::PipelineTrace>,
+    renderer_authority: RendererAuthority,
 ) -> TurnOutput {
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -324,7 +362,9 @@ fn process_turn_internal(
     };
 
     // Stage 4: Render
-    let rendered = match execute_stage(&mut trace, "render", state, planned, stages::render_stage) {
+    let rendered = match execute_stage(&mut trace, "render", state, planned, |state, planned| {
+        stages::render_stage(state, planned, renderer_authority)
+    }) {
         Ok(context) => context,
         Err(error) => {
             tracing::error!("render_stage failed: {error}");
