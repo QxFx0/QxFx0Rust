@@ -1,0 +1,10 @@
+/var/log/qxfx0/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su qxfx0 qxfx0
+}

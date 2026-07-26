@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use qxfx0_cli::{load_or_create_state, run_doctor, run_turn};
+use qxfx0_cli::{load_or_create_state, run_doctor, run_operational_metrics, run_turn};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{debug, error, info, warn};
 
@@ -35,7 +35,28 @@ enum Commands {
     /// Discover relations for a concept
     Discover { concept: String },
     /// Health check
-    Doctor,
+    Doctor {
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Create a verified online SQLite backup
+    Backup {
+        /// New destination file; existing files are never overwritten
+        destination: String,
+    },
+    /// Health, database-size and response-latency metrics
+    Metrics {
+        /// Emit JSON instead of Prometheus text format
+        #[arg(long)]
+        json: bool,
+        /// Fail if DB + WAL + SHM exceed this many bytes
+        #[arg(long, default_value_t = 1_073_741_824)]
+        max_db_bytes: u64,
+        /// Fail if the in-memory response probe exceeds this duration
+        #[arg(long, default_value_t = 2_000)]
+        max_response_ms: u64,
+    },
     /// List sessions
     Sessions,
     /// Show version
@@ -85,7 +106,10 @@ fn main() -> anyhow::Result<()> {
             let db = qxfx0_persistence::Persistence::open(&cli.db)?;
             let mut state = load_or_create_state(&db, &cli.session_id)?;
 
-            println!("QxFx0 Rust v0.1.0 — интерактивный режим");
+            println!(
+                "QxFx0 Rust v{} — интерактивный режим",
+                env!("CARGO_PKG_VERSION")
+            );
             println!("Session: {}", cli.session_id);
             println!("Введите :quit для выхода\n");
 
@@ -228,24 +252,63 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
-        Commands::Doctor => {
+        Commands::Doctor { json } => {
             info!("Performing system health check");
             let report = run_doctor(&cli.db);
-            println!("QxFx0 Rust v{} health check:", env!("CARGO_PKG_VERSION"));
-            for check in &report.checks {
+            if json {
                 println!(
-                    "  [{}] {}: {}",
-                    if check.passed { "OK" } else { "FAIL" },
-                    check.name,
-                    check.details
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "version": env!("CARGO_PKG_VERSION"),
+                        "healthy": report.is_healthy(),
+                        "checks": &report.checks,
+                    }))?
                 );
+            } else {
+                println!("QxFx0 Rust v{} health check:", env!("CARGO_PKG_VERSION"));
+                for check in &report.checks {
+                    println!(
+                        "  [{}] {}: {}",
+                        if check.passed { "OK" } else { "FAIL" },
+                        check.name,
+                        check.details
+                    );
+                }
             }
             if report.is_healthy() {
-                println!("  Status: OK");
+                if !json {
+                    println!("  Status: OK");
+                }
                 Ok(())
             } else {
-                println!("  Status: FAILED");
+                if !json {
+                    println!("  Status: FAILED");
+                }
                 Err(anyhow::anyhow!("one or more health checks failed"))
+            }
+        }
+        Commands::Backup { destination } => {
+            info!("Creating online database backup");
+            qxfx0_persistence::Persistence::backup_database(&cli.db, &destination)?;
+            println!("Backup verified: {}", destination);
+            Ok(())
+        }
+        Commands::Metrics {
+            json,
+            max_db_bytes,
+            max_response_ms,
+        } => {
+            let metrics = run_operational_metrics(&cli.db);
+            let violations = metrics.threshold_violations(max_db_bytes, max_response_ms);
+            if json {
+                println!("{}", serde_json::to_string_pretty(&metrics)?);
+            } else {
+                print!("{}", metrics.to_prometheus());
+            }
+            if violations.is_empty() {
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!(violations.join("; ")))
             }
         }
         Commands::Sessions => {
@@ -263,7 +326,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Version => {
-            println!("QxFx0 Rust v0.1.0");
+            println!("QxFx0 Rust v{}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
         Commands::Code { query } => {

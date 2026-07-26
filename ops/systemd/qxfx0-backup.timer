@@ -1,0 +1,11 @@
+[Unit]
+Description=Run QxFx0 backup daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=15m
+Persistent=true
+Unit=qxfx0-backup.service
+
+[Install]
+WantedBy=timers.target

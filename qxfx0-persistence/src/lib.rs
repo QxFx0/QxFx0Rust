@@ -1,6 +1,7 @@
 use qxfx0_types::system_state::SystemState;
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::time::Duration;
 use thiserror::Error;
 
@@ -16,6 +17,8 @@ pub enum PersistenceError {
     NotFound(String),
     #[error("Invalid state: {0}")]
     InvalidState(String),
+    #[error("Backup error: {0}")]
+    Backup(String),
 }
 
 /// Persistence layer — SQLite session state storage.
@@ -50,6 +53,100 @@ impl Persistence {
         db::migrations::apply_migrations(&mut conn)?;
 
         Ok(Persistence { conn })
+    }
+
+    /// Create a consistent online backup without migrating or writing to the
+    /// source database. The destination must not exist.
+    ///
+    /// SQLite writes into a process-specific partial file first. The partial
+    /// copy is verified with `PRAGMA quick_check` and atomically renamed only
+    /// after the backup has completed successfully.
+    pub fn backup_database(source: &str, destination: &str) -> Result<(), PersistenceError> {
+        let source_path = Path::new(source);
+        let destination_path = Path::new(destination);
+
+        if !source_path.is_file() {
+            return Err(PersistenceError::Backup(format!(
+                "source database '{}' does not exist or is not a file",
+                source_path.display()
+            )));
+        }
+        if destination_path.exists() {
+            return Err(PersistenceError::Backup(format!(
+                "destination '{}' already exists",
+                destination_path.display()
+            )));
+        }
+
+        let source_canonical = std::fs::canonicalize(source_path)
+            .map_err(|error| PersistenceError::Backup(error.to_string()))?;
+        let destination_parent = destination_path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
+        let destination_parent = std::fs::canonicalize(destination_parent)
+            .map_err(|error| PersistenceError::Backup(error.to_string()))?;
+        let destination_name = destination_path.file_name().ok_or_else(|| {
+            PersistenceError::Backup("destination must include a file name".into())
+        })?;
+        let destination_canonical = destination_parent.join(destination_name);
+
+        if source_canonical == destination_canonical {
+            return Err(PersistenceError::Backup(
+                "source and destination resolve to the same file".into(),
+            ));
+        }
+
+        let partial_name = format!(
+            ".{}.partial-{}",
+            destination_name.to_string_lossy(),
+            std::process::id()
+        );
+        let partial_path = destination_parent.join(partial_name);
+        if partial_path.exists() {
+            return Err(PersistenceError::Backup(format!(
+                "partial destination '{}' already exists",
+                partial_path.display()
+            )));
+        }
+
+        let result = (|| {
+            let source_connection = Connection::open_with_flags(
+                &source_canonical,
+                OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            )?;
+            source_connection.busy_timeout(Duration::from_secs(5))?;
+
+            let mut destination_connection = Connection::open_with_flags(
+                &partial_path,
+                OpenFlags::SQLITE_OPEN_READ_WRITE
+                    | OpenFlags::SQLITE_OPEN_CREATE
+                    | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            )?;
+            {
+                let backup =
+                    rusqlite::backup::Backup::new(&source_connection, &mut destination_connection)?;
+                backup.run_to_completion(128, Duration::from_millis(10), None)?;
+            }
+
+            let quick_check: String =
+                destination_connection.query_row("PRAGMA quick_check", [], |row| row.get(0))?;
+            if quick_check != "ok" {
+                return Err(PersistenceError::Backup(format!(
+                    "destination quick_check failed: {quick_check}"
+                )));
+            }
+            drop(destination_connection);
+
+            std::fs::rename(&partial_path, &destination_canonical)
+                .map_err(|error| PersistenceError::Backup(error.to_string()))?;
+            Ok(())
+        })();
+
+        if result.is_err() {
+            let _ = std::fs::remove_file(&partial_path);
+        }
+        result
     }
 
     /// Save system state for a session across normalized tables.
@@ -369,6 +466,57 @@ mod tests {
     fn test_open_memory() {
         let db = Persistence::open_memory();
         assert!(db.is_ok());
+    }
+
+    #[test]
+    fn test_online_backup_is_consistent_and_refuses_overwrite() {
+        let source = std::env::temp_dir().join(format!(
+            "qxfx0-online-backup-source-{}.db",
+            std::process::id()
+        ));
+        let destination = std::env::temp_dir().join(format!(
+            "qxfx0-online-backup-destination-{}.db",
+            std::process::id()
+        ));
+        for path in [&source, &destination] {
+            let _ = std::fs::remove_file(path);
+            let _ = std::fs::remove_file(format!("{}-wal", path.display()));
+            let _ = std::fs::remove_file(format!("{}-shm", path.display()));
+        }
+
+        let db = Persistence::open(source.to_str().unwrap()).unwrap();
+        let state = SystemState {
+            session_id: "backup-session".into(),
+            dialogue: DialogueState {
+                turn_count: 3,
+                history: vec!["one".into(), "two".into(), "three".into()],
+                ..DialogueState::default()
+            },
+            ..SystemState::default()
+        };
+        db.save_state("backup-session", &state).unwrap();
+
+        Persistence::backup_database(source.to_str().unwrap(), destination.to_str().unwrap())
+            .unwrap();
+        let overwrite =
+            Persistence::backup_database(source.to_str().unwrap(), destination.to_str().unwrap());
+        assert!(
+            matches!(overwrite, Err(PersistenceError::Backup(message)) if message.contains("already exists"))
+        );
+
+        let backup = Persistence::open(destination.to_str().unwrap()).unwrap();
+        let restored = backup.load_state("backup-session").unwrap().unwrap();
+        assert_eq!(restored.dialogue.turn_count, 3);
+        assert_eq!(restored.dialogue.history.len(), 3);
+        assert!(backup.health_check().unwrap().is_empty());
+
+        drop(backup);
+        drop(db);
+        for path in [&source, &destination] {
+            let _ = std::fs::remove_file(path);
+            let _ = std::fs::remove_file(format!("{}-wal", path.display()));
+            let _ = std::fs::remove_file(format!("{}-shm", path.display()));
+        }
     }
 
     #[test]

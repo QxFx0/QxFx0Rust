@@ -1,0 +1,15 @@
+[Unit]
+Description=QxFx0 verified SQLite backup
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=qxfx0
+Group=qxfx0
+EnvironmentFile=-/etc/qxfx0/qxfx0.env
+ExecStart=/bin/sh /opt/qxfx0/ops/qxfx0-backup.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/backups/qxfx0

@@ -7,17 +7,123 @@ use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_pipeline::{process_turn, TurnInput};
 use qxfx0_semantic::seed_graph;
 use qxfx0_types::system_state::{SemanticState, SystemState};
+use serde::Serialize;
+use std::time::Instant;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DoctorCheck {
     pub name: &'static str,
     pub passed: bool,
     pub details: String,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct DoctorReport {
     pub checks: Vec<DoctorCheck>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct OperationalMetrics {
+    pub doctor_healthy: bool,
+    pub database_bytes: u64,
+    pub doctor_duration_ms: u64,
+    pub response_probe_ms: u64,
+    pub response_probe_healthy: bool,
+}
+
+impl OperationalMetrics {
+    pub fn threshold_violations(
+        &self,
+        max_database_bytes: u64,
+        max_response_ms: u64,
+    ) -> Vec<String> {
+        let mut violations = Vec::new();
+        if !self.doctor_healthy {
+            violations.push("doctor reported an unhealthy subsystem".into());
+        }
+        if self.database_bytes > max_database_bytes {
+            violations.push(format!(
+                "database storage is {} bytes, limit is {} bytes",
+                self.database_bytes, max_database_bytes
+            ));
+        }
+        if !self.response_probe_healthy {
+            violations.push("response probe returned an invalid result".into());
+        }
+        if self.response_probe_ms > max_response_ms {
+            violations.push(format!(
+                "response probe took {} ms, limit is {} ms",
+                self.response_probe_ms, max_response_ms
+            ));
+        }
+        violations
+    }
+
+    pub fn to_prometheus(&self) -> String {
+        format!(
+            concat!(
+                "# TYPE qxfx0_doctor_healthy gauge\n",
+                "qxfx0_doctor_healthy {}\n",
+                "# TYPE qxfx0_database_bytes gauge\n",
+                "qxfx0_database_bytes {}\n",
+                "# TYPE qxfx0_doctor_duration_seconds gauge\n",
+                "qxfx0_doctor_duration_seconds {:.6}\n",
+                "# TYPE qxfx0_response_probe_duration_seconds gauge\n",
+                "qxfx0_response_probe_duration_seconds {:.6}\n",
+                "# TYPE qxfx0_response_probe_healthy gauge\n",
+                "qxfx0_response_probe_healthy {}\n"
+            ),
+            u8::from(self.doctor_healthy),
+            self.database_bytes,
+            self.doctor_duration_ms as f64 / 1_000.0,
+            self.response_probe_ms as f64 / 1_000.0,
+            u8::from(self.response_probe_healthy),
+        )
+    }
+}
+
+fn elapsed_millis(started: Instant) -> u64 {
+    started.elapsed().as_millis().try_into().unwrap_or(u64::MAX)
+}
+
+fn database_storage_bytes(db_path: &str) -> u64 {
+    [
+        db_path.to_string(),
+        format!("{db_path}-wal"),
+        format!("{db_path}-shm"),
+    ]
+    .iter()
+    .filter_map(|path| std::fs::metadata(path).ok())
+    .map(|metadata| metadata.len())
+    .sum()
+}
+
+/// Collect machine-readable health, storage and synthetic response metrics.
+/// The response probe runs entirely in memory and never changes the monitored
+/// database.
+pub fn run_operational_metrics(db_path: &str) -> OperationalMetrics {
+    let doctor_started = Instant::now();
+    let doctor_report = run_doctor(db_path);
+    let doctor_duration_ms = elapsed_millis(doctor_started);
+
+    let mut probe_state = fresh_state("__operational_probe__");
+    let probe_input = TurnInput {
+        raw_text: "что такое свобода?".into(),
+        session_id: probe_state.session_id.clone(),
+    };
+    let response_started = Instant::now();
+    let probe_output = process_turn(&probe_input, &mut probe_state);
+    let response_probe_ms = elapsed_millis(response_started);
+    let response_probe_healthy =
+        !probe_output.response.trim().is_empty() && probe_state.validate().is_empty();
+
+    OperationalMetrics {
+        doctor_healthy: doctor_report.is_healthy(),
+        database_bytes: database_storage_bytes(db_path),
+        doctor_duration_ms,
+        response_probe_ms,
+        response_probe_healthy,
+    }
 }
 
 impl DoctorReport {
@@ -407,5 +513,19 @@ mod tests {
         );
         assert_eq!(report.checks.len(), 5);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn test_operational_metrics_cover_health_storage_and_latency() {
+        let path = std::env::temp_dir().join(format!("qxfx0-metrics-{}.db", std::process::id()));
+        let metrics = run_operational_metrics(path.to_str().unwrap());
+        assert!(metrics.doctor_healthy);
+        assert!(metrics.database_bytes > 0);
+        assert!(metrics.response_probe_healthy);
+        assert!(metrics.threshold_violations(u64::MAX, u64::MAX).is_empty());
+        assert!(metrics.to_prometheus().contains("qxfx0_database_bytes"));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(format!("{}-wal", path.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", path.display()));
     }
 }

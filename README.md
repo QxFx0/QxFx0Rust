@@ -15,12 +15,13 @@ The CLI is the supported production surface. It includes:
 - a real Rust code registry with 97 typed atoms and type-directed composition edges;
 - stable SHA-256 stage digests for deterministic replay diagnostics;
 - bounded dialogue, governance, essence, commitment and runtime-graph state;
-- a real `doctor` health gate and a strict CI release gate.
+- a real `doctor` health gate and a strict CI release gate;
+- verified online backups plus health, DB-size and response-latency metrics.
 
 ## Architecture
 
 ```text
-qxfx0-cli          CLI: turn, chat, selfplay, discover, doctor, sessions, code
+qxfx0-cli          CLI: turn, chat, doctor, backup, metrics, sessions, code
        │
 qxfx0-pipeline     Prepare → Route → Render → Finalize → Guard → Persist
        │
@@ -72,6 +73,9 @@ Interactive mode and other commands:
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db --session-id demo chat
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db sessions
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db doctor
+cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db doctor --json
+cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db metrics
+cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db backup /tmp/qxfx0-backup.db
 cargo run -p qxfx0-cli -- discover свобода
 cargo run -p qxfx0-cli -- code "посчитать сумму элементов"
 cargo run -p qxfx0-cli -- code-stats
@@ -107,15 +111,21 @@ QxFx0 Rust v0.1.0 health check:
   Status: OK
 ```
 
+Use `doctor --json` for automation. The `metrics` command additionally emits
+Prometheus gauges for doctor health, total DB/WAL/SHM bytes, doctor duration,
+and the duration and health of an in-memory response probe.
+
 ## SQLite migration, backup and recovery
 
 The database is upgraded automatically on open. Migration v7 is idempotent and transactional. It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
 
-Back up before upgrading a valuable database. Stop all QxFx0 processes first, then use SQLite's online backup command:
+Back up before upgrading a valuable database. The built-in command opens the
+source read-only, uses SQLite's online backup API, verifies the partial copy,
+and refuses to overwrite an existing destination:
 
 ```bash
-sqlite3 qxfx0.db ".backup 'qxfx0-before-v7.db'"
-cargo run -p qxfx0-cli -- --db qxfx0.db doctor
+cargo run -p qxfx0-cli -- --db qxfx0.db backup qxfx0-before-v7.db
+cargo run -p qxfx0-cli -- --db qxfx0-before-v7.db doctor
 ```
 
 If the migration or health check fails, keep the failed database for diagnosis and restore the backup while QxFx0 is stopped:
@@ -126,7 +136,9 @@ cp qxfx0-before-v7.db qxfx0.db
 cargo run -p qxfx0-cli -- --db qxfx0.db doctor
 ```
 
-Do not copy only the main database file while another process is writing in WAL mode. Use `.backup`, or stop every writer and copy the database together with any `-wal` and `-shm` files.
+Do not copy only the main database file while another process is writing in
+WAL mode. Use the built-in `backup` command, or stop every writer and copy the
+database together with any `-wal` and `-shm` files.
 
 Session identifiers are part of the persistence boundary: a turn is rejected without mutation if its ID is empty, contains control characters, exceeds 128 characters or differs from the loaded state's ID.
 
@@ -141,6 +153,11 @@ prepare → route → render → finalize → guard → persist → turn_output
 ```
 
 Raw user text is not written to normal CLI tracing logs. Traces contain digests and bounded metadata.
+
+Production examples for daily backup retention, five-minute monitoring,
+systemd timers and logrotate are in [`ops/`](ops/README.md). `metrics` exits
+non-zero when doctor fails, DB storage exceeds its configured threshold, or
+the response probe is invalid or too slow.
 
 ## State bounds
 

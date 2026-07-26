@@ -1,0 +1,12 @@
+[Unit]
+Description=Run QxFx0 operational checks every five minutes
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=5m
+AccuracySec=30s
+Persistent=true
+Unit=qxfx0-monitor.service
+
+[Install]
+WantedBy=timers.target
