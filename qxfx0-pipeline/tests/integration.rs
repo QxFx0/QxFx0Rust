@@ -535,6 +535,32 @@ fn test_stage_trace_is_replay_deterministic() {
         plan_step.metadata.get("subject_kind").map(String::as_str),
         Some("topic")
     );
+    assert_eq!(
+        plan_step.metadata.get("plan_topic").map(String::as_str),
+        Some("свобода")
+    );
+    assert_eq!(
+        plan_step.metadata.get("plan_version").map(String::as_str),
+        Some("content_v1")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("plan_claim_count")
+            .map(String::as_str),
+        Some("3")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("argued_topic_admitted")
+            .map(String::as_str),
+        Some("true")
+    );
+    assert!(plan_step
+        .metadata
+        .get("predicate_refs")
+        .is_some_and(|refs| refs.contains("freedom_choice")));
 }
 
 #[test]
@@ -585,6 +611,83 @@ fn test_shadow_plan_trace_records_unknown_topic_recovery() {
         .metadata
         .get("recovery_evidence")
         .is_some_and(|evidence| evidence.contains("topic_lookup")));
+}
+
+#[test]
+fn test_shadow_plan_refuses_unaudited_content_for_recognized_topic() {
+    let input = TurnInput {
+        session_id: "trace-unadmitted-topic".into(),
+        raw_text: "что такое знание?".into(),
+    };
+    let mut state = test_state(&input.session_id);
+    let (output, trace) = process_turn_with_trace(&input, &mut state);
+    let plan_step = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "plan_shadow")
+        .expect("shadow plan step must exist");
+
+    assert!(
+        !output.response.is_empty(),
+        "legacy renderer remains active"
+    );
+    assert_eq!(
+        plan_step.metadata.get("plan_outcome").map(String::as_str),
+        Some("fallback")
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("fallback_reason")
+            .map(String::as_str),
+        Some("no_admissible_predicate")
+    );
+    assert_eq!(
+        plan_step.metadata.get("subject_kind").map(String::as_str),
+        Some("known_topic")
+    );
+    assert_eq!(
+        plan_step.metadata.get("plan_topic").map(String::as_str),
+        Some("знание")
+    );
+}
+
+#[test]
+fn test_all_audited_topics_reach_content_plan_in_fresh_sessions() {
+    let registry = qxfx0_semantic::argued_topic_registry().unwrap();
+
+    for (index, topic) in registry.topics().enumerate() {
+        let session_id = format!("audited-topic-{index}");
+        let input = TurnInput {
+            session_id: session_id.clone(),
+            raw_text: format!("что такое {}?", topic.topic().as_str()),
+        };
+        let mut state = test_state(&session_id);
+        let (_, trace) = process_turn_with_trace(&input, &mut state);
+        let plan_step = trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "plan_shadow")
+            .expect("shadow plan step must exist");
+
+        assert_eq!(
+            plan_step.metadata.get("plan_outcome").map(String::as_str),
+            Some("ready"),
+            "{} must be admitted",
+            topic.topic().as_str()
+        );
+        assert_eq!(
+            plan_step.metadata.get("plan_topic").map(String::as_str),
+            Some(topic.topic().as_str())
+        );
+        assert_eq!(
+            plan_step
+                .metadata
+                .get("argued_topic_admitted")
+                .map(String::as_str),
+            Some("true")
+        );
+    }
 }
 
 #[test]
