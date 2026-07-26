@@ -12,6 +12,7 @@ members = [
     "qxfx0-render",
     "qxfx0-pipeline",
     "qxfx0-cli",
+    "qxfx0-code",
 ]
 
 [workspace.package]
