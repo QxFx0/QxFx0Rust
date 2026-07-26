@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
-use qxfx0_cli::{load_or_create_state, run_doctor, run_operational_metrics, run_turn};
+use qxfx0_cli::{
+    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_renderer,
+};
+use qxfx0_pipeline::{process_turn_with_renderer, RendererAuthority};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{debug, error, info, warn};
 
@@ -16,6 +19,10 @@ struct Cli {
 
     #[arg(long, default_value = "qxfx0.db", global = true)]
     db: String,
+
+    /// Render admitted audited content plans instead of the legacy graph path.
+    #[arg(long, global = true)]
+    render_audited_plan: bool,
 
     #[command(subcommand)]
     command: Commands,
@@ -73,6 +80,11 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     let cli = Cli::parse();
+    let renderer_authority = if cli.render_audited_plan {
+        RendererAuthority::AuditedPlan
+    } else {
+        RendererAuthority::LegacyShadow
+    };
 
     ctrlc::set_handler(|| {
         SHUTDOWN.store(true, Ordering::SeqCst);
@@ -89,7 +101,7 @@ fn main() -> anyhow::Result<()> {
                 cli.session_id,
                 text.chars().count()
             );
-            let response = run_turn(&db, &cli.session_id, &text)?;
+            let response = run_turn_with_renderer(&db, &cli.session_id, &text, renderer_authority)?;
 
             println!("{}", response);
             debug!(
@@ -148,7 +160,7 @@ fn main() -> anyhow::Result<()> {
                     raw_text: line.to_string(),
                     session_id: cli.session_id.clone(),
                 };
-                let output = qxfx0_pipeline::process_turn(&input, &mut state);
+                let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
 
                 debug!("Saving state for session: {}", cli.session_id);
                 db.save_state(&cli.session_id, &state)?;
@@ -208,7 +220,7 @@ fn main() -> anyhow::Result<()> {
                     raw_text: topic.to_string(),
                     session_id: cli.session_id.clone(),
                 };
-                let output = qxfx0_pipeline::process_turn(&input, &mut state);
+                let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
                 db.save_state(&cli.session_id, &state)?;
                 println!("[{}/{}] {} → {}", i + 1, iterations, topic, output.response);
                 println!();

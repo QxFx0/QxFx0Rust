@@ -4,7 +4,7 @@
 //! drive the turn / chat flow without spawning a subprocess.
 
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
-use qxfx0_pipeline::{process_turn, TurnInput};
+use qxfx0_pipeline::{process_turn, process_turn_with_renderer, RendererAuthority, TurnInput};
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
 use serde::Serialize;
@@ -383,12 +383,22 @@ pub fn run_turn(
     session_id: &str,
     text: &str,
 ) -> anyhow::Result<String> {
+    run_turn_with_renderer(db, session_id, text, RendererAuthority::LegacyShadow)
+}
+
+/// Run one turn with explicit authority for admitted content-plan rendering.
+pub fn run_turn_with_renderer(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<String> {
     let mut state = load_or_create_state(db, session_id)?;
     let input = TurnInput {
         raw_text: text.to_string(),
         session_id: session_id.to_string(),
     };
-    let output = process_turn(&input, &mut state);
+    let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
     db.save_state(session_id, &state)?;
     Ok(output.response)
 }
@@ -418,6 +428,21 @@ mod tests {
             .expect("session row must exist");
         assert_eq!(loaded.session_id, "smoke-session");
         assert!(loaded.dialogue.turn_count >= 1);
+    }
+
+    #[test]
+    fn test_audited_plan_renderer_flag_is_available_to_the_cli_library() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open in-memory db");
+        let response = run_turn_with_renderer(
+            &db,
+            "audited-plan-session",
+            "что такое свобода?",
+            RendererAuthority::AuditedPlan,
+        )
+        .expect("turn should succeed");
+
+        assert!(response.starts_with("Тезис: свобода предполагает возможность выбора."));
+        assert!(response.ends_with("Проверка: верно ли это?"));
     }
 
     /// M7.2 — chat-mode EOF must still persist state. We spawn the actual

@@ -1,3 +1,5 @@
+pub mod content_plan;
+
 use qxfx0_semantic::{
     cached_semantic_network, network::activate as network_activate, verbalize_path,
     verbalize_relation, ContentSelector, DiscourseComposer, DiscourseStyle, PathFinder,
