@@ -1,0 +1,53 @@
+{
+  "config": {
+    "max_active_perspectives": 1,
+    "max_revisions_per_scope": 2,
+    "max_inactive_versions": 1
+  },
+  "mutations": [
+    {
+      "turn": 1,
+      "scope": { "Topic": "freedom" },
+      "decision": "PromoteEndorsed",
+      "thesis": "Freedom needs responsible limits.",
+      "orientation": "reflective",
+      "confidence": 0.72,
+      "normative_profile_id": "default",
+      "normative_profile_version": 1,
+      "evidence": ["knowledge:bounded agency"],
+      "counterarguments": []
+    },
+    {
+      "turn": 2,
+      "scope": { "Topic": "freedom" },
+      "decision": "ReviseActive",
+      "thesis": "Freedom is strengthened by responsibility.",
+      "orientation": "integrative",
+      "confidence": 0.86,
+      "normative_profile_id": "default",
+      "normative_profile_version": 1,
+      "evidence": ["knowledge:bounded agency", "dialogue:stable topic"],
+      "counterarguments": ["counterargument:coercion risk"]
+    },
+    {
+      "turn": 3,
+      "scope": { "Topic": "responsibility" },
+      "decision": "PromoteEndorsed",
+      "thesis": "Responsibility makes shared action reliable.",
+      "orientation": "reflective",
+      "confidence": 0.72,
+      "normative_profile_id": "default",
+      "normative_profile_version": 1,
+      "evidence": ["knowledge:shared action"],
+      "counterarguments": []
+    }
+  ],
+  "expected_active_scopes": ["topic:responsibility"],
+  "expected_projection": {
+    "scope": "topic:responsibility",
+    "summary": "Responsibility makes shared action reliable.",
+    "version": 3,
+    "evidence_count": 1,
+    "counterargument_count": 0
+  }
+}

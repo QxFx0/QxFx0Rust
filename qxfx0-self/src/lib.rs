@@ -1,5 +1,7 @@
 pub mod deliberation;
 
+pub mod perspective;
+
 use qxfx0_types::field::Field;
 use qxfx0_types::system_state::*;
 use sha2::{Digest, Sha256};
