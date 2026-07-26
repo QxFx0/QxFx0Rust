@@ -6,6 +6,7 @@ use crate::field::Field;
 use crate::governance::GovernanceLog;
 use crate::illocutionary_force::IllocutionaryForce;
 use crate::move_family::CanonicalMoveFamily;
+use crate::network::SemanticNetwork;
 
 /// Dialogue state — multi-turn context, history, last routing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,7 +56,9 @@ pub struct EssenceState {
     pub reset_events: Vec<EssenceResetEvent>,
 }
 
-fn default_conatus_floor() -> f64 { f64::MAX }
+fn default_conatus_floor() -> f64 {
+    f64::MAX
+}
 
 impl Default for EssenceState {
     fn default() -> Self {
@@ -149,6 +152,15 @@ pub struct SemanticState {
     pub essence: EssenceState,
     /// Adjunction balance — Holistic ⊣ Formal categorical state.
     pub adjunction: AdjunctionState,
+    /// Cached edge count — when this differs from runtime_graph.edges.len(),
+    /// downstream consumers know the SemanticNetwork/ContentSelector cache
+    /// is stale and must be rebuilt.
+    #[serde(skip)]
+    pub cached_edge_count: usize,
+    /// Cached semantic network built from `runtime_graph`.
+    /// Stale when `cached_edge_count != runtime_graph.edges.len()`.
+    #[serde(skip)]
+    pub cached_network: Option<SemanticNetwork>,
 }
 
 /// System state — the persistent state of a dialogue session.
@@ -165,6 +177,88 @@ pub struct SystemState {
 }
 
 // SystemState uses sub-structs: access via state.dialogue.*, state.semantic.*
+
+impl SystemState {
+    /// Validate persistent state invariants at an API or storage boundary.
+    /// Returns every detected violation so `doctor` can provide an actionable
+    /// report instead of failing on the first symptom.
+    pub fn validate(&self) -> Vec<String> {
+        let mut violations = Vec::new();
+        if self.session_id.trim().is_empty() {
+            violations.push("session_id is empty".into());
+        }
+        if self.session_id.chars().count() > 128 || self.session_id.chars().any(char::is_control) {
+            violations.push("session_id is longer than 128 characters or contains controls".into());
+        }
+        if self.dialogue.history.len() > self.dialogue.turn_count {
+            violations.push("dialogue history is longer than turn_count".into());
+        }
+        if self.dialogue.history.len() > 10_000 {
+            violations.push("dialogue history exceeds the 10000-entry bound".into());
+        }
+        if self.governance_log.len() > 10_000 {
+            violations.push("governance log exceeds the 10000-entry bound".into());
+        }
+        if self.semantic.runtime_graph.atoms.len() > 10_000
+            || self.semantic.runtime_graph.edges.len() > 20_000
+        {
+            violations.push("runtime graph exceeds the 10000-atom/20000-edge bound".into());
+        }
+        if let Some(store) = &self.semantic.semantic_commitments {
+            if store.active.len() + store.quarantine.len() > 1_024 {
+                violations.push("semantic commitment store exceeds 1024 entries".into());
+            }
+            if store.contradictions.len() > 10_000 {
+                violations.push("commitment contradiction log exceeds 10000 entries".into());
+            }
+        }
+        if self.semantic.essence.witnesses.len() > self.semantic.essence.capacity.max(32) {
+            violations.push("essence witness trajectory exceeds its capacity".into());
+        }
+        if self
+            .dialogue
+            .conversation_state
+            .is_some_and(|state| state > 7)
+        {
+            violations.push("conversation_state has an unknown discriminant".into());
+        }
+        violations.extend(self.governance_log.replay_check());
+
+        let field = &self.semantic.field;
+        let bounded = [
+            ("resonance", field.resonance, 0.0, 1.0),
+            ("confidence", field.confidence, 0.0, 1.0),
+            ("consolidation", field.consolidation, 0.0, 1.0),
+            ("counterfactual", field.counterfactual, 0.0, 1.0),
+            ("atmosphere.arousal", field.atmosphere.arousal, 0.0, 1.0),
+            ("atmosphere.valence", field.atmosphere.valence, -1.0, 1.0),
+        ];
+        for (name, value, minimum, maximum) in bounded {
+            if !value.is_finite() || !(minimum..=maximum).contains(&value) {
+                violations.push(format!(
+                    "field {name}={value} is outside [{minimum}, {maximum}]"
+                ));
+            }
+        }
+
+        if let Some(decision) = &self.last_turn_decision {
+            if !decision.legitimacy.is_finite() || !(0.0..=1.0).contains(&decision.legitimacy) {
+                violations.push("last turn legitimacy is outside [0, 1]".into());
+            }
+        }
+        if let Some(cache) = &self.semantic.cached_network {
+            if cache.is_empty()
+                || self.semantic.cached_edge_count != self.semantic.runtime_graph.edges.len()
+            {
+                violations.push("semantic network cache is stale or empty".into());
+            }
+        }
+        if let Err(graph_violations) = self.semantic.runtime_graph.validate() {
+            violations.extend(graph_violations);
+        }
+        violations
+    }
+}
 
 /// Turn decision — routing + force + guard status.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -284,8 +378,10 @@ mod tests {
 
     #[test]
     fn system_state_serde_round_trip() {
-        let mut state = SystemState::default();
-        state.session_id = "test-session-001".into();
+        let mut state = SystemState {
+            session_id: "test-session-001".into(),
+            ..SystemState::default()
+        };
         state.dialogue.turn_count = 3;
         state.dialogue.history.push("hello".into());
         state.dialogue.last_topic = Some("свобода".into());
@@ -298,17 +394,31 @@ mod tests {
         });
 
         let json = serde_json::to_string(&state).expect("serialize SystemState");
-        let restored: SystemState =
-            serde_json::from_str(&json).expect("deserialize SystemState");
+        let restored: SystemState = serde_json::from_str(&json).expect("deserialize SystemState");
 
         assert_eq!(restored.session_id, "test-session-001");
         assert_eq!(restored.dialogue.turn_count, 3);
         assert_eq!(restored.dialogue.history.len(), 1);
         assert_eq!(restored.dialogue.last_topic, Some("свобода".into()));
         assert_eq!(restored.governance_log.len(), 1);
-        assert!(restored
-            .governance_log
-            .count_by_type(&GovernanceEventType::GraphEnriched { new_relations: 0 })
-            == 1);
+        assert!(
+            restored
+                .governance_log
+                .count_by_type(&GovernanceEventType::GraphEnriched { new_relations: 0 })
+                == 1
+        );
+    }
+
+    #[test]
+    fn system_state_validation_rejects_invalid_session_and_field() {
+        let mut state = SystemState::default();
+        state.semantic.field.confidence = f64::NAN;
+        let violations = state.validate();
+        assert!(violations
+            .iter()
+            .any(|reason| reason.contains("session_id")));
+        assert!(violations
+            .iter()
+            .any(|reason| reason.contains("confidence")));
     }
 }

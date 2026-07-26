@@ -102,9 +102,12 @@ impl GovernanceLog {
                 ));
             }
 
-            // GuardBlocked should have InvariantBlock status
+            // GuardBlocked should have a blocking status (InvariantBlock or Blocked)
             if matches!(event.event_type, GovernanceEventType::GuardBlocked)
-                && !matches!(event.guard_status, GuardStatus::InvariantBlock(_))
+                && !matches!(
+                    event.guard_status,
+                    GuardStatus::InvariantBlock(_) | GuardStatus::Blocked(_)
+                )
             {
                 violations.push(format!("GuardBlocked event {} has non-block status", i));
             }

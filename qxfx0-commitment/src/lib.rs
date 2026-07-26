@@ -8,7 +8,13 @@ pub enum CommitResult {
     New(CommitmentId),
     /// The id already existed; no insertion occurred.
     Duplicate(CommitmentId),
+    /// The bounded store is full; state is returned unchanged.
+    CapacityReached,
 }
+
+/// Persistent commitments are bounded so a long-running or adversarial
+/// session cannot grow state indefinitely.
+pub const MAX_COMMITMENTS: usize = 1_024;
 
 /// Commitment store operations — commit, revise, retract, contradict.
 /// All operations are pure (return new store, don't mutate).
@@ -22,6 +28,12 @@ impl CommitmentOps {
         payload: FactualClaimPayload,
         store: &SemanticCommitmentStore,
     ) -> (SemanticCommitmentStore, CommitResult) {
+        if let Some(existing) = Self::find_duplicate(&payload, store) {
+            return (store.clone(), CommitResult::Duplicate(existing));
+        }
+        if store.active.len() + store.quarantine.len() >= MAX_COMMITMENTS {
+            return (store.clone(), CommitResult::CapacityReached);
+        }
         let cid = CommitmentId(store.next_id);
 
         if store.active.contains_key(&cid) || store.quarantine.contains_key(&cid) {
@@ -44,6 +56,12 @@ impl CommitmentOps {
         payload: FactualClaimPayload,
         store: &SemanticCommitmentStore,
     ) -> (SemanticCommitmentStore, CommitResult) {
+        if let Some(existing) = Self::find_duplicate(&payload, store) {
+            return (store.clone(), CommitResult::Duplicate(existing));
+        }
+        if store.active.len() + store.quarantine.len() >= MAX_COMMITMENTS {
+            return (store.clone(), CommitResult::CapacityReached);
+        }
         let cid = CommitmentId(store.next_id);
         let turn = payload.turn_seq;
 
@@ -58,6 +76,33 @@ impl CommitmentOps {
             .lineage
             .insert(cid.clone(), vec![LineageEvent::Committed { turn }]);
         (new_store, CommitResult::New(cid))
+    }
+
+    fn find_duplicate(
+        payload: &FactualClaimPayload,
+        store: &SemanticCommitmentStore,
+    ) -> Option<CommitmentId> {
+        let normalized_statement = payload
+            .statement
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase();
+        store
+            .active
+            .iter()
+            .chain(store.quarantine.iter())
+            .find_map(|(id, (existing, _))| {
+                let same_statement = existing
+                    .statement
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    .to_lowercase()
+                    == normalized_statement;
+                (existing.topic.to_lowercase() == payload.topic.to_lowercase() && same_statement)
+                    .then(|| id.clone())
+            })
     }
 
     /// Quarantine an observation (suppressed claim).
@@ -138,10 +183,14 @@ impl CommitmentOps {
                     .map(|qw| {
                         let qw_chars: Vec<char> = qw.chars().collect();
                         let stem: String = qw_chars[..5].iter().collect();
-                        stmt_words.iter().filter(|sw| {
-                            let sw_chars: Vec<char> = sw.chars().collect();
-                            sw_chars.len() >= 5 && sw_chars[..5].iter().collect::<String>() == stem
-                        }).count()
+                        stmt_words
+                            .iter()
+                            .filter(|sw| {
+                                let sw_chars: Vec<char> = sw.chars().collect();
+                                sw_chars.len() >= 5
+                                    && sw_chars[..5].iter().collect::<String>() == stem
+                            })
+                            .count()
                     })
                     .sum();
                 (exact * 2 + stem_overlap, payload.clone())
@@ -293,7 +342,9 @@ mod tests {
     fn test_commit_duplicate_no_id_skip() {
         let mut store = SemanticCommitmentStore::default();
         // Force a collision: next_id points to an existing key.
-        store.active.insert(CommitmentId(0), (make_payload("a", "b"), 0));
+        store
+            .active
+            .insert(CommitmentId(0), (make_payload("a", "b"), 0));
         store.next_id = 0;
 
         let payload = make_payload("свобода", "свобода предполагает выбор");
@@ -308,7 +359,9 @@ mod tests {
     fn test_commit_observation_dedup() {
         let mut store = SemanticCommitmentStore::default();
         // Force a collision: next_id points to an existing key.
-        store.active.insert(CommitmentId(0), (make_payload("x", "y"), 0));
+        store
+            .active
+            .insert(CommitmentId(0), (make_payload("x", "y"), 0));
         store.next_id = 0;
 
         let mut payload = make_payload("topic", "stmt");
@@ -317,6 +370,38 @@ mod tests {
         assert_eq!(result, CommitResult::Duplicate(CommitmentId(0)));
         assert_eq!(store.next_id, 0, "next_id must not advance on duplicate");
         assert_eq!(store.active.len(), 1, "duplicate should not insert");
+    }
+
+    #[test]
+    fn test_commit_observation_deduplicates_content() {
+        let store = SemanticCommitmentStore::default();
+        let payload = make_payload("свобода", "свобода предполагает выбор");
+        let (store, first) = CommitmentOps::commit_observation(payload.clone(), &store);
+        assert!(matches!(first, CommitResult::New(_)));
+
+        let mut duplicate = payload;
+        duplicate.statement = "  СВОБОДА   предполагает выбор ".into();
+        duplicate.turn_seq = 99;
+        let (store, result) = CommitmentOps::commit_observation(duplicate, &store);
+        assert_eq!(result, CommitResult::Duplicate(CommitmentId(0)));
+        assert_eq!(store.active.len(), 1);
+    }
+
+    #[test]
+    fn test_commitment_capacity_is_enforced() {
+        let mut store = SemanticCommitmentStore::default();
+        for index in 0..MAX_COMMITMENTS {
+            store.active.insert(
+                CommitmentId(index),
+                (make_payload(&format!("topic-{index}"), "statement"), index),
+            );
+        }
+        store.next_id = MAX_COMMITMENTS;
+        let (unchanged, result) =
+            CommitmentOps::commit_observation(make_payload("overflow", "new statement"), &store);
+        assert_eq!(result, CommitResult::CapacityReached);
+        assert_eq!(unchanged.active.len(), MAX_COMMITMENTS);
+        assert_eq!(unchanged.next_id, MAX_COMMITMENTS);
     }
 
     #[test]
@@ -371,7 +456,9 @@ mod tests {
         let store = SemanticCommitmentStore::default();
         let payload = make_payload("истина", "истина — это соответствие");
         let (store, result) = CommitmentOps::commit(payload, &store);
-        let CommitResult::New(cid) = result else { panic!("expected New") };
+        let CommitResult::New(cid) = result else {
+            panic!("expected New")
+        };
 
         let new_payload = make_payload("истина", "истина — это воспроизводимость");
         let store = CommitmentOps::revise(&cid, new_payload, 2, &store).unwrap();
@@ -393,9 +480,13 @@ mod tests {
     fn test_contradict_records_event() {
         let store = SemanticCommitmentStore::default();
         let (store, left_res) = CommitmentOps::commit(make_payload("a", "a is x"), &store);
-        let CommitResult::New(left) = left_res else { panic!("expected New") };
+        let CommitResult::New(left) = left_res else {
+            panic!("expected New")
+        };
         let (store, right_res) = CommitmentOps::commit(make_payload("a", "a is not x"), &store);
-        let CommitResult::New(right) = right_res else { panic!("expected New") };
+        let CommitResult::New(right) = right_res else {
+            panic!("expected New")
+        };
 
         let store = CommitmentOps::contradict(
             &left,

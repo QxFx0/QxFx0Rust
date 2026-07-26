@@ -180,6 +180,24 @@ mod tests {
     }
 
     #[test]
+    fn test_replay_check_guard_blocked_with_blocked_status_ok() {
+        let mut log = GovernanceLog::new();
+        log.append(GovernanceEvent {
+            turn: 1,
+            event_type: GovernanceEventType::GuardBlocked,
+            family: CanonicalMoveFamily::CMDefine,
+            guard_status: GuardStatus::Blocked("content quality".into()),
+            timestamp: "2026-01-01T00:00:00Z".into(),
+        });
+
+        let violations = log.replay_check();
+        assert!(
+            violations.is_empty(),
+            "Blocked status should pass replay check"
+        );
+    }
+
+    #[test]
     fn test_has_blocks() {
         let mut log = GovernanceLog::new();
         log.append(make_event(1, GovernanceEventType::TurnCompleted));
