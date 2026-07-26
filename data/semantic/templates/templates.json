@@ -7,13 +7,6 @@
     {"pattern": "сама идея {FROM|gen} уже содержит {OBJ|acc}", "register": "philosophical", "complexity": 3, "weight": 0.1},
     {"pattern": "когда мы осмысляем {FROM|acc}, мы приходим к {OBJ|dat}", "register": "dialogical", "complexity": 3, "weight": 0.1}
   ],
-  "RelRequires": [
-    {"pattern": "{FROM} требует {TO|gen}", "register": "philosophical", "complexity": 1, "weight": 0.3},
-    {"pattern": "без {TO|gen} невозможно {FROM|nom}", "register": "explanatory", "complexity": 2, "weight": 0.2},
-    {"pattern": "{FROM|nom} нуждается в {TO|prep}", "register": "conversational", "complexity": 1, "weight": 0.2},
-    {"pattern": "{TO|nom} выступает необходимым основанием для {FROM|gen}", "register": "philosophical", "complexity": 3, "weight": 0.15},
-    {"pattern": "{FROM} опирается на {TO|acc}", "register": "explanatory", "complexity": 1, "weight": 0.15}
-  ],
   "RelLimitedBy": [
     {"pattern": "{FROM} ограничена {TO|inst}", "register": "philosophical", "complexity": 1, "weight": 0.3},
     {"pattern": "предел {FROM|gen} задаётся {TO|inst}", "register": "philosophical", "complexity": 2, "weight": 0.25},
@@ -21,24 +14,11 @@
     {"pattern": "{FROM} имеет свой предел в {TO|prep}", "register": "conversational", "complexity": 2, "weight": 0.15},
     {"pattern": "именно {TO|nom} не даёт {FROM|dat} стать абсолютной", "register": "philosophical", "complexity": 3, "weight": 0.1}
   ],
-  "RelContrastsWith": [
-    {"pattern": "{FROM} контрастирует с {TO|inst}", "register": "philosophical", "complexity": 1, "weight": 0.3},
-    {"pattern": "{FROM} и {TO|nom} — противоположные полюса", "register": "explanatory", "complexity": 2, "weight": 0.2},
-    {"pattern": "между {FROM|inst} и {TO|inst} существует напряжение", "register": "philosophical", "complexity": 2, "weight": 0.2},
-    {"pattern": "{FROM} несовместима с {TO|inst} в предельном случае", "register": "philosophical", "complexity": 3, "weight": 0.15},
-    {"pattern": "трудно совместить {FROM|acc} и {TO|acc}", "register": "conversational", "complexity": 2, "weight": 0.15}
-  ],
   "RelDetermines": [
     {"pattern": "{FROM} определяет {OBJ}", "register": "philosophical", "complexity": 1, "weight": 0.3},
     {"pattern": "именно {FROM|nom} задаёт, чем является {OBJ}", "register": "explanatory", "complexity": 2, "weight": 0.25},
     {"pattern": "природа {OBJ} обусловлена {FROM|inst}", "register": "philosophical", "complexity": 3, "weight": 0.25},
     {"pattern": "{FROM|nom} — это то, что делает {OBJ} тем, что оно есть", "register": "philosophical", "complexity": 3, "weight": 0.2}
-  ],
-  "RelIncludes": [
-    {"pattern": "{FROM} включает {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.3},
-    {"pattern": "{TO|nom} входит в состав {FROM|gen}", "register": "explanatory", "complexity": 1, "weight": 0.25},
-    {"pattern": "{FROM|nom} непредставима без {TO|gen}", "register": "philosophical", "complexity": 2, "weight": 0.25},
-    {"pattern": "одной из составляющих {FROM|gen} является {TO|nom}", "register": "explanatory", "complexity": 2, "weight": 0.2}
   ],
   "RelStructures": [
     {"pattern": "{FROM} структурирует {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.3},
@@ -63,12 +43,6 @@
     {"pattern": "без {TO|gen} нет и {FROM|gen}", "register": "explanatory", "complexity": 2, "weight": 0.3},
     {"pattern": "{FROM|nom} стоит на фундаменте {TO|gen}", "register": "philosophical", "complexity": 2, "weight": 0.2},
     {"pattern": "{TO|nom} — это условие, без которого {FROM|nom} невозможна", "register": "philosophical", "complexity": 3, "weight": 0.2}
-  ],
-  "RelRelatedTo": [
-    {"pattern": "{FROM} связана с {TO|inst}", "register": "philosophical", "complexity": 1, "weight": 0.3},
-    {"pattern": "между {FROM|inst} и {TO|inst} есть глубокая связь", "register": "explanatory", "complexity": 2, "weight": 0.25},
-    {"pattern": "{FROM} и {TO|nom} переплетены", "register": "conversational", "complexity": 1, "weight": 0.25},
-    {"pattern": "нельзя понять {FROM|acc} в отрыве от {TO|gen}", "register": "philosophical", "complexity": 3, "weight": 0.2}
   ],
   "RelMeans": [
     {"pattern": "{FROM} означает {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.35},
@@ -144,14 +118,6 @@
     {"pattern": "нельзя понять {FROM|acc} в отрыве от {OBJ|gen}", "register": "philosophical", "complexity": 3, "weight": 0.2},
     {"pattern": "эти вещи — {FROM|nom} и {OBJ|nom} — идут рука об руку", "register": "conversational", "complexity": 2, "weight": 0.15},
     {"pattern": "заметь связь: чем глубже {FROM|nom}, тем явственнее {OBJ|nom}", "register": "dialogical", "complexity": 3, "weight": 0.1}
-  ],
-  "RelContrastsWith": [
-    {"pattern": "{FROM} контрастирует с {OBJ|inst}", "register": "philosophical", "complexity": 1, "weight": 0.3},
-    {"pattern": "{FROM} и {OBJ|nom} — противоположные полюса", "register": "explanatory", "complexity": 2, "weight": 0.2},
-    {"pattern": "между {FROM|inst} и {OBJ|inst} существует напряжение", "register": "philosophical", "complexity": 2, "weight": 0.2},
-    {"pattern": "{FROM} {FROM_G:несовместим,несовместима,несовместимо} с {OBJ|inst} в предельном случае", "register": "philosophical", "complexity": 3, "weight": 0.15},
-    {"pattern": "трудно совместить {FROM|acc} и {OBJ|acc}", "register": "conversational", "complexity": 2, "weight": 0.15},
-    {"pattern": "это как свет и тень: {FROM|nom} и {OBJ|nom} определяют друг друга через отрицание", "register": "dialogical", "complexity": 3, "weight": 0.1}
   ],
   "RelContrastsWith": [
     {"pattern": "{FROM} контрастирует с {OBJ|inst}", "register": "philosophical", "complexity": 1, "weight": 0.3},

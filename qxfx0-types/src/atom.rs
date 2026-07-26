@@ -126,12 +126,7 @@ impl AtomGraph {
     pub fn relations_from(&self, atom: &AtomId) -> Vec<&Relation> {
         self.edges_from
             .get(atom)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .filter_map(|&i| self.edges.get(i))
-                    .collect()
-            })
+            .map(|indices| indices.iter().filter_map(|&i| self.edges.get(i)).collect())
             .unwrap_or_default()
     }
 
@@ -139,12 +134,7 @@ impl AtomGraph {
     pub fn relations_to(&self, atom: &AtomId) -> Vec<&Relation> {
         self.edges_to
             .get(atom)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .filter_map(|&i| self.edges.get(i))
-                    .collect()
-            })
+            .map(|indices| indices.iter().filter_map(|&i| self.edges.get(i)).collect())
             .unwrap_or_default()
     }
 
@@ -156,6 +146,89 @@ impl AtomGraph {
             .push(idx);
         self.edges_to.entry(rel.to.clone()).or_default().push(idx);
         self.edges.push(rel);
+    }
+
+    /// Rebuild `edges_from`/`edges_to` indexes from `edges`.
+    ///
+    /// Call this after deserializing an `AtomGraph` or after any manual
+    /// mutation of `edges` that bypassed `add_relation`.
+    pub fn rebuild_indices(&mut self) {
+        self.edges_from.clear();
+        self.edges_to.clear();
+        for (idx, rel) in self.edges.iter().enumerate() {
+            self.edges_from
+                .entry(rel.from.clone())
+                .or_default()
+                .push(idx);
+            self.edges_to.entry(rel.to.clone()).or_default().push(idx);
+        }
+    }
+
+    /// Validate graph referential integrity and the two derived indexes.
+    /// This is suitable for persistence boundaries and health checks; callers
+    /// that mutate a graph manually should rebuild indexes before validating.
+    pub fn validate(&self) -> Result<(), Vec<String>> {
+        let mut violations = Vec::new();
+
+        for (key, atom) in &self.atoms {
+            if key != &atom.id {
+                violations.push(format!(
+                    "atom map key '{}' differs from atom id '{}'",
+                    key.as_str(),
+                    atom.id.as_str()
+                ));
+            }
+            if key.as_str().trim().is_empty() || atom.display.trim().is_empty() {
+                violations.push(format!(
+                    "atom '{}' has empty identity/display",
+                    key.as_str()
+                ));
+            }
+        }
+
+        let mut expected_from: BTreeMap<AtomId, Vec<usize>> = BTreeMap::new();
+        let mut expected_to: BTreeMap<AtomId, Vec<usize>> = BTreeMap::new();
+        for (index, relation) in self.edges.iter().enumerate() {
+            if !self.atoms.contains_key(&relation.from) {
+                violations.push(format!(
+                    "edge {index} references missing source '{}'",
+                    relation.from.as_str()
+                ));
+            }
+            if !self.atoms.contains_key(&relation.to) {
+                violations.push(format!(
+                    "edge {index} references missing target '{}'",
+                    relation.to.as_str()
+                ));
+            }
+            if relation.topic.trim().is_empty() {
+                violations.push(format!("edge {index} has an empty topic"));
+            }
+            if let Err(reason) = relation.validate() {
+                violations.push(reason);
+            }
+            expected_from
+                .entry(relation.from.clone())
+                .or_default()
+                .push(index);
+            expected_to
+                .entry(relation.to.clone())
+                .or_default()
+                .push(index);
+        }
+
+        if self.edges_from != expected_from {
+            violations.push("edges_from index does not match edges".into());
+        }
+        if self.edges_to != expected_to {
+            violations.push("edges_to index does not match edges".into());
+        }
+
+        if violations.is_empty() {
+            Ok(())
+        } else {
+            Err(violations)
+        }
     }
 }
 
@@ -222,20 +295,13 @@ impl SenseVector {
         // Each relation contributes a direction; weight decays by edge count
         // so hubs don't dominate.
         let n = rels.len().max(1) as f64;
-        self.relation_vector = rels
-            .iter()
-            .map(|r| (r.rel_type, 1.0 / n))
-            .collect();
+        self.relation_vector = rels.iter().map(|r| (r.rel_type, 1.0 / n)).collect();
         self
     }
 
     /// Magnitude (L2 norm) of this sense vector.
     pub fn magnitude(&self) -> f64 {
-        let rel_sq: f64 = self
-            .relation_vector
-            .iter()
-            .map(|(_, w)| w * w)
-            .sum();
+        let rel_sq: f64 = self.relation_vector.iter().map(|(_, w)| w * w).sum();
         (self.weight * self.weight + rel_sq).sqrt()
     }
 }
@@ -563,7 +629,6 @@ mod sense_vector_tests {
         assert!(rel.validate().is_err());
     }
 
-
     #[test]
     fn test_atom_graph_serde_round_trip() {
         let mut graph = AtomGraph::new();
@@ -600,16 +665,52 @@ mod sense_vector_tests {
         });
 
         let json = serde_json::to_string(&graph).expect("serialize graph");
-        let restored: AtomGraph =
-            serde_json::from_str(&json).expect("deserialize graph");
+        let restored: AtomGraph = serde_json::from_str(&json).expect("deserialize graph");
         assert_eq!(restored.atoms.len(), 2);
         assert_eq!(restored.edges.len(), 1);
         assert_eq!(restored.edges[0].from.as_str(), "свобода");
         assert_eq!(restored.edges[0].to.as_str(), "выбор");
-        assert_eq!(
-            restored.edges[0].rel_type,
-            RelationType::RelPresupposes
-        );
+        assert_eq!(restored.edges[0].rel_type, RelationType::RelPresupposes);
         assert_eq!(restored.edges[0].en_original, "freedom presupposes choice");
+        assert!(restored.validate().is_ok());
+    }
+
+    #[test]
+    fn test_atom_graph_validate_detects_missing_endpoint() {
+        let mut graph = AtomGraph::new();
+        graph.atoms.insert(
+            AtomId::new("a"),
+            Atom {
+                id: AtomId::new("a"),
+                display: "a".into(),
+                category: AtomCategory::CatTopic,
+            },
+        );
+        graph.add_relation(make_rel("a предполагает b", "a presupposes b"));
+        let violations = graph.validate().unwrap_err();
+        assert!(violations
+            .iter()
+            .any(|reason| reason.contains("missing target")));
+    }
+
+    #[test]
+    fn test_atom_graph_validate_detects_stale_index() {
+        let mut graph = AtomGraph::new();
+        for id in ["a", "b"] {
+            graph.atoms.insert(
+                AtomId::new(id),
+                Atom {
+                    id: AtomId::new(id),
+                    display: id.into(),
+                    category: AtomCategory::CatTopic,
+                },
+            );
+        }
+        graph.add_relation(make_rel("a предполагает b", "a presupposes b"));
+        graph.edges_from.clear();
+        let violations = graph.validate().unwrap_err();
+        assert!(violations
+            .iter()
+            .any(|reason| reason.contains("edges_from")));
     }
 }

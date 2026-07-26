@@ -10,3 +10,4 @@ qxfx0-types = { path = "../qxfx0-types" }
 qxfx0-morphology = { path = "../qxfx0-morphology" }
 serde.workspace = true
 serde_json.workspace = true
+tracing.workspace = true

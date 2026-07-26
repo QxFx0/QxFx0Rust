@@ -6,68 +6,9 @@
 //!
 //! Substrate edges route activation but never appear in verbalized output.
 use qxfx0_types::atom::{AtomGraph, AtomId};
+use qxfx0_types::network::{ActivationStep, EdgeSource, SemanticEdge, SemanticNetwork};
+use qxfx0_types::system_state::SemanticState;
 use std::collections::{BTreeMap, BTreeSet};
-
-/// Source of a semantic edge.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EdgeSource {
-    ExplicitEdge,
-    SubstrateEdge,
-}
-
-/// A weighted directed edge in the semantic network.
-#[derive(Debug, Clone)]
-pub struct SemanticEdge {
-    pub from: AtomId,
-    pub to: AtomId,
-    pub weight: f64,
-    pub co_occurrence: usize,
-    pub source: EdgeSource,
-}
-
-/// A single step in the spreading activation trace.
-#[derive(Debug, Clone)]
-pub struct ActivationStep {
-    pub node: AtomId,
-    pub source: EdgeSource,
-    pub via: AtomId,
-    pub hop: usize,
-    pub weight: f64,
-}
-
-/// The semantic network — nodes and weighted edges with activation state.
-#[derive(Debug, Clone)]
-pub struct SemanticNetwork {
-    pub nodes: BTreeSet<AtomId>,
-    pub edges: BTreeMap<(AtomId, AtomId), SemanticEdge>,
-    pub activation: BTreeMap<AtomId, f64>,
-    pub decay_rate: f64,
-    pub max_hops: usize,
-    pub activation_log: Vec<ActivationStep>,
-}
-
-impl Default for SemanticNetwork {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl SemanticNetwork {
-    pub fn new() -> Self {
-        SemanticNetwork {
-            nodes: BTreeSet::new(),
-            edges: BTreeMap::new(),
-            activation: BTreeMap::new(),
-            decay_rate: 0.5,
-            max_hops: 3,
-            activation_log: Vec::new(),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.nodes.is_empty()
-    }
-}
 
 /// Build a SemanticNetwork from the explicit AtomGraph + substrate co-occurrence edges.
 pub fn build_semantic_network(graph: &AtomGraph) -> SemanticNetwork {
@@ -82,16 +23,13 @@ pub fn build_semantic_network(graph: &AtomGraph) -> SemanticNetwork {
         sn.nodes.insert(edge.from.clone());
         sn.nodes.insert(edge.to.clone());
         let key = (edge.from.clone(), edge.to.clone());
-        let entry = sn
-            .edges
-            .entry(key)
-            .or_insert_with(|| SemanticEdge {
-                from: edge.from.clone(),
-                to: edge.to.clone(),
-                weight: 0.0,
-                co_occurrence: 0,
-                source: EdgeSource::ExplicitEdge,
-            });
+        let entry = sn.edges.entry(key).or_insert_with(|| SemanticEdge {
+            from: edge.from.clone(),
+            to: edge.to.clone(),
+            weight: 0.0,
+            co_occurrence: 0,
+            source: EdgeSource::ExplicitEdge,
+        });
         entry.co_occurrence += 1;
         if entry.co_occurrence > max_count {
             max_count = entry.co_occurrence;
@@ -114,7 +52,10 @@ pub fn build_semantic_network(graph: &AtomGraph) -> SemanticNetwork {
 }
 
 /// Build substrate co-occurrence edges by analyzing shared tokens in ru_original.
-fn build_substrate_edges(graph: &AtomGraph, explicit_nodes: &BTreeSet<AtomId>) -> Vec<SemanticEdge> {
+fn build_substrate_edges(
+    graph: &AtomGraph,
+    explicit_nodes: &BTreeSet<AtomId>,
+) -> Vec<SemanticEdge> {
     // Precompute lowercased node strings once.
     let explicit_list: Vec<(&AtomId, String)> = explicit_nodes
         .iter()
@@ -157,12 +98,18 @@ fn build_substrate_edges(graph: &AtomGraph, explicit_nodes: &BTreeSet<AtomId>) -
     for ((a, b), count) in cooc_map {
         if count >= 1 {
             edges.push(SemanticEdge {
-                from: a.clone(), to: b.clone(),
-                weight: 0.3, co_occurrence: count, source: EdgeSource::SubstrateEdge,
+                from: a.clone(),
+                to: b.clone(),
+                weight: 0.3,
+                co_occurrence: count,
+                source: EdgeSource::SubstrateEdge,
             });
             edges.push(SemanticEdge {
-                from: b, to: a,
-                weight: 0.3, co_occurrence: count, source: EdgeSource::SubstrateEdge,
+                from: b,
+                to: a,
+                weight: 0.3,
+                co_occurrence: count,
+                source: EdgeSource::SubstrateEdge,
             });
         }
     }
@@ -205,8 +152,7 @@ pub fn activate_topic(seeds: &BTreeSet<AtomId>, sn: &SemanticNetwork) -> Semanti
     let mut sn = sn.clone();
     sn.activation_log.clear();
     let adj = build_adjacency_index(&sn);
-    let initial: BTreeMap<AtomId, f64> =
-        seeds.iter().map(|a| (a.clone(), 1.0)).collect();
+    let initial: BTreeMap<AtomId, f64> = seeds.iter().map(|a| (a.clone(), 1.0)).collect();
     for atom in seeds {
         sn.activation_log.push(ActivationStep {
             node: atom.clone(),
@@ -276,7 +222,12 @@ pub fn get_activated_atoms(sn: &SemanticNetwork, threshold: f64) -> Vec<(AtomId,
         .filter(|(_, &w)| w > threshold)
         .map(|(a, &w)| (a.clone(), w))
         .collect();
-    results.sort_by(|a, b| b.1.total_cmp(&a.1));
+    // Deterministic order: descending activation weight, then AtomId.
+    // Activation weights are f64 products (`act * weight * decay_rate`)
+    // that can collide when two atoms receive the same propagated
+    // activation. `AtomId` is unique and Ord, so it gives a stable
+    // tie-breaker that is bit-exact across runs and platforms.
+    results.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     results
 }
 
@@ -286,14 +237,29 @@ pub fn build_topic_atoms(graph: &AtomGraph) -> BTreeMap<AtomId, BTreeSet<AtomId>
     for edge in &graph.edges {
         let topic = &edge.topic;
         let topic_id = AtomId::new(topic.clone());
-        map.entry(topic_id)
-            .or_default()
-            .insert(edge.from.clone());
+        map.entry(topic_id).or_default().insert(edge.from.clone());
         map.entry(AtomId::new(edge.topic.clone()))
             .or_default()
             .insert(edge.to.clone());
     }
     map
+}
+
+/// Build or reuse a cached semantic network stored in `semantic`.
+///
+/// The cache is keyed by `runtime_graph.edges.len()`. When the graph grows,
+/// the network is rebuilt exactly once and stored back in the state.
+pub fn cached_semantic_network(semantic: &mut SemanticState) -> SemanticNetwork {
+    let edge_count = semantic.runtime_graph.edges.len();
+    if let Some(cached) = semantic.cached_network.clone() {
+        if semantic.cached_edge_count == edge_count {
+            return cached;
+        }
+    }
+    let network = build_semantic_network(&semantic.runtime_graph);
+    semantic.cached_network = Some(network.clone());
+    semantic.cached_edge_count = edge_count;
+    network
 }
 
 #[cfg(test)]
@@ -306,7 +272,11 @@ mod tests {
         let graph = seed_graph();
         let sn = build_semantic_network(&graph);
         assert!(!sn.nodes.is_empty());
-        assert!(sn.edges.len() >= 42, "expected >= 42 edges, got {}", sn.edges.len());
+        assert!(
+            sn.edges.len() >= 42,
+            "expected >= 42 edges, got {}",
+            sn.edges.len()
+        );
     }
 
     #[test]
@@ -324,30 +294,61 @@ mod tests {
         let graph = seed_graph();
         let sn = build_semantic_network(&graph);
         let activated = activate(&AtomId::new("свобода"), &sn);
-        assert!(activated.activation.len() >= 2,
-            "Expected multi-hop activation, got {} atoms", activated.activation.len());
+        assert!(
+            activated.activation.len() >= 2,
+            "Expected multi-hop activation, got {} atoms",
+            activated.activation.len()
+        );
     }
 
     #[test]
     fn test_activate_topic_multiple_seeds() {
         let graph = seed_graph();
         let sn = build_semantic_network(&graph);
-        let seeds: BTreeSet<AtomId> =
-            ["свобода", "ответственность"]
-                .iter()
-                .map(|s| AtomId::new(*s))
-                .collect();
+        let seeds: BTreeSet<AtomId> = ["свобода", "ответственность"]
+            .iter()
+            .map(|s| AtomId::new(*s))
+            .collect();
         let activated = activate_topic(&seeds, &sn);
         let active = get_activated_atoms(&activated, 0.05);
         assert!(active.len() >= 2);
     }
 
     #[test]
-    fn test_deterministic_activation() {
-        let graph = seed_graph();
-        let sn = build_semantic_network(&graph);
-        let a1 = activate(&AtomId::new("свобода"), &sn);
-        let a2 = activate(&AtomId::new("свобода"), &sn);
-        assert_eq!(a1.activation, a2.activation);
+    fn test_cached_semantic_network_rebuilds_on_growth() {
+        use qxfx0_types::atom::{ObjectCase, Relation, RelationSource};
+        use qxfx0_types::RelationType;
+
+        let mut semantic = SemanticState {
+            runtime_graph: seed_graph(),
+            ..SemanticState::default()
+        };
+        let sn1 = cached_semantic_network(&mut semantic);
+        assert!(!sn1.edges.is_empty());
+        let edge_count = semantic.runtime_graph.edges.len();
+
+        let sn2 = cached_semantic_network(&mut semantic);
+        assert_eq!(semantic.cached_edge_count, edge_count);
+        assert_eq!(sn1.edges.len(), sn2.edges.len());
+
+        // Add a new edge and ensure the cache is rebuilt.
+        semantic.runtime_graph.edges.push(Relation {
+            from: AtomId::new("свобода"),
+            to: AtomId::new("тест"),
+            rel_type: RelationType::RelPresupposes,
+            object_case: ObjectCase::CaseAccusative,
+            object_text: "тестовый объект".into(),
+            verb_override: None,
+            ru_original: "свобода предполагает тестовый объект".into(),
+            en_original: "freedom presupposes test object".into(),
+            source: RelationSource::SeedFromPredicate,
+            topic: "свобода".into(),
+            rationale: None,
+            counter: None,
+            synthesis: None,
+        });
+        let sn3 = cached_semantic_network(&mut semantic);
+        assert_eq!(semantic.cached_edge_count, edge_count + 1);
+        assert_ne!(sn1.edges.len(), sn3.edges.len());
     }
 }

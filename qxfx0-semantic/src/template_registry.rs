@@ -22,17 +22,28 @@ pub struct SurfaceTemplate {
 }
 
 /// Registry of templates indexed by RelationType.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TemplateRegistry {
     templates: BTreeMap<RelationType, Vec<SurfaceTemplate>>,
 }
 
 impl TemplateRegistry {
     /// Load from the embedded templates.json data.
+    ///
+    /// If the embedded JSON is malformed (e.g. after manual edits), falls back
+    /// to an empty registry and logs a warning instead of panicking.
     pub fn load() -> Self {
         let json = include_str!("../../data/semantic/templates/templates.json");
-        let raw: BTreeMap<String, Vec<SurfaceTemplate>> =
-            serde_json::from_str(json).expect("templates.json must be valid JSON");
+        let raw: BTreeMap<String, Vec<SurfaceTemplate>> = match serde_json::from_str(json) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to parse embedded templates.json: {}. Using empty registry.",
+                    e
+                );
+                return Self::default();
+            }
+        };
 
         let mut templates: BTreeMap<RelationType, Vec<SurfaceTemplate>> = BTreeMap::new();
         for (key, tmpls) in raw {
@@ -51,6 +62,55 @@ impl TemplateRegistry {
 
     pub fn is_empty(&self) -> bool {
         self.templates.is_empty()
+    }
+
+    pub fn relation_type_count(&self) -> usize {
+        self.templates.len()
+    }
+
+    pub fn template_count(&self) -> usize {
+        self.templates.values().map(Vec::len).sum()
+    }
+
+    /// Validate embedded surface templates for health checks.
+    pub fn validate(&self) -> Vec<String> {
+        let mut violations = Vec::new();
+        if self.templates.is_empty() {
+            violations.push("template registry is empty".into());
+        }
+        for (relation_type, templates) in &self.templates {
+            if templates.is_empty() {
+                violations.push(format!("{relation_type:?} has no templates"));
+            }
+            for (index, template) in templates.iter().enumerate() {
+                if template.pattern.trim().is_empty()
+                    || !template.pattern.contains("{FROM")
+                    || !(template.pattern.contains("{TO") || template.pattern.contains("{OBJ"))
+                {
+                    violations.push(format!(
+                        "{relation_type:?} template {index} has invalid placeholders"
+                    ));
+                }
+                if template.register.trim().is_empty() {
+                    violations.push(format!(
+                        "{relation_type:?} template {index} has an empty register"
+                    ));
+                }
+                if !(1..=3).contains(&template.complexity) {
+                    violations.push(format!(
+                        "{relation_type:?} template {index} has complexity {}",
+                        template.complexity
+                    ));
+                }
+                if !template.weight.is_finite() || template.weight <= 0.0 {
+                    violations.push(format!(
+                        "{relation_type:?} template {index} has invalid weight {}",
+                        template.weight
+                    ));
+                }
+            }
+        }
+        violations
     }
 
     /// Select a template deterministically:
@@ -181,7 +241,13 @@ mod tests {
         assert!(first.is_some());
         let (idx1, _) = first.unwrap();
 
-        let second = reg.select(RelationType::RelPresupposes, "philosophical", 3, 20, &[idx1]);
+        let second = reg.select(
+            RelationType::RelPresupposes,
+            "philosophical",
+            3,
+            20,
+            &[idx1],
+        );
         assert!(second.is_some());
         let (idx2, _) = second.unwrap();
         assert_ne!(idx1, idx2);
@@ -192,7 +258,13 @@ mod tests {
         let reg = TemplateRegistry::load();
         let tmpls = reg.get(RelationType::RelPresupposes);
         let all_indices: Vec<usize> = (0..tmpls.len()).collect();
-        let result = reg.select(RelationType::RelPresupposes, "philosophical", 3, 99, &all_indices);
+        let result = reg.select(
+            RelationType::RelPresupposes,
+            "philosophical",
+            3,
+            99,
+            &all_indices,
+        );
         assert!(result.is_some());
     }
 }

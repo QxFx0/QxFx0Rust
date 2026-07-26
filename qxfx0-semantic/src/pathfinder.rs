@@ -3,6 +3,21 @@ use qxfx0_types::field::FieldProfile;
 use qxfx0_types::RelationType;
 use std::collections::BTreeSet;
 
+/// Deduplication key for length-3 paths (3 edges = 9 fields).
+/// Extracted from a 9-tuple to satisfy clippy::type_complexity.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct PathKey {
+    e1_from: AtomId,
+    e1_rt: RelationType,
+    e1_to: AtomId,
+    e2_from: AtomId,
+    e2_rt: RelationType,
+    e2_to: AtomId,
+    e3_from: AtomId,
+    e3_rt: RelationType,
+    e3_to: AtomId,
+}
+
 /// Path finder — graph traversal with field-biased ranking.
 /// Finds admissible paths through the AtomStore relation graph.
 pub struct PathFinder;
@@ -50,11 +65,18 @@ impl PathFinder {
         if max_len >= 3 {
             // Length 3: start → e1 → mid1 → e2 → mid2 → e3 → obj
             // Use BTreeSet per path to prevent cycles and dedup by edge triple.
-            let mut seen_paths: BTreeSet<(AtomId, RelationType, AtomId, AtomId, RelationType, AtomId, AtomId, RelationType, AtomId)> = BTreeSet::new();
+            let mut seen_paths: BTreeSet<PathKey> = BTreeSet::new();
             for e1 in graph.relations_from(start) {
                 let mid1 = &e1.to;
+                if mid1 == start {
+                    continue;
+                }
                 for e2 in graph.relations_from(mid1) {
                     let mid2 = &e2.to;
+                    // Prevent mid2 from revisiting start or mid1 (cycle)
+                    if mid2 == start || mid2 == mid1 {
+                        continue;
+                    }
                     let mut visited = BTreeSet::new();
                     visited.insert(start.clone());
                     visited.insert(mid1.clone());
@@ -63,18 +85,17 @@ impl PathFinder {
                         if visited.contains(&e3.to) {
                             continue;
                         }
-                        let key = (
-                            e1.from.clone(),
-                            e1.rel_type,
-                            e1.to.clone(),
-                            e2.from.clone(),
-                            e2.rel_type,
-                            e2.to.clone(),
-                            e3.from.clone(),
-                            e3.rel_type,
-                            e3.to.clone(),
-                        );
-                        // tuple of 9 elements: from1, rt1, to1, from2, rt2, to2, from3, rt3, to3
+                        let key = PathKey {
+                            e1_from: e1.from.clone(),
+                            e1_rt: e1.rel_type,
+                            e1_to: e1.to.clone(),
+                            e2_from: e2.from.clone(),
+                            e2_rt: e2.rel_type,
+                            e2_to: e2.to.clone(),
+                            e3_from: e3.from.clone(),
+                            e3_rt: e3.rel_type,
+                            e3_to: e3.to.clone(),
+                        };
                         if !seen_paths.insert(key) {
                             continue;
                         }
@@ -200,22 +221,21 @@ impl PathFinder {
             let a_total = a.score.total + a_bonus;
             let b_total = b.score.total + b_bonus;
 
-            b_total.total_cmp(&a_total)
-                .then_with(|| {
-                    let a_key = a
-                        .proof
-                        .edges
-                        .first()
-                        .map(|e| e.ru_original.as_str())
-                        .unwrap_or("");
-                    let b_key = b
-                        .proof
-                        .edges
-                        .first()
-                        .map(|e| e.ru_original.as_str())
-                        .unwrap_or("");
-                    a_key.cmp(b_key)
-                })
+            b_total.total_cmp(&a_total).then_with(|| {
+                let a_key = a
+                    .proof
+                    .edges
+                    .first()
+                    .map(|e| e.ru_original.as_str())
+                    .unwrap_or("");
+                let b_key = b
+                    .proof
+                    .edges
+                    .first()
+                    .map(|e| e.ru_original.as_str())
+                    .unwrap_or("");
+                a_key.cmp(b_key)
+            })
         });
         sorted
     }

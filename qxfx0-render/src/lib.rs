@@ -1,27 +1,65 @@
-use qxfx0_semantic::{verbalize_path, verbalize_relation, PathFinder, PropositionMode};
+use qxfx0_semantic::{
+    cached_semantic_network, network::activate as network_activate, verbalize_path,
+    verbalize_relation, ContentSelector, DiscourseComposer, DiscourseStyle, PathFinder,
+    PropositionMode, Verbosity,
+};
 use qxfx0_types::atom::{AtomGraph, AtomId, Relation};
 use qxfx0_types::field::FieldProfile;
 use qxfx0_types::frame::SemanticFrame;
+use qxfx0_types::system_state::SemanticState;
 
 /// Render engine — dispatches semantic frames to surface text generation.
-/// Replaces inline rendering in pipeline (F5 fix).
+/// Uses DiscourseComposer for rich multi-sentence output, with PathFinder
+/// as a fallback for empty composition.
 pub struct RenderEngine;
 
 impl RenderEngine {
     /// Render a semantic frame into surface text.
+    ///
+    /// Uses the cached semantic network in `semantic` when available,
+    /// rebuilding it only when the runtime graph has grown.
     pub fn render_frame(
         frame: &SemanticFrame,
-        graph: &AtomGraph,
+        semantic: &mut SemanticState,
         fp: &FieldProfile,
         commitment_ref: &str,
     ) -> String {
+        let sn = cached_semantic_network(semantic);
+        let graph = &semantic.runtime_graph;
         match frame {
             SemanticFrame::DefinitionFrame { topic, authority, .. } => {
                 let topic_id = AtomId::new(topic.clone());
-                let surface = PathFinder::compose_definition(graph, fp, 3, &topic_id);
-                // M-10: compute `auth` once — both branches need it.
                 let auth = Self::authority_text(authority);
 
+                // Primary: DiscourseComposer for rich multi-sentence output
+                let cs = ContentSelector::build(graph);
+                let activated = network_activate(&topic_id, &sn);
+                let selected = cs.compose_from_activation(fp, topic, &activated);
+                let composer = DiscourseComposer::new();
+                let style = DiscourseStyle {
+                    register: "philosophical".into(),
+                    complexity: if fp.conatus_energy > 0.8 { 3 } else { 2 },
+                    hedging: 0.0,
+                    verbosity: if fp.narrative_tone() == qxfx0_types::NarrativeTone::Terse {
+                        Verbosity::Medium
+                    } else {
+                        Verbosity::Elaborate
+                    },
+                    use_transitions: fp.conatus_energy > 0.6,
+                };
+                let response = composer.compose(&selected, topic, &style, 0, &[]);
+
+                if !response.is_empty() {
+                    let prefix = if response.starts_with(topic.as_str()) {
+                        auth.to_string()
+                    } else {
+                        format!("{} {} — ", auth, topic)
+                    };
+                    return format!("{}{} {}", commitment_ref, prefix, response);
+                }
+
+                // Fallback: PathFinder
+                let surface = PathFinder::compose_definition(graph, fp, 3, &topic_id);
                 if surface.text.is_empty() {
                     format!("{} {} — содержание не прошло проверку качества.", auth, topic)
                 } else {
@@ -45,6 +83,27 @@ impl RenderEngine {
 
             SemanticFrame::ChallengeFrame { target, .. } => {
                 let topic_id = AtomId::new(target.clone());
+                // Primary: DiscourseComposer for rich defense + counterpoint
+                let cs = ContentSelector::build(graph);
+                let activated = network_activate(&topic_id, &sn);
+                let selected = cs.compose_from_activation(fp, target, &activated);
+                let composer = DiscourseComposer::new();
+                let style = DiscourseStyle {
+                    register: "philosophical".into(),
+                    complexity: 2,
+                    hedging: 0.1,
+                    verbosity: Verbosity::Medium,
+                    use_transitions: true,
+                };
+                let response = composer.compose(&selected, target, &style, 0, &[]);
+                if !response.is_empty() {
+                    return if commitment_ref.is_empty() {
+                        response
+                    } else {
+                        format!("{} {}", commitment_ref, response)
+                    };
+                }
+                // Fallback: PathFinder
                 let surface = PathFinder::compose_definition(graph, fp, 3, &topic_id);
                 if surface.text.is_empty() {
                     format!("По вопросу «{}» в графе недостаточно данных для ответа.", target)
@@ -57,6 +116,31 @@ impl RenderEngine {
 
             SemanticFrame::ReflectFrame { topic } => {
                 let topic_id = AtomId::new(topic.clone());
+                // Primary: DiscourseComposer for rich reflection
+                let cs = ContentSelector::build(graph);
+                let activated = network_activate(&topic_id, &sn);
+                let selected = cs.compose_from_activation(fp, topic, &activated);
+                let composer = DiscourseComposer::new();
+                let style = DiscourseStyle {
+                    register: "conversational".into(),
+                    complexity: 2,
+                    hedging: 0.05,
+                    verbosity: if fp.narrative_tone() == qxfx0_types::NarrativeTone::Terse {
+                        Verbosity::Medium
+                    } else {
+                        Verbosity::Elaborate
+                    },
+                    use_transitions: fp.conatus_energy > 0.6,
+                };
+                let response = composer.compose(&selected, topic, &style, 0, &[]);
+                if !response.is_empty() {
+                    return if commitment_ref.is_empty() {
+                        response
+                    } else {
+                        format!("{} {}", commitment_ref, response)
+                    };
+                }
+                // Fallback: PathFinder
                 let surface = PathFinder::compose_definition(graph, fp, 3, &topic_id);
                 if surface.text.is_empty() {
                     format!("Поле смыслов по теме «{}» пока не сформировано.", topic)
@@ -72,7 +156,8 @@ impl RenderEngine {
             }
 
             SemanticFrame::ContactFrame { greeting } => {
-                format!("{}. Слышу, что сейчас нужна опора.", greeting)
+                let _ = greeting;
+                "Привет. Я готов продолжить разговор и помочь с конкретной задачей.".into()
             }
 
             SemanticFrame::GroundFrame { topic, .. } => {
@@ -87,12 +172,15 @@ impl RenderEngine {
             }
 
             SemanticFrame::PurposeFrame { topic } => {
-                format!("Функция {} проявляется через повторяемую роль в действии.", topic)
+                format!(
+                    "Функция {} определяется устойчивой ролью объекта и результатом его использования.",
+                    topic
+                )
             }
 
             SemanticFrame::WorldCauseFrame { topic } => {
                 format!(
-                    "Если говорить о причине {}: различаю локальное рассуждение и знание о внешнем мире.",
+                    "Причину того, почему {}, нужно проверять по внешним фактам; локальный граф может только обозначить рамку рассуждения.",
                     topic
                 )
             }
@@ -217,6 +305,15 @@ impl RenderEngine {
                 scope: qxfx0_types::frame::FrameScope::SpecificScope,
                 authority: qxfx0_types::frame::FrameAuthority::Probable,
             },
+            PropositionMode::Greeting => SemanticFrame::ContactFrame {
+                greeting: prop.subject.clone(),
+            },
+            PropositionMode::Purpose => SemanticFrame::PurposeFrame {
+                topic: prop.subject.clone(),
+            },
+            PropositionMode::WorldCause => SemanticFrame::WorldCauseFrame {
+                topic: prop.subject.clone(),
+            },
         }
     }
 }
@@ -225,29 +322,37 @@ impl RenderEngine {
 mod tests {
     use super::*;
     use qxfx0_semantic::seed_graph;
+    use qxfx0_types::system_state::SemanticState;
+
+    fn semantic_with_graph(graph: AtomGraph) -> SemanticState {
+        SemanticState {
+            runtime_graph: graph,
+            ..SemanticState::default()
+        }
+    }
 
     #[test]
     fn test_render_definition() {
-        let graph = seed_graph();
+        let mut semantic = semantic_with_graph(seed_graph());
         let frame = SemanticFrame::DefinitionFrame {
             topic: "свобода".into(),
             scope: qxfx0_types::frame::FrameScope::GeneralScope,
             authority: qxfx0_types::frame::FrameAuthority::Known,
         };
-        let text = RenderEngine::render_frame(&frame, &graph, &FieldProfile::default(), "");
+        let text = RenderEngine::render_frame(&frame, &mut semantic, &FieldProfile::default(), "");
         assert!(!text.is_empty());
         assert!(text.contains("свобода"));
     }
 
     #[test]
     fn test_render_distinction() {
-        let graph = seed_graph();
+        let mut semantic = semantic_with_graph(seed_graph());
         let frame = SemanticFrame::DistinctionFrame {
             left: "свобода".into(),
             right: "произвол".into(),
             criteria: Vec::new(),
         };
-        let text = RenderEngine::render_frame(&frame, &graph, &FieldProfile::default(), "");
+        let text = RenderEngine::render_frame(&frame, &mut semantic, &FieldProfile::default(), "");
         assert!(text.contains("Различим"));
         assert!(text.contains("свобода"));
         assert!(text.contains("произвол"));
@@ -293,7 +398,8 @@ mod tests {
             right: "beta".into(),
             criteria: Vec::new(),
         };
-        let text = RenderEngine::render_frame(&frame, &graph, &FieldProfile::default(), "");
+        let mut semantic = semantic_with_graph(graph);
+        let text = RenderEngine::render_frame(&frame, &mut semantic, &FieldProfile::default(), "");
         assert!(text.contains("Различим"));
         assert!(text.contains("alpha"));
         assert!(text.contains("beta"));
@@ -307,7 +413,8 @@ mod tests {
     #[test]
     fn test_render_repair() {
         let frame = SemanticFrame::RepairFrame;
-        let text = RenderEngine::render_frame(&frame, &seed_graph(), &FieldProfile::default(), "");
+        let mut semantic = semantic_with_graph(seed_graph());
+        let text = RenderEngine::render_frame(&frame, &mut semantic, &FieldProfile::default(), "");
         assert!(text.contains("перегруз"));
     }
 

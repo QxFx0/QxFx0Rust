@@ -16,13 +16,13 @@ pub use composer::{
 };
 pub use conjugate::ConjugateComposer;
 pub use content_selector::ContentSelector;
-pub use discourse_composer::DiscourseComposer;
+pub use discourse_composer::{normalize_punctuation, DiscourseComposer};
 pub use gate::GeneratedPredicateGate;
 pub use inference::derive_atoms;
-pub use network::{
-    activate, build_semantic_network, get_activated_atoms, SemanticNetwork,
-};
+pub use network::{activate, build_semantic_network, cached_semantic_network, get_activated_atoms};
 pub use pathfinder::PathFinder;
+pub use qxfx0_types::network::{ActivationStep, EdgeSource, SemanticEdge, SemanticNetwork};
 pub use seed::{seed_graph, verbalize_path, verbalize_relation, COVERED_TOPICS};
 pub use sense_decomposer::SenseDecomposer;
 pub use syntactic_generator::{DiscourseStyle, SyntacticGenerator, Verbosity};
+pub use template_registry::TemplateRegistry;

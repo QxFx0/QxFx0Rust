@@ -16,6 +16,9 @@ pub enum PropositionMode {
     Challenge,
     Connect,
     Reflect,
+    Greeting,
+    Purpose,
+    WorldCause,
 }
 
 pub struct PropositionParser;
@@ -25,6 +28,77 @@ impl PropositionParser {
     pub fn parse(input: &str) -> ParsedProposition {
         let lower = input.to_lowercase();
         let trimmed = lower.trim();
+
+        // Contact must be recognized before the generic fallback. Keep the
+        // accepted set deliberately small so that a word such as "приветствие"
+        // is not accidentally routed as a greeting.
+        let greeting = trimmed
+            .trim_matches(|c: char| !c.is_alphanumeric())
+            .split_whitespace()
+            .collect::<Vec<_>>();
+        if !greeting.is_empty()
+            && greeting.len() <= 3
+            && greeting.iter().any(|word| {
+                matches!(
+                    *word,
+                    "привет" | "здравствуй" | "здравствуйте" | "добрый" | "доброе"
+                )
+            })
+        {
+            return ParsedProposition {
+                subject: greeting.join(" "),
+                object: None,
+                mode: PropositionMode::Greeting,
+            };
+        }
+
+        // Purpose/function questions: "в чём функция стола?", "зачем нужен X?"
+        // Preserve an oblique form ("стола") because it is already the
+        // grammatically correct form after the word "функция".
+        for marker in ["функция ", "назначение ", "роль "] {
+            if let Some(idx) = trimmed.find(marker) {
+                let topic = Self::clean_topic(&trimmed[idx + marker.len()..]);
+                if !topic.is_empty() {
+                    return ParsedProposition {
+                        subject: topic,
+                        object: None,
+                        mode: PropositionMode::Purpose,
+                    };
+                }
+            }
+        }
+        for marker in [
+            "зачем нужен ",
+            "зачем нужна ",
+            "зачем нужно ",
+            "для чего нужен ",
+        ] {
+            if let Some(idx) = trimmed.find(marker) {
+                let topic = Self::clean_topic(&trimmed[idx + marker.len()..]);
+                if !topic.is_empty() {
+                    return ParsedProposition {
+                        subject: topic,
+                        object: None,
+                        mode: PropositionMode::Purpose,
+                    };
+                }
+            }
+        }
+
+        // Causal questions about the external world deserve an explicit
+        // frame instead of being reduced to a definition of "почему".
+        if let Some(rest) = trimmed.strip_prefix("почему ") {
+            let topic = Self::clean_topic(rest);
+            return ParsedProposition {
+                subject: if topic.is_empty() {
+                    "явление".to_string()
+                } else {
+                    topic
+                },
+                object: None,
+                mode: PropositionMode::WorldCause,
+            };
+        }
 
         // Define: "что такое X?"
         if let Some(topic) = Self::extract_after(trimmed, &["что такое", "что есть", "определи"])
@@ -39,8 +113,9 @@ impl PropositionParser {
         // Distinction: "в чем разница между X и Y?"
         if trimmed.contains("разница между") || trimmed.contains("различие между")
         {
-            let after = if let Some(idx) = trimmed.find("между ") {
-                &trimmed[idx + 6..]
+            let mezi_prefix = "между ";
+            let after = if let Some(idx) = trimmed.find(mezi_prefix) {
+                &trimmed[idx + mezi_prefix.len()..]
             } else {
                 trimmed
             };
@@ -100,16 +175,25 @@ impl PropositionParser {
         }
 
         // Reflect: "что ты думаешь о X?", "какова твоя мысль о X?"
+        // Note: "об" variants MUST come before "о" variants to match the
+        // longer prefix first, otherwise "об" leaves a stray "б" in the topic.
         let reflect_patterns = [
+            "что ты думаешь об",
             "что ты думаешь о",
+            "что думаешь об",
             "что думаешь о",
+            "какова твоя мысль об",
             "какова твоя мысль о",
+            "твое мнение об",
             "твое мнение о",
+            "твоё мнение об",
             "твоё мнение о",
+            "поразмышляй об",
+            "поразмышляй о",
+            "подумай об",
+            "подумай о",
             "как ты считаешь",
             "как ты видишь",
-            "поразмышляй о",
-            "подумай о",
         ];
         for pattern in &reflect_patterns {
             if let Some(idx) = trimmed.find(pattern) {
@@ -125,13 +209,28 @@ impl PropositionParser {
             }
         }
 
-        // Connect: "как X связан с Y?"
-        if trimmed.contains("связан с") || trimmed.contains("связь между") {
-            if let Some(idx) = trimmed.find("как ") {
-                let after = &trimmed[idx + 4..];
-                if let Some(conn_idx) = after.find(" связан с ") {
+        // Connect: "как X связан/связана с Y?", "связь между X и Y"
+        if trimmed.contains("связан")
+            || trimmed.contains("связана")
+            || trimmed.contains("связь между")
+        {
+            let kak_prefix = "как ";
+            if let Some(idx) = trimmed.find(kak_prefix) {
+                let after = &trimmed[idx + kak_prefix.len()..];
+                // Match " связан с " or " связана с "
+                let conn_pattern_masc = " связан с ";
+                let conn_pattern_fem = " связана с ";
+                if let Some(conn_idx) = after
+                    .find(conn_pattern_masc)
+                    .or_else(|| after.find(conn_pattern_fem))
+                {
                     let subject = after[..conn_idx].trim();
-                    let object = after[conn_idx + 10..].trim_end_matches('?').trim();
+                    let rel_len = if after[conn_idx..].starts_with(conn_pattern_fem) {
+                        conn_pattern_fem.len()
+                    } else {
+                        conn_pattern_masc.len()
+                    };
+                    let object = after[conn_idx + rel_len..].trim_end_matches('?').trim();
                     return ParsedProposition {
                         subject: Self::clean_topic(subject),
                         object: Some(Self::clean_topic(object)),
@@ -141,11 +240,18 @@ impl PropositionParser {
             }
         }
 
-        // Fallback: try to extract a topic
+        // Fallback: statements are assertions; unknown questions remain
+        // definition requests. In both cases prefer the final content word,
+        // which is substantially closer to a Russian noun phrase than the
+        // old "first word with at least three bytes" heuristic.
         ParsedProposition {
             subject: Self::extract_topic_or_unknown(trimmed),
             object: None,
-            mode: PropositionMode::Define,
+            mode: if trimmed.ends_with('?') {
+                PropositionMode::Define
+            } else {
+                PropositionMode::Assert
+            },
         }
     }
 
@@ -171,13 +277,161 @@ impl PropositionParser {
             .to_string()
     }
 
-    fn extract_topic_or_unknown(text: &str) -> String {
-        let words: Vec<&str> = text.split_whitespace().filter(|w| w.len() >= 3).collect();
-        if words.is_empty() {
-            "неизвестный".to_string()
-        } else {
-            Self::clean_topic(words[0])
+    /// Try to normalize a topic to its nominative form by checking if any
+    /// graph atom's inflected form matches the input. Returns the original
+    /// string if no match is found.
+    pub fn normalize_topic(topic: &str, graph: &AtomGraph) -> String {
+        use qxfx0_morphology::{Case, MorphologyData};
+        let morph = MorphologyData::with_seed();
+        let lower = topic.to_lowercase();
+
+        for (id, atom) in &graph.atoms {
+            let display = atom.display.to_lowercase();
+            if display == lower {
+                return id.as_str().to_string();
+            }
+            for case in [
+                Case::Genitive,
+                Case::Dative,
+                Case::Accusative,
+                Case::Instrumental,
+                Case::Prepositional,
+            ] {
+                let inflected = morph.to_case(case, &display).to_lowercase();
+                if inflected == lower {
+                    return id.as_str().to_string();
+                }
+            }
         }
+        topic.to_string()
+    }
+
+    /// Find a graph-backed topic anywhere in the input. This is used after
+    /// parsing generic assertions/questions and keeps explicit parser modes
+    /// (purpose, cause, connection) in control of their own subject grammar.
+    pub fn known_topic_in_input(input: &str, graph: &AtomGraph) -> Option<String> {
+        use qxfx0_morphology::{Case, MorphologyData};
+        let morph = MorphologyData::with_seed();
+        let words: Vec<String> = input
+            .to_lowercase()
+            .split_whitespace()
+            .map(Self::clean_topic)
+            .filter(|word| !word.is_empty())
+            .collect();
+
+        for word in words {
+            for (id, atom) in &graph.atoms {
+                let display = atom.display.to_lowercase();
+                if word == display {
+                    return Some(id.as_str().to_string());
+                }
+                for case in [
+                    Case::Genitive,
+                    Case::Dative,
+                    Case::Accusative,
+                    Case::Instrumental,
+                    Case::Prepositional,
+                ] {
+                    if word == morph.to_case(case, &display).to_lowercase() {
+                        return Some(id.as_str().to_string());
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn extract_topic_or_unknown(text: &str) -> String {
+        Self::content_words(text)
+            .into_iter()
+            .next_back()
+            .unwrap_or_else(|| "неизвестный".to_string())
+    }
+
+    fn content_words(text: &str) -> Vec<String> {
+        const STOP_WORDS: &[&str] = &[
+            "что",
+            "как",
+            "какова",
+            "каков",
+            "кто",
+            "где",
+            "когда",
+            "почему",
+            "зачем",
+            "сколько",
+            "какой",
+            "какая",
+            "какое",
+            "какие",
+            "это",
+            "этот",
+            "эта",
+            "эти",
+            "оно",
+            "она",
+            "они",
+            "его",
+            "её",
+            "мне",
+            "меня",
+            "тебе",
+            "тебя",
+            "наш",
+            "ваш",
+            "для",
+            "про",
+            "при",
+            "над",
+            "под",
+            "без",
+            "между",
+            "через",
+            "около",
+            "после",
+            "перед",
+            "или",
+            "либо",
+            "тоже",
+            "очень",
+            "просто",
+            "лишь",
+            "только",
+            "нужен",
+            "нужна",
+            "нужно",
+            "есть",
+            "быть",
+            "был",
+            "была",
+            "будет",
+            "думаю",
+            "думаешь",
+            "считаю",
+            "считаешь",
+            "скажи",
+            "расскажи",
+            "объясни",
+            "покажи",
+            "купил",
+            "купила",
+            "хочу",
+            "хочешь",
+            "можно",
+            "нельзя",
+            "помоги",
+            "помочь",
+            "чём",
+            "чем",
+        ];
+
+        text.split_whitespace()
+            .map(Self::clean_topic)
+            .filter(|word| {
+                let chars = word.chars().count();
+                chars >= 2 && !STOP_WORDS.contains(&word.as_str())
+            })
+            .collect()
     }
 }
 
@@ -296,6 +550,26 @@ impl ContextualComposer {
                 }
             }
             PropositionMode::Assert => Self::compose_assert(prop, engagement),
+            PropositionMode::Greeting => {
+                Self::plain_surface(format!("{}. Рад продолжить разговор.", prop.subject))
+            }
+            PropositionMode::Purpose => Self::plain_surface(format!(
+                "Назначение {} определяется его устойчивой ролью в действии.",
+                prop.subject
+            )),
+            PropositionMode::WorldCause => Self::plain_surface(format!(
+                "Причину явления «{}» нужно проверять по внешним фактам.",
+                prop.subject
+            )),
+        }
+    }
+
+    fn plain_surface(text: String) -> GeneratedSurface {
+        GeneratedSurface {
+            text,
+            paths: Vec::new(),
+            provenance: Vec::new(),
+            depth_score: 0.0,
         }
     }
 
@@ -406,7 +680,10 @@ impl ContextualComposer {
             response.push_str(&counter_text);
         }
         if response.is_empty() {
-            response = format!("По вопросу о {} у меня нет устоявшейся позиции в графе.", topic);
+            response = format!(
+                "По вопросу о {} у меня нет устоявшейся позиции в графе.",
+                topic
+            );
         }
 
         let all_rels: Vec<Relation> = engagement
@@ -536,5 +813,86 @@ impl ContextualComposer {
             provenance: all_rels.iter().map(|r| r.source).collect(),
             depth_score: all_rels.len() as f64,
         }
+    }
+}
+
+#[cfg(test)]
+mod parser_tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_reflect_ob() {
+        let prop = PropositionParser::parse("что ты думаешь об ответственности?");
+        assert_eq!(prop.mode, PropositionMode::Reflect);
+        assert_eq!(prop.subject, "ответственности");
+    }
+
+    #[test]
+    fn test_parse_reflect_o() {
+        let prop = PropositionParser::parse("что ты думаешь о свободе?");
+        assert_eq!(prop.mode, PropositionMode::Reflect);
+        assert_eq!(prop.subject, "свободе");
+    }
+
+    #[test]
+    fn test_parse_reflect_ob_no_stray_b() {
+        let prop = PropositionParser::parse("что ты думаешь об истине?");
+        assert_eq!(prop.mode, PropositionMode::Reflect);
+        assert!(
+            !prop.subject.starts_with("б "),
+            "subject should not start with 'б ': {}",
+            prop.subject
+        );
+    }
+
+    #[test]
+    fn test_parse_define() {
+        let prop = PropositionParser::parse("что такое свобода?");
+        assert_eq!(prop.mode, PropositionMode::Define);
+        assert_eq!(prop.subject, "свобода");
+    }
+
+    #[test]
+    fn test_parse_connect_feminine() {
+        let prop = PropositionParser::parse("как свобода связана с истиной?");
+        assert_eq!(prop.mode, PropositionMode::Connect);
+        assert_eq!(prop.subject, "свобода");
+        assert_eq!(prop.object.as_deref(), Some("истиной"));
+    }
+
+    #[test]
+    fn test_parse_greeting() {
+        let prop = PropositionParser::parse("Привет!");
+        assert_eq!(prop.mode, PropositionMode::Greeting);
+        assert_eq!(prop.subject, "привет");
+    }
+
+    #[test]
+    fn test_parse_purpose_question() {
+        let prop = PropositionParser::parse("в чём функция стола?");
+        assert_eq!(prop.mode, PropositionMode::Purpose);
+        assert_eq!(prop.subject, "стола");
+    }
+
+    #[test]
+    fn test_parse_world_cause_question() {
+        let prop = PropositionParser::parse("почему небо голубое?");
+        assert_eq!(prop.mode, PropositionMode::WorldCause);
+        assert_eq!(prop.subject, "небо голубое");
+    }
+
+    #[test]
+    fn test_parse_assertion_prefers_final_content_word() {
+        let prop = PropositionParser::parse("я купил дом");
+        assert_eq!(prop.mode, PropositionMode::Assert);
+        assert_eq!(prop.subject, "дом");
+    }
+
+    #[test]
+    fn test_known_topic_can_be_found_anywhere_in_input() {
+        let graph = crate::seed_graph();
+        let topic =
+            PropositionParser::known_topic_in_input("мне особенно важна свобода сегодня", &graph);
+        assert_eq!(topic.as_deref(), Some("свобода"));
     }
 }

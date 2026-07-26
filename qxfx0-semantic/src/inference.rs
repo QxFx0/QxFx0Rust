@@ -17,8 +17,8 @@ pub enum AtomTag {
     Doubt(String),
     NeedContact(String),
     NeedMeaning(String),
-    AgencyLost(String),       // conatus energy as string
-    AgencyFound(String),      // conatus energy as string
+    AgencyLost(String),  // conatus energy as string
+    AgencyFound(String), // conatus energy as string
     Anchoring(String),
     Contradiction(String, String),
     CustomAtom(String, String),
@@ -46,7 +46,9 @@ pub fn derive_atoms(tags: &[AtomTag]) -> Vec<DerivedAtom> {
 
     let has_need_contact = tags.iter().any(|t| matches!(t, AtomTag::NeedContact(_)));
     let has_exhaustion = tags.iter().any(|t| matches!(t, AtomTag::Exhaustion(_)));
-    let has_contradiction = tags.iter().any(|t| matches!(t, AtomTag::Contradiction(_, _)));
+    let has_contradiction = tags
+        .iter()
+        .any(|t| matches!(t, AtomTag::Contradiction(_, _)));
     let has_doubt = tags.iter().any(|t| matches!(t, AtomTag::Doubt(_)));
     let has_agency_lost = tags.iter().any(|t| matches!(t, AtomTag::AgencyLost(_)));
     let has_searching = tags.iter().any(|t| matches!(t, AtomTag::Searching(_)));
@@ -93,7 +95,7 @@ pub fn classify_state_tags(
         tags.push(AtomTag::Searching("unknown_topic".into()));
     }
 
-    if conatus_energy < 3.0 {
+    if conatus_energy < 0.5 {
         tags.push(AtomTag::Exhaustion("low_conatus".into()));
     }
 
@@ -102,11 +104,18 @@ pub fn classify_state_tags(
     }
 
     if field_counterfactual > 0.7 {
-        tags.push(AtomTag::Contradiction("high_counterfactual".into(), "".into()));
+        tags.push(AtomTag::Contradiction(
+            "high_counterfactual".into(),
+            "".into(),
+        ));
     }
 
     if field_resonance < 0.2 {
         tags.push(AtomTag::NeedMeaning("low_resonance".into()));
+    }
+
+    if field_resonance < 0.3 && field_counterfactual < 0.4 {
+        tags.push(AtomTag::NeedContact("low_resonance_flat".into()));
     }
 
     if conatus_energy < 0.3 {
@@ -152,7 +161,10 @@ mod tests {
         ];
         let derived = derive_atoms(&tags);
         assert_eq!(derived.len(), 1);
-        assert!(matches!(derived[0].rule, DeriveRule::ContradictionUnderDoubt));
+        assert!(matches!(
+            derived[0].rule,
+            DeriveRule::ContradictionUnderDoubt
+        ));
     }
 
     #[test]
@@ -163,7 +175,10 @@ mod tests {
         ];
         let derived = derive_atoms(&tags);
         assert_eq!(derived.len(), 1);
-        assert!(matches!(derived[0].rule, DeriveRule::AgencySearchExhaustion));
+        assert!(matches!(
+            derived[0].rule,
+            DeriveRule::AgencySearchExhaustion
+        ));
     }
 
     #[test]
@@ -180,8 +195,26 @@ mod tests {
 
     #[test]
     fn test_classify_state_tags() {
-        let tags = classify_state_tags(true, 0.8, 0.3, 0.5, 15.0, 0.1);
+        let tags = classify_state_tags(true, 0.8, 0.3, 0.5, 1.5, 0.1);
         assert!(tags.iter().any(|t| matches!(t, AtomTag::Anchoring(_))));
         assert!(tags.iter().any(|t| matches!(t, AtomTag::AgencyFound(_))));
+    }
+
+    #[test]
+    fn test_classify_exhaustion_fires_below_threshold() {
+        let tags = classify_state_tags(true, 0.5, 0.3, 0.5, 0.3, 0.1);
+        assert!(tags.iter().any(|t| matches!(t, AtomTag::Exhaustion(_))));
+    }
+
+    #[test]
+    fn test_classify_exhaustion_does_not_fire_above_threshold() {
+        let tags = classify_state_tags(true, 0.5, 0.3, 0.5, 1.5, 0.1);
+        assert!(!tags.iter().any(|t| matches!(t, AtomTag::Exhaustion(_))));
+    }
+
+    #[test]
+    fn test_classify_need_contact_fires() {
+        let tags = classify_state_tags(true, 0.5, 0.3, 0.15, 1.0, 0.1);
+        assert!(tags.iter().any(|t| matches!(t, AtomTag::NeedContact(_))));
     }
 }

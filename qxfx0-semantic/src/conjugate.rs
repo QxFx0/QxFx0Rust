@@ -148,14 +148,17 @@ impl ConjugateComposer {
             cv.components.push(component);
         }
 
-        // Compute resonance: how strongly the graph responds to the input
-        let total_input_weight: f64 = sense_vectors.iter().map(|v| v.weight).sum();
-        let edge_count = cv.edges.len() as f64;
-        cv.resonance = if total_input_weight > 0.0 {
-            (edge_count / total_input_weight).min(1.0)
-        } else {
-            0.0
-        };
+        // Compute resonance: proportion of input atoms that found graph edges.
+        // This is a meaningful ratio in [0, 1] that varies across inputs:
+        // - A topic with many edges → high resonance
+        // - An unknown topic with no edges → low resonance
+        let atoms_with_edges = cv
+            .components
+            .iter()
+            .filter(|c| !c.relation_vector.is_empty())
+            .count();
+        let total_atoms = sense_vectors.len().max(1);
+        cv.resonance = atoms_with_edges as f64 / total_atoms as f64;
 
         cv
     }
@@ -228,15 +231,19 @@ impl ConjugateComposer {
 
         // Unclassified: append with a documented neutral prefix
         if !unclassified.is_empty() {
-            let unclassified_texts: Vec<String> =
-                unclassified.iter().map(|e| crate::seed::verbalize_relation(e)).collect();
+            let unclassified_texts: Vec<String> = unclassified
+                .iter()
+                .map(|e| crate::seed::verbalize_relation(e))
+                .collect();
             parts.push(format!("связано с {}", unclassified_texts.join(". ")));
         }
 
         // Counter: contradictions from graph — natural defense language
         if !countering.is_empty() {
-            let counter_texts: Vec<String> =
-                countering.iter().map(|e| crate::seed::verbalize_relation(e)).collect();
+            let counter_texts: Vec<String> = countering
+                .iter()
+                .map(|e| crate::seed::verbalize_relation(e))
+                .collect();
             parts.push(format!("но {}", counter_texts.join(". ")));
         }
 
@@ -280,17 +287,25 @@ impl ConjugateComposer {
         for sv in sense_vectors {
             for edge in graph.relations_to(&sv.atom_id) {
                 let edge_key = (edge.from.clone(), edge.rel_type, edge.to.clone());
-                if !cv.edges.iter().any(|e| {
-                    (e.from.clone(), e.rel_type, e.to.clone()) == edge_key
-                }) && seen_reverse.insert(edge_key) {
+                if !cv
+                    .edges
+                    .iter()
+                    .any(|e| (e.from.clone(), e.rel_type, e.to.clone()) == edge_key)
+                    && seen_reverse.insert(edge_key)
+                {
                     reverse_edges.push((*edge).clone());
                 }
             }
         }
 
         // Build defense text from supporting edges
-        let supporting: Vec<&Relation> = cv.edges.iter().filter(|e| is_supporting(e.rel_type)).collect();
-        let countering: Vec<&Relation> = cv.edges.iter().filter(|e| is_counter(e.rel_type)).collect();
+        let supporting: Vec<&Relation> = cv
+            .edges
+            .iter()
+            .filter(|e| is_supporting(e.rel_type))
+            .collect();
+        let countering: Vec<&Relation> =
+            cv.edges.iter().filter(|e| is_counter(e.rel_type)).collect();
 
         let mut parts: Vec<String> = Vec::new();
 
@@ -307,8 +322,10 @@ impl ConjugateComposer {
         }
 
         if !countering.is_empty() {
-            let counter_texts: Vec<String> =
-                countering.iter().map(|e| crate::seed::verbalize_relation(e)).collect();
+            let counter_texts: Vec<String> = countering
+                .iter()
+                .map(|e| crate::seed::verbalize_relation(e))
+                .collect();
             parts.push(format!("но при этом {}", counter_texts.join(". ")));
         }
 
@@ -408,7 +425,11 @@ mod tests {
         let surface = ConjugateComposer::compose(&graph, &[]);
         // BUG 2 fix: empty input now returns minimal semantic response, not empty string
         assert!(!surface.text.is_empty());
-        assert!(surface.text.contains("не знаю") || surface.text.contains("unknown") || !surface.text.is_empty());
+        assert!(
+            surface.text.contains("не знаю")
+                || surface.text.contains("unknown")
+                || !surface.text.is_empty()
+        );
     }
 
     #[test]
@@ -417,7 +438,25 @@ mod tests {
         let vectors = SenseDecomposer::decompose("свобода", &graph);
         let cv = ConjugateComposer::traverse(&graph, &vectors);
         assert!(cv.resonance >= 0.0);
+        assert!(cv.resonance <= 1.0);
         assert!(!cv.edges.is_empty());
+    }
+
+    #[test]
+    fn test_conjugate_resonance_varies() {
+        let graph = seed_graph();
+        // Known topic — should have high resonance
+        let v_known = SenseDecomposer::decompose("свобода", &graph);
+        let cv_known = ConjugateComposer::traverse(&graph, &v_known);
+        // Unknown topic — should have lower resonance
+        let v_unknown = SenseDecomposer::decompose("абракадабра", &graph);
+        let cv_unknown = ConjugateComposer::traverse(&graph, &v_unknown);
+        assert!(
+            cv_known.resonance > cv_unknown.resonance,
+            "known topic resonance ({}) should exceed unknown ({})",
+            cv_known.resonance,
+            cv_unknown.resonance
+        );
     }
 
     #[test]
