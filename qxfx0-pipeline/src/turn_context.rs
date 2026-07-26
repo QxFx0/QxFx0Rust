@@ -5,6 +5,7 @@
 
 use crate::conversation_fsm::ConversationState;
 use crate::shadow_plan::ShadowPlanOutcome;
+use crate::RendererAuthority;
 use qxfx0_self::deliberation::ReconcileRule;
 use qxfx0_semantic::{ParsedProposition, PlanOutcome, PropositionMode, RecoveryTrace};
 use qxfx0_types::system_state::GuardStatus;
@@ -191,6 +192,37 @@ pub struct RenderedTurnContext {
     response: String,
     path_depth: usize,
     has_bridge: bool,
+    renderer_authority: RendererAuthority,
+    renderer_source: RendererSource,
+    plan_surface_available: bool,
+    plan_surface_matches_output: Option<bool>,
+    plan_render_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct RenderEvidence {
+    pub(crate) renderer_authority: RendererAuthority,
+    pub(crate) renderer_source: RendererSource,
+    pub(crate) plan_surface_available: bool,
+    pub(crate) plan_surface_matches_output: Option<bool>,
+    pub(crate) plan_render_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub enum RendererSource {
+    LegacyGraph,
+    AuditedPlan,
+    LegacyFallback,
+}
+
+impl RendererSource {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::LegacyGraph => "legacy_graph",
+            Self::AuditedPlan => "audited_plan",
+            Self::LegacyFallback => "legacy_fallback",
+        }
+    }
 }
 
 impl RenderedTurnContext {
@@ -199,12 +231,18 @@ impl RenderedTurnContext {
         response: String,
         path_depth: usize,
         has_bridge: bool,
+        evidence: RenderEvidence,
     ) -> Self {
         Self {
             planned,
             response,
             path_depth,
             has_bridge,
+            renderer_authority: evidence.renderer_authority,
+            renderer_source: evidence.renderer_source,
+            plan_surface_available: evidence.plan_surface_available,
+            plan_surface_matches_output: evidence.plan_surface_matches_output,
+            plan_render_error: evidence.plan_render_error,
         }
     }
 
@@ -226,6 +264,14 @@ impl RenderedTurnContext {
 
     pub fn has_bridge(&self) -> bool {
         self.has_bridge
+    }
+
+    pub fn renderer_authority(&self) -> RendererAuthority {
+        self.renderer_authority
+    }
+
+    pub fn renderer_source(&self) -> RendererSource {
+        self.renderer_source
     }
 }
 
@@ -462,6 +508,33 @@ impl StageTraceContext for PlannedTurnContext {
 impl StageTraceContext for RenderedTurnContext {
     fn trace_family(&self) -> Option<CanonicalMoveFamily> {
         Some(self.routed().family())
+    }
+
+    fn trace_metadata(&self) -> BTreeMap<String, String> {
+        let mut metadata = BTreeMap::from([
+            (
+                "renderer_authority".into(),
+                self.renderer_authority().as_str().into(),
+            ),
+            (
+                "renderer_source".into(),
+                self.renderer_source().as_str().into(),
+            ),
+            (
+                "plan_surface_available".into(),
+                self.plan_surface_available.to_string(),
+            ),
+        ]);
+        if let Some(matches_output) = self.plan_surface_matches_output {
+            metadata.insert(
+                "plan_surface_matches_output".into(),
+                matches_output.to_string(),
+            );
+        }
+        if let Some(error) = &self.plan_render_error {
+            metadata.insert("plan_render_error".into(), error.clone());
+        }
+        metadata
     }
 }
 

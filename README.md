@@ -199,8 +199,21 @@ It validates all 30 admitted topics in fresh sessions and one shared 30-turn
 session: topic and canonical slots, exact predicate set, claim roles,
 derivation, provenance, no repeated claims, terminal punctuation, and explicit
 fallback for recognized but unadmitted content. It observes `plan_shadow`; the
-route-based renderer remains independent until the plan-renderer change passes
-this gate and its surface-specific checks.
+route-based renderer remains the default authority. The plan-renderer checks
+in the same gate verify the exact curated surface for the same fresh and
+long-session corpus.
+
+To run the controlled audited renderer, enable the explicit CLI flag:
+
+```bash
+target/release/qxfx0 --db qxfx0.db --render-audited-plan turn 'что такое свобода?'
+```
+
+Without the flag, `legacy_shadow` remains authoritative and records a
+plan-to-surface comparison in the render trace. With the flag,
+`audited_plan` renders only admitted topic-backed `ReadyResponsePlan` values;
+fallback, greeting, purpose and external-cause routes retain their existing
+contracts.
 
 ## Operational limits
 
