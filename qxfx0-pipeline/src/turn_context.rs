@@ -355,13 +355,54 @@ impl StageTraceContext for PlannedTurnContext {
                 }
                 metadata.insert("plan_claim_count".into(), plan.claims().len().to_string());
                 metadata.insert(
+                    "claim_roles".into(),
+                    plan.claims()
+                        .iter()
+                        .map(|claim| claim.role().as_str())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                );
+                metadata.insert(
+                    "claim_ids".into(),
+                    plan.claims()
+                        .iter()
+                        .map(|claim| claim.id().as_str())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                );
+                metadata.insert(
                     "plan_derivation_count".into(),
                     plan.derivation().len().to_string(),
+                );
+                metadata.insert(
+                    "derivation_rules".into(),
+                    plan.derivation()
+                        .iter()
+                        .map(|step| step.rule().as_str())
+                        .collect::<Vec<_>>()
+                        .join(","),
                 );
                 metadata.insert(
                     "discourse_relation".into(),
                     plan.discourse().relation().as_str().into(),
                 );
+                metadata.insert(
+                    "sentence_budget".into(),
+                    plan.discourse().sentence_budget().get().to_string(),
+                );
+                if let Some(obligation) = plan.obligation() {
+                    metadata.insert("dialogue_obligation".into(), obligation.as_str().into());
+                }
+                if let Some((subject, relation, object)) = plan
+                    .claims()
+                    .iter()
+                    .find_map(|claim| claim.proposition().canonical_slots())
+                {
+                    metadata.insert(
+                        "canonical_slots".into(),
+                        [subject.as_str(), relation.as_str(), object.as_str()].join(","),
+                    );
+                }
                 let predicate_refs = plan
                     .claims()
                     .iter()
