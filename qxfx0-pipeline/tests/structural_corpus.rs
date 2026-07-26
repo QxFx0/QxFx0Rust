@@ -3,7 +3,10 @@
 //! This gate observes the shadow plan. The legacy renderer intentionally
 //! remains authoritative until a later change makes it render these plans.
 
-use qxfx0_pipeline::{process_turn_with_trace, TurnInput};
+use qxfx0_pipeline::{
+    process_turn, process_turn_with_renderer, process_turn_with_trace,
+    process_turn_with_trace_and_renderer, RendererAuthority, TurnInput,
+};
 use qxfx0_semantic::{argued_topic_registry, FallbackReason};
 use qxfx0_types::system_state::SystemState;
 use std::collections::{BTreeMap, BTreeSet};
@@ -47,6 +50,17 @@ fn plan_metadata(
         .metadata
 }
 
+fn render_metadata(
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> &BTreeMap<String, String> {
+    &trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "render")
+        .expect("every successful turn must record render")
+        .metadata
+}
+
 fn csv_set(value: &str) -> BTreeSet<&str> {
     value.split(',').filter(|entry| !entry.is_empty()).collect()
 }
@@ -78,6 +92,31 @@ fn assert_single_terminal_mark(response: &str, case: CorpusCase) {
         "{} has repeated terminal marks: {response}",
         case.topic
     );
+}
+
+fn expected_audited_surface(topic: &qxfx0_semantic::ArguedTopic) -> String {
+    let mut sentences = vec![
+        labeled_sentence("Тезис", topic.thesis().surface()),
+        labeled_sentence("Контрпункт", topic.counterpoint().surface()),
+    ];
+    if let Some(consequence) = topic.consequence() {
+        sentences.push(labeled_sentence("Следствие", consequence.surface()));
+    }
+    sentences.push("Проверка: верно ли это?".into());
+    sentences.join(" ")
+}
+
+fn labeled_sentence(label: &str, surface: &str) -> String {
+    let surface = surface.trim();
+    let terminal = surface
+        .chars()
+        .last()
+        .filter(|character| matches!(character, '.' | '!' | '?'))
+        .unwrap_or('.');
+    format!(
+        "{label}: {}{terminal}",
+        surface.trim_end_matches(['.', '!', '?'])
+    )
 }
 
 fn assert_structural_plan(
@@ -272,4 +311,142 @@ fn recognized_but_unadmitted_topic_keeps_an_explicit_fallback_reason() {
         metadata.get("plan_topic").map(String::as_str),
         Some("знание")
     );
+}
+
+fn assert_plan_renderer_surface(
+    case: CorpusCase,
+    state: &mut SystemState,
+    session_id: &str,
+    turn: usize,
+) {
+    let expected = argued_topic_registry()
+        .unwrap()
+        .get(case.topic)
+        .unwrap_or_else(|| panic!("fixture topic '{}' must be admitted", case.topic));
+    let (output, trace) = process_turn_with_trace_and_renderer(
+        &TurnInput {
+            session_id: session_id.into(),
+            raw_text: case.prompt.into(),
+        },
+        state,
+        RendererAuthority::AuditedPlan,
+    );
+    let render = render_metadata(&trace);
+
+    assert!(
+        !output.blocked,
+        "turn {turn} for {} was blocked",
+        case.topic
+    );
+    assert_eq!(
+        output.response,
+        expected_audited_surface(expected),
+        "turn {turn} did not preserve the curated plan surface for {}",
+        case.topic
+    );
+    assert_single_terminal_mark(&output.response, case);
+    assert_eq!(
+        render.get("renderer_authority").map(String::as_str),
+        Some("audited_plan")
+    );
+    assert_eq!(
+        render.get("renderer_source").map(String::as_str),
+        Some("audited_plan")
+    );
+    assert_eq!(
+        render.get("plan_surface_available").map(String::as_str),
+        Some("true")
+    );
+    assert_eq!(
+        render
+            .get("plan_surface_matches_output")
+            .map(String::as_str),
+        Some("true")
+    );
+}
+
+#[test]
+fn audited_plan_renderer_passes_surface_gate_in_fresh_sessions() {
+    for (turn, case) in corpus_cases().into_iter().enumerate() {
+        let session_id = format!("surface-fresh-{turn}");
+        let mut state = test_state(&session_id);
+        assert_plan_renderer_surface(case, &mut state, &session_id, turn + 1);
+    }
+}
+
+#[test]
+fn audited_plan_renderer_passes_surface_gate_in_one_thirty_turn_session() {
+    let session_id = "surface-long-session";
+    let mut state = test_state(session_id);
+
+    for (turn, case) in corpus_cases().into_iter().enumerate() {
+        assert_plan_renderer_surface(case, &mut state, session_id, turn + 1);
+    }
+
+    assert_eq!(state.dialogue.turn_count, 30);
+    assert_eq!(state.dialogue.history.len(), 30);
+}
+
+#[test]
+fn shadow_mode_compares_plan_surface_without_changing_legacy_output() {
+    let session_id = "surface-shadow";
+    let mut state = test_state(session_id);
+    let (_, trace) = process_turn_with_trace(
+        &TurnInput {
+            session_id: session_id.into(),
+            raw_text: "что такое свобода?".into(),
+        },
+        &mut state,
+    );
+    let render = render_metadata(&trace);
+
+    assert_eq!(
+        render.get("renderer_authority").map(String::as_str),
+        Some("legacy_shadow")
+    );
+    assert_eq!(
+        render.get("renderer_source").map(String::as_str),
+        Some("legacy_graph")
+    );
+    assert_eq!(
+        render.get("plan_surface_available").map(String::as_str),
+        Some("true")
+    );
+    assert_eq!(
+        render
+            .get("plan_surface_matches_output")
+            .map(String::as_str),
+        Some("false")
+    );
+}
+
+#[test]
+fn audited_plan_flag_keeps_fallback_and_external_routes_on_legacy_contracts() {
+    for (name, prompt) in [
+        ("unadmitted", "что такое знание?"),
+        ("greeting", "привет"),
+        ("purpose", "в чём функция стола?"),
+        ("world-cause", "почему небо голубое?"),
+    ] {
+        let baseline_session = format!("surface-legacy-{name}");
+        let flagged_session = format!("surface-flagged-{name}");
+        let mut baseline = test_state(&baseline_session);
+        let mut flagged = test_state(&flagged_session);
+        let input = TurnInput {
+            session_id: baseline_session,
+            raw_text: prompt.into(),
+        };
+        let baseline_output = process_turn(&input, &mut baseline);
+        let flagged_output = process_turn_with_renderer(
+            &TurnInput {
+                session_id: flagged_session,
+                raw_text: prompt.into(),
+            },
+            &mut flagged,
+            RendererAuthority::AuditedPlan,
+        );
+
+        assert_eq!(flagged_output.response, baseline_output.response, "{name}");
+        assert_eq!(flagged_output.blocked, baseline_output.blocked, "{name}");
+    }
 }
