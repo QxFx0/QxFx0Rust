@@ -175,7 +175,7 @@ pub fn plan_shadow_stage(
     _state: &mut SystemState,
     routed: RoutedTurnContext,
 ) -> Result<PlannedTurnContext, String> {
-    let shadow_plan = crate::shadow_plan::build_shadow_plan(&routed);
+    let shadow_plan = crate::shadow_plan::build_shadow_plan(&routed)?;
     Ok(PlannedTurnContext::new(routed, shadow_plan))
 }
 

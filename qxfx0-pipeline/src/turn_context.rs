@@ -10,7 +10,7 @@ use qxfx0_semantic::{ParsedProposition, PlanOutcome, PropositionMode, RecoveryTr
 use qxfx0_types::system_state::GuardStatus;
 use qxfx0_types::CanonicalMoveFamily;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TurnInputContext {
@@ -350,6 +350,48 @@ impl StageTraceContext for PlannedTurnContext {
                 metadata.insert("plan_version".into(), plan.version().as_str().into());
                 metadata.insert("response_goal".into(), plan.goal().as_str().into());
                 metadata.insert("subject_kind".into(), plan.subject().kind().into());
+                if let qxfx0_semantic::PlanSubject::Topic(topic) = plan.subject() {
+                    metadata.insert("plan_topic".into(), topic.as_str().into());
+                }
+                metadata.insert("plan_claim_count".into(), plan.claims().len().to_string());
+                metadata.insert(
+                    "plan_derivation_count".into(),
+                    plan.derivation().len().to_string(),
+                );
+                metadata.insert(
+                    "discourse_relation".into(),
+                    plan.discourse().relation().as_str().into(),
+                );
+                let predicate_refs = plan
+                    .claims()
+                    .iter()
+                    .flat_map(|claim| claim.predicate_refs().iter())
+                    .map(qxfx0_semantic::PredicateRef::as_str)
+                    .collect::<BTreeSet<_>>()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .join(",");
+                metadata.insert("predicate_refs".into(), predicate_refs);
+                let provenances = plan
+                    .claims()
+                    .iter()
+                    .map(|claim| claim.evidence().provenance().as_str())
+                    .collect::<BTreeSet<_>>()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .join(",");
+                let argued = plan.claims().iter().any(|claim| {
+                    claim.evidence().provenance()
+                        == qxfx0_semantic::EvidenceProvenance::CuratedReleaseCorpus
+                });
+                metadata.insert("claim_provenance".into(), provenances);
+                metadata.insert("argued_topic_admitted".into(), argued.to_string());
+                if argued {
+                    metadata.insert(
+                        "content_profile".into(),
+                        qxfx0_semantic::CONTENT_PROFILE.into(),
+                    );
+                }
             }
             PlanOutcome::Fallback(plan) => {
                 metadata.insert("plan_version".into(), plan.version().as_str().into());
@@ -361,6 +403,15 @@ impl StageTraceContext for PlannedTurnContext {
                         .map_or("none", qxfx0_semantic::FallbackSubject::kind)
                         .into(),
                 );
+                match plan.subject() {
+                    Some(qxfx0_semantic::FallbackSubject::KnownTopic(topic)) => {
+                        metadata.insert("plan_topic".into(), topic.as_str().into());
+                    }
+                    Some(qxfx0_semantic::FallbackSubject::UnresolvedTopic(topic)) => {
+                        metadata.insert("plan_topic".into(), topic.clone());
+                    }
+                    Some(qxfx0_semantic::FallbackSubject::Dialogue(_)) | None => {}
+                }
             }
         }
         metadata
