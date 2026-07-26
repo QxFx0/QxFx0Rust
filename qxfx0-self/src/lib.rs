@@ -1,4 +1,5 @@
 pub mod deliberation;
+pub mod doubt;
 
 pub mod perspective;
 
