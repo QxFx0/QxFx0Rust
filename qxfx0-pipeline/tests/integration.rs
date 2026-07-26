@@ -530,6 +530,58 @@ fn test_session_mismatch_is_blocked_without_mutation() {
 }
 
 #[test]
+fn test_rc_pilot_language_regressions() {
+    let prompts = [
+        "что такое свобода?",
+        "что ты думаешь об ответственности?",
+        "как истина связана с красотой?",
+        "что такое память?",
+        "что ты думаешь о сознании?",
+        "как свобода связана с волей?",
+        "что такое справедливость?",
+        "что ты думаешь о смерти?",
+        "как язык связан с мышлением?",
+        "что такое время?",
+    ];
+    let forbidden = [
+        "о ответственности",
+        "о истине",
+        "об языке",
+        "бытиеа",
+        "если нет последствии",
+        "природа отсутствие",
+        "мышление лишена",
+        ":.",
+    ];
+    let mut state = SystemState {
+        session_id: "rc-pilot-language".into(),
+        semantic: qxfx0_types::system_state::SemanticState {
+            runtime_graph: qxfx0_semantic::seed_graph(),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    for turn in 0..20 {
+        let output = process_turn(
+            &TurnInput {
+                session_id: state.session_id.clone(),
+                raw_text: prompts[turn % prompts.len()].into(),
+            },
+            &mut state,
+        );
+        let normalized = output.response.to_lowercase();
+        for fragment in forbidden {
+            assert!(
+                !normalized.contains(fragment),
+                "turn {turn} contains RC pilot regression '{fragment}': {}",
+                output.response
+            );
+        }
+    }
+}
+
+#[test]
 fn test_soak_1000_turns_has_bounded_state() {
     let topics = [
         "что такое свобода?",

@@ -17,14 +17,14 @@
   "RelDetermines": [
     {"pattern": "{FROM} определяет {OBJ}", "register": "philosophical", "complexity": 1, "weight": 0.3},
     {"pattern": "именно {FROM|nom} задаёт, чем является {OBJ}", "register": "explanatory", "complexity": 2, "weight": 0.25},
-    {"pattern": "природа {OBJ} обусловлена {FROM|inst}", "register": "philosophical", "complexity": 3, "weight": 0.25},
+    {"pattern": "{FROM|nom} определяет природу явления «{OBJ}»", "register": "philosophical", "complexity": 3, "weight": 0.25},
     {"pattern": "{FROM|nom} — это то, что делает {OBJ} тем, что оно есть", "register": "philosophical", "complexity": 3, "weight": 0.2}
   ],
   "RelStructures": [
     {"pattern": "{FROM} структурирует {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.3},
     {"pattern": "{FROM|nom} придаёт форму {TO|dat}", "register": "explanatory", "complexity": 2, "weight": 0.25},
     {"pattern": "именно {FROM|nom} организует {TO|acc}", "register": "philosophical", "complexity": 2, "weight": 0.25},
-    {"pattern": "без {FROM|gen} {TO|nom} лишена внутренней организации", "register": "philosophical", "complexity": 3, "weight": 0.2}
+    {"pattern": "без {FROM|gen} {TO|nom} {TO_G:лишён,лишена,лишено,лишены} внутренней организации", "register": "philosophical", "complexity": 3, "weight": 0.2}
   ],
   "RelExpresses": [
     {"pattern": "{FROM} выражается через {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.3},

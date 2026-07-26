@@ -170,15 +170,30 @@ fn join_sentences(parts: &[String]) -> String {
             if trimmed.is_empty() {
                 return None;
             }
-            if trimmed.ends_with(['.', '!', '?']) {
-                Some(trimmed.to_string())
+            let capitalized = capitalize_first(trimmed);
+            if capitalized.ends_with(['.', '!', '?', ':']) {
+                Some(capitalized)
             } else {
-                Some(format!("{}.", trimmed))
+                Some(format!("{}.", capitalized))
             }
         })
         .collect::<Vec<_>>()
         .join(" ");
     normalize_punctuation(&joined)
+}
+
+fn capitalize_first(text: &str) -> String {
+    let Some((index, character)) = text
+        .char_indices()
+        .find(|(_, character)| character.is_alphabetic())
+    else {
+        return text.to_string();
+    };
+    let mut result = String::with_capacity(text.len());
+    result.push_str(&text[..index]);
+    result.extend(character.to_uppercase());
+    result.push_str(&text[index + character.len_utf8()..]);
+    result
 }
 
 impl Default for DiscourseComposer {
@@ -401,14 +416,19 @@ fn pick_unique(category: &str, seed: u64, used: &mut BTreeSet<String>) -> String
 fn prep_for(word: &str) -> &'static str {
     let first = word.chars().next().unwrap_or(' ');
     match first {
-        'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я' => "об",
+        'а' | 'и' | 'о' | 'у' | 'э' => "об",
         _ => "о",
     }
 }
 
 fn adapt_template(tpl: &str, inflected: &str) -> String {
     let prep = prep_for(inflected);
-    let result = tpl.replace(" о {t}", &format!(" {} {{t}}", prep));
+    let capitalized_prep = if prep == "об" { "Об" } else { "О" };
+    let result = tpl
+        .replace(" об {t}", &format!(" {} {{t}}", prep))
+        .replace(" о {t}", &format!(" {} {{t}}", prep))
+        .replace("Об {t}", &format!("{} {{t}}", capitalized_prep))
+        .replace("О {t}", &format!("{} {{t}}", capitalized_prep));
     result.replace("{t}", inflected)
 }
 
@@ -500,11 +520,11 @@ fn topic_introduction(topic: &str, seed: u64, history: &[String]) -> String {
             case: Case::Prepositional,
         },
         IntroTemplate {
-            pattern: "Что такое {t}? Для меня это...",
+            pattern: "Что такое {t}? Сформулирую так:",
             case: Case::Nominative,
         },
         IntroTemplate {
-            pattern: "Если говорить о {t}, то...",
+            pattern: "Если говорить о {t}, выделю главное:",
             case: Case::Prepositional,
         },
         IntroTemplate {
@@ -619,5 +639,23 @@ mod tests {
     fn test_join_sentences_does_not_duplicate_periods() {
         let parts = vec!["Первая фраза.".into(), "Вторая фраза".into()];
         assert_eq!(join_sentences(&parts), "Первая фраза. Вторая фраза.");
+        let parts = vec!["мой взгляд:".into(), "возможно, это так".into()];
+        assert_eq!(join_sentences(&parts), "Мой взгляд: Возможно, это так.");
+    }
+
+    #[test]
+    fn test_topic_preposition_adapts_case_and_iotated_vowels() {
+        assert_eq!(
+            adapt_template("О {t} я думаю так.", "ответственности"),
+            "Об ответственности я думаю так."
+        );
+        assert_eq!(
+            adapt_template("Ты спрашиваешь об {t}.", "языке"),
+            "Ты спрашиваешь о языке."
+        );
+        assert_eq!(
+            adapt_template("О {t} я могу сказать.", "истине"),
+            "Об истине я могу сказать."
+        );
     }
 }

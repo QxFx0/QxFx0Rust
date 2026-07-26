@@ -131,7 +131,6 @@ impl MorphologyData {
         let masculine_consonant = [
             "произвол",
             "разум",
-            "бытие",
             "язык",
             "долг",
             "страх",
@@ -169,6 +168,7 @@ impl MorphologyData {
         let masculine_soft: &[&str] = &[];
         let neuter = [
             "мнение",
+            "бытие",
             "воспоминание",
             "сознание",
             "самосознание",
@@ -228,6 +228,14 @@ impl MorphologyData {
                 "истории",
             ),
             ("смерть", "смерти", "смерти", "смерть", "смертью", "смерти"),
+            (
+                "последствия",
+                "последствий",
+                "последствиям",
+                "последствия",
+                "последствиями",
+                "последствиях",
+            ),
             (
                 "совесть",
                 "совести",
@@ -660,6 +668,7 @@ pub fn prep_about(morph: &MorphologyData, word: &str) -> String {
         || prep.starts_with('о')
         || prep.starts_with('у')
         || prep.starts_with('и')
+        || prep.starts_with('э')
     {
         format!("об {}", prep)
     } else {
@@ -762,9 +771,20 @@ mod tests {
     #[test]
     fn test_prep_about() {
         let morph = MorphologyData::with_seed();
-        let phrase = prep_about(&morph, "свобода");
-        assert!(phrase.starts_with("о ") || phrase.starts_with("об "));
-        assert!(phrase.contains("свобод"));
+        assert_eq!(prep_about(&morph, "свобода"), "о свободе");
+        assert_eq!(prep_about(&morph, "ответственность"), "об ответственности");
+        assert_eq!(prep_about(&morph, "истина"), "об истине");
+        assert_eq!(prep_about(&morph, "язык"), "о языке");
+    }
+
+    #[test]
+    fn test_rc_pilot_irregular_forms() {
+        let morph = MorphologyData::with_seed();
+        assert_eq!(morph.to_genitive("бытие"), "бытия");
+        assert_eq!(morph.to_dative("бытие"), "бытию");
+        assert_eq!(morph.to_prepositional("бытие"), "бытии");
+        assert_eq!(morph.to_genitive("последствия"), "последствий");
+        assert_eq!(morph.to_instrumental("последствия"), "последствиями");
     }
 
     #[test]
