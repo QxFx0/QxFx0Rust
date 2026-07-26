@@ -188,6 +188,20 @@ CI and local release checks use the Rust 1.93.1 toolchain pinned in
 
 The workspace currently contains 358 Rust tests across unit, integration, migration, CLI replay and soak coverage. The count may increase; the commands above are the authoritative release gate.
 
+The audited content-plan corpus is part of `cargo test --workspace --all-targets`.
+Run it in isolation with:
+
+```bash
+cargo test -p qxfx0-pipeline --test structural_corpus
+```
+
+It validates all 30 admitted topics in fresh sessions and one shared 30-turn
+session: topic and canonical slots, exact predicate set, claim roles,
+derivation, provenance, no repeated claims, terminal punctuation, and explicit
+fallback for recognized but unadmitted content. It observes `plan_shadow`; the
+route-based renderer remains independent until the plan-renderer change passes
+this gate and its surface-specific checks.
+
 ## Operational limits
 
 - QxFx0 is a deterministic local semantic system, not a general-purpose factual assistant.
