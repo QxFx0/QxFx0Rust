@@ -1,16 +1,22 @@
 {
   "schema": "qxfx0.essence-parity.v1",
   "source": "Haskell QxFx0.Self.Essence / Test.Suite.SelfEssence",
+  "comparison": {
+    "floating_point": {
+      "absolute_tolerance": 1e-12
+    }
+  },
   "modulation": {
     "angst_commitment_threshold": 0.75,
     "angst_accrual_rate": 0.05,
     "angst_decay_rate": 0.02,
     "angst_accrual_divergence_floor": 0.5,
+    "angst_accrual_divergence_comparator": ">=",
     "conatus_floor_window": 8,
     "trajectory_capacity": 32
   },
   "laws": [
-    "witnesses are append-only and bounded by trajectory_capacity",
+    "witnesses retain turn order and are bounded by trajectory_capacity",
     "agreement with zero divergence decreases angst by angst_decay_rate",
     "holistic/formal advantage at sufficient divergence increases angst by angst_accrual_rate",
     "angst trigger has priority over conatus erosion",
@@ -28,12 +34,40 @@
       "name": "advantage-accrues-angst",
       "before": { "angst": 0.50, "witnesses": 0 },
       "witness": { "agreement": "DivergeMultiple", "reconcile_rule": "RuleFormalAdvantage", "divergence": 0.50, "conatus": 12.0 },
-      "expect": { "angst": 0.55, "should_commit": null }
+      "expect": {
+        "angst": 0.55,
+        "divergence_qualifies_for_accrual": true,
+        "should_commit": null
+      }
     },
     {
       "name": "angst-precedes-conatus-erosion",
       "before": { "angst": 0.80, "low_conatus_witnesses": 8 },
       "expect": { "should_commit": "TriggerAngstThreshold" }
+    },
+    {
+      "name": "capacity-evicts-oldest-witness",
+      "before": {
+        "witness_turns": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+      },
+      "witness": { "turn": 33, "agreement": "Agree", "reconcile_rule": "RuleAgreement", "divergence": 0.0, "conatus": 12.0 },
+      "expect": {
+        "witness_turns": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+        "witness_count": 32
+      }
+    },
+    {
+      "name": "commitment-remains-sticky-after-witness",
+      "before": {
+        "angst": 0.80,
+        "witnesses": 1,
+        "commitment": { "trigger": "TriggerAngstThreshold", "committed_at": 17, "witness_hash": "sha256:fixture" }
+      },
+      "witness": { "turn": 18, "agreement": "Agree", "reconcile_rule": "RuleAgreement", "divergence": 0.0, "conatus": 12.0 },
+      "expect": {
+        "commitment_unchanged": true,
+        "commitment": { "trigger": "TriggerAngstThreshold", "committed_at": 17, "witness_hash": "sha256:fixture" }
+      }
     },
     {
       "name": "collapse-is-replay-visible",

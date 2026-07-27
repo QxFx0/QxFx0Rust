@@ -41,7 +41,7 @@ The final doctor and metrics checks passed. It is not release-gate clean because
 
 ## Interpretation
 
-The normal distribution is healthy (p99 829 ms), but the tail is not bounded
+Most turns were low-latency (p99 829 ms), but the observed tail is not bounded
 enough for a 2-second service objective. The repeated 12-prompt cycle does not
 identify one unique semantic input: the same prompt classes also completed
 normally. The available logs contain turn duration but not stage timing, host
