@@ -4,6 +4,29 @@ Both terminal reports are complete. This comparison is based on the immutable
 pilot reports and logs; it does not alter their databases, status files, logs,
 or reports.
 
+## Comparable pilot inputs and evidence
+
+Both pilots used the same runtime launcher,
+`/home/liskil/QxFx0Runtime/qxfx0-soak-24h.sh`. Its configured inputs were a
+24-hour (`86,400` second) run, one turn per 60 seconds, the same 12-prompt
+cyclic workload, a 2,000 ms slow-turn threshold, a 1,073,741,824-byte database
+limit, and an initial plus every-five-turn health check. Each latency is the
+wall-clock duration of one `qxfx0 ... turn` invocation. The only intended
+authority difference was `legacy_shadow` versus the audited wrapper, which
+adds `--render-audited-plan`.
+
+The terminal evidence is
+`/home/liskil/QxFx0Runtime/qxfx0-soak-24h-20260726T163725Z.report` for legacy
+and `/home/liskil/QxFx0Runtime/qxfx0-audited-plan-24h-20260726T224249Z.report`
+plus its `.log` for audited plan. The audited slow-turn table is calculated
+from that immutable turn log; the legacy percentile values are retained in the
+closed legacy incident evidence.
+
+This is a comparison of observed operational latency, not a causal renderer
+benchmark: the pilots ran in different time windows and the terminal artifacts
+do not record host-load or binary-build provenance. The performance PR must
+capture those variables before attributing a slow turn to a stage or renderer.
+
 | Measure | Legacy (`legacy_shadow`) | Audited plan (`--render-audited-plan`) |
 | --- | ---: | ---: |
 | Pilot state | completed | completed |
@@ -37,10 +60,10 @@ the 2,000 ms strict threshold.
 
 ## Decision
 
-The audited-plan renderer improved the observed latency tail relative to
-legacy, while both contours remained healthy for persistence, state, doctor,
-and metrics. The strict latency gate nevertheless fails because eight
-audited-plan turns exceeded 2,000 ms.
+The audited-plan pilot has a lower observed tail than legacy, while both
+contours remained healthy for persistence, state, doctor, and metrics. This
+does not establish that the renderer caused the difference; the strict latency
+gate nevertheless fails because eight audited-plan turns exceeded 2,000 ms.
 
 `--render-audited-plan` therefore remains opt-in. Default rollout and release
 remain blocked only by the performance gate; neither the renderer's semantics
