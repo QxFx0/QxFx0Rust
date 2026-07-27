@@ -1,0 +1,84 @@
+{
+  "schema": "qxfx0.essence-parity.v1",
+  "source": "Haskell QxFx0.Self.Essence / Test.Suite.SelfEssence",
+  "comparison": {
+    "floating_point": {
+      "absolute_tolerance": 1e-12
+    }
+  },
+  "modulation": {
+    "angst_commitment_threshold": 0.75,
+    "angst_accrual_rate": 0.05,
+    "angst_decay_rate": 0.02,
+    "angst_accrual_divergence_floor": 0.5,
+    "angst_accrual_divergence_comparator": ">=",
+    "conatus_floor_window": 8,
+    "trajectory_capacity": 32
+  },
+  "laws": [
+    "witnesses retain turn order and are bounded by trajectory_capacity",
+    "agreement with zero divergence decreases angst by angst_decay_rate",
+    "holistic/formal advantage at sufficient divergence increases angst by angst_accrual_rate",
+    "angst trigger has priority over conatus erosion",
+    "commitment is sticky across further witnesses",
+    "collapse clears witnesses and angst and emits a replay-visible reset event"
+  ],
+  "cases": [
+    {
+      "name": "agreement-decays-angst",
+      "before": { "angst": 0.10, "witnesses": 0 },
+      "witness": { "agreement": "Agree", "reconcile_rule": "RuleAgreement", "divergence": 0.0, "conatus": 12.0 },
+      "expect": { "angst": 0.08, "should_commit": null }
+    },
+    {
+      "name": "advantage-accrues-angst",
+      "before": { "angst": 0.50, "witnesses": 0 },
+      "witness": { "agreement": "DivergeMultiple", "reconcile_rule": "RuleFormalAdvantage", "divergence": 0.50, "conatus": 12.0 },
+      "expect": {
+        "angst": 0.55,
+        "divergence_qualifies_for_accrual": true,
+        "should_commit": null
+      }
+    },
+    {
+      "name": "angst-precedes-conatus-erosion",
+      "before": { "angst": 0.80, "low_conatus_witnesses": 8 },
+      "expect": { "should_commit": "TriggerAngstThreshold" }
+    },
+    {
+      "name": "capacity-evicts-oldest-witness",
+      "before": {
+        "witness_turns": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+      },
+      "witness": { "turn": 33, "agreement": "Agree", "reconcile_rule": "RuleAgreement", "divergence": 0.0, "conatus": 12.0 },
+      "expect": {
+        "witness_turns": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+        "witness_count": 32
+      }
+    },
+    {
+      "name": "commitment-remains-sticky-after-witness",
+      "before": {
+        "angst": 0.80,
+        "witnesses": 1,
+        "commitment": { "trigger": "TriggerAngstThreshold", "committed_at": 17, "witness_hash": "sha256:fixture" }
+      },
+      "witness": { "turn": 18, "agreement": "Agree", "reconcile_rule": "RuleAgreement", "divergence": 0.0, "conatus": 12.0 },
+      "expect": {
+        "commitment_unchanged": true,
+        "commitment": { "trigger": "TriggerAngstThreshold", "committed_at": 17, "witness_hash": "sha256:fixture" }
+      }
+    },
+    {
+      "name": "collapse-is-replay-visible",
+      "before": { "turn": 17, "angst": 0.95, "witnesses": 2 },
+      "expect": { "angst": 0.0, "witnesses": 0, "reset_event": { "turn": 17, "previous_angst": 0.95, "previous_witness_count": 2 } }
+    }
+  ],
+  "known_rust_conformance_gap": {
+    "field": "reset_conatus_floor",
+    "haskell": 1.0,
+    "rust_current": "f64::MAX",
+    "resolution": "Do not silently change persisted semantics. Resolve in the dedicated Essence parity PR with migration/replay evidence."
+  }
+}
