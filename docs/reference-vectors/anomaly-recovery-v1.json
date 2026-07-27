@@ -1,0 +1,51 @@
+{
+  "schema": "qxfx0.anomaly-recovery.v1",
+  "source": "Haskell QxFx0.Types.Anomaly / Core.TurnPipeline.Route.Anomaly",
+  "priority": ["SelfReferentialCollapse", "Temporal", "Unclassifiable", "AntiConatus"],
+  "vectors": [
+    {
+      "name": "self-referential-collapse",
+      "evidence": { "subject": "ты", "angst": 0.95, "turn": 17, "witness_count": 2 },
+      "expect": {
+        "kind": "SelfReferentialCollapse",
+        "strategy": "ResetEssence",
+        "result": "EssenceReset",
+        "idempotency_key": "turn:17:self-referential-collapse",
+        "replay_result": "NoStateTransition",
+        "trace": ["evidence", "strategy", "result", "state_digest"]
+      }
+    },
+    {
+      "name": "anti-conatus",
+      "evidence": { "turn": 18, "stance_confidence": 0.8, "stance_consistent": false, "angst": 0.9, "conatus": 3.0 },
+      "expect": {
+        "kind": "AntiConatus",
+        "strategy": "RestrictRoute",
+        "result": "RouteRestricted",
+        "max_retries": 0,
+        "idempotency_key": "turn:18:anti-conatus",
+        "replay_result": "NoStateTransition",
+        "trace": ["evidence", "strategy", "result", "state_digest"]
+      }
+    },
+    {
+      "name": "temporal-contradiction",
+      "evidence": { "turn": 19, "current_stance": "Revised", "historical_stance": "Held" },
+      "expect": {
+        "kind": "Temporal",
+        "strategy": "RequestRevision",
+        "result": "RevisionRequested",
+        "rollback": "preserve prior stance lineage",
+        "idempotency_key": "turn:19:temporal-contradiction",
+        "replay_result": "NoStateTransition",
+        "trace": ["evidence", "strategy", "result", "state_digest"]
+      }
+    }
+  ],
+  "required_laws": [
+    "same idempotency key produces no second state transition",
+    "recovery counter is bounded",
+    "trace contains evidence, strategy, result and state digest",
+    "renderer consumes a typed route/plan outcome and does not detect anomalies"
+  ]
+}
