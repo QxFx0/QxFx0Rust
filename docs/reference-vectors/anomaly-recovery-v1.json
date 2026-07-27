@@ -1,0 +1,28 @@
+{
+  "schema": "qxfx0.anomaly-recovery.v1",
+  "source": "Haskell QxFx0.Types.Anomaly / Core.TurnPipeline.Route.Anomaly",
+  "priority": ["SelfReferentialCollapse", "Temporal", "Unclassifiable", "AntiConatus"],
+  "vectors": [
+    {
+      "name": "self-referential-collapse",
+      "evidence": { "subject": "ты", "angst": 0.95, "turn": 17, "witness_count": 2 },
+      "expect": { "kind": "SelfReferentialCollapse", "strategy": "ResetEssence", "idempotency_key": "turn:17:self-referential-collapse", "trace": ["previous_angst", "previous_witness_count", "state_digest"] }
+    },
+    {
+      "name": "anti-conatus",
+      "evidence": { "stance_confidence": 0.8, "stance_consistent": false, "angst": 0.9, "conatus": 3.0 },
+      "expect": { "kind": "AntiConatus", "strategy": "RestrictRoute", "max_retries": 0, "trace": ["threshold", "evidence", "state_digest"] }
+    },
+    {
+      "name": "temporal-contradiction",
+      "evidence": { "current_stance": "Revised", "historical_stance": "Held" },
+      "expect": { "kind": "Temporal", "strategy": "RequestRevision", "rollback": "preserve prior stance lineage", "trace": ["evidence", "selected_strategy", "state_digest"] }
+    }
+  ],
+  "required_laws": [
+    "same idempotency key produces no second state transition",
+    "recovery counter is bounded",
+    "trace contains evidence, strategy, result and state digest",
+    "renderer consumes a typed route/plan outcome and does not detect anomalies"
+  ]
+}
