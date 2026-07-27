@@ -1,0 +1,50 @@
+{
+  "schema": "qxfx0.essence-parity.v1",
+  "source": "Haskell QxFx0.Self.Essence / Test.Suite.SelfEssence",
+  "modulation": {
+    "angst_commitment_threshold": 0.75,
+    "angst_accrual_rate": 0.05,
+    "angst_decay_rate": 0.02,
+    "angst_accrual_divergence_floor": 0.5,
+    "conatus_floor_window": 8,
+    "trajectory_capacity": 32
+  },
+  "laws": [
+    "witnesses are append-only and bounded by trajectory_capacity",
+    "agreement with zero divergence decreases angst by angst_decay_rate",
+    "holistic/formal advantage at sufficient divergence increases angst by angst_accrual_rate",
+    "angst trigger has priority over conatus erosion",
+    "commitment is sticky across further witnesses",
+    "collapse clears witnesses and angst and emits a replay-visible reset event"
+  ],
+  "cases": [
+    {
+      "name": "agreement-decays-angst",
+      "before": { "angst": 0.10, "witnesses": 0 },
+      "witness": { "agreement": "Agree", "reconcile_rule": "RuleAgreement", "divergence": 0.0, "conatus": 12.0 },
+      "expect": { "angst": 0.08, "should_commit": null }
+    },
+    {
+      "name": "advantage-accrues-angst",
+      "before": { "angst": 0.50, "witnesses": 0 },
+      "witness": { "agreement": "DivergeMultiple", "reconcile_rule": "RuleFormalAdvantage", "divergence": 0.50, "conatus": 12.0 },
+      "expect": { "angst": 0.55, "should_commit": null }
+    },
+    {
+      "name": "angst-precedes-conatus-erosion",
+      "before": { "angst": 0.80, "low_conatus_witnesses": 8 },
+      "expect": { "should_commit": "TriggerAngstThreshold" }
+    },
+    {
+      "name": "collapse-is-replay-visible",
+      "before": { "turn": 17, "angst": 0.95, "witnesses": 2 },
+      "expect": { "angst": 0.0, "witnesses": 0, "reset_event": { "turn": 17, "previous_angst": 0.95, "previous_witness_count": 2 } }
+    }
+  ],
+  "known_rust_conformance_gap": {
+    "field": "reset_conatus_floor",
+    "haskell": 1.0,
+    "rust_current": "f64::MAX",
+    "resolution": "Do not silently change persisted semantics. Resolve in the dedicated Essence parity PR with migration/replay evidence."
+  }
+}
