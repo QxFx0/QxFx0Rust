@@ -76,6 +76,11 @@ pub struct TurnDiagnostics {
     pub response_bytes: usize,
     /// Connection open and migration duration, filled by the CLI command.
     pub db_open_ms: u64,
+    /// CLI wall-clock duration from entry into `main` to diagnostic emission.
+    ///
+    /// A launcher records the full process invocation separately, including
+    /// startup before Rust reaches `main`.
+    pub cli_process_ms: u64,
     /// State read and deserialization duration.
     pub db_load_ms: u64,
     /// Lightweight timing for the pure pipeline stages.
@@ -540,6 +545,7 @@ pub fn run_turn_with_renderer_diagnostics(
             blocked: output.blocked,
             response_bytes: response.len(),
             db_open_ms: 0,
+            cli_process_ms: 0,
             db_load_ms,
             pipeline,
             db_save,
