@@ -644,6 +644,26 @@ mod tests {
     }
 
     #[test]
+    fn legacy_null_stance_provenance_loads_as_empty_v1() {
+        let db = Persistence::open_memory().unwrap();
+        let state = SystemState {
+            session_id: "legacy-null-stance".into(),
+            ..SystemState::default()
+        };
+        db.save_state("legacy-null-stance", &state).unwrap();
+        db.conn
+            .execute(
+                "UPDATE session_semantic SET stance_provenance_json = NULL WHERE session_id = ?1",
+                params!["legacy-null-stance"],
+            )
+            .unwrap();
+
+        let loaded = db.load_state("legacy-null-stance").unwrap().unwrap();
+        assert!(loaded.semantic.stance_provenance.is_empty());
+        assert_eq!(loaded.semantic.stance_provenance.version(), 1);
+    }
+
+    #[test]
     fn test_legacy_essence_floor_replays_without_implicit_migration() {
         let db = Persistence::open_memory().unwrap();
         let state = SystemState {
