@@ -6,7 +6,8 @@
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_persistence::SaveStateTimings;
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_renderer, process_turn_with_timing_and_renderer,
+    process_turn, process_turn_with_renderer, process_turn_with_renderer_and_stance_provenance,
+    process_turn_with_timing_and_renderer,
     process_turn_with_timing_trace_and_features_and_suppression,
     process_turn_with_timing_trace_and_renderer_and_anomaly_shadow,
     process_turn_with_timing_trace_and_renderer_and_doubt_shadow,
@@ -596,6 +597,28 @@ pub fn run_turn_with_renderer(
         session_id: session_id.to_string(),
     };
     let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
+    db.save_state(session_id, &state)?;
+    Ok(output.response)
+}
+
+/// Run a standalone, explicit provenance-recording turn.
+pub fn run_turn_with_renderer_and_stance_provenance(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<String> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = TurnInput {
+        raw_text: text.into(),
+        session_id: session_id.into(),
+    };
+    let output = process_turn_with_renderer_and_stance_provenance(
+        &input,
+        &mut state,
+        renderer_authority,
+        qxfx0_pipeline::StanceProvenanceMode::RecordAffirmedSystemDecision,
+    );
     db.save_state(session_id, &state)?;
     Ok(output.response)
 }

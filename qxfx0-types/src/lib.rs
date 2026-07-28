@@ -1,3 +1,4 @@
+pub mod anomaly;
 pub mod atom;
 pub mod cognitive;
 pub mod field;
@@ -10,8 +11,10 @@ pub mod perspective;
 pub mod proposition_type;
 pub mod relation_type;
 pub mod semantic_intent;
+pub mod stance;
 pub mod system_state;
 
+pub use anomaly::AnomalyEvidence;
 pub use atom::{
     Atom, AtomCategory, AtomGraph, AtomId, ConjugateVector, ObjectCase, Relation, RelationSource,
     SenseField, SenseVector,
@@ -31,4 +34,9 @@ pub use perspective::{
 pub use proposition_type::PropositionType;
 pub use relation_type::RelationType;
 pub use semantic_intent::SemanticIntent;
+pub use stance::{
+    detect_temporal_contradiction, BoundedStanceProvenance, StanceObservation, StancePolarity,
+    StanceRecordOutcome, StanceSource, StanceTopic, StanceTopicError, TemporalStanceContradiction,
+    STANCE_PROVENANCE_VERSION,
+};
 pub use system_state::SystemState;
