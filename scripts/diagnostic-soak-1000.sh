@@ -53,7 +53,9 @@ while [ "$turns" -lt "$turn_limit" ]; do
     if "$qxfx0_bin" --db "$pilot_db" --session-id "$session_id" turn --diagnostics-jsonl "$diagnostics_file" "$prompt" >/dev/null 2>&1; then result=ok; else result=failed; turn_failures=$((turn_failures + 1)); fi
     latency_ms=$(( $(date +%s%3N) - started_ms ))
     turns=$((turns + 1))
-    [ "$latency_ms" -gt "$max_response_ms" ] && slow_turns=$((slow_turns + 1))
+    if [ "$latency_ms" -gt "$max_response_ms" ]; then
+        slow_turns=$((slow_turns + 1))
+    fi
     emit "SOAK_TURN n=$turns result=$result latency_ms=$latency_ms"
     write_status running
     [ "$turns" -lt "$turn_limit" ] && sleep "$interval_seconds"
