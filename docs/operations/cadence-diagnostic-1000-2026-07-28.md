@@ -34,11 +34,15 @@ The turn numbers align without gaps or mismatches. Every record has both
 | --- | ---: |
 | Turns | 1,000 |
 | Turn failures | 0 |
-| Health failures | 0 |
+| Per-turn health checks | not sampled by this diagnostic launcher |
 | Blocked turns | 0 |
 | Slow turns (>2,000 ms) | 0 |
 | Final doctor | healthy |
 | Final metrics | healthy |
+
+The launcher's `health_failures=0` status field is a fixed placeholder, not a
+per-turn health measurement. The successful final `doctor` and `metrics`
+commands are the health evidence for this diagnostic run.
 
 ## External wall-clock result
 
@@ -100,9 +104,10 @@ launcher regression requiring a fixing PR.
 ## Go / no-go decision
 
 **GO — proceed to one new 24-hour confirmation soak when deliberately
-scheduled.** The diagnostic strict gate is satisfied: zero turn and health
-failures, zero turns over 2 seconds, external p95 of 150 ms (<=500 ms),
-external p99 of 172 ms (<=1 second), and healthy final doctor and metrics.
+scheduled.** The diagnostic strict gate is satisfied: zero turn failures,
+zero blocked turns, zero turns over 2 seconds, external p95 of 150 ms
+(<=500 ms), external p99 of 172 ms (<=1 second), and healthy final doctor and
+metrics. This diagnostic does not make a per-turn health-failure claim.
 
 **NO-GO — do not change renderer rollout or cut a release from this result.**
 The diagnostic used `legacy_shadow` and is an operational performance result,
