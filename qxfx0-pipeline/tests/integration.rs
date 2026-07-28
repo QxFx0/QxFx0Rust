@@ -1034,7 +1034,7 @@ fn anomaly_shadow_trace_is_observational_deterministic_and_bounded() {
     assert!(ledger_len <= ledger_capacity);
     assert_eq!(
         enabled.metadata["anomaly_temporal_evidence"],
-        "not_available_without_stance_provenance"
+        "typed_persisted_provenance"
     );
 
     let mut replay_state = test_state(&input.session_id);
@@ -1049,6 +1049,52 @@ fn anomaly_shadow_trace_is_observational_deterministic_and_bounded() {
         serde_json::to_vec(&enabled_trace).unwrap(),
         serde_json::to_vec(&replay_trace).unwrap(),
         "serialized anomaly trace excludes wall-clock duration and must replay exactly"
+    );
+}
+
+#[test]
+fn anomaly_shadow_proposes_temporal_recovery_from_persisted_provenance_only() {
+    let input = TurnInput {
+        session_id: "temporal-shadow".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let mut state = test_state(&input.session_id);
+    state.dialogue.turn_count = 1;
+    state
+        .semantic
+        .stance_provenance
+        .record(qxfx0_types::stance::StanceObservation {
+            turn: 1,
+            topic: qxfx0_types::stance::StanceTopic::new("свобода").unwrap(),
+            polarity: qxfx0_types::stance::StancePolarity::Rejected,
+            source: qxfx0_types::stance::StanceSource::SystemDecision,
+        });
+    let before = qxfx0_pipeline::execution_trace::calculate_stable_digest(&state).unwrap();
+
+    let (output, trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+        &input,
+        &mut state,
+        RendererAuthority::LegacyShadow,
+        AnomalyShadowMode::TraceOnly,
+    );
+    assert!(!output.blocked);
+    let anomaly = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "anomaly_shadow")
+        .unwrap();
+    assert_eq!(
+        anomaly.metadata["anomaly_temporal_evidence"],
+        "typed_persisted_provenance"
+    );
+    assert_eq!(anomaly.metadata["anomaly_proposed_kind"], "temporal");
+    assert_eq!(anomaly.metadata["anomaly_strategy"], "request_revision");
+    assert_eq!(anomaly.metadata["anomaly_reason"], "observation_only");
+    assert_eq!(state.semantic.stance_provenance.len(), 1);
+    assert_ne!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&state).unwrap(),
+        before,
+        "ordinary turn bookkeeping changes, but trace adds no provenance"
     );
 }
 
