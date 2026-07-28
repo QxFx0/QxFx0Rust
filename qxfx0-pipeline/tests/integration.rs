@@ -2,7 +2,8 @@
 
 use qxfx0_pipeline::{
     process_turn, process_turn_with_trace, process_turn_with_trace_and_renderer_and_doubt_shadow,
-    DoubtShadowMode, RendererAuthority, TurnInput,
+    process_turn_with_trace_and_renderer_and_features, ClarificationMode, DoubtShadowMode,
+    RendererAuthority, TurnInput,
 };
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
@@ -512,6 +513,7 @@ fn test_stage_trace_is_replay_deterministic() {
             .collect::<Vec<_>>(),
         [
             "doubt_shadow",
+            "clarification_route",
             "prepare",
             "route",
             "plan_shadow",
@@ -565,6 +567,92 @@ fn test_stage_trace_is_replay_deterministic() {
         .metadata
         .get("predicate_refs")
         .is_some_and(|refs| refs.contains("freedom_choice")));
+}
+
+#[test]
+fn clarification_route_is_default_off_shadowed_and_limited() {
+    let input = TurnInput {
+        session_id: "clarification-route".into(),
+        raw_text: "что такое кванточайник?".into(),
+    };
+    let mut disabled_state = test_state(&input.session_id);
+    disabled_state.semantic.field.confidence = 0.0;
+    let mut shadow_state = disabled_state.clone();
+    let (disabled_output, disabled_trace) = process_turn_with_trace_and_renderer_and_features(
+        &input,
+        &mut disabled_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::Disabled,
+        ClarificationMode::Disabled,
+    );
+    let (shadow_output, shadow_trace) = process_turn_with_trace_and_renderer_and_features(
+        &input,
+        &mut shadow_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::Disabled,
+        ClarificationMode::TraceOnly,
+    );
+
+    assert_eq!(disabled_output.response, shadow_output.response);
+    assert_eq!(disabled_output.family, shadow_output.family);
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&disabled_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&shadow_state).unwrap()
+    );
+    let disabled_step = disabled_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "clarification_route")
+        .unwrap();
+    let shadow_step = shadow_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "clarification_route")
+        .unwrap();
+    assert_eq!(disabled_step.metadata["clarification_enabled"], "false");
+    assert_eq!(
+        shadow_step.metadata["clarification_proposed_route"],
+        "clarify"
+    );
+    assert_eq!(shadow_step.metadata["clarification_applied"], "false");
+
+    let mut enabled_state = test_state(&input.session_id);
+    enabled_state.semantic.field.confidence = 0.0;
+    let (enabled_output, enabled_trace) = process_turn_with_trace_and_renderer_and_features(
+        &input,
+        &mut enabled_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::Disabled,
+        ClarificationMode::LimitedEnabled,
+    );
+    assert_eq!(
+        enabled_output.family,
+        qxfx0_types::CanonicalMoveFamily::CMClarify
+    );
+    assert!(enabled_output.response.contains("Мне нужно уточнение"));
+    assert!(enabled_output.response.contains("кванточайник"));
+    assert_eq!(enabled_output.conversation_state, "Clarifying");
+    let enabled_route = enabled_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "route")
+        .unwrap();
+    assert_eq!(
+        enabled_route.metadata.get("family").map(String::as_str),
+        Some("CMClarify")
+    );
+    let enabled_render = enabled_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "render")
+        .unwrap();
+    assert_eq!(
+        enabled_render
+            .metadata
+            .get("renderer_source")
+            .map(String::as_str),
+        Some("clarification")
+    );
 }
 
 #[test]
