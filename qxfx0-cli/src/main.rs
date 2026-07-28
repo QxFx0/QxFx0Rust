@@ -102,6 +102,27 @@ enum Commands {
     CodeStats,
 }
 
+fn finish_diagnostics(
+    mut diagnosed: DiagnosedTurn,
+    path: &PathBuf,
+    db_open_ms: u64,
+    process_started: Instant,
+) -> String {
+    diagnosed.diagnostics.db_open_ms = db_open_ms;
+    diagnosed.diagnostics.cli_process_ms = process_started
+        .elapsed()
+        .as_millis()
+        .try_into()
+        .unwrap_or(u64::MAX);
+    if let Err(error) = append_turn_diagnostics(path, &diagnosed.diagnostics) {
+        warn!(
+            "turn completed but diagnostic record could not be appended to {}: {error}",
+            path.display()
+        );
+    }
+    diagnosed.response
+}
+
 fn main() -> anyhow::Result<()> {
     let process_started = Instant::now();
     tracing_subscriber::fmt::init();
@@ -142,7 +163,10 @@ fn main() -> anyhow::Result<()> {
                 } else {
                     SameTopicSuppressionMode::TraceOnly
                 };
+                let db_open_started = diagnostics_jsonl.as_ref().map(|_| Instant::now());
                 let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+                let db_open_ms = db_open_started
+                    .map(|started| started.elapsed().as_millis().try_into().unwrap_or(u64::MAX));
                 let response = if let Some(diagnostics_path) = diagnostics_jsonl {
                     let (diagnosed, trace) =
                         run_turn_with_renderer_diagnostics_and_cognitive_pilot(
@@ -154,8 +178,12 @@ fn main() -> anyhow::Result<()> {
                             suppression,
                         )?;
                     write_cognitive_pilot_trace_jsonl(&mut sink, &trace)?;
-                    append_turn_diagnostics(&diagnostics_path, &diagnosed.diagnostics)?;
-                    diagnosed.response
+                    finish_diagnostics(
+                        diagnosed,
+                        &diagnostics_path,
+                        db_open_ms.expect("diagnostics path requires an open timer"),
+                        process_started,
+                    )
                 } else {
                     let traced = run_turn_with_renderer_cognitive_pilot(
                         &db,
@@ -187,22 +215,6 @@ fn main() -> anyhow::Result<()> {
                 cli.session_id,
                 text.chars().count()
             );
-            let finish_diagnostics = |mut diagnosed: DiagnosedTurn, path: &PathBuf| {
-                diagnosed.diagnostics.db_open_ms =
-                    db_open_ms.expect("diagnostics path requires an open timer");
-                diagnosed.diagnostics.cli_process_ms = process_started
-                    .elapsed()
-                    .as_millis()
-                    .try_into()
-                    .unwrap_or(u64::MAX);
-                if let Err(error) = append_turn_diagnostics(path, &diagnosed.diagnostics) {
-                    warn!(
-                        "turn completed but diagnostic record could not be appended to {}: {error}",
-                        path.display()
-                    );
-                }
-                diagnosed.response
-            };
             let response = match (diagnostics_jsonl, doubt_trace_sink.as_mut()) {
                 (Some(path), Some(sink)) => {
                     let (diagnosed, trace) =
@@ -213,7 +225,12 @@ fn main() -> anyhow::Result<()> {
                             renderer_authority,
                         )?;
                     write_doubt_shadow_trace_jsonl(sink, &trace)?;
-                    finish_diagnostics(diagnosed, &path)
+                    finish_diagnostics(
+                        diagnosed,
+                        &path,
+                        db_open_ms.expect("diagnostics path requires an open timer"),
+                        process_started,
+                    )
                 }
                 (Some(path), None) => {
                     let diagnosed = run_turn_with_renderer_diagnostics(
@@ -222,7 +239,12 @@ fn main() -> anyhow::Result<()> {
                         &text,
                         renderer_authority,
                     )?;
-                    finish_diagnostics(diagnosed, &path)
+                    finish_diagnostics(
+                        diagnosed,
+                        &path,
+                        db_open_ms.expect("diagnostics path requires an open timer"),
+                        process_started,
+                    )
                 }
                 (None, Some(sink)) => {
                     let traced = run_turn_with_renderer_doubt_shadow_trace(

@@ -115,16 +115,10 @@ pub struct DoubtShadowTracedTurn {
     pub trace: qxfx0_pipeline::execution_trace::PipelineTrace,
 }
 
-#[derive(Debug, Clone, Serialize)]
-struct DoubtShadowTraceRecord {
-    schema: &'static str,
-    trace: qxfx0_pipeline::execution_trace::PipelineTrace,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct CognitivePilotTraceRecord {
-    schema: &'static str,
-    trace: qxfx0_pipeline::execution_trace::PipelineTrace,
+#[derive(Debug, Serialize)]
+struct TraceRecord<'a> {
+    schema: &'a str,
+    trace: &'a qxfx0_pipeline::execution_trace::PipelineTrace,
 }
 
 fn diagnostic_host_metadata() -> DiagnosticHostMetadata {
@@ -178,10 +172,15 @@ pub fn write_doubt_shadow_trace_jsonl(
     sink: &mut File,
     trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
 ) -> anyhow::Result<()> {
-    let mut record = serde_json::to_vec(&DoubtShadowTraceRecord {
-        schema: "qxfx0.doubt-shadow-trace.v1",
-        trace: trace.clone(),
-    })?;
+    write_trace_jsonl(sink, "qxfx0.doubt-shadow-trace.v1", trace)
+}
+
+fn write_trace_jsonl(
+    sink: &mut File,
+    schema: &str,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    let mut record = serde_json::to_vec(&TraceRecord { schema, trace })?;
     record.push(b'\n');
     sink.write_all(&record)?;
     Ok(())
@@ -195,13 +194,7 @@ pub fn write_cognitive_pilot_trace_jsonl(
     sink: &mut File,
     trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
 ) -> anyhow::Result<()> {
-    let mut record = serde_json::to_vec(&CognitivePilotTraceRecord {
-        schema: "qxfx0.cognitive-pilot-trace.v1",
-        trace: trace.clone(),
-    })?;
-    record.push(b'\n');
-    sink.write_all(&record)?;
-    Ok(())
+    write_trace_jsonl(sink, "qxfx0.cognitive-pilot-trace.v1", trace)
 }
 
 impl OperationalMetrics {

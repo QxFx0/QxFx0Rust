@@ -170,10 +170,12 @@ fn cognitive_pilot_trace_is_opt_in_and_validated_before_db_open() {
     let pilot_db = base.join(format!("qxfx0-cognitive-{pid}-pilot.db"));
     let rejected_db = base.join(format!("qxfx0-cognitive-{pid}-rejected.db"));
     let trace = base.join(format!("qxfx0-cognitive-{pid}.jsonl"));
+    let diagnostics = base.join(format!("qxfx0-cognitive-{pid}-diagnostics.jsonl"));
     cleanup(&standard_db);
     cleanup(&pilot_db);
     cleanup(&rejected_db);
     let _ = std::fs::remove_file(&trace);
+    let _ = std::fs::remove_file(&diagnostics);
 
     let session = "cognitive-pilot";
     let text = "что такое свобода?";
@@ -188,6 +190,8 @@ fn cognitive_pilot_trace_is_opt_in_and_validated_before_db_open() {
             text,
             "--cognitive-pilot-trace-jsonl",
             trace.to_str().unwrap(),
+            "--diagnostics-jsonl",
+            diagnostics.to_str().unwrap(),
         ])
         .output()
         .unwrap();
@@ -220,6 +224,11 @@ fn cognitive_pilot_trace_is_opt_in_and_validated_before_db_open() {
         .unwrap()
         .iter()
         .any(|step| step["stage"] == "same_topic_suppression"));
+    let diagnostic_record: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&diagnostics).unwrap()).unwrap();
+    assert_eq!(diagnostic_record["schema"], "qxfx0.turn-diagnostics.v1");
+    assert!(diagnostic_record["db_open_ms"].is_u64());
+    assert!(diagnostic_record["cli_process_ms"].is_u64());
 
     let rejected = Command::new(binary)
         .args([
@@ -237,4 +246,5 @@ fn cognitive_pilot_trace_is_opt_in_and_validated_before_db_open() {
     cleanup(&pilot_db);
     cleanup(&rejected_db);
     let _ = std::fs::remove_file(&trace);
+    let _ = std::fs::remove_file(&diagnostics);
 }
