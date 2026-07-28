@@ -1,6 +1,9 @@
 //! Integration tests — replay determinism, multi-turn persistence, end-to-end pipeline.
 
-use qxfx0_pipeline::{process_turn, process_turn_with_trace, TurnInput};
+use qxfx0_pipeline::{
+    process_turn, process_turn_with_trace, process_turn_with_trace_and_renderer_and_doubt_shadow,
+    DoubtShadowMode, RendererAuthority, TurnInput,
+};
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
 
@@ -508,6 +511,7 @@ fn test_stage_trace_is_replay_deterministic() {
             .map(|step| step.stage.as_str())
             .collect::<Vec<_>>(),
         [
+            "doubt_shadow",
             "prepare",
             "route",
             "plan_shadow",
@@ -561,6 +565,153 @@ fn test_stage_trace_is_replay_deterministic() {
         .metadata
         .get("predicate_refs")
         .is_some_and(|refs| refs.contains("freedom_choice")));
+}
+
+#[test]
+fn doubt_shadow_trace_is_observational_deterministic_and_bounded() {
+    let session_id = "doubt-shadow-parity";
+    let mut prior_state = test_state(session_id);
+    let prior = process_turn(
+        &TurnInput {
+            session_id: session_id.into(),
+            raw_text: "что такое свобода?".into(),
+        },
+        &mut prior_state,
+    );
+    assert!(!prior.blocked, "setup turn must be a confirmed decision");
+    // Make the pure score exceed the clarification threshold. The proposed
+    // suppression still remains trace-only and must not affect the real route.
+    prior_state.semantic.field.confidence = 0.0;
+
+    let input = TurnInput {
+        session_id: session_id.into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let mut disabled_state = prior_state.clone();
+    let mut enabled_state = prior_state.clone();
+    let (disabled_output, disabled_trace) = process_turn_with_trace_and_renderer_and_doubt_shadow(
+        &input,
+        &mut disabled_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::Disabled,
+    );
+    let (enabled_output, enabled_trace) = process_turn_with_trace_and_renderer_and_doubt_shadow(
+        &input,
+        &mut enabled_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::TraceOnly,
+    );
+
+    assert_eq!(enabled_output.response, disabled_output.response);
+    assert_eq!(enabled_output.family, disabled_output.family);
+    assert_eq!(enabled_output.blocked, disabled_output.blocked);
+    assert_eq!(
+        enabled_output.conversation_state,
+        disabled_output.conversation_state
+    );
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&enabled_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&disabled_state).unwrap(),
+        "trace-only doubt must not change persisted state"
+    );
+    assert_eq!(
+        serde_json::to_vec(&enabled_state).unwrap(),
+        serde_json::to_vec(&disabled_state).unwrap()
+    );
+
+    for stage in ["route", "plan_shadow", "render"] {
+        let disabled = disabled_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == stage)
+            .expect("disabled trace stage");
+        let enabled = enabled_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == stage)
+            .expect("enabled trace stage");
+        assert_eq!(
+            disabled.output_digest, enabled.output_digest,
+            "{stage} changed"
+        );
+        assert_eq!(disabled.metadata, enabled.metadata, "{stage} changed");
+    }
+
+    let disabled = disabled_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "doubt_shadow")
+        .expect("disabled trace must expose its disabled mode");
+    assert_eq!(
+        disabled
+            .metadata
+            .get("doubt_shadow_enabled")
+            .map(String::as_str),
+        Some("false")
+    );
+    assert_eq!(
+        disabled.metadata.get("doubt_reason").map(String::as_str),
+        Some("disabled")
+    );
+
+    let enabled = enabled_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "doubt_shadow")
+        .expect("enabled trace must expose doubt evidence");
+    for key in [
+        "doubt_shadow_enabled",
+        "doubt_score",
+        "doubt_driver",
+        "doubt_recall_count",
+        "doubt_proposed_route",
+        "doubt_reason",
+    ] {
+        assert!(enabled.metadata.contains_key(key), "missing {key}");
+    }
+    assert_eq!(
+        enabled
+            .metadata
+            .get("doubt_shadow_enabled")
+            .map(String::as_str),
+        Some("true")
+    );
+    assert_eq!(
+        enabled.metadata.get("doubt_driver").map(String::as_str),
+        Some("other")
+    );
+    assert_eq!(
+        enabled
+            .metadata
+            .get("doubt_proposed_route")
+            .map(String::as_str),
+        Some("suppressed_by_recent_decision"),
+        "this is evidence only; the actual route above remains unchanged"
+    );
+    let recall_count = enabled.metadata["doubt_recall_count"]
+        .parse::<usize>()
+        .unwrap();
+    let recall_limit = enabled.metadata["doubt_recall_limit"]
+        .parse::<usize>()
+        .unwrap();
+    let capacity = enabled.metadata["doubt_episodic_capacity"]
+        .parse::<usize>()
+        .unwrap();
+    assert!(recall_count <= recall_limit);
+    assert!(recall_count <= capacity);
+
+    let mut replay_state = prior_state;
+    let (_, replay_trace) = process_turn_with_trace_and_renderer_and_doubt_shadow(
+        &input,
+        &mut replay_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::TraceOnly,
+    );
+    assert_eq!(
+        serde_json::to_vec(&enabled_trace).unwrap(),
+        serde_json::to_vec(&replay_trace).unwrap(),
+        "serialized trace excludes wall-clock duration and must replay exactly"
+    );
 }
 
 #[test]

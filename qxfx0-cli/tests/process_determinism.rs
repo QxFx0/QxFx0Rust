@@ -72,3 +72,91 @@ fn fresh_process_replay_is_deterministic() {
     cleanup(&first_db);
     cleanup(&second_db);
 }
+
+#[test]
+fn doubt_shadow_cli_writes_external_trace_without_changing_a_turn() {
+    let binary = env!("CARGO_BIN_EXE_qxfx0");
+    let base = std::env::temp_dir();
+    let pid = std::process::id();
+    let standard_db = base.join(format!("qxfx0-doubt-cli-{pid}-standard.db"));
+    let shadow_db = base.join(format!("qxfx0-doubt-cli-{pid}-shadow.db"));
+    let rejected_db = base.join(format!("qxfx0-doubt-cli-{pid}-rejected.db"));
+    let trace = base.join(format!("qxfx0-doubt-cli-{pid}.jsonl"));
+    cleanup(&standard_db);
+    cleanup(&shadow_db);
+    cleanup(&rejected_db);
+    let _ = std::fs::remove_file(&trace);
+
+    let session = "doubt-cli-session";
+    let text = "что такое свобода?";
+    let standard = run_turn(binary, &standard_db, session, text);
+    let shadow = Command::new(binary)
+        .args([
+            "--db",
+            shadow_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--doubt-shadow-trace-jsonl",
+            trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn doubt shadow turn");
+    assert!(standard.status.success());
+    assert!(
+        shadow.status.success(),
+        "doubt shadow command failed: {}",
+        String::from_utf8_lossy(&shadow.stderr)
+    );
+    assert_eq!(standard.stdout, shadow.stdout);
+
+    let standard_state = qxfx0_persistence::Persistence::open(standard_db.to_str().unwrap())
+        .unwrap()
+        .load_state(session)
+        .unwrap()
+        .unwrap();
+    let shadow_state = qxfx0_persistence::Persistence::open(shadow_db.to_str().unwrap())
+        .unwrap()
+        .load_state(session)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&standard_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&shadow_state).unwrap()
+    );
+    let trace_value: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&trace).unwrap()).unwrap();
+    assert_eq!(trace_value["schema"], "qxfx0.doubt-shadow-trace.v1");
+    assert!(trace_value["trace"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|step| step["stage"] == "doubt_shadow"));
+
+    // The sink is validated before opening the database, so an existing trace
+    // file fails without creating or modifying a session DB.
+    let rejected = Command::new(binary)
+        .args([
+            "--db",
+            rejected_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--doubt-shadow-trace-jsonl",
+            trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn rejected doubt shadow turn");
+    assert!(!rejected.status.success());
+    assert!(
+        !rejected_db.exists(),
+        "DB must not be opened after sink failure"
+    );
+
+    cleanup(&standard_db);
+    cleanup(&shadow_db);
+    cleanup(&rejected_db);
+    let _ = std::fs::remove_file(&trace);
+}
