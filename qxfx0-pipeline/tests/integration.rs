@@ -1,10 +1,11 @@
 //! Integration tests — replay determinism, multi-turn persistence, end-to-end pipeline.
 
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_trace, process_turn_with_trace_and_renderer_and_doubt_shadow,
+    process_turn, process_turn_with_trace, process_turn_with_trace_and_renderer_and_anomaly_shadow,
+    process_turn_with_trace_and_renderer_and_doubt_shadow,
     process_turn_with_trace_and_renderer_and_features,
-    process_turn_with_trace_and_renderer_and_features_and_suppression, ClarificationMode,
-    DoubtShadowMode, RendererAuthority, SameTopicSuppressionMode, TurnInput,
+    process_turn_with_trace_and_renderer_and_features_and_suppression, AnomalyShadowMode,
+    ClarificationMode, DoubtShadowMode, RendererAuthority, SameTopicSuppressionMode, TurnInput,
 };
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
@@ -514,6 +515,7 @@ fn test_stage_trace_is_replay_deterministic() {
             .collect::<Vec<_>>(),
         [
             "doubt_shadow",
+            "anomaly_shadow",
             "clarification_route",
             "same_topic_suppression",
             "prepare",
@@ -930,6 +932,175 @@ fn doubt_shadow_trace_is_observational_deterministic_and_bounded() {
         serde_json::to_vec(&enabled_trace).unwrap(),
         serde_json::to_vec(&replay_trace).unwrap(),
         "serialized trace excludes wall-clock duration and must replay exactly"
+    );
+}
+
+#[test]
+fn anomaly_shadow_trace_is_observational_deterministic_and_bounded() {
+    let input = TurnInput {
+        session_id: "anomaly-shadow-parity".into(),
+        raw_text: "что такое я?".into(),
+    };
+    let mut disabled_state = test_state(&input.session_id);
+    disabled_state.semantic.essence.angst = 0.95;
+    let mut enabled_state = disabled_state.clone();
+
+    let (disabled_output, disabled_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+        &input,
+        &mut disabled_state,
+        RendererAuthority::LegacyShadow,
+        AnomalyShadowMode::Disabled,
+    );
+    let (enabled_output, enabled_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+        &input,
+        &mut enabled_state,
+        RendererAuthority::LegacyShadow,
+        AnomalyShadowMode::TraceOnly,
+    );
+
+    assert_eq!(enabled_output.response, disabled_output.response);
+    assert_eq!(enabled_output.family, disabled_output.family);
+    assert_eq!(enabled_output.blocked, disabled_output.blocked);
+    assert_eq!(
+        enabled_output.conversation_state,
+        disabled_output.conversation_state
+    );
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&enabled_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&disabled_state).unwrap(),
+        "trace-only anomaly recovery must not change persisted state"
+    );
+    assert_eq!(
+        serde_json::to_vec(&enabled_state).unwrap(),
+        serde_json::to_vec(&disabled_state).unwrap()
+    );
+
+    for stage in ["route", "plan_shadow", "render"] {
+        let disabled = disabled_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == stage)
+            .expect("disabled trace stage");
+        let enabled = enabled_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == stage)
+            .expect("enabled trace stage");
+        assert_eq!(
+            disabled.output_digest, enabled.output_digest,
+            "{stage} changed"
+        );
+        assert_eq!(disabled.metadata, enabled.metadata, "{stage} changed");
+    }
+
+    let disabled = disabled_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "anomaly_shadow")
+        .expect("disabled trace must expose its disabled mode");
+    assert_eq!(disabled.metadata["anomaly_shadow_enabled"], "false");
+    assert_eq!(disabled.metadata["anomaly_reason"], "disabled");
+
+    let enabled = enabled_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "anomaly_shadow")
+        .expect("enabled trace must expose anomaly evidence");
+    for key in [
+        "anomaly_shadow_enabled",
+        "anomaly_proposed_kind",
+        "anomaly_strategy",
+        "anomaly_result",
+        "anomaly_idempotency_key",
+        "anomaly_replay_outcome",
+        "anomaly_reason",
+    ] {
+        assert!(enabled.metadata.contains_key(key), "missing {key}");
+    }
+    assert_eq!(enabled.metadata["anomaly_shadow_enabled"], "true");
+    assert_eq!(
+        enabled.metadata["anomaly_proposed_kind"],
+        "self_referential_collapse"
+    );
+    assert_eq!(enabled.metadata["anomaly_strategy"], "reset_essence");
+    assert_eq!(enabled.metadata["anomaly_result"], "essence_reset");
+    assert_eq!(enabled.metadata["anomaly_replay_outcome"], "proposed");
+    let ledger_len = enabled.metadata["anomaly_ledger_len"]
+        .parse::<usize>()
+        .unwrap();
+    let ledger_capacity = enabled.metadata["anomaly_ledger_capacity"]
+        .parse::<usize>()
+        .unwrap();
+    assert!(ledger_len <= ledger_capacity);
+    assert_eq!(
+        enabled.metadata["anomaly_temporal_evidence"],
+        "not_available_without_stance_provenance"
+    );
+
+    let mut replay_state = test_state(&input.session_id);
+    replay_state.semantic.essence.angst = 0.95;
+    let (_, replay_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+        &input,
+        &mut replay_state,
+        RendererAuthority::LegacyShadow,
+        AnomalyShadowMode::TraceOnly,
+    );
+    assert_eq!(
+        serde_json::to_vec(&enabled_trace).unwrap(),
+        serde_json::to_vec(&replay_trace).unwrap(),
+        "serialized anomaly trace excludes wall-clock duration and must replay exactly"
+    );
+}
+
+#[test]
+fn anomaly_shadow_shared_session_replay_is_persistence_stable() {
+    let session_id = "anomaly-shadow-shared-session";
+    let mut seeded = test_state(session_id);
+    let setup = TurnInput {
+        session_id: session_id.into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    process_turn(&setup, &mut seeded);
+    seeded.semantic.essence.angst = 0.95;
+
+    let first_db = qxfx0_persistence::Persistence::open_memory().unwrap();
+    let replay_db = qxfx0_persistence::Persistence::open_memory().unwrap();
+    first_db.save_state(session_id, &seeded).unwrap();
+    replay_db.save_state(session_id, &seeded).unwrap();
+    let input = TurnInput {
+        session_id: session_id.into(),
+        raw_text: "что такое я?".into(),
+    };
+
+    let mut first_state = first_db.load_state(session_id).unwrap().unwrap();
+    let (first_output, first_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+        &input,
+        &mut first_state,
+        RendererAuthority::LegacyShadow,
+        AnomalyShadowMode::TraceOnly,
+    );
+    first_db.save_state(session_id, &first_state).unwrap();
+
+    let mut replay_state = replay_db.load_state(session_id).unwrap().unwrap();
+    let (replay_output, replay_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+        &input,
+        &mut replay_state,
+        RendererAuthority::LegacyShadow,
+        AnomalyShadowMode::TraceOnly,
+    );
+    replay_db.save_state(session_id, &replay_state).unwrap();
+
+    assert_eq!(first_output.response, replay_output.response);
+    assert_eq!(first_output.family, replay_output.family);
+    assert_eq!(
+        serde_json::to_vec(&first_trace).unwrap(),
+        serde_json::to_vec(&replay_trace).unwrap()
+    );
+    let first_saved = first_db.load_state(session_id).unwrap().unwrap();
+    let replay_saved = replay_db.load_state(session_id).unwrap().unwrap();
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&first_saved).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&replay_saved).unwrap()
     );
 }
 
