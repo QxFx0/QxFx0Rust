@@ -85,6 +85,17 @@ pub enum DoubtShadowMode {
     TraceOnly,
 }
 
+/// Enables observation-only typed anomaly-recovery evidence in an execution
+/// trace. It never applies a recovery strategy or mutates persisted state.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum AnomalyShadowMode {
+    /// Preserve the current pipeline without calculating anomaly evidence.
+    #[default]
+    Disabled,
+    /// Calculate a recovery proposal but never apply it to routing or state.
+    TraceOnly,
+}
+
 /// Controls the staged clarification route. It is disabled in all standard
 /// runtime paths; trace-only mode is evidence, while limited enablement is
 /// available only to an explicit pipeline caller.
@@ -127,6 +138,12 @@ impl ClarificationMode {
 }
 
 impl DoubtShadowMode {
+    const fn enabled(self) -> bool {
+        matches!(self, Self::TraceOnly)
+    }
+}
+
+impl AnomalyShadowMode {
     const fn enabled(self) -> bool {
         matches!(self, Self::TraceOnly)
     }
@@ -333,6 +350,7 @@ pub fn process_turn_with_renderer(
         None,
         renderer_authority,
         DoubtShadowMode::Disabled,
+        AnomalyShadowMode::Disabled,
         ClarificationMode::Disabled,
         SameTopicSuppressionMode::Disabled,
     )
@@ -355,6 +373,7 @@ pub fn process_turn_with_timing_and_renderer(
         Some(&mut timings),
         renderer_authority,
         DoubtShadowMode::Disabled,
+        AnomalyShadowMode::Disabled,
         ClarificationMode::Disabled,
         SameTopicSuppressionMode::Disabled,
     );
@@ -402,6 +421,29 @@ pub fn process_turn_with_trace_and_renderer_and_doubt_shadow(
     )
 }
 
+/// Process a turn with explicit renderer and observation-only anomaly settings.
+pub fn process_turn_with_trace_and_renderer_and_anomaly_shadow(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    anomaly_shadow: AnomalyShadowMode,
+) -> (TurnOutput, execution_trace::PipelineTrace) {
+    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
+    let output = process_turn_internal(
+        input,
+        state,
+        Some(&mut trace),
+        None,
+        renderer_authority,
+        DoubtShadowMode::Disabled,
+        anomaly_shadow,
+        ClarificationMode::Disabled,
+        SameTopicSuppressionMode::Disabled,
+    );
+    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
+    (output, trace)
+}
+
 /// Process a turn with explicit staged cognitive integrations. Standard paths
 /// pass both modes as disabled; `LimitedEnabled` is intentionally opt-in.
 pub fn process_turn_with_trace_and_renderer_and_features(
@@ -440,6 +482,7 @@ pub fn process_turn_with_trace_and_renderer_and_features_and_suppression(
         None,
         renderer_authority,
         doubt_shadow,
+        AnomalyShadowMode::Disabled,
         clarification,
         suppression,
     );
@@ -470,6 +513,36 @@ pub fn process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
     )
 }
 
+/// Process a turn with both timing diagnostics and anomaly shadow evidence.
+pub fn process_turn_with_timing_trace_and_renderer_and_anomaly_shadow(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    anomaly_shadow: AnomalyShadowMode,
+) -> (
+    TurnOutput,
+    PipelineStageTimings,
+    execution_trace::PipelineTrace,
+) {
+    let started = Instant::now();
+    let mut timings = PipelineStageTimings::default();
+    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
+    let output = process_turn_internal(
+        input,
+        state,
+        Some(&mut trace),
+        Some(&mut timings),
+        renderer_authority,
+        DoubtShadowMode::Disabled,
+        anomaly_shadow,
+        ClarificationMode::Disabled,
+        SameTopicSuppressionMode::Disabled,
+    );
+    timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
+    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
+    (output, timings, trace)
+}
+
 /// Timing and deterministic trace evidence for all explicit cognitive modes.
 pub fn process_turn_with_timing_trace_and_features_and_suppression(
     input: &TurnInput,
@@ -493,6 +566,7 @@ pub fn process_turn_with_timing_trace_and_features_and_suppression(
         Some(&mut timings),
         renderer_authority,
         doubt_shadow,
+        AnomalyShadowMode::Disabled,
         clarification,
         suppression,
     );
@@ -550,6 +624,7 @@ fn process_turn_internal(
     mut timings: Option<&mut PipelineStageTimings>,
     renderer_authority: RendererAuthority,
     doubt_shadow: DoubtShadowMode,
+    anomaly_shadow: AnomalyShadowMode,
     clarification: ClarificationMode,
     suppression: SameTopicSuppressionMode,
 ) -> TurnOutput {
@@ -602,13 +677,16 @@ fn process_turn_internal(
     if let Some(trace) = trace.as_deref_mut() {
         record_doubt_shadow(trace, doubt_shadow, state, &prop);
     }
+    let is_challenge = detect_challenge(&input.raw_text);
+    if let Some(trace) = trace.as_deref_mut() {
+        record_anomaly_shadow(trace, anomaly_shadow, state, &prop, is_challenge);
+    }
     let clarification_decision = clarification_decision(clarification, suppression, state, &prop);
     if let Some(trace) = trace.as_deref_mut() {
         record_clarification_route(trace, clarification, state, &prop, clarification_decision);
         record_same_topic_suppression(trace, suppression, state, &prop, clarification_decision);
     }
 
-    let is_challenge = detect_challenge(&input.raw_text);
     let input_context = TurnInputContext::new(
         input.session_id.clone(),
         input.raw_text.clone(),
@@ -916,6 +994,151 @@ fn record_doubt_shadow(
         Duration::ZERO,
         metadata,
     );
+}
+
+const ANOMALY_SHADOW_LEDGER_CAPACITY: usize = 1;
+
+/// Record a typed recovery proposal after normalization without applying it.
+///
+/// The existing runtime exposes reliable self-reference and anti-conatus
+/// inputs. It does not yet persist typed stance provenance, so temporal
+/// contradiction is deliberately reported as unavailable instead of inferred
+/// from topic or free-form history.
+fn record_anomaly_shadow(
+    trace: &mut execution_trace::PipelineTrace,
+    anomaly_shadow: AnomalyShadowMode,
+    state: &SystemState,
+    proposition: &qxfx0_semantic::ParsedProposition,
+    is_challenge: bool,
+) {
+    let input_digest = execution_trace::calculate_stable_digest(&(state, proposition))
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let mut metadata = BTreeMap::from([
+        (
+            "anomaly_shadow_enabled".into(),
+            anomaly_shadow.enabled().to_string(),
+        ),
+        (
+            "anomaly_ledger_capacity".into(),
+            ANOMALY_SHADOW_LEDGER_CAPACITY.to_string(),
+        ),
+        (
+            "anomaly_temporal_evidence".into(),
+            "not_available_without_stance_provenance".into(),
+        ),
+    ]);
+
+    if anomaly_shadow.enabled() {
+        let mut ledger =
+            qxfx0_self::anomaly::AnomalyRecoveryLedger::new(ANOMALY_SHADOW_LEDGER_CAPACITY);
+        let observed_turn = state.dialogue.turn_count.saturating_add(1);
+        let self_reference = qxfx0_self::anomaly::AnomalyEvidence::SelfReference {
+            turn: observed_turn,
+            subject: proposition.subject.clone(),
+            angst: state.semantic.essence.angst,
+            witness_count: state.semantic.essence.witnesses.len(),
+        };
+        let anti_conatus = qxfx0_self::anomaly::AnomalyEvidence::AntiConatus {
+            turn: observed_turn,
+            stance_confidence: state.semantic.field.confidence,
+            stance_consistent: !is_challenge,
+            angst: state.semantic.essence.angst,
+            conatus: state
+                .semantic
+                .essence
+                .witnesses
+                .last()
+                .map(|witness| witness.conatus_scalar)
+                .unwrap_or(f64::MAX),
+        };
+        let decision = qxfx0_self::anomaly::detect_anomaly(self_reference)
+            .or_else(|| qxfx0_self::anomaly::detect_anomaly(anti_conatus));
+
+        if let Some(decision) = decision {
+            let outcome = ledger.record(decision, input_digest.clone());
+            let (replay_outcome, recovery) = match outcome {
+                qxfx0_self::anomaly::AnomalyReplayOutcome::Proposed(trace) => ("proposed", trace),
+                qxfx0_self::anomaly::AnomalyReplayOutcome::NoStateTransition(trace) => {
+                    ("no_state_transition", trace)
+                }
+            };
+            metadata.extend([
+                (
+                    "anomaly_proposed_kind".into(),
+                    anomaly_kind_name(recovery.kind).into(),
+                ),
+                (
+                    "anomaly_strategy".into(),
+                    anomaly_strategy_name(recovery.strategy).into(),
+                ),
+                (
+                    "anomaly_result".into(),
+                    anomaly_result_name(recovery.result).into(),
+                ),
+                ("anomaly_idempotency_key".into(), recovery.idempotency_key),
+                ("anomaly_replay_outcome".into(), replay_outcome.into()),
+                ("anomaly_ledger_len".into(), ledger.len().to_string()),
+                ("anomaly_reason".into(), "observation_only".into()),
+            ]);
+        } else {
+            metadata.extend([
+                ("anomaly_proposed_kind".into(), "not_detected".into()),
+                ("anomaly_strategy".into(), "not_applicable".into()),
+                ("anomaly_result".into(), "not_applicable".into()),
+                ("anomaly_idempotency_key".into(), "not_applicable".into()),
+                ("anomaly_replay_outcome".into(), "not_applicable".into()),
+                ("anomaly_ledger_len".into(), ledger.len().to_string()),
+                ("anomaly_reason".into(), "no_admitted_evidence".into()),
+            ]);
+        }
+    } else {
+        metadata.extend([
+            ("anomaly_proposed_kind".into(), "not_evaluated".into()),
+            ("anomaly_strategy".into(), "not_evaluated".into()),
+            ("anomaly_result".into(), "not_evaluated".into()),
+            ("anomaly_idempotency_key".into(), "not_evaluated".into()),
+            ("anomaly_replay_outcome".into(), "not_evaluated".into()),
+            ("anomaly_ledger_len".into(), "0".into()),
+            ("anomaly_reason".into(), "disabled".into()),
+        ]);
+    }
+
+    let output_digest = execution_trace::calculate_stable_digest(&metadata)
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    trace.record_step(
+        "anomaly_shadow",
+        input_digest,
+        output_digest,
+        Duration::ZERO,
+        metadata,
+    );
+}
+
+const fn anomaly_kind_name(kind: qxfx0_self::anomaly::AnomalyKind) -> &'static str {
+    match kind {
+        qxfx0_self::anomaly::AnomalyKind::SelfReferentialCollapse => "self_referential_collapse",
+        qxfx0_self::anomaly::AnomalyKind::Temporal => "temporal",
+        qxfx0_self::anomaly::AnomalyKind::Unclassifiable => "unclassifiable",
+        qxfx0_self::anomaly::AnomalyKind::AntiConatus => "anti_conatus",
+    }
+}
+
+const fn anomaly_strategy_name(
+    strategy: qxfx0_self::anomaly::AnomalyRecoveryStrategy,
+) -> &'static str {
+    match strategy {
+        qxfx0_self::anomaly::AnomalyRecoveryStrategy::ResetEssence => "reset_essence",
+        qxfx0_self::anomaly::AnomalyRecoveryStrategy::RestrictRoute => "restrict_route",
+        qxfx0_self::anomaly::AnomalyRecoveryStrategy::RequestRevision => "request_revision",
+    }
+}
+
+const fn anomaly_result_name(result: qxfx0_self::anomaly::AnomalyRecoveryResult) -> &'static str {
+    match result {
+        qxfx0_self::anomaly::AnomalyRecoveryResult::EssenceReset => "essence_reset",
+        qxfx0_self::anomaly::AnomalyRecoveryResult::RouteRestricted => "route_restricted",
+        qxfx0_self::anomaly::AnomalyRecoveryResult::RevisionRequested => "revision_requested",
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

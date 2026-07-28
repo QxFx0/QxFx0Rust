@@ -8,10 +8,13 @@ use qxfx0_persistence::SaveStateTimings;
 use qxfx0_pipeline::{
     process_turn, process_turn_with_renderer, process_turn_with_timing_and_renderer,
     process_turn_with_timing_trace_and_features_and_suppression,
+    process_turn_with_timing_trace_and_renderer_and_anomaly_shadow,
     process_turn_with_timing_trace_and_renderer_and_doubt_shadow,
+    process_turn_with_trace_and_renderer_and_anomaly_shadow,
     process_turn_with_trace_and_renderer_and_doubt_shadow,
-    process_turn_with_trace_and_renderer_and_features_and_suppression, ClarificationMode,
-    DoubtShadowMode, PipelineStageTimings, RendererAuthority, SameTopicSuppressionMode, TurnInput,
+    process_turn_with_trace_and_renderer_and_features_and_suppression, AnomalyShadowMode,
+    ClarificationMode, DoubtShadowMode, PipelineStageTimings, RendererAuthority,
+    SameTopicSuppressionMode, TurnInput,
 };
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
@@ -153,6 +156,10 @@ pub fn append_turn_diagnostics(
 /// Existing files are rejected. This makes the opt-in artifact explicit and
 /// prevents a command from silently appending to a completed pilot trace.
 pub fn create_doubt_shadow_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    create_trace_sink(path, "doubt shadow")
+}
+
+fn create_trace_sink(path: impl AsRef<Path>, trace_name: &str) -> anyhow::Result<File> {
     let path = path.as_ref();
     OpenOptions::new()
         .write(true)
@@ -160,7 +167,7 @@ pub fn create_doubt_shadow_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<
         .open(path)
         .map_err(|error| {
             anyhow::anyhow!(
-                "doubt shadow trace sink must be a new file ({}): {error}",
+                "{trace_name} trace sink must be a new file ({}): {error}",
                 path.display()
             )
         })
@@ -187,7 +194,7 @@ fn write_trace_jsonl(
 }
 
 pub fn create_cognitive_pilot_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
-    create_doubt_shadow_trace_sink(path)
+    create_trace_sink(path, "cognitive pilot")
 }
 
 pub fn write_cognitive_pilot_trace_jsonl(
@@ -195,6 +202,20 @@ pub fn write_cognitive_pilot_trace_jsonl(
     trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
 ) -> anyhow::Result<()> {
     write_trace_jsonl(sink, "qxfx0.cognitive-pilot-trace.v1", trace)
+}
+
+/// Create a new external JSONL sink for anomaly shadow evidence.
+pub fn create_anomaly_shadow_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    create_trace_sink(path, "anomaly shadow")
+}
+
+/// Append one deterministic anomaly-shadow record to a sink created for this
+/// command. The trace is observational and excludes wall-clock durations.
+pub fn write_anomaly_shadow_trace_jsonl(
+    sink: &mut File,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    write_trace_jsonl(sink, "qxfx0.anomaly-shadow-trace.v1", trace)
 }
 
 impl OperationalMetrics {
@@ -605,6 +626,32 @@ pub fn run_turn_with_renderer_doubt_shadow_trace(
     })
 }
 
+/// Run one normal persisted turn while returning observation-only typed anomaly
+/// evidence for an external sink. The trace never enters `SystemState`.
+pub fn run_turn_with_renderer_anomaly_shadow_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<DoubtShadowTracedTurn> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+        &input,
+        &mut state,
+        renderer_authority,
+        AnomalyShadowMode::TraceOnly,
+    );
+    db.save_state(session_id, &state)?;
+    Ok(DoubtShadowTracedTurn {
+        response: output.response,
+        trace,
+    })
+}
+
 pub fn run_turn_with_renderer_cognitive_pilot(
     db: &qxfx0_persistence::Persistence,
     session_id: &str,
@@ -691,6 +738,46 @@ pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
         &mut state,
         renderer_authority,
         DoubtShadowMode::TraceOnly,
+    );
+    let db_save = db.save_state_with_timings(session_id, &state)?;
+    Ok((
+        build_diagnosed_turn(
+            &state,
+            renderer_authority,
+            output,
+            pipeline,
+            db_save,
+            db_load_ms,
+            total_started,
+        ),
+        trace,
+    ))
+}
+
+/// Run one turn with existing timing diagnostics and anomaly shadow trace
+/// evidence without processing or persisting a second turn.
+pub fn run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<(
+    DiagnosedTurn,
+    qxfx0_pipeline::execution_trace::PipelineTrace,
+)> {
+    let total_started = Instant::now();
+    let load_started = Instant::now();
+    let mut state = load_or_create_state(db, session_id)?;
+    let db_load_ms = elapsed_millis(load_started);
+    let input = TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, pipeline, trace) = process_turn_with_timing_trace_and_renderer_and_anomaly_shadow(
+        &input,
+        &mut state,
+        renderer_authority,
+        AnomalyShadowMode::TraceOnly,
     );
     let db_save = db.save_state_with_timings(session_id, &state)?;
     Ok((
