@@ -75,6 +75,22 @@ pub enum RendererAuthority {
     AuditedPlan,
 }
 
+/// Enables observation-only doubt evidence in an explicit execution trace.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum DoubtShadowMode {
+    /// Preserve the current pipeline without calculating doubt evidence.
+    #[default]
+    Disabled,
+    /// Calculate a proposed route but never apply it to routing or state.
+    TraceOnly,
+}
+
+impl DoubtShadowMode {
+    const fn enabled(self) -> bool {
+        matches!(self, Self::TraceOnly)
+    }
+}
+
 impl RendererAuthority {
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -269,7 +285,14 @@ pub fn process_turn_with_renderer(
     state: &mut SystemState,
     renderer_authority: RendererAuthority,
 ) -> TurnOutput {
-    process_turn_internal(input, state, None, None, renderer_authority)
+    process_turn_internal(
+        input,
+        state,
+        None,
+        None,
+        renderer_authority,
+        DoubtShadowMode::Disabled,
+    )
 }
 
 /// Process a turn while collecting lightweight timing evidence for each
@@ -282,7 +305,14 @@ pub fn process_turn_with_timing_and_renderer(
 ) -> (TurnOutput, PipelineStageTimings) {
     let started = Instant::now();
     let mut timings = PipelineStageTimings::default();
-    let output = process_turn_internal(input, state, None, Some(&mut timings), renderer_authority);
+    let output = process_turn_internal(
+        input,
+        state,
+        None,
+        Some(&mut timings),
+        renderer_authority,
+        DoubtShadowMode::Disabled,
+    );
     timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
     (output, timings)
 }
@@ -303,18 +333,90 @@ pub fn process_turn_with_trace_and_renderer(
     state: &mut SystemState,
     renderer_authority: RendererAuthority,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
+    process_turn_with_trace_and_renderer_and_doubt_shadow(
+        input,
+        state,
+        renderer_authority,
+        DoubtShadowMode::Disabled,
+    )
+}
+
+/// Process a turn with explicit renderer and observation-only doubt settings.
+pub fn process_turn_with_trace_and_renderer_and_doubt_shadow(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    doubt_shadow: DoubtShadowMode,
+) -> (TurnOutput, execution_trace::PipelineTrace) {
+    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
+    let output = process_turn_internal(
+        input,
+        state,
+        Some(&mut trace),
+        None,
+        renderer_authority,
+        doubt_shadow,
+    );
+    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
+    (output, trace)
+}
+
+/// Process a turn with both performance timings and deterministic trace
+/// evidence. This supports independent opt-in diagnostics and doubt shadow
+/// tracing without running the pipeline twice.
+pub fn process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    doubt_shadow: DoubtShadowMode,
+) -> (
+    TurnOutput,
+    PipelineStageTimings,
+    execution_trace::PipelineTrace,
+) {
+    let started = Instant::now();
+    let mut timings = PipelineStageTimings::default();
+    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
+    let output = process_turn_internal(
+        input,
+        state,
+        Some(&mut trace),
+        Some(&mut timings),
+        renderer_authority,
+        doubt_shadow,
+    );
+    timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
+    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
+    (output, timings, trace)
+}
+
+fn new_pipeline_trace(
+    input: &TurnInput,
+    state: &SystemState,
+) -> (execution_trace::PipelineTrace, String, Instant) {
     let request_id = execution_trace::calculate_stable_digest(&(
         input,
         state.dialogue.turn_count,
         state.session_id.as_str(),
     ))
     .unwrap_or_else(|_| "trace-unavailable".into());
-    let initial_digest = execution_trace::calculate_stable_digest(&(&*state, input))
+    let initial_digest = execution_trace::calculate_stable_digest(&(state, input))
         .unwrap_or_else(|error| format!("digest-error:{error}"));
-    let start = Instant::now();
-    let mut trace = execution_trace::PipelineTrace::new(&request_id);
-    let output = process_turn_internal(input, state, Some(&mut trace), None, renderer_authority);
-    let final_digest = execution_trace::calculate_stable_digest(&(&*state, &output))
+    (
+        execution_trace::PipelineTrace::new(&request_id),
+        initial_digest,
+        Instant::now(),
+    )
+}
+
+fn finish_pipeline_trace(
+    initial_digest: String,
+    state: &SystemState,
+    output: &TurnOutput,
+    started: Instant,
+    trace: &mut execution_trace::PipelineTrace,
+) {
+    let final_digest = execution_trace::calculate_stable_digest(&(state, output))
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     trace.record_step(
         "turn_output",
@@ -326,8 +428,7 @@ pub fn process_turn_with_trace_and_renderer(
             ("family".into(), format!("{:?}", output.family)),
         ]),
     );
-    trace.set_total_duration(start.elapsed());
-    (output, trace)
+    trace.set_total_duration(started.elapsed());
 }
 
 fn process_turn_internal(
@@ -336,6 +437,7 @@ fn process_turn_internal(
     mut trace: Option<&mut execution_trace::PipelineTrace>,
     mut timings: Option<&mut PipelineStageTimings>,
     renderer_authority: RendererAuthority,
+    doubt_shadow: DoubtShadowMode,
 ) -> TurnOutput {
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -382,6 +484,10 @@ fn process_turn_internal(
         &prop.subject,
         &state.semantic.runtime_graph,
     );
+
+    if let Some(trace) = trace.as_deref_mut() {
+        record_doubt_shadow(trace, doubt_shadow, state, &prop);
+    }
 
     let is_challenge = detect_challenge(&input.raw_text);
     let input_context = TurnInputContext::new(
@@ -604,6 +710,99 @@ fn process_turn_internal(
         path_depth,
         holistic_dominant: state.semantic.adjunction.holistic_dominant,
         conversation_state,
+    }
+}
+
+/// Record pure doubt/episodic evidence after topic normalization. The local
+/// store is constructed from an already-persisted confirmed decision only;
+/// it is neither retained nor applied to routing.
+fn record_doubt_shadow(
+    trace: &mut execution_trace::PipelineTrace,
+    doubt_shadow: DoubtShadowMode,
+    state: &SystemState,
+    proposition: &qxfx0_semantic::ParsedProposition,
+) {
+    let input_digest = execution_trace::calculate_stable_digest(&(state, proposition))
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let config = qxfx0_self::doubt::EpisodicConfig::default();
+    let mut metadata = BTreeMap::from([
+        (
+            "doubt_shadow_enabled".into(),
+            doubt_shadow.enabled().to_string(),
+        ),
+        ("doubt_recall_count".into(), "0".into()),
+        (
+            "doubt_episodic_capacity".into(),
+            config.capacity.to_string(),
+        ),
+        ("doubt_recall_limit".into(), config.recall_limit.to_string()),
+    ]);
+
+    if doubt_shadow.enabled() {
+        let mut store = qxfx0_self::doubt::BoundedEpisodicStore::new(config);
+        let confirmed_previous_decision =
+            state.last_turn_decision.as_ref().is_some_and(|decision| {
+                matches!(
+                    decision.guard_status,
+                    GuardStatus::Allowed | GuardStatus::InvariantWarn(_)
+                )
+            });
+        if confirmed_previous_decision {
+            if let Some(topic) = state.dialogue.last_topic.clone() {
+                store = store.record(qxfx0_types::EpisodicEvent {
+                    id: state.dialogue.turn_count as u64,
+                    turn: state.dialogue.turn_count as u64,
+                    kind: qxfx0_types::EpisodicKind::SystemDecision,
+                    topic: Some(topic),
+                });
+            }
+        }
+
+        let score = qxfx0_self::doubt::compute_doubt(qxfx0_types::DoubtInput {
+            confidence: state.semantic.field.confidence,
+            driver: qxfx0_types::DoubtDriver::Other,
+        });
+        let recalled = store.recall(state.dialogue.turn_count as u64, Some(&proposition.subject));
+        let proposed = qxfx0_self::doubt::route_for_doubt(
+            score,
+            qxfx0_self::doubt::DoubtPolicy::default(),
+            &recalled,
+        );
+        metadata.extend([
+            ("doubt_score".into(), score.value().to_string()),
+            ("doubt_driver".into(), "other".into()),
+            ("doubt_recall_count".into(), recalled.len().to_string()),
+            (
+                "doubt_proposed_route".into(),
+                doubt_route_name(proposed).into(),
+            ),
+            ("doubt_reason".into(), "observation_only".into()),
+        ]);
+    } else {
+        metadata.extend([
+            ("doubt_score".into(), "not_evaluated".into()),
+            ("doubt_driver".into(), "not_evaluated".into()),
+            ("doubt_proposed_route".into(), "not_evaluated".into()),
+            ("doubt_reason".into(), "disabled".into()),
+        ]);
+    }
+
+    let output_digest = execution_trace::calculate_stable_digest(&metadata)
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    trace.record_step(
+        "doubt_shadow",
+        input_digest,
+        output_digest,
+        Duration::ZERO,
+        metadata,
+    );
+}
+
+const fn doubt_route_name(route: qxfx0_types::DoubtRoute) -> &'static str {
+    match route {
+        qxfx0_types::DoubtRoute::RetainCurrent => "retain_current",
+        qxfx0_types::DoubtRoute::Clarify => "clarify",
+        qxfx0_types::DoubtRoute::SuppressedByRecentDecision => "suppressed_by_recent_decision",
     }
 }
 
