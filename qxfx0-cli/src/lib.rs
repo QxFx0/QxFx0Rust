@@ -4,10 +4,17 @@
 //! drive the turn / chat flow without spawning a subprocess.
 
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
-use qxfx0_pipeline::{process_turn, process_turn_with_renderer, RendererAuthority, TurnInput};
+use qxfx0_persistence::SaveStateTimings;
+use qxfx0_pipeline::{
+    process_turn, process_turn_with_renderer, process_turn_with_timing_and_renderer,
+    PipelineStageTimings, RendererAuthority, TurnInput,
+};
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
 use serde::Serialize;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::Path;
 use std::time::Instant;
 
 #[derive(Debug, Clone, Serialize)]
@@ -29,6 +36,92 @@ pub struct OperationalMetrics {
     pub doctor_duration_ms: u64,
     pub response_probe_ms: u64,
     pub response_probe_healthy: bool,
+}
+
+/// Process and host attributes attached to an opt-in diagnostic record.
+///
+/// The values are collected from the current process and environment only;
+/// no host probes or state changes are performed.
+#[derive(Debug, Clone, Serialize)]
+pub struct DiagnosticHostMetadata {
+    /// Operating-system family compiled into this binary.
+    pub os: &'static str,
+    /// CPU architecture compiled into this binary.
+    pub architecture: &'static str,
+    /// Process identifier for correlation with host logs.
+    pub process_id: u32,
+    /// Logical CPU count when the platform exposes it.
+    pub available_parallelism: Option<usize>,
+    /// Optional host name supplied by the process environment.
+    pub hostname: Option<String>,
+}
+
+/// Read-only performance evidence for one completed `turn` command.
+///
+/// This record is emitted only when the CLI caller opts into a diagnostics
+/// JSONL file. It intentionally excludes user text and response text.
+#[derive(Debug, Clone, Serialize)]
+pub struct TurnDiagnostics {
+    /// Stable schema identifier for JSONL consumers.
+    pub schema: &'static str,
+    /// Persisted turn number after the command completes.
+    pub turn: usize,
+    /// Renderer authority selected for the turn.
+    pub renderer_authority: &'static str,
+    /// Typed family selected by routing.
+    pub family: String,
+    /// Whether the guard blocked the response.
+    pub blocked: bool,
+    /// Returned response size in UTF-8 bytes, without response content.
+    pub response_bytes: usize,
+    /// Connection open and migration duration, filled by the CLI command.
+    pub db_open_ms: u64,
+    /// State read and deserialization duration.
+    pub db_load_ms: u64,
+    /// Lightweight timing for the pure pipeline stages.
+    pub pipeline: PipelineStageTimings,
+    /// SQLite save timing, including lock/commit evidence.
+    pub db_save: SaveStateTimings,
+    /// Total measured duration from state load through SQLite save.
+    pub total_ms: u64,
+    /// Current process and host metadata for correlation.
+    pub host: DiagnosticHostMetadata,
+}
+
+/// Response plus its opt-in diagnostic evidence.
+#[derive(Debug, Clone)]
+pub struct DiagnosedTurn {
+    /// User-visible response, unchanged from the standard turn path.
+    pub response: String,
+    /// Timing and metadata excluded from persisted session state.
+    pub diagnostics: TurnDiagnostics,
+}
+
+fn diagnostic_host_metadata() -> DiagnosticHostMetadata {
+    DiagnosticHostMetadata {
+        os: std::env::consts::OS,
+        architecture: std::env::consts::ARCH,
+        process_id: std::process::id(),
+        available_parallelism: std::thread::available_parallelism().ok().map(usize::from),
+        hostname: std::env::var("HOSTNAME")
+            .ok()
+            .filter(|value| !value.is_empty()),
+    }
+}
+
+/// Append one JSONL performance record without changing the session database.
+pub fn append_turn_diagnostics(
+    path: impl AsRef<Path>,
+    diagnostics: &TurnDiagnostics,
+) -> anyhow::Result<()> {
+    let mut record = serde_json::to_vec(diagnostics)?;
+    record.push(b'\n');
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path.as_ref())?;
+    file.write_all(&record)?;
+    Ok(())
 }
 
 impl OperationalMetrics {
@@ -163,6 +256,16 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
             details: error.to_string(),
         }),
     }
+
+    report.checks.push(DoctorCheck {
+        name: "Performance diagnostics",
+        passed: true,
+        details: concat!(
+            "opt-in qxfx0.turn-diagnostics.v1 records stage timing, ",
+            "SQLite write-lock/commit timing, and host metadata outside session state"
+        )
+        .into(),
+    });
 
     let graph = seed_graph();
     let mut graph_violations = graph.validate().err().unwrap_or_default();
@@ -403,6 +506,50 @@ pub fn run_turn_with_renderer(
     Ok(output.response)
 }
 
+/// Run one turn with lightweight timing and SQLite diagnostic evidence.
+///
+/// The standard [`run_turn_with_renderer`] path remains timing-free. This
+/// opt-in function executes the same state load, pipeline, and save sequence,
+/// but returns observational timing that callers may write outside the
+/// production database.
+pub fn run_turn_with_renderer_diagnostics(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<DiagnosedTurn> {
+    let total_started = Instant::now();
+    let load_started = Instant::now();
+    let mut state = load_or_create_state(db, session_id)?;
+    let db_load_ms = elapsed_millis(load_started);
+    let input = TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, pipeline) =
+        process_turn_with_timing_and_renderer(&input, &mut state, renderer_authority);
+    let db_save = db.save_state_with_timings(session_id, &state)?;
+    let response = output.response;
+
+    Ok(DiagnosedTurn {
+        diagnostics: TurnDiagnostics {
+            schema: "qxfx0.turn-diagnostics.v1",
+            turn: state.dialogue.turn_count,
+            renderer_authority: renderer_authority.as_str(),
+            family: format!("{:?}", output.family),
+            blocked: output.blocked,
+            response_bytes: response.len(),
+            db_open_ms: 0,
+            db_load_ms,
+            pipeline,
+            db_save,
+            total_ms: elapsed_millis(total_started),
+            host: diagnostic_host_metadata(),
+        },
+        response,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -563,6 +710,44 @@ mod tests {
     }
 
     #[test]
+    fn diagnostic_turn_writes_timing_outside_the_session_database() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open memory db");
+        let diagnosed = run_turn_with_renderer_diagnostics(
+            &db,
+            "diagnostic-session",
+            "что такое свобода?",
+            RendererAuthority::LegacyShadow,
+        )
+        .expect("diagnostic turn should succeed");
+
+        assert!(!diagnosed.response.is_empty());
+        assert_eq!(diagnosed.diagnostics.turn, 1);
+        assert_eq!(diagnosed.diagnostics.schema, "qxfx0.turn-diagnostics.v1");
+        assert_eq!(
+            db.load_state("diagnostic-session")
+                .expect("load state")
+                .expect("state saved")
+                .dialogue
+                .turn_count,
+            1
+        );
+
+        let path = std::env::temp_dir().join(format!(
+            "qxfx0-turn-diagnostics-{}-{}.jsonl",
+            std::process::id(),
+            diagnosed.diagnostics.turn
+        ));
+        let _ = std::fs::remove_file(&path);
+        append_turn_diagnostics(&path, &diagnosed.diagnostics).expect("append diagnostic");
+        let line = std::fs::read_to_string(&path).expect("read diagnostic");
+        let record: serde_json::Value = serde_json::from_str(line.trim()).expect("valid JSONL");
+        assert_eq!(record["schema"], "qxfx0.turn-diagnostics.v1");
+        assert!(record["pipeline"]["plan_render_ms"].is_number());
+        assert!(record["db_save"]["sqlite_write_lock_ms"].is_number());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn test_doctor_checks_real_subsystems() {
         let path = std::env::temp_dir().join(format!("qxfx0-doctor-{}.db", std::process::id()));
         let report = run_doctor(path.to_str().unwrap());
@@ -575,7 +760,11 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 6);
+        assert_eq!(report.checks.len(), 7);
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.name == "Performance diagnostics" && check.passed));
         let content_assets = report
             .checks
             .iter()
