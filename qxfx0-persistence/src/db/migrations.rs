@@ -4,12 +4,11 @@ use rusqlite::{Connection, Result};
 ///
 /// Versions 1-6 existed in two incompatible migration systems: early builds
 /// tracked versions in a `schema_version` table while later development builds
-/// used `PRAGMA user_version`.  Version 7 is deliberately idempotent and does
-/// not write to the legacy table, so databases produced by either lineage can
-/// be upgraded safely.
-pub const CURRENT_SCHEMA_VERSION: i64 = 7;
+/// used `PRAGMA user_version`. Version 8 adds typed stance provenance without
+/// rewriting session rows, so databases from either lineage upgrade safely.
+pub const CURRENT_SCHEMA_VERSION: i64 = 8;
 
-const SCHEMA_V7: &str = r#"
+const SCHEMA_V8: &str = r#"
 CREATE TABLE IF NOT EXISTS runtime_sessions (
     id TEXT PRIMARY KEY,
     state_json TEXT NOT NULL,
@@ -30,10 +29,10 @@ CREATE TABLE IF NOT EXISTS session_semantic (
     essence_json TEXT NOT NULL,
     adjunction_json TEXT NOT NULL,
     commitments_json TEXT,
+    stance_provenance_json TEXT,
     FOREIGN KEY (session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE
 );
 
-PRAGMA user_version = 7;
 "#;
 
 /// Apply the compatibility schema in one transaction.
@@ -49,7 +48,18 @@ pub fn apply_migrations(conn: &mut Connection) -> Result<()> {
     }
 
     let tx = conn.transaction()?;
-    tx.execute_batch(SCHEMA_V7)?;
+    tx.execute_batch(SCHEMA_V8)?;
+    let has_column = {
+        let mut statement = tx.prepare("PRAGMA table_info(session_semantic)")?;
+        let names = statement
+            .query_map([], |row| row.get::<_, String>(1))?
+            .collect::<Result<Vec<_>>>()?;
+        names.iter().any(|name| name == "stance_provenance_json")
+    };
+    if !has_column {
+        tx.execute_batch("ALTER TABLE session_semantic ADD COLUMN stance_provenance_json TEXT")?;
+    }
+    tx.pragma_update(None, "user_version", CURRENT_SCHEMA_VERSION)?;
     tx.commit()?;
     Ok(())
 }

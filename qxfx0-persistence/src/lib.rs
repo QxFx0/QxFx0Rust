@@ -230,6 +230,8 @@ impl Persistence {
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
         let commitments_json = serde_json::to_string(&state.semantic.semantic_commitments)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
+        let stance_provenance_json = serde_json::to_string(&state.semantic.stance_provenance)
+            .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
 
         let state_json = serde_json::to_string(state)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
@@ -263,14 +265,15 @@ impl Persistence {
         )?;
 
         tx.execute(
-            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json)
-             VALUES (?1, ?2, ?3, ?4, ?5)
+            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(session_id) DO UPDATE SET
                 field_json=excluded.field_json,
                 essence_json=excluded.essence_json,
                 adjunction_json=excluded.adjunction_json,
-                commitments_json=excluded.commitments_json",
-            params![session_id, field_json, essence_json, adjunction_json, commitments_json],
+                commitments_json=excluded.commitments_json,
+                stance_provenance_json=excluded.stance_provenance_json",
+            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json],
         )?;
         let sqlite_remaining_writes_ms = SaveStateTimings::elapsed_ms(remaining_writes_started);
 
@@ -307,7 +310,7 @@ impl Persistence {
         let semantic = self
             .conn
             .query_row(
-                "SELECT field_json, essence_json, adjunction_json, commitments_json
+                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json
                  FROM session_semantic WHERE session_id = ?1",
                 params![session_id],
                 |row| {
@@ -316,6 +319,7 @@ impl Persistence {
                         row.get::<_, String>(1)?,
                         row.get::<_, String>(2)?,
                         row.get::<_, Option<String>>(3)?,
+                        row.get::<_, Option<String>>(4)?,
                     ))
                 },
             )
@@ -323,7 +327,13 @@ impl Persistence {
 
         if let (
             Some((atoms_json, edges_json)),
-            Some((field_json, essence_json, adjunction_json, commitments_json)),
+            Some((
+                field_json,
+                essence_json,
+                adjunction_json,
+                commitments_json,
+                stance_provenance_json,
+            )),
         ) = (graph, semantic)
         {
             let session = self
@@ -366,6 +376,11 @@ impl Persistence {
                         .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
                 ),
             };
+            let stance_provenance = match stance_provenance_json.as_deref() {
+                Some("null") | Some("") | None => Default::default(),
+                Some(json) => serde_json::from_str(json)
+                    .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
+            };
 
             let state = SystemState {
                 session_id: session_id.into(),
@@ -384,6 +399,7 @@ impl Persistence {
                         semantic_commitments,
                         essence,
                         adjunction,
+                        stance_provenance,
                         cached_edge_count: 0,
                         cached_network: None,
                     }
@@ -603,6 +619,51 @@ mod tests {
     }
 
     #[test]
+    fn stance_provenance_round_trips_in_normalized_state() {
+        let db = Persistence::open_memory().unwrap();
+        let mut state = SystemState {
+            session_id: "stance".into(),
+            ..SystemState::default()
+        };
+        state
+            .semantic
+            .stance_provenance
+            .record(qxfx0_types::stance::StanceObservation {
+                turn: 1,
+                topic: qxfx0_types::stance::StanceTopic::new("свобода").unwrap(),
+                polarity: qxfx0_types::stance::StancePolarity::Affirmed,
+                source: qxfx0_types::stance::StanceSource::SystemDecision,
+            });
+        db.save_state("stance", &state).unwrap();
+        let replayed = db.load_state("stance").unwrap().unwrap();
+        assert_eq!(
+            replayed.semantic.stance_provenance,
+            state.semantic.stance_provenance
+        );
+        assert_eq!(replayed.semantic.stance_provenance.version(), 1);
+    }
+
+    #[test]
+    fn legacy_null_stance_provenance_loads_as_empty_v1() {
+        let db = Persistence::open_memory().unwrap();
+        let state = SystemState {
+            session_id: "legacy-null-stance".into(),
+            ..SystemState::default()
+        };
+        db.save_state("legacy-null-stance", &state).unwrap();
+        db.conn
+            .execute(
+                "UPDATE session_semantic SET stance_provenance_json = NULL WHERE session_id = ?1",
+                params!["legacy-null-stance"],
+            )
+            .unwrap();
+
+        let loaded = db.load_state("legacy-null-stance").unwrap().unwrap();
+        assert!(loaded.semantic.stance_provenance.is_empty());
+        assert_eq!(loaded.semantic.stance_provenance.version(), 1);
+    }
+
+    #[test]
     fn test_legacy_essence_floor_replays_without_implicit_migration() {
         let db = Persistence::open_memory().unwrap();
         let state = SystemState {
@@ -808,7 +869,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 7);
+        assert_eq!(db.schema_version().unwrap(), 8);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -863,7 +924,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 7);
+            assert_eq!(db.schema_version().unwrap(), 8);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db

@@ -8,6 +8,8 @@ use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
 
+pub use qxfx0_types::anomaly::AnomalyEvidence;
+
 /// Closed set of anomaly kinds admitted by the first recovery contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalyKind {
@@ -19,44 +21,6 @@ pub enum AnomalyKind {
     Unclassifiable,
     /// A confident but inconsistent stance with low conatus.
     AntiConatus,
-}
-
-/// Evidence accepted by anomaly detection.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum AnomalyEvidence {
-    /// Evidence for a self-referential Essence collapse.
-    SelfReference {
-        /// Turn where the evidence was observed.
-        turn: usize,
-        /// Normalized subject considered for self-reference.
-        subject: String,
-        /// Current Essence angst.
-        angst: f64,
-        /// Number of witnessed trajectory entries.
-        witness_count: usize,
-    },
-    /// Evidence for an anti-conatus choice.
-    AntiConatus {
-        /// Turn where the evidence was observed.
-        turn: usize,
-        /// Confidence in the active stance.
-        stance_confidence: f64,
-        /// Whether the stance agrees with current evidence.
-        stance_consistent: bool,
-        /// Current Essence angst.
-        angst: f64,
-        /// Current conatus scalar.
-        conatus: f64,
-    },
-    /// Evidence for a temporal stance contradiction.
-    Temporal {
-        /// Turn where the contradiction was observed.
-        turn: usize,
-        /// Current stance label.
-        current_stance: String,
-        /// Earlier stance label.
-        historical_stance: String,
-    },
 }
 
 /// Typed strategy selected for an anomaly.
