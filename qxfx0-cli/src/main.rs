@@ -86,6 +86,7 @@ enum Commands {
 }
 
 fn main() -> anyhow::Result<()> {
+    let process_started = Instant::now();
     tracing_subscriber::fmt::init();
     let cli = Cli::parse();
     let renderer_authority = if cli.render_audited_plan {
@@ -124,6 +125,11 @@ fn main() -> anyhow::Result<()> {
                 )?;
                 diagnosed.diagnostics.db_open_ms =
                     db_open_ms.expect("diagnostics path requires an open timer");
+                diagnosed.diagnostics.cli_process_ms = process_started
+                    .elapsed()
+                    .as_millis()
+                    .try_into()
+                    .unwrap_or(u64::MAX);
                 if let Err(error) = append_turn_diagnostics(&path, &diagnosed.diagnostics) {
                     warn!(
                         "turn completed but diagnostic record could not be appended to {}: {error}",
