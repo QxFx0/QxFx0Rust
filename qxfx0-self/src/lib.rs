@@ -2,6 +2,8 @@ pub mod anomaly;
 pub mod deliberation;
 pub mod doubt;
 
+pub mod stance;
+
 pub mod perspective;
 
 use qxfx0_types::field::Field;

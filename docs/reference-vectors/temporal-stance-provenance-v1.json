@@ -1,0 +1,63 @@
+{
+  "schema": "qxfx0.temporal-stance-provenance.v1",
+  "scope": "pure typed contract; no SystemState or persistence integration",
+  "capacity": 2,
+  "vectors": [
+    {
+      "name": "newer-system-rejection-contradicts-earlier-affirmation",
+      "history": [
+        { "turn": 7, "topic": "свобода", "polarity": "affirmed", "source": "system_decision" }
+      ],
+      "current": { "turn": 11, "topic": "свобода", "polarity": "rejected", "source": "system_decision" },
+      "expect": {
+        "contradiction": true,
+        "historical_turn": 7,
+        "current_stance": "rejected",
+        "historical_stance": "affirmed",
+        "anomaly_kind": "Temporal",
+        "strategy": "RequestRevision",
+        "result": "RevisionRequested",
+        "idempotency_key": "turn:11:temporal-contradiction"
+      }
+    },
+    {
+      "name": "same-polarity-is-not-a-contradiction",
+      "history": [
+        { "turn": 7, "topic": "свобода", "polarity": "affirmed", "source": "system_decision" }
+      ],
+      "current": { "turn": 11, "topic": "свобода", "polarity": "affirmed", "source": "system_decision" },
+      "expect": { "contradiction": false }
+    },
+    {
+      "name": "different-topic-is-not-a-contradiction",
+      "history": [
+        { "turn": 7, "topic": "свобода", "polarity": "affirmed", "source": "system_decision" }
+      ],
+      "current": { "turn": 11, "topic": "ответственность", "polarity": "rejected", "source": "system_decision" },
+      "expect": { "contradiction": false }
+    },
+    {
+      "name": "same-or-future-turn-is-not-a-contradiction",
+      "history": [
+        { "turn": 11, "topic": "свобода", "polarity": "affirmed", "source": "system_decision" }
+      ],
+      "current": { "turn": 11, "topic": "свобода", "polarity": "rejected", "source": "system_decision" },
+      "expect": { "contradiction": false }
+    },
+    {
+      "name": "user-input-is-not-a-system-stance",
+      "history": [
+        { "turn": 7, "topic": "свобода", "polarity": "affirmed", "source": "user_input" }
+      ],
+      "current": { "turn": 11, "topic": "свобода", "polarity": "rejected", "source": "system_decision" },
+      "expect": { "contradiction": false }
+    }
+  ],
+  "required_laws": [
+    "only an earlier SystemDecision with the same topic and opposite polarity can contradict",
+    "duplicate observations produce NoStateTransition",
+    "retained provenance never exceeds capacity",
+    "equal event sequences serialize identically for replay",
+    "the contract does not write SystemState or persistence"
+  ]
+}
