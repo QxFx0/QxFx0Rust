@@ -5,21 +5,27 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 /// Represents a single step in the deterministic pipeline execution.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TraceStep {
     pub stage: String,
     pub input_digest: String,
     pub output_digest: String,
+    /// Local diagnostic only; intentionally absent from serialized replay
+    /// evidence so JSONL traces remain deterministic.
+    #[serde(skip_serializing)]
     pub duration: std::time::Duration,
     pub metadata: BTreeMap<String, String>,
 }
 
 /// Comprehensive trace of a full pipeline execution.
 /// Designed to be compared between runs to verify determinism.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct PipelineTrace {
     pub request_id: String,
     pub steps: Vec<TraceStep>,
+    /// Local diagnostic only; intentionally absent from serialized replay
+    /// evidence so JSONL traces do not contain wall-clock data.
+    #[serde(skip_serializing)]
     pub total_duration: std::time::Duration,
 }
 
