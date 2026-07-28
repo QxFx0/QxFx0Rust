@@ -518,6 +518,7 @@ impl Persistence {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use qxfx0_self::collapse_essence;
     use qxfx0_types::governance::{GovernanceEvent, GovernanceEventType};
     use qxfx0_types::system_state::DialogueState;
     use qxfx0_types::system_state::*;
@@ -599,6 +600,117 @@ mod tests {
         assert_eq!(loaded.session_id, "test");
         assert_eq!(loaded.dialogue.turn_count, 3);
         assert_eq!(loaded.dialogue.history.len(), 2);
+    }
+
+    #[test]
+    fn test_legacy_essence_floor_replays_without_implicit_migration() {
+        let db = Persistence::open_memory().unwrap();
+        let state = SystemState {
+            session_id: "legacy-essence".into(),
+            dialogue: DialogueState {
+                turn_count: 2,
+                ..Default::default()
+            },
+            semantic: SemanticState {
+                essence: EssenceState {
+                    witnesses: vec![
+                        EssenceWitness {
+                            turn: 1,
+                            mode: "Define".into(),
+                            statement: "свобода".into(),
+                            salience_driver: "fixture".into(),
+                            reconcile_rule: "RuleFormalAdvantage".into(),
+                            agreement: "DivergeMultiple".into(),
+                            divergence: 0.5,
+                            conatus_scalar: 12.0,
+                        },
+                        EssenceWitness {
+                            turn: 2,
+                            mode: "Define".into(),
+                            statement: "ответственность".into(),
+                            salience_driver: "fixture".into(),
+                            reconcile_rule: "RuleAgreement".into(),
+                            agreement: "Agree".into(),
+                            divergence: 0.0,
+                            conatus_scalar: 11.0,
+                        },
+                    ],
+                    angst: 0.95,
+                    trajectory_committed: true,
+                    conatus_floor: 11.0,
+                    capacity: 32,
+                    commitment: Some(EssenceCommitment {
+                        mode: CommitmentMode::Contemplative,
+                        trigger: CommitmentTrigger::TriggerAngstThreshold,
+                        committed_at: 2,
+                        witness_hash: "sha256:legacy-fixture".into(),
+                    }),
+                    reset_events: Vec::new(),
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let mut legacy_json = serde_json::to_value(&state).unwrap();
+        let legacy_essence = legacy_json["semantic"]["essence"]
+            .as_object_mut()
+            .expect("serialized state must contain essence object");
+        for field in ["conatus_floor", "capacity", "commitment", "reset_events"] {
+            legacy_essence.remove(field);
+        }
+        let legacy_json = serde_json::to_string(&legacy_json).unwrap();
+        db.conn
+            .execute(
+                "INSERT INTO runtime_sessions (id, state_json, turn_count) VALUES (?1, ?2, ?3)",
+                params!["legacy-essence", legacy_json, 2],
+            )
+            .unwrap();
+
+        let stored_before_load: String = db
+            .conn
+            .query_row(
+                "SELECT state_json FROM runtime_sessions WHERE id = 'legacy-essence'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let mut loaded = db.load_state("legacy-essence").unwrap().unwrap();
+        let stored_after_load: String = db
+            .conn
+            .query_row(
+                "SELECT state_json FROM runtime_sessions WHERE id = 'legacy-essence'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+
+        assert_eq!(stored_after_load, stored_before_load);
+        assert_eq!(loaded.semantic.essence.conatus_floor, f64::MAX);
+        assert_eq!(loaded.semantic.essence.capacity, 0);
+        assert!(loaded.semantic.essence.commitment.is_none());
+        assert!(loaded.semantic.essence.reset_events.is_empty());
+
+        let event = collapse_essence(3, &mut loaded.semantic.essence);
+        assert_eq!(event.turn, 3);
+        assert_eq!(event.previous_angst, 0.95);
+        assert_eq!(event.previous_witness_count, 2);
+        assert_eq!(loaded.semantic.essence.conatus_floor, f64::MAX);
+        assert!(!loaded.semantic.essence.trajectory_committed);
+        assert!(loaded.semantic.essence.commitment.is_none());
+        assert!(loaded.semantic.essence.witnesses.is_empty());
+
+        db.save_state("legacy-essence", &loaded).unwrap();
+        let replayed = db.load_state("legacy-essence").unwrap().unwrap();
+        assert_eq!(replayed.semantic.essence.conatus_floor, f64::MAX);
+        assert!(replayed.semantic.essence.witnesses.is_empty());
+        assert!(replayed.semantic.essence.commitment.is_none());
+        assert_eq!(replayed.semantic.essence.reset_events.len(), 1);
+        assert_eq!(replayed.semantic.essence.reset_events[0].turn, 3);
+        assert_eq!(
+            replayed.semantic.essence.reset_events[0].previous_witness_count,
+            2
+        );
     }
 
     #[test]
