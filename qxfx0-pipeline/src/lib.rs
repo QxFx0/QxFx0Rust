@@ -25,7 +25,7 @@ use qxfx0_types::system_state::*;
 use qxfx0_types::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use turn_context::{StageTraceContext, TurnInputContext};
 
 pub(crate) const CHALLENGE_PATTERNS: &[&str] = &[
@@ -98,6 +98,53 @@ pub struct TurnOutput {
     pub conversation_state: String,
 }
 
+/// Lightweight per-stage timing for an individual pipeline turn.
+///
+/// Unlike [`execution_trace::PipelineTrace`], this structure does not compute
+/// replay digests. It is therefore suitable for opt-in latency diagnostics
+/// without adding serialization and hashing work to each measured stage.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct PipelineStageTimings {
+    /// Parsing, topic normalization, and typed input construction.
+    pub input_normalization_ms: u64,
+    /// Self-layer preparation.
+    pub prepare_ms: u64,
+    /// Typed family routing.
+    pub route_ms: u64,
+    /// Shadow-plan semantic selection.
+    pub semantic_selection_ms: u64,
+    /// Plan-surface or legacy rendering work.
+    pub plan_render_ms: u64,
+    /// State finalization before quality enforcement.
+    pub finalize_ms: u64,
+    /// Content and safety guard evaluation.
+    pub guard_ms: u64,
+    /// In-memory governance persistence stage.
+    pub persist_ms: u64,
+    /// Total pipeline duration, excluding database I/O.
+    pub total_ms: u64,
+}
+
+impl PipelineStageTimings {
+    fn duration_ms(duration: Duration) -> u64 {
+        duration.as_millis().try_into().unwrap_or(u64::MAX)
+    }
+
+    fn record_stage(&mut self, stage_name: &str, duration: Duration) {
+        let elapsed_ms = Self::duration_ms(duration);
+        match stage_name {
+            "prepare" => self.prepare_ms = elapsed_ms,
+            "route" => self.route_ms = elapsed_ms,
+            "plan_shadow" => self.semantic_selection_ms = elapsed_ms,
+            "render" => self.plan_render_ms = elapsed_ms,
+            "finalize" => self.finalize_ms = elapsed_ms,
+            "guard" => self.guard_ms = elapsed_ms,
+            "persist" => self.persist_ms = elapsed_ms,
+            _ => {}
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 struct RecoverySnapshot {
     family: Option<CanonicalMoveFamily>,
@@ -149,6 +196,7 @@ fn session_invariant_output(state: &SystemState, reason: &str) -> TurnOutput {
 
 fn execute_stage<I, O, E, F>(
     trace: &mut Option<&mut execution_trace::PipelineTrace>,
+    timings: &mut Option<&mut PipelineStageTimings>,
     stage_name: &str,
     state: &mut SystemState,
     input: I,
@@ -160,38 +208,48 @@ where
     E: Serialize,
     F: FnOnce(&mut SystemState, I) -> Result<O, E>,
 {
-    if trace.is_none() {
+    if trace.is_none() && timings.is_none() {
         return stage(state, input);
     }
 
-    let input_digest = execution_trace::calculate_stable_digest(&(&*state, &input))
-        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let input_digest = trace.as_ref().map(|_| {
+        execution_trace::calculate_stable_digest(&(&*state, &input))
+            .unwrap_or_else(|error| format!("digest-error:{error}"))
+    });
     let start = Instant::now();
     let result = stage(state, input);
-    let output_digest = execution_trace::calculate_stable_digest(&(&*state, &result))
-        .unwrap_or_else(|error| format!("digest-error:{error}"));
-    let mut metadata = BTreeMap::new();
-    metadata.insert(
-        "status".into(),
-        result
-            .as_ref()
-            .map_or("error", StageTraceContext::trace_status)
-            .into(),
-    );
-    if let Ok(output) = &result {
-        if let Some(family) = output.trace_family() {
-            metadata.insert("family".into(), format!("{:?}", family));
-        }
-        metadata.extend(output.trace_metadata());
+    let duration = start.elapsed();
+
+    if let Some(timings) = timings.as_deref_mut() {
+        timings.record_stage(stage_name, duration);
     }
-    if let Some(trace) = trace.as_deref_mut() {
-        trace.record_step(
-            stage_name,
-            input_digest,
-            output_digest,
-            start.elapsed(),
-            metadata,
+
+    if trace.is_some() {
+        let output_digest = execution_trace::calculate_stable_digest(&(&*state, &result))
+            .unwrap_or_else(|error| format!("digest-error:{error}"));
+        let mut metadata = BTreeMap::new();
+        metadata.insert(
+            "status".into(),
+            result
+                .as_ref()
+                .map_or("error", StageTraceContext::trace_status)
+                .into(),
         );
+        if let Ok(output) = &result {
+            if let Some(family) = output.trace_family() {
+                metadata.insert("family".into(), format!("{:?}", family));
+            }
+            metadata.extend(output.trace_metadata());
+        }
+        if let Some(trace) = trace.as_deref_mut() {
+            trace.record_step(
+                stage_name,
+                input_digest.expect("trace requires an input digest"),
+                output_digest,
+                duration,
+                metadata,
+            );
+        }
     }
     result
 }
@@ -211,7 +269,22 @@ pub fn process_turn_with_renderer(
     state: &mut SystemState,
     renderer_authority: RendererAuthority,
 ) -> TurnOutput {
-    process_turn_internal(input, state, None, renderer_authority)
+    process_turn_internal(input, state, None, None, renderer_authority)
+}
+
+/// Process a turn while collecting lightweight timing evidence for each
+/// pipeline stage. The returned timing is observational and is not persisted
+/// in the session state or included in replay signatures.
+pub fn process_turn_with_timing_and_renderer(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+) -> (TurnOutput, PipelineStageTimings) {
+    let started = Instant::now();
+    let mut timings = PipelineStageTimings::default();
+    let output = process_turn_internal(input, state, None, Some(&mut timings), renderer_authority);
+    timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
+    (output, timings)
 }
 
 /// Process a turn and return a stage-level trace with cross-process stable
@@ -240,7 +313,7 @@ pub fn process_turn_with_trace_and_renderer(
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     let start = Instant::now();
     let mut trace = execution_trace::PipelineTrace::new(&request_id);
-    let output = process_turn_internal(input, state, Some(&mut trace), renderer_authority);
+    let output = process_turn_internal(input, state, Some(&mut trace), None, renderer_authority);
     let final_digest = execution_trace::calculate_stable_digest(&(&*state, &output))
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     trace.record_step(
@@ -261,6 +334,7 @@ fn process_turn_internal(
     input: &TurnInput,
     state: &mut SystemState,
     mut trace: Option<&mut execution_trace::PipelineTrace>,
+    mut timings: Option<&mut PipelineStageTimings>,
     renderer_authority: RendererAuthority,
 ) -> TurnOutput {
     if input.session_id.trim().is_empty()
@@ -284,6 +358,7 @@ fn process_turn_internal(
     let mut recovery = RecoverySnapshot::default();
 
     // Parse once and retain the typed proposition throughout the pipeline.
+    let normalization_started = Instant::now();
     let mut prop = PropositionParser::parse(&input.raw_text);
 
     // Normalize subject to nominative form using the runtime graph.
@@ -315,10 +390,15 @@ fn process_turn_internal(
         prop,
         is_challenge,
     );
+    if let Some(timings) = timings.as_deref_mut() {
+        timings.input_normalization_ms =
+            PipelineStageTimings::duration_ms(normalization_started.elapsed());
+    }
 
     // Stage 1: Prepare
     let prepared = match execute_stage(
         &mut trace,
+        &mut timings,
         "prepare",
         state,
         input_context,
@@ -334,7 +414,14 @@ fn process_turn_internal(
     recovery.conatus_energy = Some(prepared.conatus_energy());
 
     // Stage 2: Route
-    let routed = match execute_stage(&mut trace, "route", state, prepared, stages::route_stage) {
+    let routed = match execute_stage(
+        &mut trace,
+        &mut timings,
+        "route",
+        state,
+        prepared,
+        stages::route_stage,
+    ) {
         Ok(context) => context,
         Err(error) => {
             tracing::error!("route_stage failed: {error}");
@@ -348,6 +435,7 @@ fn process_turn_internal(
     // Stage 3: Shadow plan (observational; renderer authority is unchanged)
     let planned = match execute_stage(
         &mut trace,
+        &mut timings,
         "plan_shadow",
         state,
         routed,
@@ -362,9 +450,14 @@ fn process_turn_internal(
     };
 
     // Stage 4: Render
-    let rendered = match execute_stage(&mut trace, "render", state, planned, |state, planned| {
-        stages::render_stage(state, planned, renderer_authority)
-    }) {
+    let rendered = match execute_stage(
+        &mut trace,
+        &mut timings,
+        "render",
+        state,
+        planned,
+        |state, planned| stages::render_stage(state, planned, renderer_authority),
+    ) {
         Ok(context) => context,
         Err(error) => {
             tracing::error!("render_stage failed: {error}");
@@ -377,6 +470,7 @@ fn process_turn_internal(
     // Stage 5: Finalize
     let finalized = match execute_stage(
         &mut trace,
+        &mut timings,
         "finalize",
         state,
         rendered,
@@ -391,7 +485,14 @@ fn process_turn_internal(
     };
 
     // Stage 6: Guard
-    let guarded = match execute_stage(&mut trace, "guard", state, finalized, stages::guard_stage) {
+    let guarded = match execute_stage(
+        &mut trace,
+        &mut timings,
+        "guard",
+        state,
+        finalized,
+        stages::guard_stage,
+    ) {
         Ok(context) => context,
         Err(error) => {
             tracing::error!("guard_stage failed: {error}");
@@ -405,11 +506,17 @@ fn process_turn_internal(
     }
 
     // Stage 7: Persist
-    let persisted =
-        match execute_stage(&mut trace, "persist", state, guarded, stages::persist_stage) {
-            Ok(context) => context,
-            Err(never) => match never {},
-        };
+    let persisted = match execute_stage(
+        &mut trace,
+        &mut timings,
+        "persist",
+        state,
+        guarded,
+        stages::persist_stage,
+    ) {
+        Ok(context) => context,
+        Err(never) => match never {},
+    };
 
     let context = persisted.guarded();
     let mut response = context.finalized().rendered().response().to_owned();
@@ -520,6 +627,36 @@ mod tests {
         };
         let output = process_turn(&input, &mut state);
         assert!(!output.response.is_empty());
+    }
+
+    #[test]
+    fn timed_pipeline_preserves_the_standard_turn_output() {
+        let input = TurnInput {
+            session_id: "timed".into(),
+            raw_text: "что такое свобода?".into(),
+        };
+        let mut standard_state = test_state("timed");
+        let mut timed_state = test_state("timed");
+
+        let standard = process_turn(&input, &mut standard_state);
+        let (timed, timings) = process_turn_with_timing_and_renderer(
+            &input,
+            &mut timed_state,
+            RendererAuthority::LegacyShadow,
+        );
+
+        assert_eq!(timed.response, standard.response);
+        assert_eq!(timed.family, standard.family);
+        let encoded = serde_json::to_value(timings).expect("timing should serialize");
+        for field in [
+            "input_normalization_ms",
+            "semantic_selection_ms",
+            "plan_render_ms",
+            "guard_ms",
+            "total_ms",
+        ] {
+            assert!(encoded.get(field).is_some(), "missing timing field {field}");
+        }
     }
 
     #[test]
