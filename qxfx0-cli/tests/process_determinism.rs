@@ -162,6 +162,102 @@ fn doubt_shadow_cli_writes_external_trace_without_changing_a_turn() {
 }
 
 #[test]
+fn anomaly_shadow_cli_writes_external_trace_without_changing_a_turn() {
+    let binary = env!("CARGO_BIN_EXE_qxfx0");
+    let base = std::env::temp_dir();
+    let pid = std::process::id();
+    let standard_db = base.join(format!("qxfx0-anomaly-cli-{pid}-standard.db"));
+    let shadow_db = base.join(format!("qxfx0-anomaly-cli-{pid}-shadow.db"));
+    let rejected_db = base.join(format!("qxfx0-anomaly-cli-{pid}-rejected.db"));
+    let trace = base.join(format!("qxfx0-anomaly-cli-{pid}.jsonl"));
+    let diagnostics = base.join(format!("qxfx0-anomaly-cli-{pid}-diagnostics.jsonl"));
+    cleanup(&standard_db);
+    cleanup(&shadow_db);
+    cleanup(&rejected_db);
+    let _ = std::fs::remove_file(&trace);
+    let _ = std::fs::remove_file(&diagnostics);
+
+    let session = "anomaly-cli-session";
+    let text = "что такое я?";
+    let standard = run_turn(binary, &standard_db, session, text);
+    let shadow = Command::new(binary)
+        .args([
+            "--db",
+            shadow_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--anomaly-shadow-trace-jsonl",
+            trace.to_str().unwrap(),
+            "--diagnostics-jsonl",
+            diagnostics.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn anomaly shadow turn");
+    assert!(standard.status.success());
+    assert!(
+        shadow.status.success(),
+        "anomaly shadow command failed: {}",
+        String::from_utf8_lossy(&shadow.stderr)
+    );
+    assert_eq!(standard.stdout, shadow.stdout);
+
+    let standard_state = qxfx0_persistence::Persistence::open(standard_db.to_str().unwrap())
+        .unwrap()
+        .load_state(session)
+        .unwrap()
+        .unwrap();
+    let shadow_state = qxfx0_persistence::Persistence::open(shadow_db.to_str().unwrap())
+        .unwrap()
+        .load_state(session)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&standard_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&shadow_state).unwrap()
+    );
+    let trace_value: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&trace).unwrap()).unwrap();
+    assert_eq!(trace_value["schema"], "qxfx0.anomaly-shadow-trace.v1");
+    assert!(trace_value["trace"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|step| step["stage"] == "anomaly_shadow"));
+    let diagnostics_value: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&diagnostics).unwrap()).unwrap();
+    assert_eq!(diagnostics_value["schema"], "qxfx0.turn-diagnostics.v1");
+
+    // The external sink is validated before opening the database, so an
+    // existing artifact fails without creating or modifying a session DB.
+    let rejected = Command::new(binary)
+        .args([
+            "--db",
+            rejected_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--anomaly-shadow-trace-jsonl",
+            trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn rejected anomaly shadow turn");
+    assert!(!rejected.status.success());
+    assert!(
+        !rejected_db.exists(),
+        "DB must not be opened after sink failure"
+    );
+
+    cleanup(&standard_db);
+    cleanup(&shadow_db);
+    cleanup(&rejected_db);
+    let _ = std::fs::remove_file(&trace);
+    let _ = std::fs::remove_file(&diagnostics);
+}
+
+#[test]
 fn cognitive_pilot_trace_is_opt_in_and_validated_before_db_open() {
     let binary = env!("CARGO_BIN_EXE_qxfx0");
     let base = std::env::temp_dir();
