@@ -2,8 +2,9 @@
 
 use qxfx0_pipeline::{
     process_turn, process_turn_with_trace, process_turn_with_trace_and_renderer_and_doubt_shadow,
-    process_turn_with_trace_and_renderer_and_features, ClarificationMode, DoubtShadowMode,
-    RendererAuthority, TurnInput,
+    process_turn_with_trace_and_renderer_and_features,
+    process_turn_with_trace_and_renderer_and_features_and_suppression, ClarificationMode,
+    DoubtShadowMode, RendererAuthority, SameTopicSuppressionMode, TurnInput,
 };
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
@@ -514,6 +515,7 @@ fn test_stage_trace_is_replay_deterministic() {
         [
             "doubt_shadow",
             "clarification_route",
+            "same_topic_suppression",
             "prepare",
             "route",
             "plan_shadow",
@@ -567,6 +569,135 @@ fn test_stage_trace_is_replay_deterministic() {
         .metadata
         .get("predicate_refs")
         .is_some_and(|refs| refs.contains("freedom_choice")));
+}
+
+#[test]
+fn same_topic_suppression_is_bounded_shadowed_and_limited() {
+    let session_id = "same-topic-suppression";
+    let input = TurnInput {
+        session_id: session_id.into(),
+        raw_text: "что такое кванточайник?".into(),
+    };
+    let mut prior_state = test_state(session_id);
+    prior_state.semantic.field.confidence = 0.0;
+    let (first, _) = process_turn_with_trace_and_renderer_and_features(
+        &input,
+        &mut prior_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::Disabled,
+        ClarificationMode::LimitedEnabled,
+    );
+    assert_eq!(first.family, qxfx0_types::CanonicalMoveFamily::CMClarify);
+
+    let mut baseline_state = prior_state.clone();
+    let mut shadow_state = prior_state.clone();
+    let (baseline, _) = process_turn_with_trace_and_renderer_and_features_and_suppression(
+        &input,
+        &mut baseline_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::Disabled,
+        ClarificationMode::LimitedEnabled,
+        SameTopicSuppressionMode::Disabled,
+    );
+    let (shadow, shadow_trace) = process_turn_with_trace_and_renderer_and_features_and_suppression(
+        &input,
+        &mut shadow_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::Disabled,
+        ClarificationMode::LimitedEnabled,
+        SameTopicSuppressionMode::TraceOnly,
+    );
+    assert_eq!(baseline.response, shadow.response);
+    assert_eq!(baseline.family, shadow.family);
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&baseline_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&shadow_state).unwrap()
+    );
+    let shadow_step = shadow_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "same_topic_suppression")
+        .unwrap();
+    assert_eq!(
+        shadow_step.metadata["same_topic_suppression_eligible"],
+        "true"
+    );
+    assert_eq!(
+        shadow_step.metadata["same_topic_suppression_applied"],
+        "false"
+    );
+    assert_eq!(
+        shadow_step.metadata["same_topic_suppression_recall_count"],
+        "1"
+    );
+
+    let mut enabled_state = prior_state.clone();
+    let (enabled, enabled_trace) =
+        process_turn_with_trace_and_renderer_and_features_and_suppression(
+            &input,
+            &mut enabled_state,
+            RendererAuthority::LegacyShadow,
+            DoubtShadowMode::Disabled,
+            ClarificationMode::LimitedEnabled,
+            SameTopicSuppressionMode::LimitedEnabled,
+        );
+    assert_eq!(enabled.family, qxfx0_types::CanonicalMoveFamily::CMDefine);
+    assert!(!enabled.response.contains("Мне нужно уточнение"));
+    let enabled_step = enabled_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "same_topic_suppression")
+        .unwrap();
+    assert_eq!(
+        enabled_step.metadata["same_topic_suppression_applied"],
+        "true"
+    );
+    assert_eq!(
+        enabled_step.metadata["same_topic_suppression_actual_route"],
+        "retain_current"
+    );
+
+    let different_input = TurnInput {
+        session_id: session_id.into(),
+        raw_text: "что такое другойчайник?".into(),
+    };
+    let mut different_state = prior_state.clone();
+    let (different, different_trace) =
+        process_turn_with_trace_and_renderer_and_features_and_suppression(
+            &different_input,
+            &mut different_state,
+            RendererAuthority::LegacyShadow,
+            DoubtShadowMode::Disabled,
+            ClarificationMode::LimitedEnabled,
+            SameTopicSuppressionMode::LimitedEnabled,
+        );
+    assert_eq!(
+        different.family,
+        qxfx0_types::CanonicalMoveFamily::CMClarify
+    );
+    let different_step = different_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "same_topic_suppression")
+        .unwrap();
+    assert_eq!(
+        different_step.metadata["same_topic_suppression_eligible"],
+        "false"
+    );
+
+    let mut replay_state = prior_state;
+    let (_, replay_trace) = process_turn_with_trace_and_renderer_and_features_and_suppression(
+        &input,
+        &mut replay_state,
+        RendererAuthority::LegacyShadow,
+        DoubtShadowMode::Disabled,
+        ClarificationMode::LimitedEnabled,
+        SameTopicSuppressionMode::LimitedEnabled,
+    );
+    assert_eq!(
+        serde_json::to_vec(&enabled_trace).unwrap(),
+        serde_json::to_vec(&replay_trace).unwrap()
+    );
 }
 
 #[test]
