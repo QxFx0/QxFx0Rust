@@ -1,3 +1,4 @@
+pub mod anomaly;
 pub mod deliberation;
 pub mod doubt;
 
