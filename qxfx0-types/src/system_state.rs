@@ -7,6 +7,7 @@ use crate::governance::GovernanceLog;
 use crate::illocutionary_force::IllocutionaryForce;
 use crate::move_family::CanonicalMoveFamily;
 use crate::network::SemanticNetwork;
+use crate::stance::BoundedStanceProvenance;
 
 /// Dialogue state — multi-turn context, history, last routing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,6 +153,8 @@ pub struct SemanticState {
     pub essence: EssenceState,
     /// Adjunction balance — Holistic ⊣ Formal categorical state.
     pub adjunction: AdjunctionState,
+    #[serde(default)]
+    pub stance_provenance: BoundedStanceProvenance,
     /// Cached edge count — when this differs from runtime_graph.edges.len(),
     /// downstream consumers know the SemanticNetwork/ContentSelector cache
     /// is stale and must be rebuilt.
@@ -214,6 +217,9 @@ impl SystemState {
         }
         if self.semantic.essence.witnesses.len() > self.semantic.essence.capacity.max(32) {
             violations.push("essence witness trajectory exceeds its capacity".into());
+        }
+        if self.semantic.stance_provenance.len() > self.semantic.stance_provenance.capacity() {
+            violations.push("stance provenance exceeds its capacity".into());
         }
         if self
             .dialogue

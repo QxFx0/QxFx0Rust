@@ -2,8 +2,9 @@ use clap::{Parser, Subcommand};
 use qxfx0_cli::{
     append_turn_diagnostics, create_anomaly_shadow_trace_sink, create_cognitive_pilot_trace_sink,
     create_doubt_shadow_trace_sink, load_or_create_state, run_doctor, run_operational_metrics,
-    run_turn_with_renderer, run_turn_with_renderer_anomaly_shadow_trace,
-    run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
+    run_turn_with_renderer, run_turn_with_renderer_and_stance_provenance,
+    run_turn_with_renderer_anomaly_shadow_trace, run_turn_with_renderer_cognitive_pilot,
+    run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
     run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
@@ -58,6 +59,9 @@ enum Commands {
         anomaly_shadow_trace_jsonl: Option<PathBuf>,
         #[arg(long, value_name = "PATH")]
         cognitive_pilot_trace_jsonl: Option<PathBuf>,
+        /// Default-off typed provenance recording; it never enables recovery.
+        #[arg(long)]
+        record_stance_provenance: bool,
         #[arg(long, requires = "cognitive_pilot_trace_jsonl")]
         enable_clarification: bool,
         #[arg(long, requires_all = ["cognitive_pilot_trace_jsonl", "enable_clarification"])]
@@ -151,10 +155,21 @@ fn main() -> anyhow::Result<()> {
             doubt_shadow_trace_jsonl,
             anomaly_shadow_trace_jsonl,
             cognitive_pilot_trace_jsonl,
+            record_stance_provenance,
             enable_clarification,
             enable_same_topic_suppression,
         } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
+            if record_stance_provenance
+                && (diagnostics_jsonl.is_some()
+                    || doubt_shadow_trace_jsonl.is_some()
+                    || anomaly_shadow_trace_jsonl.is_some()
+                    || cognitive_pilot_trace_jsonl.is_some())
+            {
+                anyhow::bail!(
+                    "stance provenance recording currently requires a standalone ordinary turn"
+                );
+            }
             if let Some(path) = cognitive_pilot_trace_jsonl {
                 if doubt_shadow_trace_jsonl.is_some() || anomaly_shadow_trace_jsonl.is_some() {
                     anyhow::bail!(
@@ -303,7 +318,16 @@ fn main() -> anyhow::Result<()> {
                     traced.response
                 }
                 (None, None) => {
-                    run_turn_with_renderer(&db, &cli.session_id, &text, renderer_authority)?
+                    if record_stance_provenance {
+                        run_turn_with_renderer_and_stance_provenance(
+                            &db,
+                            &cli.session_id,
+                            &text,
+                            renderer_authority,
+                        )?
+                    } else {
+                        run_turn_with_renderer(&db, &cli.session_id, &text, renderer_authority)?
+                    }
                 }
             };
 

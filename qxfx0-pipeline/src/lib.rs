@@ -96,6 +96,15 @@ pub enum AnomalyShadowMode {
     TraceOnly,
 }
 
+/// Explicit, default-off durable provenance recorder. It never feeds routing,
+/// plans, rendering, temporal recovery, or user-visible output.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum StanceProvenanceMode {
+    #[default]
+    Disabled,
+    RecordAffirmedSystemDecision,
+}
+
 /// Controls the staged clarification route. It is disabled in all standard
 /// runtime paths; trace-only mode is evidence, while limited enablement is
 /// available only to an explicit pipeline caller.
@@ -354,6 +363,35 @@ pub fn process_turn_with_renderer(
         ClarificationMode::Disabled,
         SameTopicSuppressionMode::Disabled,
     )
+}
+
+/// Process an ordinary turn, then record an accepted normalized subject as an
+/// explicit affirmed system decision when the caller opted in. Recording is
+/// after the guard, so rejected turns and failed-stage rollback retain none.
+pub fn process_turn_with_renderer_and_stance_provenance(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    mode: StanceProvenanceMode,
+) -> TurnOutput {
+    let output = process_turn_with_renderer(input, state, renderer_authority);
+    if matches!(mode, StanceProvenanceMode::RecordAffirmedSystemDecision) && !output.blocked {
+        if let (Some(topic), turn) = (state.dialogue.last_topic.clone(), state.dialogue.turn_count)
+        {
+            if let Ok(topic) = qxfx0_types::stance::StanceTopic::new(topic) {
+                state
+                    .semantic
+                    .stance_provenance
+                    .record(qxfx0_types::stance::StanceObservation {
+                        turn,
+                        topic,
+                        polarity: qxfx0_types::stance::StancePolarity::Affirmed,
+                        source: qxfx0_types::stance::StanceSource::SystemDecision,
+                    });
+            }
+        }
+    }
+    output
 }
 
 /// Process a turn while collecting lightweight timing evidence for each
@@ -1505,5 +1543,41 @@ mod tests {
             state.semantic.field.confidence, field_before.confidence,
             "blocked turn should not change field confidence"
         );
+    }
+
+    #[test]
+    fn stance_provenance_is_default_off_and_guard_bounded() {
+        let input = TurnInput {
+            session_id: "stance".into(),
+            raw_text: "что такое свобода?".into(),
+        };
+        let mut disabled = test_state("stance");
+        let mut enabled = test_state("stance");
+        let standard =
+            process_turn_with_renderer(&input, &mut disabled, RendererAuthority::LegacyShadow);
+        let recorded = process_turn_with_renderer_and_stance_provenance(
+            &input,
+            &mut enabled,
+            RendererAuthority::LegacyShadow,
+            StanceProvenanceMode::RecordAffirmedSystemDecision,
+        );
+        assert_eq!(standard.response, recorded.response);
+        assert_eq!(standard.family, recorded.family);
+        assert!(disabled.semantic.stance_provenance.is_empty());
+        assert_eq!(enabled.semantic.stance_provenance.len(), 1);
+        assert_eq!(enabled.semantic.stance_provenance.version(), 1);
+
+        let mut blocked = test_state("stance-blocked");
+        let blocked_output = process_turn_with_renderer_and_stance_provenance(
+            &TurnInput {
+                session_id: "stance-blocked".into(),
+                raw_text: "a".repeat(10_000),
+            },
+            &mut blocked,
+            RendererAuthority::LegacyShadow,
+            StanceProvenanceMode::RecordAffirmedSystemDecision,
+        );
+        assert!(blocked_output.blocked);
+        assert!(blocked.semantic.stance_provenance.is_empty());
     }
 }
