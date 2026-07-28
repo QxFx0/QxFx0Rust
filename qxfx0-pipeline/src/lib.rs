@@ -758,9 +758,10 @@ fn record_doubt_shadow(
             }
         }
 
+        let driver = qxfx0_types::DoubtDriver::Other;
         let score = qxfx0_self::doubt::compute_doubt(qxfx0_types::DoubtInput {
             confidence: state.semantic.field.confidence,
-            driver: qxfx0_types::DoubtDriver::Other,
+            driver,
         });
         let recalled = store.recall(state.dialogue.turn_count as u64, Some(&proposition.subject));
         let proposed = qxfx0_self::doubt::route_for_doubt(
@@ -770,7 +771,7 @@ fn record_doubt_shadow(
         );
         metadata.extend([
             ("doubt_score".into(), score.value().to_string()),
-            ("doubt_driver".into(), "other".into()),
+            ("doubt_driver".into(), format!("{driver:?}").to_lowercase()),
             ("doubt_recall_count".into(), recalled.len().to_string()),
             (
                 "doubt_proposed_route".into(),
