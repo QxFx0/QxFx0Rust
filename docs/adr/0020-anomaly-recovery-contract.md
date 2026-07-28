@@ -19,3 +19,17 @@ anti-conatus, self-referential collapse and explicit user anomaly acts.
 
 Production integration follows Essence parity and requires replay vectors plus
 guard rollback tests before a feature flag can be enabled.
+
+## Observation-only shadow integration
+
+The first runtime bridge is deliberately not recovery integration. An explicit
+`--anomaly-shadow-trace-jsonl PATH` creates a new external JSONL artifact and
+records a deterministic `anomaly_shadow` pipeline step. It proposes typed
+self-reference or anti-conatus recovery only; it cannot change the actual
+family, plan, renderer, routing, or persisted `SystemState`.
+
+Temporal evidence is reported as unavailable until the runtime has typed,
+replay-visible stance provenance. It must not be inferred from topic strings
+or free-form dialogue history. The per-turn ledger is ephemeral and bounded;
+promotion to durable replay/idempotency semantics requires a separate
+versioned state-contract decision.

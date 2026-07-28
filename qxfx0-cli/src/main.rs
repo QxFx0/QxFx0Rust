@@ -1,12 +1,14 @@
 use clap::{Parser, Subcommand};
 use qxfx0_cli::{
-    append_turn_diagnostics, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
-    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_renderer,
+    append_turn_diagnostics, create_anomaly_shadow_trace_sink, create_cognitive_pilot_trace_sink,
+    create_doubt_shadow_trace_sink, load_or_create_state, run_doctor, run_operational_metrics,
+    run_turn_with_renderer, run_turn_with_renderer_anomaly_shadow_trace,
     run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
+    run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
     run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
-    run_turn_with_renderer_doubt_shadow_trace, write_cognitive_pilot_trace_jsonl,
-    write_doubt_shadow_trace_jsonl, DiagnosedTurn,
+    run_turn_with_renderer_doubt_shadow_trace, write_anomaly_shadow_trace_jsonl,
+    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl, DiagnosedTurn,
 };
 use qxfx0_pipeline::{
     process_turn_with_renderer, ClarificationMode, RendererAuthority, SameTopicSuppressionMode,
@@ -50,6 +52,10 @@ enum Commands {
         /// This never changes routing, rendering, or persisted session state.
         #[arg(long, value_name = "PATH")]
         doubt_shadow_trace_jsonl: Option<PathBuf>,
+        /// Write deterministic observation-only anomaly recovery evidence to a new JSONL file.
+        /// This never applies a recovery strategy or changes persisted session state.
+        #[arg(long, value_name = "PATH")]
+        anomaly_shadow_trace_jsonl: Option<PathBuf>,
         #[arg(long, value_name = "PATH")]
         cognitive_pilot_trace_jsonl: Option<PathBuf>,
         #[arg(long, requires = "cognitive_pilot_trace_jsonl")]
@@ -143,14 +149,17 @@ fn main() -> anyhow::Result<()> {
             text,
             diagnostics_jsonl,
             doubt_shadow_trace_jsonl,
+            anomaly_shadow_trace_jsonl,
             cognitive_pilot_trace_jsonl,
             enable_clarification,
             enable_same_topic_suppression,
         } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
             if let Some(path) = cognitive_pilot_trace_jsonl {
-                if doubt_shadow_trace_jsonl.is_some() {
-                    anyhow::bail!("cognitive pilot and doubt shadow traces require separate turns");
+                if doubt_shadow_trace_jsonl.is_some() || anomaly_shadow_trace_jsonl.is_some() {
+                    anyhow::bail!(
+                        "cognitive pilot, doubt shadow, and anomaly shadow traces require separate turns"
+                    );
                 }
                 let mut sink = create_cognitive_pilot_trace_sink(&path)?;
                 let clarification = if enable_clarification {
@@ -194,6 +203,43 @@ fn main() -> anyhow::Result<()> {
                         suppression,
                     )?;
                     write_cognitive_pilot_trace_jsonl(&mut sink, &traced.trace)?;
+                    traced.response
+                };
+                println!("{}", response);
+                return Ok(());
+            }
+            if let Some(path) = anomaly_shadow_trace_jsonl {
+                if doubt_shadow_trace_jsonl.is_some() {
+                    anyhow::bail!("doubt shadow and anomaly shadow traces require separate turns");
+                }
+                let mut sink = create_anomaly_shadow_trace_sink(&path)?;
+                let db_open_started = diagnostics_jsonl.as_ref().map(|_| Instant::now());
+                let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+                let db_open_ms = db_open_started
+                    .map(|started| started.elapsed().as_millis().try_into().unwrap_or(u64::MAX));
+                let response = if let Some(diagnostics_path) = diagnostics_jsonl {
+                    let (diagnosed, trace) =
+                        run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace(
+                            &db,
+                            &cli.session_id,
+                            &text,
+                            renderer_authority,
+                        )?;
+                    write_anomaly_shadow_trace_jsonl(&mut sink, &trace)?;
+                    finish_diagnostics(
+                        diagnosed,
+                        &diagnostics_path,
+                        db_open_ms.expect("diagnostics path requires an open timer"),
+                        process_started,
+                    )
+                } else {
+                    let traced = run_turn_with_renderer_anomaly_shadow_trace(
+                        &db,
+                        &cli.session_id,
+                        &text,
+                        renderer_authority,
+                    )?;
+                    write_anomaly_shadow_trace_jsonl(&mut sink, &traced.trace)?;
                     traced.response
                 };
                 println!("{}", response);
