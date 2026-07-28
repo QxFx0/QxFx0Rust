@@ -484,6 +484,7 @@ dependencies = [
 name = "qxfx0-persistence"
 version = "0.1.1"
 dependencies = [
+ "qxfx0-self",
  "qxfx0-semantic",
  "qxfx0-types",
  "rusqlite",
