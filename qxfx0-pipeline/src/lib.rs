@@ -519,6 +519,7 @@ fn finish_pipeline_trace(
     trace.set_total_duration(started.elapsed());
 }
 
+#[allow(clippy::too_many_arguments)] // explicit staged feature flags meet at this private boundary
 fn process_turn_internal(
     input: &TurnInput,
     state: &mut SystemState,
