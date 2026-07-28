@@ -1,11 +1,16 @@
 use clap::{Parser, Subcommand};
 use qxfx0_cli::{
-    append_turn_diagnostics, create_doubt_shadow_trace_sink, load_or_create_state, run_doctor,
-    run_operational_metrics, run_turn_with_renderer, run_turn_with_renderer_diagnostics,
+    append_turn_diagnostics, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
+    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_renderer,
+    run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
+    run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
-    run_turn_with_renderer_doubt_shadow_trace, write_doubt_shadow_trace_jsonl, DiagnosedTurn,
+    run_turn_with_renderer_doubt_shadow_trace, write_cognitive_pilot_trace_jsonl,
+    write_doubt_shadow_trace_jsonl, DiagnosedTurn,
 };
-use qxfx0_pipeline::{process_turn_with_renderer, RendererAuthority};
+use qxfx0_pipeline::{
+    process_turn_with_renderer, ClarificationMode, RendererAuthority, SameTopicSuppressionMode,
+};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
@@ -45,6 +50,12 @@ enum Commands {
         /// This never changes routing, rendering, or persisted session state.
         #[arg(long, value_name = "PATH")]
         doubt_shadow_trace_jsonl: Option<PathBuf>,
+        #[arg(long, value_name = "PATH")]
+        cognitive_pilot_trace_jsonl: Option<PathBuf>,
+        #[arg(long, requires = "cognitive_pilot_trace_jsonl")]
+        enable_clarification: bool,
+        #[arg(long, requires_all = ["cognitive_pilot_trace_jsonl", "enable_clarification"])]
+        enable_same_topic_suppression: bool,
     },
     /// Interactive dialogue session
     Chat,
@@ -91,6 +102,27 @@ enum Commands {
     CodeStats,
 }
 
+fn finish_diagnostics(
+    mut diagnosed: DiagnosedTurn,
+    path: &PathBuf,
+    db_open_ms: u64,
+    process_started: Instant,
+) -> String {
+    diagnosed.diagnostics.db_open_ms = db_open_ms;
+    diagnosed.diagnostics.cli_process_ms = process_started
+        .elapsed()
+        .as_millis()
+        .try_into()
+        .unwrap_or(u64::MAX);
+    if let Err(error) = append_turn_diagnostics(path, &diagnosed.diagnostics) {
+        warn!(
+            "turn completed but diagnostic record could not be appended to {}: {error}",
+            path.display()
+        );
+    }
+    diagnosed.response
+}
+
 fn main() -> anyhow::Result<()> {
     let process_started = Instant::now();
     tracing_subscriber::fmt::init();
@@ -111,8 +143,62 @@ fn main() -> anyhow::Result<()> {
             text,
             diagnostics_jsonl,
             doubt_shadow_trace_jsonl,
+            cognitive_pilot_trace_jsonl,
+            enable_clarification,
+            enable_same_topic_suppression,
         } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
+            if let Some(path) = cognitive_pilot_trace_jsonl {
+                if doubt_shadow_trace_jsonl.is_some() {
+                    anyhow::bail!("cognitive pilot and doubt shadow traces require separate turns");
+                }
+                let mut sink = create_cognitive_pilot_trace_sink(&path)?;
+                let clarification = if enable_clarification {
+                    ClarificationMode::LimitedEnabled
+                } else {
+                    ClarificationMode::TraceOnly
+                };
+                let suppression = if enable_same_topic_suppression {
+                    SameTopicSuppressionMode::LimitedEnabled
+                } else {
+                    SameTopicSuppressionMode::TraceOnly
+                };
+                let db_open_started = diagnostics_jsonl.as_ref().map(|_| Instant::now());
+                let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+                let db_open_ms = db_open_started
+                    .map(|started| started.elapsed().as_millis().try_into().unwrap_or(u64::MAX));
+                let response = if let Some(diagnostics_path) = diagnostics_jsonl {
+                    let (diagnosed, trace) =
+                        run_turn_with_renderer_diagnostics_and_cognitive_pilot(
+                            &db,
+                            &cli.session_id,
+                            &text,
+                            renderer_authority,
+                            clarification,
+                            suppression,
+                        )?;
+                    write_cognitive_pilot_trace_jsonl(&mut sink, &trace)?;
+                    finish_diagnostics(
+                        diagnosed,
+                        &diagnostics_path,
+                        db_open_ms.expect("diagnostics path requires an open timer"),
+                        process_started,
+                    )
+                } else {
+                    let traced = run_turn_with_renderer_cognitive_pilot(
+                        &db,
+                        &cli.session_id,
+                        &text,
+                        renderer_authority,
+                        clarification,
+                        suppression,
+                    )?;
+                    write_cognitive_pilot_trace_jsonl(&mut sink, &traced.trace)?;
+                    traced.response
+                };
+                println!("{}", response);
+                return Ok(());
+            }
             // Open the trace artifact before the DB. An invalid or existing sink
             // therefore fails fast without processing or persisting a turn.
             let mut doubt_trace_sink = doubt_shadow_trace_jsonl
@@ -129,22 +215,6 @@ fn main() -> anyhow::Result<()> {
                 cli.session_id,
                 text.chars().count()
             );
-            let finish_diagnostics = |mut diagnosed: DiagnosedTurn, path: &PathBuf| {
-                diagnosed.diagnostics.db_open_ms =
-                    db_open_ms.expect("diagnostics path requires an open timer");
-                diagnosed.diagnostics.cli_process_ms = process_started
-                    .elapsed()
-                    .as_millis()
-                    .try_into()
-                    .unwrap_or(u64::MAX);
-                if let Err(error) = append_turn_diagnostics(path, &diagnosed.diagnostics) {
-                    warn!(
-                        "turn completed but diagnostic record could not be appended to {}: {error}",
-                        path.display()
-                    );
-                }
-                diagnosed.response
-            };
             let response = match (diagnostics_jsonl, doubt_trace_sink.as_mut()) {
                 (Some(path), Some(sink)) => {
                     let (diagnosed, trace) =
@@ -155,7 +225,12 @@ fn main() -> anyhow::Result<()> {
                             renderer_authority,
                         )?;
                     write_doubt_shadow_trace_jsonl(sink, &trace)?;
-                    finish_diagnostics(diagnosed, &path)
+                    finish_diagnostics(
+                        diagnosed,
+                        &path,
+                        db_open_ms.expect("diagnostics path requires an open timer"),
+                        process_started,
+                    )
                 }
                 (Some(path), None) => {
                     let diagnosed = run_turn_with_renderer_diagnostics(
@@ -164,7 +239,12 @@ fn main() -> anyhow::Result<()> {
                         &text,
                         renderer_authority,
                     )?;
-                    finish_diagnostics(diagnosed, &path)
+                    finish_diagnostics(
+                        diagnosed,
+                        &path,
+                        db_open_ms.expect("diagnostics path requires an open timer"),
+                        process_started,
+                    )
                 }
                 (None, Some(sink)) => {
                     let traced = run_turn_with_renderer_doubt_shadow_trace(
