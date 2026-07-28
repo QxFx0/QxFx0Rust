@@ -85,6 +85,27 @@ pub enum DoubtShadowMode {
     TraceOnly,
 }
 
+/// Controls the staged clarification route. It is disabled in all standard
+/// runtime paths; trace-only mode is evidence, while limited enablement is
+/// available only to an explicit pipeline caller.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum ClarificationMode {
+    #[default]
+    Disabled,
+    TraceOnly,
+    LimitedEnabled,
+}
+
+impl ClarificationMode {
+    const fn observes(self) -> bool {
+        !matches!(self, Self::Disabled)
+    }
+
+    const fn applies(self) -> bool {
+        matches!(self, Self::LimitedEnabled)
+    }
+}
+
 impl DoubtShadowMode {
     const fn enabled(self) -> bool {
         matches!(self, Self::TraceOnly)
@@ -292,6 +313,7 @@ pub fn process_turn_with_renderer(
         None,
         renderer_authority,
         DoubtShadowMode::Disabled,
+        ClarificationMode::Disabled,
     )
 }
 
@@ -312,6 +334,7 @@ pub fn process_turn_with_timing_and_renderer(
         Some(&mut timings),
         renderer_authority,
         DoubtShadowMode::Disabled,
+        ClarificationMode::Disabled,
     );
     timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
     (output, timings)
@@ -348,6 +371,24 @@ pub fn process_turn_with_trace_and_renderer_and_doubt_shadow(
     renderer_authority: RendererAuthority,
     doubt_shadow: DoubtShadowMode,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
+    process_turn_with_trace_and_renderer_and_features(
+        input,
+        state,
+        renderer_authority,
+        doubt_shadow,
+        ClarificationMode::Disabled,
+    )
+}
+
+/// Process a turn with explicit staged cognitive integrations. Standard paths
+/// pass both modes as disabled; `LimitedEnabled` is intentionally opt-in.
+pub fn process_turn_with_trace_and_renderer_and_features(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    doubt_shadow: DoubtShadowMode,
+    clarification: ClarificationMode,
+) -> (TurnOutput, execution_trace::PipelineTrace) {
     let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
     let output = process_turn_internal(
         input,
@@ -356,6 +397,7 @@ pub fn process_turn_with_trace_and_renderer_and_doubt_shadow(
         None,
         renderer_authority,
         doubt_shadow,
+        clarification,
     );
     finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
     (output, trace)
@@ -384,6 +426,7 @@ pub fn process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
         Some(&mut timings),
         renderer_authority,
         doubt_shadow,
+        ClarificationMode::Disabled,
     );
     timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
     finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
@@ -438,6 +481,7 @@ fn process_turn_internal(
     mut timings: Option<&mut PipelineStageTimings>,
     renderer_authority: RendererAuthority,
     doubt_shadow: DoubtShadowMode,
+    clarification: ClarificationMode,
 ) -> TurnOutput {
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -488,6 +532,10 @@ fn process_turn_internal(
     if let Some(trace) = trace.as_deref_mut() {
         record_doubt_shadow(trace, doubt_shadow, state, &prop);
     }
+    let clarification_decision = clarification_decision(clarification, state, &prop);
+    if let Some(trace) = trace.as_deref_mut() {
+        record_clarification_route(trace, clarification, state, &prop, clarification_decision);
+    }
 
     let is_challenge = detect_challenge(&input.raw_text);
     let input_context = TurnInputContext::new(
@@ -526,7 +574,7 @@ fn process_turn_internal(
         "route",
         state,
         prepared,
-        stages::route_stage,
+        |state, prepared| stages::route_stage(state, prepared, clarification_decision.applied),
     ) {
         Ok(context) => context,
         Err(error) => {
@@ -792,6 +840,109 @@ fn record_doubt_shadow(
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     trace.record_step(
         "doubt_shadow",
+        input_digest,
+        output_digest,
+        Duration::ZERO,
+        metadata,
+    );
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ClarificationDecision {
+    proposed: Option<qxfx0_types::DoubtRoute>,
+    score: Option<qxfx0_types::DoubtScore>,
+    applied: bool,
+}
+
+fn clarification_decision(
+    clarification: ClarificationMode,
+    state: &SystemState,
+    proposition: &qxfx0_semantic::ParsedProposition,
+) -> ClarificationDecision {
+    if !clarification.observes() || !clarification_mode_is_eligible(proposition.mode) {
+        return ClarificationDecision {
+            proposed: None,
+            score: None,
+            applied: false,
+        };
+    }
+    let score = qxfx0_self::doubt::compute_doubt(qxfx0_types::DoubtInput {
+        confidence: state.semantic.field.confidence,
+        driver: qxfx0_types::DoubtDriver::Other,
+    });
+    // Clarification is the first-stage route only. It deliberately does not
+    // recall prior decisions; same-topic suppression is a later PR.
+    let proposed =
+        qxfx0_self::doubt::route_for_doubt(score, qxfx0_self::doubt::DoubtPolicy::default(), &[]);
+    ClarificationDecision {
+        proposed: Some(proposed),
+        score: Some(score),
+        applied: clarification.applies() && proposed == qxfx0_types::DoubtRoute::Clarify,
+    }
+}
+
+const fn clarification_mode_is_eligible(mode: qxfx0_semantic::PropositionMode) -> bool {
+    matches!(
+        mode,
+        qxfx0_semantic::PropositionMode::Define
+            | qxfx0_semantic::PropositionMode::Assert
+            | qxfx0_semantic::PropositionMode::Connect
+            | qxfx0_semantic::PropositionMode::Reflect
+    )
+}
+
+fn record_clarification_route(
+    trace: &mut execution_trace::PipelineTrace,
+    clarification: ClarificationMode,
+    state: &SystemState,
+    proposition: &qxfx0_semantic::ParsedProposition,
+    decision: ClarificationDecision,
+) {
+    let input_digest = execution_trace::calculate_stable_digest(&(state, proposition))
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let proposed = decision
+        .proposed
+        .map(doubt_route_name)
+        .unwrap_or("not_evaluated");
+    let metadata = BTreeMap::from([
+        (
+            "clarification_enabled".into(),
+            clarification.observes().to_string(),
+        ),
+        (
+            "clarification_mode".into(),
+            match clarification {
+                ClarificationMode::Disabled => "disabled",
+                ClarificationMode::TraceOnly => "trace_only",
+                ClarificationMode::LimitedEnabled => "limited_enabled",
+            }
+            .into(),
+        ),
+        (
+            "clarification_score".into(),
+            decision
+                .score
+                .map(|score| score.value().to_string())
+                .unwrap_or_else(|| "not_evaluated".into()),
+        ),
+        ("clarification_proposed_route".into(), proposed.into()),
+        ("clarification_applied".into(), decision.applied.to_string()),
+        (
+            "clarification_reason".into(),
+            if decision.applied {
+                "low_confidence"
+            } else if clarification.observes() {
+                "observation_only"
+            } else {
+                "disabled"
+            }
+            .into(),
+        ),
+    ]);
+    let output_digest = execution_trace::calculate_stable_digest(&metadata)
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    trace.record_step(
+        "clarification_route",
         input_digest,
         output_digest,
         Duration::ZERO,

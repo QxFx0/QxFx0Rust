@@ -213,6 +213,7 @@ pub enum RendererSource {
     LegacyGraph,
     AuditedPlan,
     LegacyFallback,
+    Clarification,
 }
 
 impl RendererSource {
@@ -221,6 +222,7 @@ impl RendererSource {
             Self::LegacyGraph => "legacy_graph",
             Self::AuditedPlan => "audited_plan",
             Self::LegacyFallback => "legacy_fallback",
+            Self::Clarification => "clarification",
         }
     }
 }
