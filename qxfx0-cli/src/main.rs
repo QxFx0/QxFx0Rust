@@ -3,7 +3,7 @@ use qxfx0_cli::{
     append_turn_diagnostics, create_doubt_shadow_trace_sink, load_or_create_state, run_doctor,
     run_operational_metrics, run_turn_with_renderer, run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
-    run_turn_with_renderer_doubt_shadow_trace, write_doubt_shadow_trace_jsonl,
+    run_turn_with_renderer_doubt_shadow_trace, write_doubt_shadow_trace_jsonl, DiagnosedTurn,
 };
 use qxfx0_pipeline::{process_turn_with_renderer, RendererAuthority};
 use std::path::PathBuf;
@@ -129,9 +129,25 @@ fn main() -> anyhow::Result<()> {
                 cli.session_id,
                 text.chars().count()
             );
+            let finish_diagnostics = |mut diagnosed: DiagnosedTurn, path: &PathBuf| {
+                diagnosed.diagnostics.db_open_ms =
+                    db_open_ms.expect("diagnostics path requires an open timer");
+                diagnosed.diagnostics.cli_process_ms = process_started
+                    .elapsed()
+                    .as_millis()
+                    .try_into()
+                    .unwrap_or(u64::MAX);
+                if let Err(error) = append_turn_diagnostics(path, &diagnosed.diagnostics) {
+                    warn!(
+                        "turn completed but diagnostic record could not be appended to {}: {error}",
+                        path.display()
+                    );
+                }
+                diagnosed.response
+            };
             let response = match (diagnostics_jsonl, doubt_trace_sink.as_mut()) {
                 (Some(path), Some(sink)) => {
-                    let (mut diagnosed, trace) =
+                    let (diagnosed, trace) =
                         run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
                             &db,
                             &cli.session_id,
@@ -139,42 +155,16 @@ fn main() -> anyhow::Result<()> {
                             renderer_authority,
                         )?;
                     write_doubt_shadow_trace_jsonl(sink, &trace)?;
-                    diagnosed.diagnostics.db_open_ms =
-                        db_open_ms.expect("diagnostics path requires an open timer");
-                    diagnosed.diagnostics.cli_process_ms = process_started
-                        .elapsed()
-                        .as_millis()
-                        .try_into()
-                        .unwrap_or(u64::MAX);
-                    if let Err(error) = append_turn_diagnostics(&path, &diagnosed.diagnostics) {
-                        warn!(
-                            "turn completed but diagnostic record could not be appended to {}: {error}",
-                            path.display()
-                        );
-                    }
-                    diagnosed.response
+                    finish_diagnostics(diagnosed, &path)
                 }
                 (Some(path), None) => {
-                    let mut diagnosed = run_turn_with_renderer_diagnostics(
+                    let diagnosed = run_turn_with_renderer_diagnostics(
                         &db,
                         &cli.session_id,
                         &text,
                         renderer_authority,
                     )?;
-                    diagnosed.diagnostics.db_open_ms =
-                        db_open_ms.expect("diagnostics path requires an open timer");
-                    diagnosed.diagnostics.cli_process_ms = process_started
-                        .elapsed()
-                        .as_millis()
-                        .try_into()
-                        .unwrap_or(u64::MAX);
-                    if let Err(error) = append_turn_diagnostics(&path, &diagnosed.diagnostics) {
-                        warn!(
-                            "turn completed but diagnostic record could not be appended to {}: {error}",
-                            path.display()
-                        );
-                    }
-                    diagnosed.response
+                    finish_diagnostics(diagnosed, &path)
                 }
                 (None, Some(sink)) => {
                     let traced = run_turn_with_renderer_doubt_shadow_trace(

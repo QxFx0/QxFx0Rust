@@ -610,26 +610,15 @@ pub fn run_turn_with_renderer_diagnostics(
     let (output, pipeline) =
         process_turn_with_timing_and_renderer(&input, &mut state, renderer_authority);
     let db_save = db.save_state_with_timings(session_id, &state)?;
-    let response = output.response;
-
-    Ok(DiagnosedTurn {
-        diagnostics: TurnDiagnostics {
-            schema: "qxfx0.turn-diagnostics.v1",
-            turn: state.dialogue.turn_count,
-            renderer_authority: renderer_authority.as_str(),
-            family: format!("{:?}", output.family),
-            blocked: output.blocked,
-            response_bytes: response.len(),
-            db_open_ms: 0,
-            cli_process_ms: 0,
-            db_load_ms,
-            pipeline,
-            db_save,
-            total_ms: elapsed_millis(total_started),
-            host: diagnostic_host_metadata(),
-        },
-        response,
-    })
+    Ok(build_diagnosed_turn(
+        &state,
+        renderer_authority,
+        output,
+        pipeline,
+        db_save,
+        db_load_ms,
+        total_started,
+    ))
 }
 
 /// Run one turn with both existing timing diagnostics and doubt shadow trace
@@ -658,29 +647,48 @@ pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
         DoubtShadowMode::TraceOnly,
     );
     let db_save = db.save_state_with_timings(session_id, &state)?;
-    let response = output.response;
-
     Ok((
-        DiagnosedTurn {
-            diagnostics: TurnDiagnostics {
-                schema: "qxfx0.turn-diagnostics.v1",
-                turn: state.dialogue.turn_count,
-                renderer_authority: renderer_authority.as_str(),
-                family: format!("{:?}", output.family),
-                blocked: output.blocked,
-                response_bytes: response.len(),
-                db_open_ms: 0,
-                cli_process_ms: 0,
-                db_load_ms,
-                pipeline,
-                db_save,
-                total_ms: elapsed_millis(total_started),
-                host: diagnostic_host_metadata(),
-            },
-            response,
-        },
+        build_diagnosed_turn(
+            &state,
+            renderer_authority,
+            output,
+            pipeline,
+            db_save,
+            db_load_ms,
+            total_started,
+        ),
         trace,
     ))
+}
+
+fn build_diagnosed_turn(
+    state: &SystemState,
+    renderer_authority: RendererAuthority,
+    output: qxfx0_pipeline::TurnOutput,
+    pipeline: PipelineStageTimings,
+    db_save: SaveStateTimings,
+    db_load_ms: u64,
+    total_started: Instant,
+) -> DiagnosedTurn {
+    let response = output.response;
+    DiagnosedTurn {
+        diagnostics: TurnDiagnostics {
+            schema: "qxfx0.turn-diagnostics.v1",
+            turn: state.dialogue.turn_count,
+            renderer_authority: renderer_authority.as_str(),
+            family: format!("{:?}", output.family),
+            blocked: output.blocked,
+            response_bytes: response.len(),
+            db_open_ms: 0,
+            cli_process_ms: 0,
+            db_load_ms,
+            pipeline,
+            db_save,
+            total_ms: elapsed_millis(total_started),
+            host: diagnostic_host_metadata(),
+        },
+        response,
+    }
 }
 
 #[cfg(test)]
