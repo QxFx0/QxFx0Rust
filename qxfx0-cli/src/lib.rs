@@ -7,9 +7,11 @@ use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_persistence::SaveStateTimings;
 use qxfx0_pipeline::{
     process_turn, process_turn_with_renderer, process_turn_with_timing_and_renderer,
+    process_turn_with_timing_trace_and_features_and_suppression,
     process_turn_with_timing_trace_and_renderer_and_doubt_shadow,
-    process_turn_with_trace_and_renderer_and_doubt_shadow, DoubtShadowMode, PipelineStageTimings,
-    RendererAuthority, TurnInput,
+    process_turn_with_trace_and_renderer_and_doubt_shadow,
+    process_turn_with_trace_and_renderer_and_features_and_suppression, ClarificationMode,
+    DoubtShadowMode, PipelineStageTimings, RendererAuthority, SameTopicSuppressionMode, TurnInput,
 };
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
@@ -119,6 +121,12 @@ struct DoubtShadowTraceRecord {
     trace: qxfx0_pipeline::execution_trace::PipelineTrace,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct CognitivePilotTraceRecord {
+    schema: &'static str,
+    trace: qxfx0_pipeline::execution_trace::PipelineTrace,
+}
+
 fn diagnostic_host_metadata() -> DiagnosticHostMetadata {
     DiagnosticHostMetadata {
         os: std::env::consts::OS,
@@ -172,6 +180,23 @@ pub fn write_doubt_shadow_trace_jsonl(
 ) -> anyhow::Result<()> {
     let mut record = serde_json::to_vec(&DoubtShadowTraceRecord {
         schema: "qxfx0.doubt-shadow-trace.v1",
+        trace: trace.clone(),
+    })?;
+    record.push(b'\n');
+    sink.write_all(&record)?;
+    Ok(())
+}
+
+pub fn create_cognitive_pilot_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    create_doubt_shadow_trace_sink(path)
+}
+
+pub fn write_cognitive_pilot_trace_jsonl(
+    sink: &mut File,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    let mut record = serde_json::to_vec(&CognitivePilotTraceRecord {
+        schema: "qxfx0.cognitive-pilot-trace.v1",
         trace: trace.clone(),
     })?;
     record.push(b'\n');
@@ -587,6 +612,34 @@ pub fn run_turn_with_renderer_doubt_shadow_trace(
     })
 }
 
+pub fn run_turn_with_renderer_cognitive_pilot(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+    clarification: ClarificationMode,
+    suppression: SameTopicSuppressionMode,
+) -> anyhow::Result<DoubtShadowTracedTurn> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = TurnInput {
+        raw_text: text.into(),
+        session_id: session_id.into(),
+    };
+    let (output, trace) = process_turn_with_trace_and_renderer_and_features_and_suppression(
+        &input,
+        &mut state,
+        renderer_authority,
+        DoubtShadowMode::Disabled,
+        clarification,
+        suppression,
+    );
+    db.save_state(session_id, &state)?;
+    Ok(DoubtShadowTracedTurn {
+        response: output.response,
+        trace,
+    })
+}
+
 /// Run one turn with lightweight timing and SQLite diagnostic evidence.
 ///
 /// The standard [`run_turn_with_renderer`] path remains timing-free. This
@@ -645,6 +698,48 @@ pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
         &mut state,
         renderer_authority,
         DoubtShadowMode::TraceOnly,
+    );
+    let db_save = db.save_state_with_timings(session_id, &state)?;
+    Ok((
+        build_diagnosed_turn(
+            &state,
+            renderer_authority,
+            output,
+            pipeline,
+            db_save,
+            db_load_ms,
+            total_started,
+        ),
+        trace,
+    ))
+}
+
+pub fn run_turn_with_renderer_diagnostics_and_cognitive_pilot(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+    clarification: ClarificationMode,
+    suppression: SameTopicSuppressionMode,
+) -> anyhow::Result<(
+    DiagnosedTurn,
+    qxfx0_pipeline::execution_trace::PipelineTrace,
+)> {
+    let total_started = Instant::now();
+    let load_started = Instant::now();
+    let mut state = load_or_create_state(db, session_id)?;
+    let db_load_ms = elapsed_millis(load_started);
+    let input = TurnInput {
+        raw_text: text.into(),
+        session_id: session_id.into(),
+    };
+    let (output, pipeline, trace) = process_turn_with_timing_trace_and_features_and_suppression(
+        &input,
+        &mut state,
+        renderer_authority,
+        DoubtShadowMode::Disabled,
+        clarification,
+        suppression,
     );
     let db_save = db.save_state_with_timings(session_id, &state)?;
     Ok((
