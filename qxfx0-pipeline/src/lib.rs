@@ -460,6 +460,29 @@ pub fn process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
     PipelineStageTimings,
     execution_trace::PipelineTrace,
 ) {
+    process_turn_with_timing_trace_and_features_and_suppression(
+        input,
+        state,
+        renderer_authority,
+        doubt_shadow,
+        ClarificationMode::Disabled,
+        SameTopicSuppressionMode::Disabled,
+    )
+}
+
+/// Timing and deterministic trace evidence for all explicit cognitive modes.
+pub fn process_turn_with_timing_trace_and_features_and_suppression(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    doubt_shadow: DoubtShadowMode,
+    clarification: ClarificationMode,
+    suppression: SameTopicSuppressionMode,
+) -> (
+    TurnOutput,
+    PipelineStageTimings,
+    execution_trace::PipelineTrace,
+) {
     let started = Instant::now();
     let mut timings = PipelineStageTimings::default();
     let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
@@ -470,8 +493,8 @@ pub fn process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
         Some(&mut timings),
         renderer_authority,
         doubt_shadow,
-        ClarificationMode::Disabled,
-        SameTopicSuppressionMode::Disabled,
+        clarification,
+        suppression,
     );
     timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
     finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);

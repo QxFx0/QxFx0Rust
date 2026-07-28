@@ -1,11 +1,16 @@
 use clap::{Parser, Subcommand};
 use qxfx0_cli::{
-    append_turn_diagnostics, create_doubt_shadow_trace_sink, load_or_create_state, run_doctor,
-    run_operational_metrics, run_turn_with_renderer, run_turn_with_renderer_diagnostics,
+    append_turn_diagnostics, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
+    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_renderer,
+    run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
+    run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
-    run_turn_with_renderer_doubt_shadow_trace, write_doubt_shadow_trace_jsonl, DiagnosedTurn,
+    run_turn_with_renderer_doubt_shadow_trace, write_cognitive_pilot_trace_jsonl,
+    write_doubt_shadow_trace_jsonl, DiagnosedTurn,
 };
-use qxfx0_pipeline::{process_turn_with_renderer, RendererAuthority};
+use qxfx0_pipeline::{
+    process_turn_with_renderer, ClarificationMode, RendererAuthority, SameTopicSuppressionMode,
+};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
@@ -45,6 +50,12 @@ enum Commands {
         /// This never changes routing, rendering, or persisted session state.
         #[arg(long, value_name = "PATH")]
         doubt_shadow_trace_jsonl: Option<PathBuf>,
+        #[arg(long, value_name = "PATH")]
+        cognitive_pilot_trace_jsonl: Option<PathBuf>,
+        #[arg(long, requires = "cognitive_pilot_trace_jsonl")]
+        enable_clarification: bool,
+        #[arg(long, requires_all = ["cognitive_pilot_trace_jsonl", "enable_clarification"])]
+        enable_same_topic_suppression: bool,
     },
     /// Interactive dialogue session
     Chat,
@@ -111,8 +122,55 @@ fn main() -> anyhow::Result<()> {
             text,
             diagnostics_jsonl,
             doubt_shadow_trace_jsonl,
+            cognitive_pilot_trace_jsonl,
+            enable_clarification,
+            enable_same_topic_suppression,
         } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
+            if let Some(path) = cognitive_pilot_trace_jsonl {
+                if doubt_shadow_trace_jsonl.is_some() {
+                    anyhow::bail!("cognitive pilot and doubt shadow traces require separate turns");
+                }
+                let mut sink = create_cognitive_pilot_trace_sink(&path)?;
+                let clarification = if enable_clarification {
+                    ClarificationMode::LimitedEnabled
+                } else {
+                    ClarificationMode::TraceOnly
+                };
+                let suppression = if enable_same_topic_suppression {
+                    SameTopicSuppressionMode::LimitedEnabled
+                } else {
+                    SameTopicSuppressionMode::TraceOnly
+                };
+                let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+                let response = if let Some(diagnostics_path) = diagnostics_jsonl {
+                    let (diagnosed, trace) =
+                        run_turn_with_renderer_diagnostics_and_cognitive_pilot(
+                            &db,
+                            &cli.session_id,
+                            &text,
+                            renderer_authority,
+                            clarification,
+                            suppression,
+                        )?;
+                    write_cognitive_pilot_trace_jsonl(&mut sink, &trace)?;
+                    append_turn_diagnostics(&diagnostics_path, &diagnosed.diagnostics)?;
+                    diagnosed.response
+                } else {
+                    let traced = run_turn_with_renderer_cognitive_pilot(
+                        &db,
+                        &cli.session_id,
+                        &text,
+                        renderer_authority,
+                        clarification,
+                        suppression,
+                    )?;
+                    write_cognitive_pilot_trace_jsonl(&mut sink, &traced.trace)?;
+                    traced.response
+                };
+                println!("{}", response);
+                return Ok(());
+            }
             // Open the trace artifact before the DB. An invalid or existing sink
             // therefore fails fast without processing or persisting a turn.
             let mut doubt_trace_sink = doubt_shadow_trace_jsonl
