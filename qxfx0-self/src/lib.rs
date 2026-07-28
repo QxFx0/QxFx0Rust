@@ -370,6 +370,63 @@ impl Salience {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
+
+    const ESSENCE_PARITY_TOLERANCE: f64 = 1e-12;
+
+    fn essence_parity_vectors() -> Value {
+        serde_json::from_str(include_str!(
+            "../../docs/reference-vectors/essence-parity-v1.json"
+        ))
+        .expect("essence parity reference vectors must remain valid JSON")
+    }
+
+    fn vector_case<'a>(vectors: &'a Value, name: &str) -> &'a Value {
+        vectors["cases"]
+            .as_array()
+            .expect("reference vectors must contain cases")
+            .iter()
+            .find(|case| case["name"].as_str() == Some(name))
+            .unwrap_or_else(|| panic!("missing essence parity vector: {name}"))
+    }
+
+    fn fixture_witness(turn: usize, conatus_scalar: f64) -> EssenceWitness {
+        EssenceWitness {
+            turn,
+            mode: "Define".into(),
+            statement: "fixture".into(),
+            salience_driver: "fixture".into(),
+            reconcile_rule: "RuleAgreement".into(),
+            agreement: "Agree".into(),
+            divergence: 0.0,
+            conatus_scalar,
+        }
+    }
+
+    fn input_from_case(case: &Value) -> WitnessInput<'_> {
+        let witness = &case["witness"];
+        WitnessInput {
+            mode: EssenceMode::Define,
+            statement: "fixture".into(),
+            salience_driver: "fixture",
+            reconcile_rule: witness["reconcile_rule"]
+                .as_str()
+                .expect("fixture witness must define reconcile_rule"),
+            agreement: witness["agreement"]
+                .as_str()
+                .expect("fixture witness must define agreement"),
+            divergence: witness["divergence"]
+                .as_f64()
+                .expect("fixture witness must define divergence"),
+        }
+    }
+
+    fn assert_fixture_float(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() <= ESSENCE_PARITY_TOLERANCE,
+            "expected {expected}, got {actual}"
+        );
+    }
 
     #[test]
     fn test_conatus_positive() {
@@ -461,6 +518,263 @@ mod tests {
         };
         let result = Adjunction::reconcile(0.3, 0.7, &field);
         assert!(result > 0.5, "High confidence should favor formal");
+    }
+
+    #[test]
+    fn essence_parity_reference_fixture_matches_current_contract() {
+        let vectors = essence_parity_vectors();
+        assert_eq!(vectors["schema"].as_str(), Some("qxfx0.essence-parity.v1"));
+        assert_eq!(vectors["cases"].as_array().map(Vec::len), Some(6));
+
+        let em = EssenceModulation::default();
+        assert_fixture_float(
+            em.angst_commitment_threshold,
+            vectors["modulation"]["angst_commitment_threshold"]
+                .as_f64()
+                .expect("fixture threshold must be numeric"),
+        );
+        assert_fixture_float(
+            em.angst_accrual_rate,
+            vectors["modulation"]["angst_accrual_rate"]
+                .as_f64()
+                .expect("fixture accrual rate must be numeric"),
+        );
+        assert_fixture_float(
+            em.angst_decay_rate,
+            vectors["modulation"]["angst_decay_rate"]
+                .as_f64()
+                .expect("fixture decay rate must be numeric"),
+        );
+        assert_eq!(
+            em.conatus_floor_window,
+            vectors["modulation"]["conatus_floor_window"]
+                .as_u64()
+                .expect("fixture conatus window must be numeric") as usize
+        );
+        assert_eq!(
+            em.trajectory_capacity,
+            vectors["modulation"]["trajectory_capacity"]
+                .as_u64()
+                .expect("fixture trajectory capacity must be numeric") as usize
+        );
+    }
+
+    #[test]
+    fn essence_parity_witness_vectors_apply_decay_and_accrual() {
+        let vectors = essence_parity_vectors();
+        let em = EssenceModulation::default();
+
+        let agreement = vector_case(&vectors, "agreement-decays-angst");
+        let mut agreement_state = EssenceState {
+            angst: agreement["before"]["angst"]
+                .as_f64()
+                .expect("agreement fixture must define initial angst"),
+            ..EssenceState::default()
+        };
+        let agreement_input = input_from_case(agreement);
+        witness_essence(
+            &em,
+            1,
+            agreement["witness"]["conatus"]
+                .as_f64()
+                .expect("agreement fixture must define conatus"),
+            &mut agreement_state,
+            &agreement_input,
+        );
+        assert_fixture_float(
+            agreement_state.angst,
+            agreement["expect"]["angst"]
+                .as_f64()
+                .expect("agreement fixture must define expected angst"),
+        );
+        assert!(should_commit_essence(&em, &agreement_state).is_none());
+
+        let advantage = vector_case(&vectors, "advantage-accrues-angst");
+        let mut advantage_state = EssenceState {
+            angst: advantage["before"]["angst"]
+                .as_f64()
+                .expect("advantage fixture must define initial angst"),
+            ..EssenceState::default()
+        };
+        let advantage_input = input_from_case(advantage);
+        witness_essence(
+            &em,
+            1,
+            advantage["witness"]["conatus"]
+                .as_f64()
+                .expect("advantage fixture must define conatus"),
+            &mut advantage_state,
+            &advantage_input,
+        );
+        assert_fixture_float(
+            advantage_state.angst,
+            advantage["expect"]["angst"]
+                .as_f64()
+                .expect("advantage fixture must define expected angst"),
+        );
+        assert!(should_commit_essence(&em, &advantage_state).is_none());
+    }
+
+    #[test]
+    fn essence_parity_commitment_priority_capacity_and_stickiness() {
+        let vectors = essence_parity_vectors();
+        let em = EssenceModulation::default();
+
+        let priority = vector_case(&vectors, "angst-precedes-conatus-erosion");
+        let mut priority_state = EssenceState {
+            angst: priority["before"]["angst"]
+                .as_f64()
+                .expect("priority fixture must define initial angst"),
+            ..EssenceState::default()
+        };
+        for turn in 1..=em.conatus_floor_window {
+            priority_state.witnesses.push(fixture_witness(turn, 0.4));
+        }
+        assert_eq!(
+            should_commit_essence(&em, &priority_state),
+            Some(CommitmentTrigger::TriggerAngstThreshold)
+        );
+
+        let capacity = vector_case(&vectors, "capacity-evicts-oldest-witness");
+        let mut capacity_state = EssenceState {
+            capacity: em.trajectory_capacity,
+            ..EssenceState::default()
+        };
+        for turn in capacity["before"]["witness_turns"]
+            .as_array()
+            .expect("capacity fixture must define witness turns")
+        {
+            capacity_state.witnesses.push(fixture_witness(
+                turn.as_u64().expect("turn must be numeric") as usize,
+                12.0,
+            ));
+        }
+        let capacity_input = input_from_case(capacity);
+        witness_essence(
+            &em,
+            capacity["witness"]["turn"]
+                .as_u64()
+                .expect("capacity fixture must define next turn") as usize,
+            capacity["witness"]["conatus"]
+                .as_f64()
+                .expect("capacity fixture must define conatus"),
+            &mut capacity_state,
+            &capacity_input,
+        );
+        let expected_turns: Vec<usize> = capacity["expect"]["witness_turns"]
+            .as_array()
+            .expect("capacity fixture must define expected witness turns")
+            .iter()
+            .map(|turn| turn.as_u64().expect("turn must be numeric") as usize)
+            .collect();
+        assert_eq!(
+            capacity_state
+                .witnesses
+                .iter()
+                .map(|witness| witness.turn)
+                .collect::<Vec<_>>(),
+            expected_turns
+        );
+
+        let sticky = vector_case(&vectors, "commitment-remains-sticky-after-witness");
+        let mut sticky_state = EssenceState {
+            angst: sticky["before"]["angst"]
+                .as_f64()
+                .expect("sticky fixture must define initial angst"),
+            commitment: Some(EssenceCommitment {
+                mode: CommitmentMode::Contemplative,
+                trigger: CommitmentTrigger::TriggerAngstThreshold,
+                committed_at: sticky["before"]["commitment"]["committed_at"]
+                    .as_u64()
+                    .expect("sticky fixture must define committed_at")
+                    as usize,
+                witness_hash: sticky["before"]["commitment"]["witness_hash"]
+                    .as_str()
+                    .expect("sticky fixture must define witness_hash")
+                    .into(),
+            }),
+            ..EssenceState::default()
+        };
+        sticky_state.witnesses.push(fixture_witness(17, 12.0));
+        let sticky_input = input_from_case(sticky);
+        witness_essence(
+            &em,
+            18,
+            sticky["witness"]["conatus"]
+                .as_f64()
+                .expect("sticky fixture must define conatus"),
+            &mut sticky_state,
+            &sticky_input,
+        );
+        let commitment = sticky_state
+            .commitment
+            .expect("witnessing must not remove a prior commitment");
+        assert_eq!(commitment.trigger, CommitmentTrigger::TriggerAngstThreshold);
+        assert_eq!(commitment.committed_at, 17);
+        assert_eq!(commitment.witness_hash, "sha256:fixture");
+    }
+
+    #[test]
+    fn essence_parity_commit_collapse_and_replay_are_explicit() {
+        let vectors = essence_parity_vectors();
+        let em = EssenceModulation::default();
+        let mut state = EssenceState {
+            angst: 0.70,
+            ..EssenceState::default()
+        };
+        let accrual = vector_case(&vectors, "advantage-accrues-angst");
+        let input = input_from_case(accrual);
+        witness_essence(&em, 17, 12.0, &mut state, &input);
+        let trigger = should_commit_essence(&em, &state)
+            .expect("accrued fixture witness must cross the angst threshold");
+        let commitment = commit_essence(17, trigger, &state);
+        state.commitment = Some(commitment.clone());
+
+        let agreement = vector_case(&vectors, "agreement-decays-angst");
+        let follow_up = input_from_case(agreement);
+        witness_essence(&em, 18, 12.0, &mut state, &follow_up);
+        let serialized = serde_json::to_string(&state)
+            .expect("persisted essence state must serialize for replay");
+        let mut replayed: EssenceState = serde_json::from_str(&serialized)
+            .expect("persisted essence state must deserialize for replay");
+        let replayed_commitment = replayed
+            .commitment
+            .as_ref()
+            .expect("commitment must survive replay");
+        assert_eq!(replayed_commitment.trigger, commitment.trigger);
+        assert_eq!(replayed_commitment.committed_at, commitment.committed_at);
+        assert_eq!(replayed_commitment.witness_hash, commitment.witness_hash);
+
+        let collapse = vector_case(&vectors, "collapse-is-replay-visible");
+        replayed.angst = collapse["before"]["angst"]
+            .as_f64()
+            .expect("collapse fixture must define initial angst");
+        replayed.witnesses.truncate(
+            collapse["before"]["witnesses"]
+                .as_u64()
+                .expect("collapse fixture must define witness count") as usize,
+        );
+        let event = collapse_essence(
+            collapse["before"]["turn"]
+                .as_u64()
+                .expect("collapse fixture must define turn") as usize,
+            &mut replayed,
+        );
+        assert_fixture_float(
+            event.previous_angst,
+            collapse["expect"]["reset_event"]["previous_angst"]
+                .as_f64()
+                .expect("collapse fixture must define previous angst"),
+        );
+        assert_eq!(event.previous_witness_count, 2);
+        assert!(replayed.witnesses.is_empty());
+        assert_fixture_float(replayed.angst, 0.0);
+        assert_eq!(replayed.reset_events.len(), 1);
+
+        // This pins the documented Rust behaviour. The Haskell reference uses
+        // 1.0 instead, so changing this requires a persisted-state migration
+        // and replay proof rather than an incidental parity edit.
+        assert_eq!(replayed.conatus_floor, f64::MAX);
     }
 
     #[test]
