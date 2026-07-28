@@ -7,12 +7,14 @@ use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_persistence::SaveStateTimings;
 use qxfx0_pipeline::{
     process_turn, process_turn_with_renderer, process_turn_with_timing_and_renderer,
-    PipelineStageTimings, RendererAuthority, TurnInput,
+    process_turn_with_timing_trace_and_renderer_and_doubt_shadow,
+    process_turn_with_trace_and_renderer_and_doubt_shadow, DoubtShadowMode, PipelineStageTimings,
+    RendererAuthority, TurnInput,
 };
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
 use serde::Serialize;
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 use std::time::Instant;
@@ -102,6 +104,21 @@ pub struct DiagnosedTurn {
     pub diagnostics: TurnDiagnostics,
 }
 
+/// A completed normal turn plus its observation-only pipeline trace.
+#[derive(Debug, Clone)]
+pub struct DoubtShadowTracedTurn {
+    /// User-visible response, unchanged by the trace-only feature.
+    pub response: String,
+    /// Deterministic execution evidence, kept external to session state.
+    pub trace: qxfx0_pipeline::execution_trace::PipelineTrace,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct DoubtShadowTraceRecord {
+    schema: &'static str,
+    trace: qxfx0_pipeline::execution_trace::PipelineTrace,
+}
+
 fn diagnostic_host_metadata() -> DiagnosticHostMetadata {
     DiagnosticHostMetadata {
         os: std::env::consts::OS,
@@ -126,6 +143,39 @@ pub fn append_turn_diagnostics(
         .append(true)
         .open(path.as_ref())?;
     file.write_all(&record)?;
+    Ok(())
+}
+
+/// Create a new external JSONL sink for doubt shadow evidence.
+///
+/// Existing files are rejected. This makes the opt-in artifact explicit and
+/// prevents a command from silently appending to a completed pilot trace.
+pub fn create_doubt_shadow_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    let path = path.as_ref();
+    OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|error| {
+            anyhow::anyhow!(
+                "doubt shadow trace sink must be a new file ({}): {error}",
+                path.display()
+            )
+        })
+}
+
+/// Append one deterministic doubt-shadow record to a sink created for this
+/// command. The serialized trace deliberately excludes wall-clock durations.
+pub fn write_doubt_shadow_trace_jsonl(
+    sink: &mut File,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    let mut record = serde_json::to_vec(&DoubtShadowTraceRecord {
+        schema: "qxfx0.doubt-shadow-trace.v1",
+        trace: trace.clone(),
+    })?;
+    record.push(b'\n');
+    sink.write_all(&record)?;
     Ok(())
 }
 
@@ -511,6 +561,32 @@ pub fn run_turn_with_renderer(
     Ok(output.response)
 }
 
+/// Run one normal persisted turn while returning observation-only doubt
+/// evidence for an external sink. The trace never enters `SystemState`.
+pub fn run_turn_with_renderer_doubt_shadow_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<DoubtShadowTracedTurn> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, trace) = process_turn_with_trace_and_renderer_and_doubt_shadow(
+        &input,
+        &mut state,
+        renderer_authority,
+        DoubtShadowMode::TraceOnly,
+    );
+    db.save_state(session_id, &state)?;
+    Ok(DoubtShadowTracedTurn {
+        response: output.response,
+        trace,
+    })
+}
+
 /// Run one turn with lightweight timing and SQLite diagnostic evidence.
 ///
 /// The standard [`run_turn_with_renderer`] path remains timing-free. This
@@ -534,9 +610,68 @@ pub fn run_turn_with_renderer_diagnostics(
     let (output, pipeline) =
         process_turn_with_timing_and_renderer(&input, &mut state, renderer_authority);
     let db_save = db.save_state_with_timings(session_id, &state)?;
-    let response = output.response;
+    Ok(build_diagnosed_turn(
+        &state,
+        renderer_authority,
+        output,
+        pipeline,
+        db_save,
+        db_load_ms,
+        total_started,
+    ))
+}
 
-    Ok(DiagnosedTurn {
+/// Run one turn with both existing timing diagnostics and doubt shadow trace
+/// evidence. This preserves the normal single processing/persistence path.
+pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<(
+    DiagnosedTurn,
+    qxfx0_pipeline::execution_trace::PipelineTrace,
+)> {
+    let total_started = Instant::now();
+    let load_started = Instant::now();
+    let mut state = load_or_create_state(db, session_id)?;
+    let db_load_ms = elapsed_millis(load_started);
+    let input = TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, pipeline, trace) = process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
+        &input,
+        &mut state,
+        renderer_authority,
+        DoubtShadowMode::TraceOnly,
+    );
+    let db_save = db.save_state_with_timings(session_id, &state)?;
+    Ok((
+        build_diagnosed_turn(
+            &state,
+            renderer_authority,
+            output,
+            pipeline,
+            db_save,
+            db_load_ms,
+            total_started,
+        ),
+        trace,
+    ))
+}
+
+fn build_diagnosed_turn(
+    state: &SystemState,
+    renderer_authority: RendererAuthority,
+    output: qxfx0_pipeline::TurnOutput,
+    pipeline: PipelineStageTimings,
+    db_save: SaveStateTimings,
+    db_load_ms: u64,
+    total_started: Instant,
+) -> DiagnosedTurn {
+    let response = output.response;
+    DiagnosedTurn {
         diagnostics: TurnDiagnostics {
             schema: "qxfx0.turn-diagnostics.v1",
             turn: state.dialogue.turn_count,
@@ -553,7 +688,7 @@ pub fn run_turn_with_renderer_diagnostics(
             host: diagnostic_host_metadata(),
         },
         response,
-    })
+    }
 }
 
 #[cfg(test)]
@@ -750,6 +885,60 @@ mod tests {
         assert_eq!(record["schema"], "qxfx0.turn-diagnostics.v1");
         assert!(record["pipeline"]["plan_render_ms"].is_number());
         assert!(record["db_save"]["sqlite_write_lock_ms"].is_number());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn doubt_shadow_trace_is_external_and_preserves_normal_persistence() {
+        let standard_db = qxfx0_persistence::Persistence::open_memory().expect("open standard");
+        let shadow_db = qxfx0_persistence::Persistence::open_memory().expect("open shadow");
+        let session_id = "doubt-shadow-cli";
+        let text = "что такое свобода?";
+
+        let standard = run_turn_with_renderer(
+            &standard_db,
+            session_id,
+            text,
+            RendererAuthority::LegacyShadow,
+        )
+        .expect("normal turn");
+        let traced = run_turn_with_renderer_doubt_shadow_trace(
+            &shadow_db,
+            session_id,
+            text,
+            RendererAuthority::LegacyShadow,
+        )
+        .expect("trace-only turn");
+        assert_eq!(traced.response, standard);
+        let standard_state = standard_db.load_state(session_id).unwrap().unwrap();
+        let shadow_state = shadow_db.load_state(session_id).unwrap().unwrap();
+        assert_eq!(
+            qxfx0_pipeline::execution_trace::calculate_stable_digest(&standard_state).unwrap(),
+            qxfx0_pipeline::execution_trace::calculate_stable_digest(&shadow_state).unwrap()
+        );
+
+        let path = std::env::temp_dir().join(format!(
+            "qxfx0-doubt-shadow-{}-{}.jsonl",
+            std::process::id(),
+            shadow_state.dialogue.turn_count
+        ));
+        let _ = std::fs::remove_file(&path);
+        let mut sink = create_doubt_shadow_trace_sink(&path).expect("new trace sink");
+        write_doubt_shadow_trace_jsonl(&mut sink, &traced.trace).expect("write trace");
+        drop(sink);
+        let record: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(record["schema"], "qxfx0.doubt-shadow-trace.v1");
+        assert!(record["trace"]["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|step| step["stage"] == "doubt_shadow"));
+        assert!(
+            record["trace"].get("total_duration").is_none(),
+            "external replay evidence must exclude wall-clock duration"
+        );
+        assert!(create_doubt_shadow_trace_sink(&path).is_err());
         let _ = std::fs::remove_file(&path);
     }
 
