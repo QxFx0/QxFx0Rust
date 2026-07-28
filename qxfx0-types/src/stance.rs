@@ -2,14 +2,19 @@
 use crate::anomaly::AnomalyEvidence;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use thiserror::Error;
 
 pub const STANCE_PROVENANCE_VERSION: u8 = 1;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
 pub struct StanceTopic(String);
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum StanceTopicError {
+    #[error("stance topic is empty")]
     Empty,
+    #[error("stance topic exceeds 128 characters")]
     TooLong,
+    #[error("stance topic contains a control character")]
     ContainsControl,
 }
 impl StanceTopic {
@@ -28,6 +33,20 @@ impl StanceTopic {
     }
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+impl TryFrom<String> for StanceTopic {
+    type Error = StanceTopicError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
+}
+
+impl From<StanceTopic> for String {
+    fn from(value: StanceTopic) -> Self {
+        value.0
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -84,11 +103,43 @@ pub enum StanceRecordOutcome {
     Recorded,
     NoStateTransition,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct BoundedStanceProvenance {
     version: u8,
     capacity: usize,
     observations: VecDeque<StanceObservation>,
+}
+
+#[derive(Deserialize)]
+struct BoundedStanceProvenanceWire {
+    version: u8,
+    capacity: usize,
+    observations: VecDeque<StanceObservation>,
+}
+
+impl<'de> Deserialize<'de> for BoundedStanceProvenance {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = BoundedStanceProvenanceWire::deserialize(deserializer)?;
+        if wire.version > STANCE_PROVENANCE_VERSION {
+            return Err(serde::de::Error::custom(format!(
+                "unsupported stance provenance version {}",
+                wire.version
+            )));
+        }
+        let capacity = wire.capacity.max(1);
+        let mut observations = wire.observations;
+        while observations.len() > capacity {
+            observations.pop_front();
+        }
+        Ok(Self {
+            version: wire.version,
+            capacity,
+            observations,
+        })
+    }
 }
 impl BoundedStanceProvenance {
     pub fn new(capacity: usize) -> Self {
