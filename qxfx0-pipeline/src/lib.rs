@@ -96,6 +96,26 @@ pub enum ClarificationMode {
     LimitedEnabled,
 }
 
+/// Staged, immediate same-topic suppression for a proposed clarification.
+/// It is independent from the clarification route and disabled by default.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum SameTopicSuppressionMode {
+    #[default]
+    Disabled,
+    TraceOnly,
+    LimitedEnabled,
+}
+
+impl SameTopicSuppressionMode {
+    const fn observes(self) -> bool {
+        !matches!(self, Self::Disabled)
+    }
+
+    const fn applies(self) -> bool {
+        matches!(self, Self::LimitedEnabled)
+    }
+}
+
 impl ClarificationMode {
     const fn observes(self) -> bool {
         !matches!(self, Self::Disabled)
@@ -314,6 +334,7 @@ pub fn process_turn_with_renderer(
         renderer_authority,
         DoubtShadowMode::Disabled,
         ClarificationMode::Disabled,
+        SameTopicSuppressionMode::Disabled,
     )
 }
 
@@ -335,6 +356,7 @@ pub fn process_turn_with_timing_and_renderer(
         renderer_authority,
         DoubtShadowMode::Disabled,
         ClarificationMode::Disabled,
+        SameTopicSuppressionMode::Disabled,
     );
     timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
     (output, timings)
@@ -389,6 +411,27 @@ pub fn process_turn_with_trace_and_renderer_and_features(
     doubt_shadow: DoubtShadowMode,
     clarification: ClarificationMode,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
+    process_turn_with_trace_and_renderer_and_features_and_suppression(
+        input,
+        state,
+        renderer_authority,
+        doubt_shadow,
+        clarification,
+        SameTopicSuppressionMode::Disabled,
+    )
+}
+
+/// Process a turn with the separately staged same-topic suppression bridge.
+/// Both cognitive features remain disabled unless an explicit caller enables
+/// their limited pipeline mode.
+pub fn process_turn_with_trace_and_renderer_and_features_and_suppression(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    doubt_shadow: DoubtShadowMode,
+    clarification: ClarificationMode,
+    suppression: SameTopicSuppressionMode,
+) -> (TurnOutput, execution_trace::PipelineTrace) {
     let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
     let output = process_turn_internal(
         input,
@@ -398,6 +441,7 @@ pub fn process_turn_with_trace_and_renderer_and_features(
         renderer_authority,
         doubt_shadow,
         clarification,
+        suppression,
     );
     finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
     (output, trace)
@@ -427,6 +471,7 @@ pub fn process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
         renderer_authority,
         doubt_shadow,
         ClarificationMode::Disabled,
+        SameTopicSuppressionMode::Disabled,
     );
     timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
     finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
@@ -474,6 +519,7 @@ fn finish_pipeline_trace(
     trace.set_total_duration(started.elapsed());
 }
 
+#[allow(clippy::too_many_arguments)] // explicit staged feature flags meet at this private boundary
 fn process_turn_internal(
     input: &TurnInput,
     state: &mut SystemState,
@@ -482,6 +528,7 @@ fn process_turn_internal(
     renderer_authority: RendererAuthority,
     doubt_shadow: DoubtShadowMode,
     clarification: ClarificationMode,
+    suppression: SameTopicSuppressionMode,
 ) -> TurnOutput {
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -532,9 +579,10 @@ fn process_turn_internal(
     if let Some(trace) = trace.as_deref_mut() {
         record_doubt_shadow(trace, doubt_shadow, state, &prop);
     }
-    let clarification_decision = clarification_decision(clarification, state, &prop);
+    let clarification_decision = clarification_decision(clarification, suppression, state, &prop);
     if let Some(trace) = trace.as_deref_mut() {
         record_clarification_route(trace, clarification, state, &prop, clarification_decision);
+        record_same_topic_suppression(trace, suppression, state, &prop, clarification_decision);
     }
 
     let is_challenge = detect_challenge(&input.raw_text);
@@ -852,10 +900,14 @@ struct ClarificationDecision {
     proposed: Option<qxfx0_types::DoubtRoute>,
     score: Option<qxfx0_types::DoubtScore>,
     applied: bool,
+    suppression_eligible: bool,
+    suppression_applied: bool,
+    recall_count: usize,
 }
 
 fn clarification_decision(
     clarification: ClarificationMode,
+    suppression: SameTopicSuppressionMode,
     state: &SystemState,
     proposition: &qxfx0_semantic::ParsedProposition,
 ) -> ClarificationDecision {
@@ -864,21 +916,67 @@ fn clarification_decision(
             proposed: None,
             score: None,
             applied: false,
+            suppression_eligible: false,
+            suppression_applied: false,
+            recall_count: 0,
         };
     }
     let score = qxfx0_self::doubt::compute_doubt(qxfx0_types::DoubtInput {
         confidence: state.semantic.field.confidence,
         driver: qxfx0_types::DoubtDriver::Other,
     });
-    // Clarification is the first-stage route only. It deliberately does not
-    // recall prior decisions; same-topic suppression is a later PR.
     let proposed =
         qxfx0_self::doubt::route_for_doubt(score, qxfx0_self::doubt::DoubtPolicy::default(), &[]);
+    let recalled = if suppression.observes() && proposed == qxfx0_types::DoubtRoute::Clarify {
+        immediate_confirmed_same_topic(state, &proposition.subject)
+    } else {
+        Vec::new()
+    };
+    let suppression_route = qxfx0_self::doubt::route_for_doubt(
+        score,
+        qxfx0_self::doubt::DoubtPolicy::default(),
+        &recalled,
+    );
+    let suppression_eligible =
+        suppression_route == qxfx0_types::DoubtRoute::SuppressedByRecentDecision;
+    let suppression_applied =
+        clarification.applies() && suppression.applies() && suppression_eligible;
     ClarificationDecision {
         proposed: Some(proposed),
         score: Some(score),
-        applied: clarification.applies() && proposed == qxfx0_types::DoubtRoute::Clarify,
+        applied: clarification.applies()
+            && proposed == qxfx0_types::DoubtRoute::Clarify
+            && !suppression_applied,
+        suppression_eligible,
+        suppression_applied,
+        recall_count: recalled.len(),
     }
+}
+
+fn immediate_confirmed_same_topic(
+    state: &SystemState,
+    topic: &str,
+) -> Vec<qxfx0_types::EpisodicEvent> {
+    let confirmed = state.last_turn_decision.as_ref().is_some_and(|decision| {
+        matches!(
+            decision.guard_status,
+            GuardStatus::Allowed | GuardStatus::InvariantWarn(_)
+        )
+    });
+    let Some(previous_topic) = confirmed
+        .then(|| state.dialogue.last_topic.clone())
+        .flatten()
+    else {
+        return Vec::new();
+    };
+    let store =
+        qxfx0_self::doubt::BoundedEpisodicStore::default().record(qxfx0_types::EpisodicEvent {
+            id: state.dialogue.turn_count as u64,
+            turn: state.dialogue.turn_count as u64,
+            kind: qxfx0_types::EpisodicKind::SystemDecision,
+            topic: Some(previous_topic),
+        });
+    store.recall(state.dialogue.turn_count as u64, Some(topic))
 }
 
 const fn clarification_mode_is_eligible(mode: qxfx0_semantic::PropositionMode) -> bool {
@@ -943,6 +1041,73 @@ fn record_clarification_route(
         .unwrap_or_else(|error| format!("digest-error:{error}"));
     trace.record_step(
         "clarification_route",
+        input_digest,
+        output_digest,
+        Duration::ZERO,
+        metadata,
+    );
+}
+
+fn record_same_topic_suppression(
+    trace: &mut execution_trace::PipelineTrace,
+    suppression: SameTopicSuppressionMode,
+    state: &SystemState,
+    proposition: &qxfx0_semantic::ParsedProposition,
+    decision: ClarificationDecision,
+) {
+    let input_digest = execution_trace::calculate_stable_digest(&(state, proposition))
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let metadata = BTreeMap::from([
+        (
+            "same_topic_suppression_enabled".into(),
+            suppression.observes().to_string(),
+        ),
+        (
+            "same_topic_suppression_mode".into(),
+            match suppression {
+                SameTopicSuppressionMode::Disabled => "disabled",
+                SameTopicSuppressionMode::TraceOnly => "trace_only",
+                SameTopicSuppressionMode::LimitedEnabled => "limited_enabled",
+            }
+            .into(),
+        ),
+        (
+            "same_topic_suppression_recall_count".into(),
+            decision.recall_count.to_string(),
+        ),
+        (
+            "same_topic_suppression_eligible".into(),
+            decision.suppression_eligible.to_string(),
+        ),
+        (
+            "same_topic_suppression_applied".into(),
+            decision.suppression_applied.to_string(),
+        ),
+        (
+            "same_topic_suppression_actual_route".into(),
+            if decision.suppression_applied {
+                "retain_current"
+            } else {
+                "unchanged"
+            }
+            .into(),
+        ),
+        (
+            "same_topic_suppression_reason".into(),
+            if decision.suppression_eligible {
+                "immediate_confirmed_same_topic"
+            } else if suppression.observes() {
+                "not_eligible"
+            } else {
+                "disabled"
+            }
+            .into(),
+        ),
+    ]);
+    let output_digest = execution_trace::calculate_stable_digest(&metadata)
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    trace.record_step(
+        "same_topic_suppression",
         input_digest,
         output_digest,
         Duration::ZERO,
