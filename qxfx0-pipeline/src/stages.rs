@@ -124,6 +124,7 @@ pub fn prepare_stage(
 pub fn route_stage(
     state: &mut SystemState,
     prepared: PreparedTurnContext,
+    apply_clarification: bool,
 ) -> Result<RoutedTurnContext, String> {
     let mode = prepared.input().mode();
     let event = proposition_to_event(mode, prepared.has_enough());
@@ -146,7 +147,11 @@ pub fn route_stage(
         }
     };
 
-    let next = fsm_transition(current, event);
+    let next = if apply_clarification {
+        crate::conversation_fsm::ConversationState::Clarifying
+    } else {
+        fsm_transition(current, event)
+    };
 
     // Persist as discriminant (no JSON round-trip, no heap allocation).
     state.dialogue.conversation_state = Some(fsm_state_discriminant(&next));
@@ -154,7 +159,11 @@ pub fn route_stage(
     // Route-driven family selection: FSM mode determines the move family,
     // overriding the deliberation's family (which is the prepare-stage proposal).
     // This ensures distinct propositions map to distinct families.
-    let family = family_for_mode(mode);
+    let family = if apply_clarification {
+        CanonicalMoveFamily::CMClarify
+    } else {
+        family_for_mode(mode)
+    };
 
     Ok(RoutedTurnContext::new(prepared, family, next))
 }
@@ -204,6 +213,23 @@ pub fn render_stage(
         essence_strength,
     );
     let path_depth = fp.path_depth();
+
+    if routed.family() == CanonicalMoveFamily::CMClarify {
+        let response = clarification_surface(&subject);
+        return Ok(RenderedTurnContext::new(
+            planned,
+            response,
+            path_depth,
+            false,
+            RenderEvidence {
+                renderer_authority,
+                renderer_source: RendererSource::Clarification,
+                plan_surface_available: false,
+                plan_surface_matches_output: None,
+                plan_render_error: None,
+            },
+        ));
+    }
 
     // Build the plan surface in both modes. In shadow mode it remains trace
     // evidence only; in audited mode it gains authority only for an admitted
@@ -364,6 +390,10 @@ pub fn render_stage(
             plan_render_error,
         },
     ))
+}
+
+fn clarification_surface(subject: &str) -> String {
+    format!("Мне нужно уточнение: что именно вы хотите прояснить о «{subject}»?")
 }
 
 fn audited_plan_surface(planned: &PlannedTurnContext) -> Result<Option<String>, String> {
@@ -844,7 +874,7 @@ mod tests {
             false,
         );
         let prepared = prepare_stage(&mut state, input).unwrap();
-        let routed = route_stage(&mut state, prepared).unwrap();
+        let routed = route_stage(&mut state, prepared, false).unwrap();
         let planned = plan_shadow_stage(&mut state, routed).unwrap();
         let rendered = render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();
 
