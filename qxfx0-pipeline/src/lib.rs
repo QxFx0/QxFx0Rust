@@ -1038,10 +1038,9 @@ const ANOMALY_SHADOW_LEDGER_CAPACITY: usize = 1;
 
 /// Record a typed recovery proposal after normalization without applying it.
 ///
-/// The existing runtime exposes reliable self-reference and anti-conatus
-/// inputs. It does not yet persist typed stance provenance, so temporal
-/// contradiction is deliberately reported as unavailable instead of inferred
-/// from topic or free-form history.
+/// Temporal evidence compares persisted typed system decisions with one local,
+/// explicit affirmed candidate for the current turn. The candidate is never
+/// retained here; this remains a trace-only recovery proposal.
 fn record_anomaly_shadow(
     trace: &mut execution_trace::PipelineTrace,
     anomaly_shadow: AnomalyShadowMode,
@@ -1060,10 +1059,8 @@ fn record_anomaly_shadow(
             "anomaly_ledger_capacity".into(),
             ANOMALY_SHADOW_LEDGER_CAPACITY.to_string(),
         ),
-        (
-            "anomaly_temporal_evidence".into(),
-            "not_available_without_stance_provenance".into(),
-        ),
+        ("anomaly_temporal_evidence".into(), "disabled".into()),
+        ("anomaly_temporal_history_count".into(), "0".into()),
     ]);
 
     if anomaly_shadow.enabled() {
@@ -1089,8 +1086,37 @@ fn record_anomaly_shadow(
                 .map(|witness| witness.conatus_scalar)
                 .unwrap_or(f64::MAX),
         };
+        let temporal = qxfx0_types::stance::StanceTopic::new(proposition.subject.clone())
+            .ok()
+            .and_then(|topic| {
+                let current = qxfx0_types::stance::StanceObservation {
+                    turn: observed_turn,
+                    topic,
+                    polarity: qxfx0_types::stance::StancePolarity::Affirmed,
+                    source: qxfx0_types::stance::StanceSource::SystemDecision,
+                };
+                qxfx0_types::stance::detect_temporal_contradiction(
+                    &state.semantic.stance_provenance,
+                    &current,
+                )
+            });
+        metadata.extend([
+            (
+                "anomaly_temporal_evidence".into(),
+                "typed_persisted_provenance".into(),
+            ),
+            (
+                "anomaly_temporal_history_count".into(),
+                state.semantic.stance_provenance.len().to_string(),
+            ),
+        ]);
         let decision = qxfx0_self::anomaly::detect_anomaly(self_reference)
-            .or_else(|| qxfx0_self::anomaly::detect_anomaly(anti_conatus));
+            .or_else(|| qxfx0_self::anomaly::detect_anomaly(anti_conatus))
+            .or_else(|| {
+                temporal.and_then(|contradiction| {
+                    qxfx0_self::anomaly::detect_anomaly(contradiction.to_anomaly_evidence())
+                })
+            });
 
         if let Some(decision) = decision {
             let outcome = ledger.record(decision, input_digest.clone());
