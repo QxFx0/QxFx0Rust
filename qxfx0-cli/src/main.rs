@@ -1,9 +1,12 @@
 use clap::{Parser, Subcommand};
 use qxfx0_cli::{
-    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_renderer,
+    append_turn_diagnostics, load_or_create_state, run_doctor, run_operational_metrics,
+    run_turn_with_renderer, run_turn_with_renderer_diagnostics,
 };
 use qxfx0_pipeline::{process_turn_with_renderer, RendererAuthority};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 use tracing::{debug, error, info, warn};
 
 /// Shared flag set by the Ctrl+C handler so that long-running commands can
@@ -31,7 +34,12 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Ask a single question
-    Turn { text: String },
+    Turn {
+        text: String,
+        /// Append opt-in read-only per-turn timing evidence as JSONL.
+        #[arg(long, value_name = "PATH")]
+        diagnostics_jsonl: Option<PathBuf>,
+    },
     /// Interactive dialogue session
     Chat,
     /// Run self-play enrichment
@@ -92,16 +100,40 @@ fn main() -> anyhow::Result<()> {
     .map_err(|e| anyhow::anyhow!("Failed to set Ctrl+C handler: {}", e))?;
 
     match cli.command {
-        Commands::Turn { text } => {
+        Commands::Turn {
+            text,
+            diagnostics_jsonl,
+        } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
+            let db_open_started = diagnostics_jsonl.as_ref().map(|_| Instant::now());
             let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+            let db_open_ms = db_open_started
+                .map(|started| started.elapsed().as_millis().try_into().unwrap_or(u64::MAX));
 
             info!(
                 "Processing turn for session '{}' ({} chars)",
                 cli.session_id,
                 text.chars().count()
             );
-            let response = run_turn_with_renderer(&db, &cli.session_id, &text, renderer_authority)?;
+            let response = if let Some(path) = diagnostics_jsonl {
+                let mut diagnosed = run_turn_with_renderer_diagnostics(
+                    &db,
+                    &cli.session_id,
+                    &text,
+                    renderer_authority,
+                )?;
+                diagnosed.diagnostics.db_open_ms =
+                    db_open_ms.expect("diagnostics path requires an open timer");
+                if let Err(error) = append_turn_diagnostics(&path, &diagnosed.diagnostics) {
+                    warn!(
+                        "turn completed but diagnostic record could not be appended to {}: {error}",
+                        path.display()
+                    );
+                }
+                diagnosed.response
+            } else {
+                run_turn_with_renderer(&db, &cli.session_id, &text, renderer_authority)?
+            };
 
             println!("{}", response);
             debug!(

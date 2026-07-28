@@ -2,7 +2,7 @@ use qxfx0_types::system_state::SystemState;
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use thiserror::Error;
 
 mod db;
@@ -24,6 +24,34 @@ pub enum PersistenceError {
 /// Persistence layer — SQLite session state storage.
 pub struct Persistence {
     conn: Connection,
+}
+
+/// Timing evidence for one SQLite-backed state save.
+///
+/// `sqlite_write_lock_ms` spans the first write statement, where SQLite may
+/// wait to acquire its write lock. `sqlite_commit_checkpoint_ms` measures the
+/// commit path, including an automatic WAL checkpoint if SQLite performs one;
+/// no explicit checkpoint is issued for diagnostics.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct SaveStateTimings {
+    /// State validation and JSON serialization before opening the transaction.
+    pub serialization_ms: u64,
+    /// Transaction creation before the first write statement.
+    pub sqlite_transaction_begin_ms: u64,
+    /// First write statement, including any SQLite write-lock wait.
+    pub sqlite_write_lock_ms: u64,
+    /// Remaining normalized-table writes in the transaction.
+    pub sqlite_remaining_writes_ms: u64,
+    /// Commit duration, including any automatic WAL checkpoint work.
+    pub sqlite_commit_checkpoint_ms: u64,
+    /// Total state-save duration.
+    pub total_ms: u64,
+}
+
+impl SaveStateTimings {
+    fn elapsed_ms(started: Instant) -> u64 {
+        started.elapsed().as_millis().try_into().unwrap_or(u64::MAX)
+    }
 }
 
 impl Persistence {
@@ -163,6 +191,21 @@ impl Persistence {
         session_id: &str,
         state: &SystemState,
     ) -> Result<(), PersistenceError> {
+        self.save_state_with_timings(session_id, state).map(|_| ())
+    }
+
+    /// Save session state and return observational timing for SQLite work.
+    ///
+    /// This performs exactly the same validation, statements and transaction
+    /// as [`Self::save_state`]. It does not add a checkpoint or alter the
+    /// persisted schema/state format.
+    pub fn save_state_with_timings(
+        &self,
+        session_id: &str,
+        state: &SystemState,
+    ) -> Result<SaveStateTimings, PersistenceError> {
+        let total_started = Instant::now();
+        let serialization_started = Instant::now();
         if state.session_id != session_id {
             return Err(PersistenceError::InvalidState(format!(
                 "storage session '{}' differs from state session '{}'",
@@ -190,10 +233,14 @@ impl Persistence {
 
         let state_json = serde_json::to_string(state)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
+        let serialization_ms = SaveStateTimings::elapsed_ms(serialization_started);
 
+        let transaction_started = Instant::now();
         let tx = self.conn.unchecked_transaction()?;
+        let sqlite_transaction_begin_ms = SaveStateTimings::elapsed_ms(transaction_started);
 
         // Legacy monolithic row: kept for backward compatibility until v7 migration.
+        let first_write_started = Instant::now();
         tx.execute(
             "INSERT INTO runtime_sessions (id, state_json, last_active, turn_count)
              VALUES (?1, ?2, datetime('now'), ?3)
@@ -203,7 +250,9 @@ impl Persistence {
                 turn_count=excluded.turn_count",
             params![session_id, state_json, state.dialogue.turn_count],
         )?;
+        let sqlite_write_lock_ms = SaveStateTimings::elapsed_ms(first_write_started);
 
+        let remaining_writes_started = Instant::now();
         tx.execute(
             "INSERT INTO session_graphs (session_id, atoms_json, edges_json)
              VALUES (?1, ?2, ?3)
@@ -223,9 +272,20 @@ impl Persistence {
                 commitments_json=excluded.commitments_json",
             params![session_id, field_json, essence_json, adjunction_json, commitments_json],
         )?;
+        let sqlite_remaining_writes_ms = SaveStateTimings::elapsed_ms(remaining_writes_started);
 
+        let commit_started = Instant::now();
         tx.commit()?;
-        Ok(())
+        let sqlite_commit_checkpoint_ms = SaveStateTimings::elapsed_ms(commit_started);
+
+        Ok(SaveStateTimings {
+            serialization_ms,
+            sqlite_transaction_begin_ms,
+            sqlite_write_lock_ms,
+            sqlite_remaining_writes_ms,
+            sqlite_commit_checkpoint_ms,
+            total_ms: SaveStateTimings::elapsed_ms(total_started),
+        })
     }
 
     /// Load system state for a session.
