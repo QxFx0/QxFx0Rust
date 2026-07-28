@@ -82,6 +82,7 @@ if [ -n "$diagnostics_file" ]; then
 
         for metric in \
             db_open_ms \
+            cli_process_ms \
             db_load_ms \
             pipeline.semantic_selection_ms \
             pipeline.plan_render_ms \
