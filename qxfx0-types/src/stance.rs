@@ -54,6 +54,18 @@ pub enum StancePolarity {
     Affirmed,
     Rejected,
 }
+
+/// An explicit system stance supplied by an integrating caller.
+///
+/// This public data type is not an authorization capability: the embedding
+/// service is responsible for authenticating/authorizing its issuer. The
+/// pipeline only enforces typed topic equality and an allowed turn, and never
+/// derives this decision from user text, history, guard status, or a response.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SystemStanceDecision {
+    pub topic: StanceTopic,
+    pub polarity: StancePolarity,
+}
 impl StancePolarity {
     pub const fn as_str(self) -> &'static str {
         match self {
