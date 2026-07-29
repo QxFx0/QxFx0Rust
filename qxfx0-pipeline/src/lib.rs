@@ -394,9 +394,11 @@ pub fn process_turn_with_renderer_and_stance_provenance(
     output
 }
 
-/// Process a turn with an explicit caller-authorized system stance boundary.
-/// The supplied topic must equal the pipeline-normalized topic; neither user
-/// input nor guard outcome is ever converted into a polarity here.
+/// Process a turn with an explicit integrating-caller stance boundary.
+///
+/// Caller authorization is outside this library boundary. The supplied topic
+/// must equal the pipeline-normalized topic; neither user input nor guard
+/// outcome is ever converted into a polarity here.
 pub fn process_turn_with_renderer_and_explicit_stance_decision(
     input: &TurnInput,
     state: &mut SystemState,

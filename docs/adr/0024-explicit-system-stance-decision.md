@@ -3,8 +3,10 @@
 - Status: Proposed
 - Date: 2026-07-29
 
-`SystemStanceDecision` is a caller-authorized typed API boundary for an
-affirmed or rejected system stance. The pipeline accepts it only after an
+`SystemStanceDecision` is a typed API boundary for an affirmed or rejected
+system stance. Its public construction is not an authorization capability:
+the embedding service must authenticate and authorize its issuer. The pipeline
+accepts it only after an
 allowed turn whose normalized topic exactly equals the typed decision topic.
 It never derives polarity from user text, history, a guard result, or response
 surface. The ordinary CLI remains unable to create rejected stance provenance.
