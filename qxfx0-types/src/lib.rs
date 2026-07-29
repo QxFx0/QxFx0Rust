@@ -12,6 +12,7 @@ pub mod proposition_type;
 pub mod relation_type;
 pub mod semantic_intent;
 pub mod stance;
+pub mod stance_authority;
 pub mod system_state;
 
 pub use anomaly::AnomalyEvidence;
@@ -38,5 +39,11 @@ pub use stance::{
     detect_temporal_contradiction, BoundedStanceProvenance, StanceObservation, StancePolarity,
     StanceRecordOutcome, StanceSource, StanceTopic, StanceTopicError, SystemStanceDecision,
     TemporalStanceContradiction, STANCE_PROVENANCE_VERSION,
+};
+pub use stance_authority::{
+    calculate_stance_request_digest, verify_signed_stance_decision, Ed25519StanceDecisionVerifier,
+    SignedStanceDecision, StanceAuthorityVerificationPolicy, StanceDecisionAttestation,
+    StanceDecisionSignatureVerifier, StanceVerificationContext, StanceVerificationError,
+    VerifiedStanceDecision, STANCE_ATTESTATION_VERSION,
 };
 pub use system_state::SystemState;
