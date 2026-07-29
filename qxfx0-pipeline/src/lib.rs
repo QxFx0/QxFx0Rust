@@ -105,6 +105,20 @@ pub enum StanceProvenanceMode {
     RecordAffirmedSystemDecision,
 }
 
+/// Observation result for a signed external stance attestation. This is
+/// returned to the integrating service only; it is never stored in
+/// `SystemState` and does not change routing, planning, rendering, or guard
+/// behavior.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub enum SignedStanceDecisionOutcome {
+    NoAttestation,
+    VerificationRejected { reason: String },
+    BlockedTurn,
+    NormalizedTopicMismatch,
+    Recorded,
+    NoStateTransition,
+}
+
 /// Controls the staged clarification route. It is disabled in all standard
 /// runtime paths; trace-only mode is evidence, while limited enablement is
 /// available only to an explicit pipeline caller.
@@ -406,7 +420,76 @@ pub fn process_turn_with_renderer_and_explicit_stance_decision(
     decision: qxfx0_types::stance::SystemStanceDecision,
 ) -> TurnOutput {
     let output = process_turn_with_renderer(input, state, renderer_authority);
-    if !output.blocked && state.dialogue.last_topic.as_deref() == Some(decision.topic.as_str()) {
+    record_explicit_stance_decision_if_allowed(&output, state, decision);
+    output
+}
+
+/// Process a normal turn and, only after it succeeds, optionally record a
+/// verified signed external system stance. Signature verification is
+/// transport-independent and uses an explicit caller-supplied time so replay
+/// never reads a wall clock. A rejected attestation is fail-closed for the
+/// provenance write while retaining the ordinary turn result.
+pub fn process_turn_with_renderer_and_signed_stance_decision(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    signed_decision: Option<&qxfx0_types::SignedStanceDecision>,
+    verifier: &impl qxfx0_types::StanceDecisionSignatureVerifier,
+    verification_policy: &qxfx0_types::StanceAuthorityVerificationPolicy,
+) -> (TurnOutput, SignedStanceDecisionOutcome) {
+    let verification = signed_decision.map(|signed| {
+        qxfx0_types::verify_signed_stance_decision(
+            verifier,
+            signed,
+            &qxfx0_types::StanceVerificationContext {
+                audience: verification_policy.audience.clone(),
+                session_id: input.session_id.clone(),
+                expected_pre_turn: state.dialogue.turn_count,
+                request_digest: qxfx0_types::calculate_stance_request_digest(
+                    &input.session_id,
+                    &input.raw_text,
+                ),
+                verification_time_unix_seconds: verification_policy.verification_time_unix_seconds,
+                max_validity_seconds: verification_policy.max_validity_seconds,
+            },
+        )
+    });
+    let output = process_turn_with_renderer(input, state, renderer_authority);
+    let outcome = match verification {
+        None => SignedStanceDecisionOutcome::NoAttestation,
+        Some(Err(error)) => {
+            tracing::warn!(reason = %error, "rejected signed stance decision");
+            SignedStanceDecisionOutcome::VerificationRejected {
+                reason: error.to_string(),
+            }
+        }
+        Some(Ok(verified)) => match record_explicit_stance_decision_if_allowed(
+            &output,
+            state,
+            verified.into_decision(),
+        ) {
+            None if output.blocked => SignedStanceDecisionOutcome::BlockedTurn,
+            None => SignedStanceDecisionOutcome::NormalizedTopicMismatch,
+            Some(qxfx0_types::stance::StanceRecordOutcome::Recorded) => {
+                SignedStanceDecisionOutcome::Recorded
+            }
+            Some(qxfx0_types::stance::StanceRecordOutcome::NoStateTransition) => {
+                SignedStanceDecisionOutcome::NoStateTransition
+            }
+        },
+    };
+    (output, outcome)
+}
+
+fn record_explicit_stance_decision_if_allowed(
+    output: &TurnOutput,
+    state: &mut SystemState,
+    decision: qxfx0_types::stance::SystemStanceDecision,
+) -> Option<qxfx0_types::stance::StanceRecordOutcome> {
+    if output.blocked || state.dialogue.last_topic.as_deref() != Some(decision.topic.as_str()) {
+        return None;
+    }
+    Some(
         state
             .semantic
             .stance_provenance
@@ -415,9 +498,8 @@ pub fn process_turn_with_renderer_and_explicit_stance_decision(
                 topic: decision.topic,
                 polarity: decision.polarity,
                 source: qxfx0_types::stance::StanceSource::SystemDecision,
-            });
-    }
-    output
+            }),
+    )
 }
 
 /// Process a turn while collecting lightweight timing evidence for each
@@ -1463,6 +1545,52 @@ const fn doubt_route_name(route: qxfx0_types::DoubtRoute) -> &'static str {
 mod tests {
     use super::*;
 
+    struct AcceptingSignatureVerifier;
+
+    impl qxfx0_types::StanceDecisionSignatureVerifier for AcceptingSignatureVerifier {
+        fn verify_signature(
+            &self,
+            _issuer_id: &str,
+            _key_id: &str,
+            canonical_payload: &[u8],
+            _signature: &[u8; 64],
+        ) -> Result<(), qxfx0_types::StanceVerificationError> {
+            assert!(!canonical_payload.is_empty());
+            Ok(())
+        }
+    }
+
+    fn signed_stance_for(input: &TurnInput, topic: &str) -> qxfx0_types::SignedStanceDecision {
+        qxfx0_types::SignedStanceDecision {
+            attestation: qxfx0_types::StanceDecisionAttestation {
+                version: qxfx0_types::STANCE_ATTESTATION_VERSION,
+                issuer_id: "test-issuer".into(),
+                key_id: "test-key-1".into(),
+                audience: "qxfx0-test".into(),
+                session_id: input.session_id.clone(),
+                expected_pre_turn: 0,
+                topic: qxfx0_types::StanceTopic::new(topic).unwrap(),
+                polarity: qxfx0_types::StancePolarity::Rejected,
+                request_digest: qxfx0_types::calculate_stance_request_digest(
+                    &input.session_id,
+                    &input.raw_text,
+                ),
+                decision_id: [7; 16],
+                issued_at_unix_seconds: 100,
+                expires_at_unix_seconds: 200,
+            },
+            signature: [1; 64],
+        }
+    }
+
+    fn signed_stance_policy() -> qxfx0_types::StanceAuthorityVerificationPolicy {
+        qxfx0_types::StanceAuthorityVerificationPolicy {
+            audience: "qxfx0-test".into(),
+            verification_time_unix_seconds: 150,
+            max_validity_seconds: 300,
+        }
+    }
+
     fn test_state(session_id: &str) -> SystemState {
         SystemState {
             session_id: session_id.into(),
@@ -1692,5 +1820,117 @@ mod tests {
         );
         assert!(blocked_output.blocked);
         assert!(blocked.semantic.stance_provenance.is_empty());
+    }
+
+    #[test]
+    fn signed_stance_is_default_off_for_output_and_only_records_after_binding() {
+        let input = TurnInput {
+            session_id: "signed-stance".into(),
+            raw_text: "что такое свобода?".into(),
+        };
+        let mut baseline = test_state("signed-stance");
+        let mut signed = test_state("signed-stance");
+        let baseline_output =
+            process_turn_with_renderer(&input, &mut baseline, RendererAuthority::LegacyShadow);
+        let (signed_output, outcome) = process_turn_with_renderer_and_signed_stance_decision(
+            &input,
+            &mut signed,
+            RendererAuthority::LegacyShadow,
+            Some(&signed_stance_for(&input, "свобода")),
+            &AcceptingSignatureVerifier,
+            &signed_stance_policy(),
+        );
+
+        assert_eq!(signed_output.response, baseline_output.response);
+        assert_eq!(signed_output.family, baseline_output.family);
+        assert_eq!(outcome, SignedStanceDecisionOutcome::Recorded);
+        assert_eq!(signed.semantic.stance_provenance.len(), 1);
+        signed.semantic.stance_provenance = Default::default();
+        assert_eq!(
+            serde_json::to_value(signed).unwrap(),
+            serde_json::to_value(baseline).unwrap()
+        );
+    }
+
+    #[test]
+    fn invalid_signed_stance_leaves_the_normal_turn_and_state_unchanged() {
+        let input = TurnInput {
+            session_id: "invalid-signed-stance".into(),
+            raw_text: "что такое свобода?".into(),
+        };
+        let mut baseline = test_state("invalid-signed-stance");
+        let mut invalid = test_state("invalid-signed-stance");
+        let baseline_output =
+            process_turn_with_renderer(&input, &mut baseline, RendererAuthority::LegacyShadow);
+        let mut signed = signed_stance_for(&input, "свобода");
+        signed.attestation.request_digest = [0; 32];
+        let (invalid_output, outcome) = process_turn_with_renderer_and_signed_stance_decision(
+            &input,
+            &mut invalid,
+            RendererAuthority::LegacyShadow,
+            Some(&signed),
+            &AcceptingSignatureVerifier,
+            &signed_stance_policy(),
+        );
+
+        assert_eq!(invalid_output.response, baseline_output.response);
+        assert_eq!(invalid_output.family, baseline_output.family);
+        assert!(matches!(
+            outcome,
+            SignedStanceDecisionOutcome::VerificationRejected { .. }
+        ));
+        assert_eq!(
+            serde_json::to_value(invalid).unwrap(),
+            serde_json::to_value(baseline).unwrap()
+        );
+    }
+
+    #[test]
+    fn signed_stance_requires_the_pipeline_normalized_topic_and_is_replay_deterministic() {
+        let input = TurnInput {
+            session_id: "signed-replay".into(),
+            raw_text: "что такое свобода?".into(),
+        };
+        let signed = signed_stance_for(&input, "истина");
+        let mut mismatch = test_state("signed-replay");
+        let (_, mismatch_outcome) = process_turn_with_renderer_and_signed_stance_decision(
+            &input,
+            &mut mismatch,
+            RendererAuthority::LegacyShadow,
+            Some(&signed),
+            &AcceptingSignatureVerifier,
+            &signed_stance_policy(),
+        );
+        assert_eq!(
+            mismatch_outcome,
+            SignedStanceDecisionOutcome::NormalizedTopicMismatch
+        );
+        assert!(mismatch.semantic.stance_provenance.is_empty());
+
+        let signed = signed_stance_for(&input, "свобода");
+        let mut first = test_state("signed-replay");
+        let mut second = test_state("signed-replay");
+        let first_result = process_turn_with_renderer_and_signed_stance_decision(
+            &input,
+            &mut first,
+            RendererAuthority::LegacyShadow,
+            Some(&signed),
+            &AcceptingSignatureVerifier,
+            &signed_stance_policy(),
+        );
+        let second_result = process_turn_with_renderer_and_signed_stance_decision(
+            &input,
+            &mut second,
+            RendererAuthority::LegacyShadow,
+            Some(&signed),
+            &AcceptingSignatureVerifier,
+            &signed_stance_policy(),
+        );
+        assert_eq!(first_result.0.response, second_result.0.response);
+        assert_eq!(first_result.1, second_result.1);
+        assert_eq!(
+            serde_json::to_value(first).unwrap(),
+            serde_json::to_value(second).unwrap()
+        );
     }
 }
