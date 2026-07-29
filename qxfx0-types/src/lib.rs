@@ -36,7 +36,7 @@ pub use relation_type::RelationType;
 pub use semantic_intent::SemanticIntent;
 pub use stance::{
     detect_temporal_contradiction, BoundedStanceProvenance, StanceObservation, StancePolarity,
-    StanceRecordOutcome, StanceSource, StanceTopic, StanceTopicError, TemporalStanceContradiction,
-    STANCE_PROVENANCE_VERSION,
+    StanceRecordOutcome, StanceSource, StanceTopic, StanceTopicError, SystemStanceDecision,
+    TemporalStanceContradiction, STANCE_PROVENANCE_VERSION,
 };
 pub use system_state::SystemState;
