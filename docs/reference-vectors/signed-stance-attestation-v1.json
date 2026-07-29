@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "issuer_id": "test-issuer",
+  "key_id": "test-key-1",
+  "audience": "qxfx0-test",
+  "session_id": "session-1",
+  "expected_pre_turn": 7,
+  "topic": "свобода",
+  "polarity": "Rejected",
+  "raw_text": "что такое свобода?",
+  "decision_id_hex": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a",
+  "issued_at_unix_seconds": 1700000000,
+  "expires_at_unix_seconds": 1700000060,
+  "verification_time_unix_seconds": 1700000010,
+  "request_digest_hex": "b8ed8558ed53aeb2d7564e90a6a34f460a764a25dff0707f32578c560aa17e8d",
+  "canonical_payload_hex": "71786678302e7374616e63652d6174746573746174696f6e2e763100010000000b746573742d6973737565720000000a746573742d6b65792d310000000a71786678302d746573740000000973657373696f6e2d3100000000000000070000000ed181d0b2d0bed0b1d0bed0b4d0b002b8ed8558ed53aeb2d7564e90a6a34f460a764a25dff0707f32578c560aa17e8d2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a000000006553f100000000006553f13c",
+  "ed25519_private_key_test_only_hex": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+  "signature_hex": "54956cafa2e1124804ae80cb553c1ba0697797b7e37f7782348a60124a2758598d67aedd163c449cfaed1a6d4040086d8939097dcdc0a04e232dba52a6a6100e"
+}
