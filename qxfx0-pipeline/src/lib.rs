@@ -394,6 +394,30 @@ pub fn process_turn_with_renderer_and_stance_provenance(
     output
 }
 
+/// Process a turn with an explicit caller-authorized system stance boundary.
+/// The supplied topic must equal the pipeline-normalized topic; neither user
+/// input nor guard outcome is ever converted into a polarity here.
+pub fn process_turn_with_renderer_and_explicit_stance_decision(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    decision: qxfx0_types::stance::SystemStanceDecision,
+) -> TurnOutput {
+    let output = process_turn_with_renderer(input, state, renderer_authority);
+    if !output.blocked && state.dialogue.last_topic.as_deref() == Some(decision.topic.as_str()) {
+        state
+            .semantic
+            .stance_provenance
+            .record(qxfx0_types::stance::StanceObservation {
+                turn: state.dialogue.turn_count,
+                topic: decision.topic,
+                polarity: decision.polarity,
+                source: qxfx0_types::stance::StanceSource::SystemDecision,
+            });
+    }
+    output
+}
+
 /// Process a turn while collecting lightweight timing evidence for each
 /// pipeline stage. The returned timing is observational and is not persisted
 /// in the session state or included in replay signatures.
@@ -1602,6 +1626,67 @@ mod tests {
             &mut blocked,
             RendererAuthority::LegacyShadow,
             StanceProvenanceMode::RecordAffirmedSystemDecision,
+        );
+        assert!(blocked_output.blocked);
+        assert!(blocked.semantic.stance_provenance.is_empty());
+    }
+
+    #[test]
+    fn explicit_rejected_stance_requires_matching_allowed_turn() {
+        let input = TurnInput {
+            session_id: "explicit-stance".into(),
+            raw_text: "что такое свобода?".into(),
+        };
+        let decision = qxfx0_types::stance::SystemStanceDecision {
+            topic: qxfx0_types::stance::StanceTopic::new("свобода").unwrap(),
+            polarity: qxfx0_types::stance::StancePolarity::Rejected,
+        };
+        let mut recorded = test_state("explicit-stance");
+        let output = process_turn_with_renderer_and_explicit_stance_decision(
+            &input,
+            &mut recorded,
+            RendererAuthority::LegacyShadow,
+            decision,
+        );
+        assert!(!output.blocked);
+        assert_eq!(recorded.semantic.stance_provenance.len(), 1);
+        assert_eq!(
+            recorded
+                .semantic
+                .stance_provenance
+                .observations()
+                .front()
+                .unwrap()
+                .polarity,
+            qxfx0_types::stance::StancePolarity::Rejected
+        );
+
+        let mut mismatch = test_state("explicit-stance");
+        let mismatch_decision = qxfx0_types::stance::SystemStanceDecision {
+            topic: qxfx0_types::stance::StanceTopic::new("истина").unwrap(),
+            polarity: qxfx0_types::stance::StancePolarity::Rejected,
+        };
+        process_turn_with_renderer_and_explicit_stance_decision(
+            &input,
+            &mut mismatch,
+            RendererAuthority::LegacyShadow,
+            mismatch_decision,
+        );
+        assert!(mismatch.semantic.stance_provenance.is_empty());
+
+        let mut blocked = test_state("explicit-blocked");
+        let blocked_decision = qxfx0_types::stance::SystemStanceDecision {
+            topic: qxfx0_types::stance::StanceTopic::new("свобода").unwrap(),
+            polarity: qxfx0_types::stance::StancePolarity::Rejected,
+        };
+        let blocked_output = process_turn_with_renderer_and_explicit_stance_decision(
+            &TurnInput {
+                session_id: "explicit-blocked".into(),
+                raw_text: "a".repeat(10_000),
+            },
+            &mut blocked,
+            RendererAuthority::LegacyShadow,
+            blocked_decision,
         );
         assert!(blocked_output.blocked);
         assert!(blocked.semantic.stance_provenance.is_empty());

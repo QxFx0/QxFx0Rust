@@ -54,6 +54,14 @@ pub enum StancePolarity {
     Affirmed,
     Rejected,
 }
+
+/// An explicit, caller-authorized system stance. It cannot be constructed
+/// from user text, history, or guard status by this contract.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SystemStanceDecision {
+    pub topic: StanceTopic,
+    pub polarity: StancePolarity,
+}
 impl StancePolarity {
     pub const fn as_str(self) -> &'static str {
         match self {
