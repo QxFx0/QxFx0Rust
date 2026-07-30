@@ -10,6 +10,7 @@ pub mod conversation_fsm;
 pub mod execution_trace;
 pub mod shadow_plan;
 mod stages;
+pub mod stance_request;
 pub mod turn_context;
 #[cfg(test)]
 mod vector_pipeline;
@@ -796,29 +797,11 @@ fn process_turn_internal(
 
     // Parse once and retain the typed proposition throughout the pipeline.
     let normalization_started = Instant::now();
-    let mut prop = PropositionParser::parse(&input.raw_text);
-
-    // Normalize subject to nominative form using the runtime graph.
-    // Users type topics in oblique cases ("об ответственности" → "ответственности")
-    // but the graph stores atoms in nominative ("ответственность").
     if state.semantic.runtime_graph.edges.is_empty() {
         state.semantic.runtime_graph = qxfx0_semantic::seed_graph();
     }
-    if matches!(
-        prop.mode,
-        qxfx0_semantic::PropositionMode::Define | qxfx0_semantic::PropositionMode::Assert
-    ) {
-        if let Some(known_topic) = qxfx0_semantic::PropositionParser::known_topic_in_input(
-            &input.raw_text,
-            &state.semantic.runtime_graph,
-        ) {
-            prop.subject = known_topic;
-        }
-    }
-    prop.subject = qxfx0_semantic::PropositionParser::normalize_topic(
-        &prop.subject,
-        &state.semantic.runtime_graph,
-    );
+    let prop =
+        stance_request::parse_and_normalize_topic(&input.raw_text, &state.semantic.runtime_graph);
 
     if let Some(trace) = trace.as_deref_mut() {
         record_doubt_shadow(trace, doubt_shadow, state, &prop);
