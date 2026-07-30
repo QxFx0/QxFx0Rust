@@ -15,6 +15,7 @@ qxfx0-render = { path = "../qxfx0-render" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+thiserror.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
