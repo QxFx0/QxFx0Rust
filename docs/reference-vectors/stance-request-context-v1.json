@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "session_id": "session-1",
+  "expected_pre_turn": 7,
+  "raw_text": "что такое свобода?",
+  "normalized_topic": "свобода",
+  "request_digest_hex": "b8ed8558ed53aeb2d7564e90a6a34f460a764a25dff0707f32578c560aa17e8d"
+}
+
