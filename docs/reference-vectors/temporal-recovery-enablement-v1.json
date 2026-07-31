@@ -1,0 +1,184 @@
+{
+  "schema": "qxfx0.temporal-recovery-enablement.v1",
+  "scope": "pure eligibility only; no runtime consumer",
+  "denial_precedence": [
+    "ModeDisabled",
+    "ShadowOnly",
+    "ProductionForbidden",
+    "SessionNotAllowlisted",
+    "AuthorityUnavailable",
+    "InvalidAuthorityProof",
+    "StrategyNotPermitted",
+    "EvidenceMismatch",
+    "TopicMismatch",
+    "TurnBlocked",
+    "StaleProvenance",
+    "ReplayMismatch",
+    "AuditUnavailable",
+    "AlreadyRequested",
+    "InvalidScope"
+  ],
+  "base_contradiction": {
+    "current": {
+      "turn": 16,
+      "topic": "свобода",
+      "polarity": "Affirmed",
+      "source": "SystemDecision"
+    },
+    "historical": {
+      "turn": 1,
+      "topic": "свобода",
+      "polarity": "Rejected",
+      "source": "SystemDecision"
+    }
+  },
+  "base_context": {
+    "mode": "LimitedNonProduction",
+    "environment": "NonProduction",
+    "session_id": "synthetic-temporal-session",
+    "session_allowlisted": true,
+    "window_id": "turns-1-16",
+    "authority": {
+      "VerifiedSignedIssuer": {
+        "issuer_id": "qxfx0-stance-issuer-v1",
+        "key_id": "nonprod-key-1",
+        "decision_id_hex": "13131313131313131313131313131313",
+        "signed_payload_fingerprint_hex": "abababababababababababababababababababababababababababababababab"
+      }
+    },
+    "turn_blocked": false,
+    "provenance_fresh": true,
+    "replay_consistent": true,
+    "audit_ready": true,
+    "prior_requests_for_topic_in_window": 0
+  },
+  "vectors": [
+    {
+      "name": "eligible-limited-nonproduction",
+      "decision": "TemporalRequestRevision",
+      "context": {},
+      "expect": {
+        "outcome": "Eligible",
+        "max_requests_for_topic_in_window": 1,
+        "idempotency_key": "session:synthetic-temporal-session:window:turns-1-16:topic:свобода:decision:13131313131313131313131313131313:request-revision"
+      }
+    },
+    {
+      "name": "disabled",
+      "decision": "TemporalRequestRevision",
+      "context": { "mode": "Disabled" },
+      "expect": { "outcome": "Denied", "reason": "ModeDisabled" }
+    },
+    {
+      "name": "shadow-only",
+      "decision": "TemporalRequestRevision",
+      "context": { "mode": "ShadowOnly" },
+      "expect": { "outcome": "Denied", "reason": "ShadowOnly" }
+    },
+    {
+      "name": "production-forbidden",
+      "decision": "TemporalRequestRevision",
+      "context": { "environment": "Production" },
+      "expect": { "outcome": "Denied", "reason": "ProductionForbidden" }
+    },
+    {
+      "name": "session-not-allowlisted",
+      "decision": "TemporalRequestRevision",
+      "context": { "session_allowlisted": false },
+      "expect": { "outcome": "Denied", "reason": "SessionNotAllowlisted" }
+    },
+    {
+      "name": "authority-unavailable",
+      "decision": "TemporalRequestRevision",
+      "context": { "authority": "Unavailable" },
+      "expect": { "outcome": "Denied", "reason": "AuthorityUnavailable" }
+    },
+    {
+      "name": "invalid-authority-proof",
+      "decision": "TemporalRequestRevision",
+      "context": {
+        "authority": {
+          "VerifiedSignedIssuer": {
+            "issuer_id": "qxfx0-stance-issuer-v1",
+            "key_id": "nonprod-key-1",
+            "decision_id_hex": "not-hex",
+            "signed_payload_fingerprint_hex": "abababababababababababababababababababababababababababababababab"
+          }
+        }
+      },
+      "expect": { "outcome": "Denied", "reason": "InvalidAuthorityProof" }
+    },
+    {
+      "name": "wrong-strategy",
+      "decision": "AntiConatusRestrictRoute",
+      "context": {},
+      "expect": { "outcome": "Denied", "reason": "StrategyNotPermitted" }
+    },
+    {
+      "name": "evidence-lineage-mismatch",
+      "decision": "TemporalRequestRevision",
+      "contradiction": {
+        "historical": { "source": "UserInput" }
+      },
+      "context": {},
+      "expect": { "outcome": "Denied", "reason": "EvidenceMismatch" }
+    },
+    {
+      "name": "topic-mismatch",
+      "decision": "TemporalRequestRevision",
+      "contradiction": {
+        "historical": { "topic": "память" }
+      },
+      "context": {},
+      "expect": { "outcome": "Denied", "reason": "TopicMismatch" }
+    },
+    {
+      "name": "blocked-turn",
+      "decision": "TemporalRequestRevision",
+      "context": { "turn_blocked": true },
+      "expect": { "outcome": "Denied", "reason": "TurnBlocked" }
+    },
+    {
+      "name": "stale-provenance",
+      "decision": "TemporalRequestRevision",
+      "context": { "provenance_fresh": false },
+      "expect": { "outcome": "Denied", "reason": "StaleProvenance" }
+    },
+    {
+      "name": "replay-mismatch",
+      "decision": "TemporalRequestRevision",
+      "context": { "replay_consistent": false },
+      "expect": { "outcome": "Denied", "reason": "ReplayMismatch" }
+    },
+    {
+      "name": "audit-unavailable",
+      "decision": "TemporalRequestRevision",
+      "context": { "audit_ready": false },
+      "expect": { "outcome": "Denied", "reason": "AuditUnavailable" }
+    },
+    {
+      "name": "already-requested-in-window",
+      "decision": "TemporalRequestRevision",
+      "context": { "prior_requests_for_topic_in_window": 1 },
+      "expect": { "outcome": "Denied", "reason": "AlreadyRequested" }
+    },
+    {
+      "name": "invalid-scope",
+      "decision": "TemporalRequestRevision",
+      "context": { "window_id": "" },
+      "expect": { "outcome": "Denied", "reason": "InvalidScope" }
+    }
+  ],
+  "required_laws": [
+    "eligibility never mutates runtime or topic state",
+    "production is denied in v1",
+    "missing or malformed signed-authority proof is denied",
+    "only Temporal RequestRevision with zero retries is admitted",
+    "the anomaly decision must exactly match typed contradiction evidence",
+    "only affirmed versus rejected system-decision lineage is admitted",
+    "exact typed topic equality is required",
+    "blocked stale replay-mismatched or unaudited turns are denied",
+    "at most one request per topic per caller-defined bounded window",
+    "equal decision and context produce byte-identical eligibility"
+  ]
+}
