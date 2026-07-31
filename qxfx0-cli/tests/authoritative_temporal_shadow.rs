@@ -154,10 +154,12 @@ fn signed_rejected_provenance_round_trips_into_external_temporal_shadow_evidence
     write_anomaly_shadow_trace_jsonl(&mut sink, &traced.trace).unwrap();
     drop(sink);
     let external_jsonl = std::fs::read_to_string(&trace_path).unwrap();
+    std::fs::remove_file(&trace_path).unwrap();
     assert!(!external_jsonl.contains(RAW_TEXT));
     assert!(!external_jsonl.contains("signature"));
     assert!(!external_jsonl.contains("private_key"));
-    let record: serde_json::Value = serde_json::from_str(&external_jsonl).unwrap();
+    let first_line = external_jsonl.lines().next().unwrap();
+    let record: serde_json::Value = serde_json::from_str(first_line).unwrap();
     assert_eq!(record["schema"], "qxfx0.anomaly-shadow-trace.v1");
     assert_eq!(
         record["trace"]["steps"]
@@ -168,5 +170,4 @@ fn signed_rejected_provenance_round_trips_into_external_temporal_shadow_evidence
             .unwrap()["metadata"]["anomaly_proposed_kind"],
         "temporal"
     );
-    std::fs::remove_file(trace_path).unwrap();
 }
