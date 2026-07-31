@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
-use qxfx0_cli::{load_or_create_state, run_doctor, run_operational_metrics, run_turn};
+use qxfx0_cli::{
+    load_or_create_state, run_doctor, run_operational_metrics, run_renderer_diversity_audit,
+    run_runtime_benchmark, run_turn,
+};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::{debug, error, info, warn};
 
@@ -56,6 +59,27 @@ enum Commands {
         /// Fail if the in-memory response probe exceeds this duration
         #[arg(long, default_value_t = 2_000)]
         max_response_ms: u64,
+    },
+    /// Measure lazy first-turn and warmed in-memory turn costs
+    Benchmark {
+        /// Number of measured steady-state turns
+        #[arg(long, default_value_t = 100)]
+        samples: usize,
+        /// Unmeasured turns between first-turn and steady-state samples
+        #[arg(long, default_value_t = 10)]
+        warmup: usize,
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Quantify repetition across all audited declarative topics
+    RendererAudit {
+        /// Number of normalized words in each opening n-gram
+        #[arg(long, default_value_t = 3)]
+        opening_words: usize,
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
     },
     /// List sessions
     Sessions,
@@ -311,6 +335,91 @@ fn main() -> anyhow::Result<()> {
                 Err(anyhow::anyhow!(violations.join("; ")))
             }
         }
+        Commands::Benchmark {
+            samples,
+            warmup,
+            json,
+        } => {
+            let report = run_runtime_benchmark(samples, warmup).map_err(anyhow::Error::msg)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("QxFx0 in-memory runtime benchmark:");
+                println!("  First turn: {} us", report.first_turn_micros);
+                println!(
+                    "  Steady state ({} samples, {} warmup): min={} us, p50={} us, p95={} us, max={} us, mean={} us",
+                    report.steady_state_micros.samples,
+                    report.warmup_turns,
+                    report.steady_state_micros.min,
+                    report.steady_state_micros.p50,
+                    report.steady_state_micros.p95,
+                    report.steady_state_micros.max,
+                    report.steady_state_micros.mean,
+                );
+                println!(
+                    "  RSS: before={}, after first={}, after steady={}",
+                    display_optional_bytes(report.rss_before_bytes),
+                    display_optional_bytes(report.rss_after_first_turn_bytes),
+                    display_optional_bytes(report.rss_after_steady_state_bytes),
+                );
+                println!(
+                    "  Sizes: executable={}, morphology={} bytes (lexemes={}, manifest={})",
+                    display_optional_bytes(report.executable_bytes),
+                    report.morphology_bundle_bytes,
+                    report.morphology_lexemes_bytes,
+                    report.morphology_manifest_bytes,
+                );
+                println!("  Pack fingerprint: {}", report.pack_set_fingerprint);
+            }
+            Ok(())
+        }
+        Commands::RendererAudit {
+            opening_words,
+            json,
+        } => {
+            let report = run_renderer_diversity_audit(opening_words).map_err(anyhow::Error::msg)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("QxFx0 audited renderer diversity:");
+                println!(
+                    "  Ready plans: {}/{}; blocked topics: {}",
+                    report.ready_plans,
+                    report.audited_topics,
+                    report.blocked_topics.len(),
+                );
+                println!(
+                    "  Responses: {} unique / {} topics",
+                    report.unique_responses, report.audited_topics,
+                );
+                println!(
+                    "  Sentences: {} unique / {} total; {} repeated kinds, {} repeated occurrences",
+                    report.unique_sentences,
+                    report.total_sentences,
+                    report.repeated_sentence_kinds,
+                    report.repeated_sentence_occurrences,
+                );
+                if let Some(repeated) = &report.max_repeated_sentence {
+                    println!(
+                        "  Most repeated sentence ({}x): {}",
+                        repeated.count, repeated.text
+                    );
+                }
+                println!(
+                    "  Normalized {}-word openings: {} unique / {} topics",
+                    report.opening_ngram_words,
+                    report.unique_normalized_openings,
+                    report.audited_topics,
+                );
+                if let Some(repeated) = &report.max_repeated_normalized_opening {
+                    println!(
+                        "  Most repeated opening ({}x): {}",
+                        repeated.count, repeated.text
+                    );
+                }
+            }
+            Ok(())
+        }
         Commands::Sessions => {
             debug!("Listing all sessions from database: {}", cli.db);
             let db = qxfx0_persistence::Persistence::open(&cli.db)?;
@@ -381,4 +490,8 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
     }
+}
+
+fn display_optional_bytes(value: Option<u64>) -> String {
+    value.map_or_else(|| "unavailable".into(), |bytes| format!("{bytes} bytes"))
 }

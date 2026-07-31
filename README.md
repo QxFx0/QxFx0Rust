@@ -81,6 +81,8 @@ cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db sessions
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db doctor
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db doctor --json
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db metrics
+cargo run -p qxfx0-cli -- benchmark --samples 100 --warmup 10
+cargo run -p qxfx0-cli -- renderer-audit
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db backup /tmp/qxfx0-backup.db
 cargo run -p qxfx0-cli -- discover свобода
 cargo run -p qxfx0-cli -- code "посчитать сумму элементов"
@@ -124,6 +126,35 @@ QxFx0 Rust v0.1.1 health check:
 Use `doctor --json` for automation. The `metrics` command additionally emits
 Prometheus gauges for doctor health, total DB/WAL/SHM bytes, doctor duration,
 and the duration and health of an in-memory response probe.
+
+## Performance and renderer baselines
+
+The built-in benchmark separates the first lazy in-memory turn from a warmed
+distribution. It reports min/p50/p95/max latency, resident memory before and
+after initialization, executable size and the exact embedded morphology asset
+size. Each measured turn uses a fresh state so session history does not skew
+the result:
+
+```bash
+target/release/qxfx0 benchmark --samples 100 --warmup 10 --json
+```
+
+Full process startup is measured separately without requiring GNU `time`.
+This runner starts a new process and temporary database per sample; it does
+not flush the operating system's filesystem page cache:
+
+```bash
+python3 scripts/benchmark_runtime.py --samples 10
+```
+
+Renderer breadth is measured independently across all 30 audited topics. The
+audit reports unique responses and sentences, repeated sentence counts, and
+topic-normalized opening n-grams. It is diagnostic and does not change the
+renderer or semantic state:
+
+```bash
+target/release/qxfx0 renderer-audit --opening-words 3 --json
+```
 
 ## SQLite migration, backup and recovery
 
