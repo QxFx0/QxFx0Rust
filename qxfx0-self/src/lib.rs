@@ -3,6 +3,7 @@ pub mod deliberation;
 pub mod doubt;
 
 pub mod stance;
+pub mod temporal_recovery;
 
 pub mod perspective;
 
