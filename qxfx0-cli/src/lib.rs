@@ -3,6 +3,13 @@
 //! Exposes the same entry point used by `main.rs` so integration tests can
 //! drive the turn / chat flow without spawning a subprocess.
 
+mod measurement;
+
+pub use measurement::{
+    run_renderer_diversity_audit, run_runtime_benchmark, LatencyDistributionMicros,
+    RendererDiversityReport, RepeatedText, RuntimeBenchmarkReport, TopicRenderMeasurement,
+};
+
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_pipeline::{process_turn, TurnInput};
 use qxfx0_semantic::{argued_topic_registry, seed_graph};

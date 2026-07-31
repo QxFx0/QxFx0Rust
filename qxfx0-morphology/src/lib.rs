@@ -1,7 +1,8 @@
 pub mod runtime;
 pub use runtime::{
     get_runtime, load_from_directory, MorphologyError, MorphologyResult, MorphologyRuntime,
-    MorphologyStats,
+    MorphologyStats, EMBEDDED_BUNDLE_SIZE_BYTES, EMBEDDED_LEXEMES_SIZE_BYTES,
+    EMBEDDED_MANIFEST_SIZE_BYTES,
 };
 
 use std::collections::BTreeMap;

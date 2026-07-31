@@ -13,6 +13,17 @@ use std::path::Path;
 
 use qxfx0_types::morphology::CaseNumber;
 
+const EMBEDDED_LEXEMES_JSON: &[u8] = include_bytes!("../../data/lexemes.json");
+const EMBEDDED_MANIFEST_JSON: &[u8] = include_bytes!("../../data/manifest.json");
+
+/// Byte sizes of the canonical assets compiled into the production runtime.
+/// These constants let operational tooling report the actual embedded cost
+/// without depending on the source tree being present beside the executable.
+pub const EMBEDDED_LEXEMES_SIZE_BYTES: usize = EMBEDDED_LEXEMES_JSON.len();
+pub const EMBEDDED_MANIFEST_SIZE_BYTES: usize = EMBEDDED_MANIFEST_JSON.len();
+pub const EMBEDDED_BUNDLE_SIZE_BYTES: usize =
+    EMBEDDED_LEXEMES_SIZE_BYTES + EMBEDDED_MANIFEST_SIZE_BYTES;
+
 /// Error type for morphology operations.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum MorphologyError {
@@ -502,11 +513,8 @@ pub fn get_runtime() -> &'static MorphologyRuntime {
         }
 
         // Fallback to embedded assets (always validated)
-        MorphologyRuntime::load_from_bytes(
-            include_bytes!("../../data/lexemes.json"),
-            Some(include_bytes!("../../data/manifest.json")),
-        )
-        .expect("Critical: Failed to load embedded morphology assets")
+        MorphologyRuntime::load_from_bytes(EMBEDDED_LEXEMES_JSON, Some(EMBEDDED_MANIFEST_JSON))
+            .expect("Critical: Failed to load embedded morphology assets")
     })
 }
 
