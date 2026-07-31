@@ -7,6 +7,10 @@ use crate::RelationType;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AtomId(pub String);
 
+/// Concept identifier — uniquely identifies a curated concept.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct ConceptId(pub String);
+
 impl AtomId {
     pub fn new(s: impl Into<String>) -> Self {
         AtomId(s.into())

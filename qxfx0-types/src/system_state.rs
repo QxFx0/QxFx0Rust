@@ -7,6 +7,7 @@ use crate::governance::GovernanceLog;
 use crate::illocutionary_force::IllocutionaryForce;
 use crate::move_family::CanonicalMoveFamily;
 use crate::network::SemanticNetwork;
+use crate::ConceptId;
 
 /// Dialogue state — multi-turn context, history, last routing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +19,9 @@ pub struct DialogueState {
     /// Persisted FSM conversation state (None = initial).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation_state: Option<u8>,
+    /// Generated dialogue outcomes are observations, never factual knowledge.
+    #[serde(default)]
+    pub observations: Vec<DialogueObservation>,
 }
 
 impl Default for DialogueState {
@@ -28,8 +32,16 @@ impl Default for DialogueState {
             last_family: CanonicalMoveFamily::CMGround,
             last_topic: None,
             conversation_state: None,
+            observations: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogueObservation {
+    pub response_digest: String,
+    pub topic: Option<ConceptId>,
+    pub turn_seq: usize,
 }
 
 /// Essence state — Σ-typed commitment trajectory (persisted in SemanticState).
@@ -147,6 +159,10 @@ pub struct AdjunctionState {
 pub struct SemanticState {
     pub field: Field,
     pub runtime_graph: AtomGraph,
+    /// Identity of the immutable semantic authority used by this session.
+    /// Static pack contents remain process-global and are never copied here.
+    #[serde(default)]
+    pub pack_set_fingerprint: String,
     pub semantic_commitments: Option<SemanticCommitmentStore>,
     /// Essence trajectory — the system's commitment history.
     pub essence: EssenceState,
@@ -196,6 +212,9 @@ impl SystemState {
         if self.dialogue.history.len() > 10_000 {
             violations.push("dialogue history exceeds the 10000-entry bound".into());
         }
+        if self.dialogue.observations.len() > 10_000 {
+            violations.push("dialogue observations exceed the 10000-entry bound".into());
+        }
         if self.governance_log.len() > 10_000 {
             violations.push("governance log exceeds the 10000-entry bound".into());
         }
@@ -203,6 +222,16 @@ impl SystemState {
             || self.semantic.runtime_graph.edges.len() > 20_000
         {
             violations.push("runtime graph exceeds the 10000-atom/20000-edge bound".into());
+        }
+        if !self.semantic.pack_set_fingerprint.is_empty()
+            && (self.semantic.pack_set_fingerprint.len() != 64
+                || !self
+                    .semantic
+                    .pack_set_fingerprint
+                    .chars()
+                    .all(|character| character.is_ascii_hexdigit()))
+        {
+            violations.push("pack_set_fingerprint is not a SHA-256 identifier".into());
         }
         if let Some(store) = &self.semantic.semantic_commitments {
             if store.active.len() + store.quarantine.len() > 1_024 {
@@ -280,7 +309,8 @@ pub enum GuardStatus {
     Unavailable(String),
 }
 
-/// Semantic commitment store — tracks held positions.
+/// Legacy semantic commitment store. Dialogue-era payloads in this store are
+/// not FactRecords and are excluded from factual selection.
 /// Uses BTreeMap for deterministic iteration.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SemanticCommitmentStore {
@@ -294,6 +324,9 @@ pub struct SemanticCommitmentStore {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct CommitmentId(pub usize);
 
+/// Legacy dialogue-layer payload retained for state compatibility. Despite
+/// its historical name, this type is not factual authority; only a curated
+/// `FactRecord` selected from the immutable fact registry can fill that role.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FactualClaimPayload {
     pub statement: String,
@@ -385,6 +418,7 @@ mod tests {
         state.dialogue.turn_count = 3;
         state.dialogue.history.push("hello".into());
         state.dialogue.last_topic = Some("свобода".into());
+        state.semantic.pack_set_fingerprint = "a".repeat(64);
         state.governance_log.append(GovernanceEvent {
             turn: 1,
             event_type: GovernanceEventType::GraphEnriched { new_relations: 2 },
@@ -400,6 +434,7 @@ mod tests {
         assert_eq!(restored.dialogue.turn_count, 3);
         assert_eq!(restored.dialogue.history.len(), 1);
         assert_eq!(restored.dialogue.last_topic, Some("свобода".into()));
+        assert_eq!(restored.semantic.pack_set_fingerprint, "a".repeat(64));
         assert_eq!(restored.governance_log.len(), 1);
         assert!(
             restored

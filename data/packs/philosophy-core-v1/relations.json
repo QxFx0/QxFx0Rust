@@ -1,0 +1,56 @@
+[
+  {
+    "semantic_id": "RelBuiltThrough"
+  },
+  {
+    "semantic_id": "RelCanBe"
+  },
+  {
+    "semantic_id": "RelClaims"
+  },
+  {
+    "semantic_id": "RelContrastsWith"
+  },
+  {
+    "semantic_id": "RelDenotes"
+  },
+  {
+    "semantic_id": "RelDependsOn"
+  },
+  {
+    "semantic_id": "RelDiffersFrom"
+  },
+  {
+    "semantic_id": "RelDirectedAt"
+  },
+  {
+    "semantic_id": "RelEvokes"
+  },
+  {
+    "semantic_id": "RelExpresses"
+  },
+  {
+    "semantic_id": "RelIsA"
+  },
+  {
+    "semantic_id": "RelPrescribes"
+  },
+  {
+    "semantic_id": "RelPresupposes"
+  },
+  {
+    "semantic_id": "RelReconstructs"
+  },
+  {
+    "semantic_id": "RelRelatedTo"
+  },
+  {
+    "semantic_id": "RelRequires"
+  },
+  {
+    "semantic_id": "RelSets"
+  },
+  {
+    "semantic_id": "RelSupports"
+  }
+]

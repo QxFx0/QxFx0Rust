@@ -1,0 +1,1331 @@
+[
+  {
+    "predicate_ref": "freedom_choice",
+    "record": {
+      "id": "fact.freedom_choice",
+      "subject": "concept.свобода",
+      "relation": "RelPresupposes",
+      "object": "concept.vozmozhnost_vybora",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:freedom_choice",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "freedom_choice.counterpoint",
+    "record": {
+      "id": "fact.freedom_choice.counterpoint",
+      "subject": "concept.свобода",
+      "relation": "RelContrastsWith",
+      "object": "concept.vozmozhnost_vybora",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.freedom_choice"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:freedom_choice.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "freedom_choice.consequence",
+    "record": {
+      "id": "fact.freedom_choice.consequence",
+      "subject": "concept.свобода",
+      "relation": "RelDependsOn",
+      "object": "concept.vozmozhnost_vybora",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.freedom_choice"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:freedom_choice.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "arbitrariness_absence_constraints",
+    "record": {
+      "id": "fact.arbitrariness_absence_constraints",
+      "subject": "concept.произвол",
+      "relation": "RelExpresses",
+      "object": "concept.otsutstvie_ogranicheniy",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:arbitrariness_absence_constraints",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "arbitrariness_absence_constraints.counterpoint",
+    "record": {
+      "id": "fact.arbitrariness_absence_constraints.counterpoint",
+      "subject": "concept.произвол",
+      "relation": "RelContrastsWith",
+      "object": "concept.otsutstvie_ogranicheniy",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.arbitrariness_absence_constraints"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:arbitrariness_absence_constraints.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "responsibility_accountability",
+    "record": {
+      "id": "fact.responsibility_accountability",
+      "subject": "concept.ответственность",
+      "relation": "RelIsA",
+      "object": "concept.otvechat_za_svoi_deystviya",
+      "kind": "definition",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:responsibility_accountability",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "responsibility_accountability.counterpoint",
+    "record": {
+      "id": "fact.responsibility_accountability.counterpoint",
+      "subject": "concept.ответственность",
+      "relation": "RelContrastsWith",
+      "object": "concept.otvechat_za_svoi_deystviya",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.responsibility_accountability"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:responsibility_accountability.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "truth_reality",
+    "record": {
+      "id": "fact.truth_reality",
+      "subject": "concept.истина",
+      "relation": "RelClaims",
+      "object": "concept.sootvetstvie_realnosti",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:truth_reality",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "truth_reality.counterpoint",
+    "record": {
+      "id": "fact.truth_reality.counterpoint",
+      "subject": "concept.истина",
+      "relation": "RelContrastsWith",
+      "object": "concept.sootvetstvie_realnosti",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.truth_reality"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:truth_reality.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "truth_reality.consequence",
+    "record": {
+      "id": "fact.truth_reality.consequence",
+      "subject": "concept.истина",
+      "relation": "RelDependsOn",
+      "object": "concept.sootvetstvie_realnosti",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.truth_reality"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:truth_reality.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "opinion_position",
+    "record": {
+      "id": "fact.opinion_position",
+      "subject": "concept.мнение",
+      "relation": "RelExpresses",
+      "object": "concept.pozitsiyu_subekta",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:opinion_position",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "opinion_position.counterpoint",
+    "record": {
+      "id": "fact.opinion_position.counterpoint",
+      "subject": "concept.мнение",
+      "relation": "RelContrastsWith",
+      "object": "concept.pozitsiyu_subekta",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.opinion_position"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:opinion_position.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "opinion_position.consequence",
+    "record": {
+      "id": "fact.opinion_position.consequence",
+      "subject": "concept.мнение",
+      "relation": "RelDependsOn",
+      "object": "concept.pozitsiyu_subekta",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.opinion_position"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:opinion_position.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "memory_information_process",
+    "record": {
+      "id": "fact.memory_information_process",
+      "subject": "concept.память",
+      "relation": "RelIsA",
+      "object": "concept.protsess_zapominaniya_hraneniya_i_vosproizvedeniya_informatsii",
+      "kind": "definition",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:memory_information_process",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "memory_information_process.counterpoint",
+    "record": {
+      "id": "fact.memory_information_process.counterpoint",
+      "subject": "concept.память",
+      "relation": "RelContrastsWith",
+      "object": "concept.protsess_zapominaniya_hraneniya_i_vosproizvedeniya_informatsii",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.memory_information_process"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:memory_information_process.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "recollection_new_frame",
+    "record": {
+      "id": "fact.recollection_new_frame",
+      "subject": "concept.воспоминание",
+      "relation": "RelReconstructs",
+      "object": "concept.perezhitoe_v_novoy_ramke",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:recollection_new_frame",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "recollection_new_frame.counterpoint",
+    "record": {
+      "id": "fact.recollection_new_frame.counterpoint",
+      "subject": "concept.воспоминание",
+      "relation": "RelContrastsWith",
+      "object": "concept.perezhitoe_v_novoy_ramke",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.recollection_new_frame"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:recollection_new_frame.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "recollection_new_frame.consequence",
+    "record": {
+      "id": "fact.recollection_new_frame.consequence",
+      "subject": "concept.воспоминание",
+      "relation": "RelDependsOn",
+      "object": "concept.perezhitoe_v_novoy_ramke",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.recollection_new_frame"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:recollection_new_frame.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "consciousness_awareness",
+    "record": {
+      "id": "fact.consciousness_awareness",
+      "subject": "concept.сознание",
+      "relation": "RelIsA",
+      "object": "concept.sposobnost_osoznavat_okruzhayushchiy_mir_i_samogo_sebya",
+      "kind": "definition",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:consciousness_awareness",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "consciousness_awareness.counterpoint",
+    "record": {
+      "id": "fact.consciousness_awareness.counterpoint",
+      "subject": "concept.сознание",
+      "relation": "RelContrastsWith",
+      "object": "concept.sposobnost_osoznavat_okruzhayushchiy_mir_i_samogo_sebya",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.consciousness_awareness"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:consciousness_awareness.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "self_awareness_reflexivity",
+    "record": {
+      "id": "fact.self_awareness_reflexivity",
+      "subject": "concept.самосознание",
+      "relation": "RelExpresses",
+      "object": "concept.refleksivnost_subekta",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:self_awareness_reflexivity",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "self_awareness_reflexivity.counterpoint",
+    "record": {
+      "id": "fact.self_awareness_reflexivity.counterpoint",
+      "subject": "concept.самосознание",
+      "relation": "RelContrastsWith",
+      "object": "concept.refleksivnost_subekta",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.self_awareness_reflexivity"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:self_awareness_reflexivity.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "faith_acceptance",
+    "record": {
+      "id": "fact.faith_acceptance",
+      "subject": "concept.вера",
+      "relation": "RelRequires",
+      "object": "concept.prinyatiya_bez_dokazatelstva",
+      "kind": "normative_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:faith_acceptance",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "faith_acceptance.counterpoint",
+    "record": {
+      "id": "fact.faith_acceptance.counterpoint",
+      "subject": "concept.вера",
+      "relation": "RelContrastsWith",
+      "object": "concept.prinyatiya_bez_dokazatelstva",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.faith_acceptance"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:faith_acceptance.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "faith_acceptance.consequence",
+    "record": {
+      "id": "fact.faith_acceptance.consequence",
+      "subject": "concept.вера",
+      "relation": "RelDependsOn",
+      "object": "concept.prinyatiya_bez_dokazatelstva",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.faith_acceptance"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:faith_acceptance.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "beauty_experience",
+    "record": {
+      "id": "fact.beauty_experience",
+      "subject": "concept.красота",
+      "relation": "RelEvokes",
+      "object": "concept.esteticheskoe_perezhivanie",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:beauty_experience",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "beauty_experience.counterpoint",
+    "record": {
+      "id": "fact.beauty_experience.counterpoint",
+      "subject": "concept.красота",
+      "relation": "RelContrastsWith",
+      "object": "concept.esteticheskoe_perezhivanie",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.beauty_experience"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:beauty_experience.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "duty_action_singular",
+    "record": {
+      "id": "fact.duty_action_singular",
+      "subject": "concept.долг",
+      "relation": "RelPrescribes",
+      "object": "concept.deystvie_nezavisimo",
+      "kind": "normative_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:duty_action_singular",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "duty_action_singular.counterpoint",
+    "record": {
+      "id": "fact.duty_action_singular.counterpoint",
+      "subject": "concept.долг",
+      "relation": "RelContrastsWith",
+      "object": "concept.deystvie_nezavisimo",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.duty_action_singular"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:duty_action_singular.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "duty_action_singular.consequence",
+    "record": {
+      "id": "fact.duty_action_singular.consequence",
+      "subject": "concept.долг",
+      "relation": "RelDependsOn",
+      "object": "concept.deystvie_nezavisimo",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.duty_action_singular"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:duty_action_singular.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "trust_experience",
+    "record": {
+      "id": "fact.trust_experience",
+      "subject": "concept.доверие",
+      "relation": "RelBuiltThrough",
+      "object": "concept.cherez_opyt",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:trust_experience",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "trust_experience.counterpoint",
+    "record": {
+      "id": "fact.trust_experience.counterpoint",
+      "subject": "concept.доверие",
+      "relation": "RelContrastsWith",
+      "object": "concept.cherez_opyt",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.trust_experience"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:trust_experience.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "trust_experience.consequence",
+    "record": {
+      "id": "fact.trust_experience.consequence",
+      "subject": "concept.доверие",
+      "relation": "RelDependsOn",
+      "object": "concept.cherez_opyt",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.trust_experience"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:trust_experience.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "fear_action",
+    "record": {
+      "id": "fact.fear_action",
+      "subject": "concept.страх",
+      "relation": "RelCanBe",
+      "object": "concept.paralizovat_deystvie",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:fear_action",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "fear_action.counterpoint",
+    "record": {
+      "id": "fact.fear_action.counterpoint",
+      "subject": "concept.страх",
+      "relation": "RelContrastsWith",
+      "object": "concept.paralizovat_deystvie",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.fear_action"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:fear_action.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "hope_action",
+    "record": {
+      "id": "fact.hope_action",
+      "subject": "concept.надежда",
+      "relation": "RelSupports",
+      "object": "concept.deystvie_neopredelennost",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:hope_action",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "hope_action.counterpoint",
+    "record": {
+      "id": "fact.hope_action.counterpoint",
+      "subject": "concept.надежда",
+      "relation": "RelContrastsWith",
+      "object": "concept.deystvie_neopredelennost",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.hope_action"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:hope_action.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "justice_proportionality",
+    "record": {
+      "id": "fact.justice_proportionality",
+      "subject": "concept.справедливость",
+      "relation": "RelRequires",
+      "object": "concept.sorazmernosti",
+      "kind": "normative_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:justice_proportionality",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "justice_proportionality.counterpoint",
+    "record": {
+      "id": "fact.justice_proportionality.counterpoint",
+      "subject": "concept.справедливость",
+      "relation": "RelContrastsWith",
+      "object": "concept.sorazmernosti",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.justice_proportionality"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:justice_proportionality.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "justice_proportionality.consequence",
+    "record": {
+      "id": "fact.justice_proportionality.consequence",
+      "subject": "concept.справедливость",
+      "relation": "RelDependsOn",
+      "object": "concept.sorazmernosti",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.justice_proportionality"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:justice_proportionality.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "time_irreversible",
+    "record": {
+      "id": "fact.time_irreversible",
+      "subject": "concept.время",
+      "relation": "RelSets",
+      "object": "concept.proshloe_nedostupno",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:time_irreversible",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "time_irreversible.counterpoint",
+    "record": {
+      "id": "fact.time_irreversible.counterpoint",
+      "subject": "concept.время",
+      "relation": "RelContrastsWith",
+      "object": "concept.proshloe_nedostupno",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.time_irreversible"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:time_irreversible.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "reason_proof",
+    "record": {
+      "id": "fact.reason_proof",
+      "subject": "concept.разум",
+      "relation": "RelDiffersFrom",
+      "object": "concept.ot_intuitsii",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:reason_proof",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "reason_proof.counterpoint",
+    "record": {
+      "id": "fact.reason_proof.counterpoint",
+      "subject": "concept.разум",
+      "relation": "RelContrastsWith",
+      "object": "concept.ot_intuitsii",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.reason_proof"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:reason_proof.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "being_existence",
+    "record": {
+      "id": "fact.being_existence",
+      "subject": "concept.бытие",
+      "relation": "RelDenotes",
+      "object": "concept.fakt_sushchestvovaniya",
+      "kind": "definition",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:being_existence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "being_existence.counterpoint",
+    "record": {
+      "id": "fact.being_existence.counterpoint",
+      "subject": "concept.бытие",
+      "relation": "RelContrastsWith",
+      "object": "concept.fakt_sushchestvovaniya",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.being_existence"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:being_existence.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "history_viewpoint",
+    "record": {
+      "id": "fact.history_viewpoint",
+      "subject": "concept.история",
+      "relation": "RelDependsOn",
+      "object": "concept.ot_tochki_zreniya",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:history_viewpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "history_viewpoint.counterpoint",
+    "record": {
+      "id": "fact.history_viewpoint.counterpoint",
+      "subject": "concept.история",
+      "relation": "RelContrastsWith",
+      "object": "concept.ot_tochki_zreniya",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.history_viewpoint"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:history_viewpoint.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "language_thought",
+    "record": {
+      "id": "fact.language_thought",
+      "subject": "concept.язык",
+      "relation": "RelRelatedTo",
+      "object": "concept.s_myshleniem",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:language_thought",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "language_thought.counterpoint",
+    "record": {
+      "id": "fact.language_thought.counterpoint",
+      "subject": "concept.язык",
+      "relation": "RelContrastsWith",
+      "object": "concept.s_myshleniem",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.language_thought"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:language_thought.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "will_goal",
+    "record": {
+      "id": "fact.will_goal",
+      "subject": "concept.воля",
+      "relation": "RelDirectedAt",
+      "object": "concept.deystvie_k_tseli",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:will_goal",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "will_goal.counterpoint",
+    "record": {
+      "id": "fact.will_goal.counterpoint",
+      "subject": "concept.воля",
+      "relation": "RelContrastsWith",
+      "object": "concept.deystvie_k_tseli",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.will_goal"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:will_goal.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "will_goal.consequence",
+    "record": {
+      "id": "fact.will_goal.consequence",
+      "subject": "concept.воля",
+      "relation": "RelDependsOn",
+      "object": "concept.deystvie_k_tseli",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "follows_from": "fact.will_goal"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:will_goal.consequence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "death_cessation",
+    "record": {
+      "id": "fact.death_cessation",
+      "subject": "concept.смерть",
+      "relation": "RelDenotes",
+      "object": "concept.prekrashchenie_sushchestvovaniya",
+      "kind": "definition",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:death_cessation",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "death_cessation.counterpoint",
+    "record": {
+      "id": "fact.death_cessation.counterpoint",
+      "subject": "concept.смерть",
+      "relation": "RelContrastsWith",
+      "object": "concept.prekrashchenie_sushchestvovaniya",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.death_cessation"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:death_cessation.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "loneliness_absence",
+    "record": {
+      "id": "fact.loneliness_absence",
+      "subject": "concept.одиночество",
+      "relation": "RelExpresses",
+      "object": "concept.otsutstvie_drugogo",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:loneliness_absence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "loneliness_absence.counterpoint",
+    "record": {
+      "id": "fact.loneliness_absence.counterpoint",
+      "subject": "concept.одиночество",
+      "relation": "RelContrastsWith",
+      "object": "concept.otsutstvie_drugogo",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.loneliness_absence"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:loneliness_absence.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "love_other",
+    "record": {
+      "id": "fact.love_other",
+      "subject": "concept.любовь",
+      "relation": "RelDirectedAt",
+      "object": "concept.na_drugogo",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:love_other",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "love_other.counterpoint",
+    "record": {
+      "id": "fact.love_other.counterpoint",
+      "subject": "concept.любовь",
+      "relation": "RelContrastsWith",
+      "object": "concept.na_drugogo",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.love_other"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:love_other.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "labor_resources",
+    "record": {
+      "id": "fact.labor_resources",
+      "subject": "concept.труд",
+      "relation": "RelRelatedTo",
+      "object": "concept.s_potrebnostyu",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:labor_resources",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "labor_resources.counterpoint",
+    "record": {
+      "id": "fact.labor_resources.counterpoint",
+      "subject": "concept.труд",
+      "relation": "RelContrastsWith",
+      "object": "concept.s_potrebnostyu",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.labor_resources"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:labor_resources.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "rest_absence",
+    "record": {
+      "id": "fact.rest_absence",
+      "subject": "concept.покой",
+      "relation": "RelDenotes",
+      "object": "concept.otsutstvie_dvizheniya",
+      "kind": "definition",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:rest_absence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "rest_absence.counterpoint",
+    "record": {
+      "id": "fact.rest_absence.counterpoint",
+      "subject": "concept.покой",
+      "relation": "RelContrastsWith",
+      "object": "concept.otsutstvie_dvizheniya",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.rest_absence"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:rest_absence.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "power_influence",
+    "record": {
+      "id": "fact.power_influence",
+      "subject": "concept.власть",
+      "relation": "RelDenotes",
+      "object": "concept.vliyat_na_drugih",
+      "kind": "definition",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:power_influence",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "power_influence.counterpoint",
+    "record": {
+      "id": "fact.power_influence.counterpoint",
+      "subject": "concept.власть",
+      "relation": "RelContrastsWith",
+      "object": "concept.vliyat_na_drugih",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.power_influence"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:power_influence.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "truthfulness_facts",
+    "record": {
+      "id": "fact.truthfulness_facts",
+      "subject": "concept.правда",
+      "relation": "RelClaims",
+      "object": "concept.na_sootvetstvie_faktam",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:truthfulness_facts",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "truthfulness_facts.counterpoint",
+    "record": {
+      "id": "fact.truthfulness_facts.counterpoint",
+      "subject": "concept.правда",
+      "relation": "RelContrastsWith",
+      "object": "concept.na_sootvetstvie_faktam",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.truthfulness_facts"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:truthfulness_facts.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "silence_speech",
+    "record": {
+      "id": "fact.silence_speech",
+      "subject": "concept.молчание",
+      "relation": "RelContrastsWith",
+      "object": "concept.s_rechyu",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9500,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:silence_speech",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "silence_speech.counterpoint",
+    "record": {
+      "id": "fact.silence_speech.counterpoint",
+      "subject": "concept.молчание",
+      "relation": "RelContrastsWith",
+      "object": "concept.s_rechyu",
+      "kind": "interpretive_claim",
+      "conditions": [
+        {
+          "counters": "fact.silence_speech"
+        }
+      ],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:silence_speech.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  }
+]

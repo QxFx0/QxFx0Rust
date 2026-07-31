@@ -1,6 +1,6 @@
 # ADR-0014: Audited content-bearing response plans
 
-- Status: Accepted
+- Status: Superseded in part by ADR-0015
 - Date: 2026-07-27
 
 ## Context
@@ -25,14 +25,13 @@ remain in the audited asset and are not copied into the plan.
 
 A recognized topic outside `audited_v1` produces
 `FallbackReason::NoAdmissiblePredicate`. Dialogue and external-question routes
-use explicit system/user-input contracts. The renderer remains on its current
-route-based path, so this change must preserve response and persistence parity.
+use explicit system/user-input contracts. At the time of this decision the
+renderer remained on its route-based path; ADR-0015 completes that cutover.
 
 Doctor exposes `recognition_topics_total`, `content_predicates_total`,
 `argued_topics_admitted`, `argued_predicates_admitted`, and `profile_enabled`.
 
 ## Deferred
 
-Renderer authority moves to `ReadyResponsePlan` only after the structural
-corpus gate passes in isolated and long-session runs. Wider recognition assets
-remain non-argued until explicitly admitted by a reviewed profile.
+Wider recognition assets remain non-argued until explicitly admitted by a
+reviewed profile. The deferred renderer authority was completed by ADR-0015.

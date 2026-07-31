@@ -477,6 +477,7 @@ dependencies = [
  "qxfx0-types",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
 ]
 
@@ -537,6 +538,8 @@ dependencies = [
  "qxfx0-types",
  "serde",
  "serde_json",
+ "sha2",
+ "thiserror",
  "tracing",
 ]
 

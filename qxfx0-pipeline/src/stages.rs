@@ -18,10 +18,9 @@ use qxfx0_self::{
     SelfBlanket,
 };
 use qxfx0_semantic::{
-    cached_semantic_network, derive_atoms, network::activate as network_activate,
-    normalize_punctuation, seed_graph, ContentSelector, DiscourseComposer, DiscourseStyle,
-    FallbackReason, PropositionMode, PropositionParser, QualityGatePhase, RecoveryEvidence,
-    RecoveryTrace, SenseDecomposer, Verbosity,
+    argued_topic_registry, derive_atoms, normalize_punctuation, seed_graph, ClaimRole,
+    DialogueObligation, FallbackPlan, FallbackReason, PlanOutcome, PlanSubject, PropositionMode,
+    PropositionParser, QualityGatePhase, ReadyResponsePlan, RecoveryEvidence, RecoveryTrace,
 };
 use qxfx0_types::atom::AtomId;
 use qxfx0_types::field::FieldProfile;
@@ -100,11 +99,17 @@ pub fn prepare_stage(
 
     // W3: Populate has_enough — true when the subject exists in the runtime graph,
     // meaning we have enough semantic context to reason about it.
+    let subject_atom_id = match &input.proposition().subject_resolution {
+        qxfx0_semantic::concept_resolver::ResolutionOutcome::Resolved(entry) => {
+            entry.atom_id.clone()
+        }
+        _ => AtomId::new(input.subject()),
+    };
     let has_enough = state
         .semantic
         .runtime_graph
         .atoms
-        .contains_key(&AtomId::new(input.subject()));
+        .contains_key(&subject_atom_id);
 
     Ok(PreparedTurnContext::new(
         input,
@@ -170,7 +175,8 @@ fn family_for_mode(mode: PropositionMode) -> CanonicalMoveFamily {
     }
 }
 
-/// Stage 3: build an observational plan without changing renderer authority.
+/// Stage 3: build the renderer-authoritative content plan. The historical
+/// function name is retained for replay compatibility.
 pub fn plan_shadow_stage(
     _state: &mut SystemState,
     routed: RoutedTurnContext,
@@ -179,7 +185,9 @@ pub fn plan_shadow_stage(
     Ok(PlannedTurnContext::new(routed, shadow_plan))
 }
 
-/// Stage 4: Render — compose response from graph (2-level cascade: Conjugate → ContentSelector).
+/// Stage 4: Render. Declarative content is rendered exclusively from a
+/// FactId-validated ReadyResponsePlan; typed dialogue contracts retain their
+/// dedicated system frames.
 pub fn render_stage(
     state: &mut SystemState,
     planned: PlannedTurnContext,
@@ -188,7 +196,6 @@ pub fn render_stage(
     let raw = routed.prepared().input().raw_text().to_owned();
     let subject = routed.prepared().input().subject().to_owned();
     let mode = routed.prepared().input().mode();
-    let is_challenge = routed.prepared().input().is_challenge();
 
     // Seed the runtime graph once if empty — persist it so subsequent turns
     // render against the full semantic graph, not a near-empty one.
@@ -207,14 +214,32 @@ pub fn render_stage(
     );
     let path_depth = fp.path_depth();
 
-    // Specialized intents must reach their typed frames directly. The
-    // generic discourse composer intentionally emits an introduction even
-    // with no predicates, so these frames cannot be implemented as a late
-    // fallback.
-    if matches!(
-        mode,
-        PropositionMode::Greeting | PropositionMode::Purpose | PropositionMode::WorldCause
-    ) {
+    match planned.shadow_plan() {
+        PlanOutcome::Fallback(fallback) => {
+            let response = render_typed_fallback(fallback);
+            return Ok(RenderedTurnContext::new(
+                planned,
+                normalize_punctuation(&response),
+                path_depth,
+                false,
+            ));
+        }
+        PlanOutcome::Ready(plan)
+            if plan
+                .claims()
+                .iter()
+                .any(|claim| claim.role() != ClaimRole::DialogueAct) =>
+        {
+            let response = render_curated_plan(plan, fp.narrative_tone())?;
+            return Ok(RenderedTurnContext::new(
+                planned, response, path_depth, false,
+            ));
+        }
+        PlanOutcome::Ready(_) => {}
+    }
+
+    // Greeting is a non-factual system dialogue act.
+    if mode == PropositionMode::Greeting {
         let mut prop = PropositionParser::parse(&raw);
         prop.subject = subject.clone();
         let frame = RenderEngine::frame_from_proposition(&prop);
@@ -227,146 +252,179 @@ pub fn render_stage(
         ));
     }
 
-    let sn = cached_semantic_network(&mut state.semantic);
-    let graph = &state.semantic.runtime_graph;
-
-    let sense_vectors = SenseDecomposer::decompose(&raw, graph);
-
-    // Build style from Self Layer state
-    let holistic_dominant = routed.prepared().holistic_dominant();
-    let angst: f64 = state.semantic.essence.angst;
-    let essence_committed = state.semantic.essence.commitment.is_some();
-    let style = style_from_state(
-        conatus_energy,
-        angst,
-        holistic_dominant,
-        essence_committed,
-        fp.narrative_tone(),
-    );
-
-    // Primary: DiscourseComposer (template-based, field-modulated). The
-    // semantic network is a derived in-memory cache; ContentSelector remains
-    // cheap and is rebuilt against the current graph.
-    let cs = ContentSelector::build(graph);
-    // Multi-turn coherence: if the current topic differs from last_topic,
-    // also activate the previous topic to bridge context. This produces
-    // cross-topic predicates that connect the current and prior subjects.
-    let activated = network_activate(&AtomId::new(subject.clone()), &sn);
-    let mut selected = cs.compose_from_activation(&fp, &subject, &activated);
-
-    // Topic continuity: if we have a prior topic and it's different,
-    // look for bridging predicates that connect last_topic → current topic.
-    let mut has_bridge = false;
-    if let Some(ref last_topic) = state.dialogue.last_topic {
-        if last_topic != &subject {
-            let bridge = qxfx0_semantic::GraphEngagement::bfs_path(
-                graph,
-                &AtomId::new(last_topic.clone()),
-                &AtomId::new(subject.clone()),
-            );
-            if !bridge.is_empty() {
-                has_bridge = true;
-                // Boost consolidation when topics are bridged — the system
-                // is building a coherent narrative thread.
-                state.semantic.field.consolidation =
-                    (state.semantic.field.consolidation + 0.05).min(1.0);
+    // External questions remain dialogue contracts. User-provided labels may
+    // appear only as quoted input, never as declarative factual authority.
+    if matches!(mode, PropositionMode::Purpose | PropositionMode::WorldCause) {
+        let plan = planned
+            .shadow_plan()
+            .ready()
+            .ok_or_else(|| "external dialogue contract unexpectedly fell back".to_string())?;
+        let label = match plan.subject() {
+            PlanSubject::External(external) => external.label(),
+            other => {
+                return Err(format!(
+                    "external dialogue contract has subject kind '{}'",
+                    other.kind()
+                ))
             }
-        }
-    }
-
-    // Fallback: direct predicate selection if activation found nothing.
-    if selected.is_empty() {
-        selected = cs.select_predicates(&fp, &subject, Some(&activated));
-    }
-
-    let composer = DiscourseComposer::new();
-    let turn_seed = state.dialogue.turn_count as u64;
-    let history: &[String] = &state.dialogue.history;
-    let mut response = composer.compose(&selected, &subject, &style, turn_seed, history);
-
-    // Fallback: ConjugateComposer (if DiscourseComposer produced nothing)
-    if response.is_empty() {
-        let conjugate_surface = if is_challenge {
-            qxfx0_semantic::ConjugateComposer::compose_with_challenge(graph, &sense_vectors, true)
-        } else {
-            qxfx0_semantic::ConjugateComposer::compose(graph, &sense_vectors)
         };
-        response = conjugate_surface.text;
+        let response = match mode {
+            PropositionMode::Purpose => format!(
+                "Для вопроса о функции «{label}» нужен внешний источник. Уточни контекст использования."
+            ),
+            PropositionMode::WorldCause => format!(
+                "Для вопроса «{label}» нужны внешние факты; локальный knowledge pack не даёт достаточного основания."
+            ),
+            _ => unreachable!("guarded by matches above"),
+        };
+        return Ok(RenderedTurnContext::new(
+            planned,
+            normalize_punctuation(&response),
+            path_depth,
+            false,
+        ));
     }
 
-    // Fallback: RenderEngine (frame-based rendering if both composers failed)
-    if response.is_empty() {
-        let prop = PropositionParser::parse(&raw);
-        let frame = RenderEngine::frame_from_proposition(&prop);
-        response = RenderEngine::render_frame(&frame, &mut state.semantic, &fp, "");
-    }
-    if response.is_empty() {
-        response =
-            "Я не знаю этот смысл, но он вызывает определенный резонанс в моей системе.".into();
-    }
-
-    Ok(RenderedTurnContext::new(
-        planned,
-        normalize_punctuation(&response),
-        path_depth,
-        has_bridge,
+    Err(format!(
+        "ready dialogue contract has no renderer for mode {mode:?}"
     ))
 }
 
-fn style_from_state(
-    conatus: f64,
-    angst: f64,
-    _holistic: bool,
-    committed: bool,
+fn render_curated_plan(
+    plan: &ReadyResponsePlan,
     tone: qxfx0_types::NarrativeTone,
-) -> DiscourseStyle {
-    let (verbosity, register) = match tone {
-        qxfx0_types::NarrativeTone::Warm => (
-            Verbosity::Elaborate,
-            if committed {
-                "philosophical"
-            } else {
-                "conversational"
-            },
-        ),
-        qxfx0_types::NarrativeTone::Terse => (Verbosity::Brief, "philosophical"),
-        qxfx0_types::NarrativeTone::Recovery => (Verbosity::Medium, "conversational"),
-        qxfx0_types::NarrativeTone::Neutral => {
-            let v = if conatus > 0.8 {
-                3
-            } else if conatus > 0.4 {
-                2
-            } else {
-                1
-            };
-            let verb = match v {
-                3 => Verbosity::Elaborate,
-                2 => Verbosity::Medium,
-                _ => Verbosity::Brief,
-            };
-            (
-                verb,
-                if committed {
-                    "philosophical"
-                } else {
-                    "conversational"
-                },
-            )
+) -> Result<String, String> {
+    let registry = argued_topic_registry().map_err(str::to_owned)?;
+    plan.validate_with_facts(registry.facts())?;
+    let topic_id = match plan.subject() {
+        PlanSubject::Topic(topic_id) => topic_id,
+        other => {
+            return Err(format!(
+                "declarative plan has non-topic subject kind '{}'",
+                other.kind()
+            ))
         }
     };
-    DiscourseStyle {
-        register: register.into(),
-        complexity: if conatus > 0.8 {
-            3
-        } else if conatus > 0.4 {
-            2
-        } else {
-            1
-        },
-        hedging: angst.clamp(0.0, 1.0),
-        verbosity,
-        use_transitions: conatus > 0.6,
+    let topic = registry
+        .get(topic_id.as_str())
+        .ok_or_else(|| format!("no audited renderer entry for topic '{topic_id:?}'"))?;
+    let topic_concept = match qxfx0_semantic::get_resolver().resolve(topic_id.as_str()) {
+        qxfx0_semantic::ResolutionOutcome::Resolved(entry) => entry.concept_id,
+        outcome => {
+            return Err(format!(
+                "audited renderer topic '{}' did not resolve uniquely: {outcome:?}",
+                topic_id.as_str()
+            ))
+        }
+    };
+
+    let mut sentences = Vec::new();
+    match tone {
+        qxfx0_types::NarrativeTone::Warm => {
+            sentences.push("Давай рассмотрим это вместе.".to_string())
+        }
+        qxfx0_types::NarrativeTone::Recovery => {
+            sentences.push("Сформулирую осторожно.".to_string())
+        }
+        qxfx0_types::NarrativeTone::Neutral | qxfx0_types::NarrativeTone::Terse => {}
     }
+
+    for claim in plan.claims().iter() {
+        if claim.role() == ClaimRole::DialogueAct {
+            continue;
+        }
+        let fact_id = claim
+            .fact_id()
+            .ok_or_else(|| format!("declarative claim '{}' has no FactId", claim.id().as_str()))?;
+        let fact = registry
+            .facts()
+            .select(fact_id)
+            .map_err(|error| error.to_string())?;
+        if fact.subject != topic_concept {
+            return Err(format!(
+                "fact '{}' is not about plan topic '{}'",
+                fact_id,
+                topic_id.as_str()
+            ));
+        }
+        let statement = topic.statement_for_fact_id(fact_id).ok_or_else(|| {
+            format!(
+                "fact '{}' has no audited renderer leaf for topic '{}'",
+                fact_id,
+                topic_id.as_str()
+            )
+        })?;
+        if !claim
+            .predicate_refs()
+            .iter()
+            .any(|predicate_ref| predicate_ref == statement.predicate_ref())
+        {
+            return Err(format!(
+                "claim '{}' does not reference the renderer predicate for fact '{}'",
+                claim.id().as_str(),
+                fact_id
+            ));
+        }
+        let prefix = match claim.role() {
+            ClaimRole::Thesis => "",
+            ClaimRole::Support => "Кроме того, ",
+            ClaimRole::Counterpoint => "Однако ",
+            ClaimRole::Consequence => "Поэтому ",
+            ClaimRole::DialogueAct => unreachable!("filtered above"),
+        };
+        sentences.push(as_sentence(&format!("{prefix}{}", statement.surface())));
+    }
+
+    if sentences.is_empty() {
+        return Err("declarative plan produced no curated renderer leaves".into());
+    }
+    if matches!(
+        plan.obligation(),
+        Some(DialogueObligation::CheckAgreement { .. })
+    ) {
+        sentences.push("Что думаешь об этом?".into());
+    }
+    Ok(normalize_punctuation(&sentences.join(" ")))
+}
+
+fn render_typed_fallback(plan: &FallbackPlan) -> String {
+    match plan.reason() {
+        FallbackReason::NoTopicProvided => "Уточни, какую тему нужно рассмотреть.".into(),
+        FallbackReason::NoAdmissiblePredicate => match plan.subject() {
+            Some(qxfx0_semantic::FallbackSubject::KnownTopic(topic)) => format!(
+                "Я вижу тему «{}», но в локальном knowledge pack нет достаточного основания.",
+                topic.as_str()
+            ),
+            _ => "Я вижу тему, но в локальном knowledge pack нет достаточного основания.".into(),
+        },
+        FallbackReason::UnknownTopic => {
+            "Я вижу тему, но в локальном knowledge pack нет достаточного основания.".into()
+        }
+        FallbackReason::MorphologyFailure => {
+            "Не удалось надёжно определить форму термина. Уточни формулировку.".into()
+        }
+        FallbackReason::QualityRejection => "Ответ не прошёл локальную проверку качества.".into(),
+        FallbackReason::SemanticConflict => {
+            "Локальные основания противоречат друг другу; требуется уточнение.".into()
+        }
+        FallbackReason::PersistenceRecovery => {
+            "Состояние восстановлено после ошибки сохранения.".into()
+        }
+    }
+}
+
+fn as_sentence(surface: &str) -> String {
+    let surface = surface.trim();
+    let mut characters = surface.chars();
+    let Some(first) = characters.next() else {
+        return String::new();
+    };
+    let mut sentence = first.to_uppercase().collect::<String>();
+    sentence.extend(characters);
+    if !sentence.ends_with(['.', '!', '?']) {
+        sentence.push('.');
+    }
+    sentence
 }
 
 /// Stage 5: Finalize — witness + commitment + graph growth + derive_atoms.
@@ -429,15 +487,18 @@ pub fn finalize_stage(
     }
 
     // Derive atoms + enrich graph
-    let subject_id = AtomId::new(subject.clone());
+    let input = rendered.routed().prepared().input();
+    let subject_id = match &input.proposition().subject_resolution {
+        qxfx0_semantic::concept_resolver::ResolutionOutcome::Resolved(entry) => {
+            entry.atom_id.clone()
+        }
+        _ => AtomId::new(subject.clone()),
+    };
     let topic_in_graph = state.semantic.runtime_graph.atoms.contains_key(&subject_id);
     let world_id = AtomId::new("мир");
     let reserved_atoms = usize::from(!topic_in_graph)
         + usize::from(!state.semantic.runtime_graph.atoms.contains_key(&world_id));
-    let can_register_topic = topic_in_graph
-        || (subject.chars().count() > 2
-            && state.semantic.runtime_graph.atoms.len() + reserved_atoms <= MAX_RUNTIME_ATOMS
-            && state.semantic.runtime_graph.edges.len() < MAX_RUNTIME_EDGES);
+    let can_register_topic = topic_in_graph;
     let tags = qxfx0_semantic::inference::classify_state_tags(
         topic_in_graph,
         state.semantic.field.confidence,
@@ -490,49 +551,9 @@ pub fn finalize_stage(
         collapse_essence(turn, &mut state.semantic.essence);
     }
 
-    // Graph growth for new topics
-    if subject.chars().count() > 2 && !topic_in_graph && can_register_topic {
-        let atom = qxfx0_types::atom::Atom {
-            id: subject_id.clone(),
-            display: subject.clone(),
-            category: qxfx0_types::atom::AtomCategory::CatTopic,
-        };
-        state
-            .semantic
-            .runtime_graph
-            .atoms
-            .insert(subject_id.clone(), atom);
-        // Register the "мир" atom if not already present.
-        state
-            .semantic
-            .runtime_graph
-            .atoms
-            .entry(world_id.clone())
-            .or_insert(qxfx0_types::atom::Atom {
-                id: world_id.clone(),
-                display: "мир".into(),
-                category: qxfx0_types::atom::AtomCategory::CatTopic,
-            });
-        let rel = qxfx0_types::atom::Relation {
-            from: world_id,
-            to: subject_id,
-            rel_type: RelationType::RelRelatedTo,
-            object_case: qxfx0_types::atom::ObjectCase::CaseAccusative,
-            object_text: subject.clone(),
-            verb_override: None,
-            ru_original: format!("мир включает {}", subject),
-            en_original: format!("world includes {}", subject),
-            source: qxfx0_types::atom::RelationSource::SeedFromPredicate,
-            topic: subject.clone(),
-            rationale: None,
-            counter: None,
-            synthesis: None,
-        };
-        state.semantic.runtime_graph.add_relation(rel);
-    }
-
-    // Commitment — initialise store on first commit.
-    if subject.len() > 2 && response.len() > 10 {
+    // Legacy-only dialogue commitment. This is intentionally not a FactRecord
+    // and is never consulted by the curated FactRegistry selector.
+    if topic_in_graph && subject.len() > 2 && response.len() > 10 {
         let payload = FactualClaimPayload {
             statement: response.clone(),
             confidence: 0.7,
@@ -547,7 +568,7 @@ pub fn finalize_stage(
             .get_or_insert_with(SemanticCommitmentStore::default);
         let (new_store, result) = CommitmentOps::commit_observation(payload, store);
         if let CommitResult::Duplicate(_) = result {
-            tracing::info!("commitment duplicate detected for topic {subject}");
+            tracing::info!("legacy dialogue commitment duplicate for topic {subject}");
         }
         *store = new_store;
     }
@@ -764,10 +785,13 @@ mod tests {
             ..SystemState::default()
         };
         let raw_text = String::new();
+        let (semantic_status, observed_tokens) = qxfx0_semantic::resolve_input_status(&raw_text);
         let input = TurnInputContext::new(
             state.session_id.clone(),
             raw_text.clone(),
             PropositionParser::parse(&raw_text),
+            semantic_status,
+            observed_tokens,
             false,
         );
         let prepared = prepare_stage(&mut state, input).unwrap();
