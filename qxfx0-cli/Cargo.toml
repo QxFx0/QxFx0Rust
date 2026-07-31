@@ -29,3 +29,6 @@ tracing-subscriber.workspace = true
 anyhow.workspace = true
 rusqlite.workspace = true
 ctrlc = "3.4"
+
+[dev-dependencies]
+ed25519-dalek.workspace = true
