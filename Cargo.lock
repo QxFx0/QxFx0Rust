@@ -516,6 +516,7 @@ dependencies = [
  "anyhow",
  "clap",
  "ctrlc",
+ "ed25519-dalek",
  "qxfx0-code",
  "qxfx0-commitment",
  "qxfx0-governance",
