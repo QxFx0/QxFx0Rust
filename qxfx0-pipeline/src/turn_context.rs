@@ -8,7 +8,7 @@ use crate::shadow_plan::ShadowPlanOutcome;
 use qxfx0_self::deliberation::ReconcileRule;
 use qxfx0_semantic::{ParsedProposition, PlanOutcome, PropositionMode, RecoveryTrace};
 use qxfx0_types::system_state::GuardStatus;
-use qxfx0_types::CanonicalMoveFamily;
+use qxfx0_types::{CanonicalMoveFamily, InputSemanticStatus, ObservedToken};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -17,6 +17,8 @@ pub struct TurnInputContext {
     session_id: String,
     raw_text: String,
     proposition: ParsedProposition,
+    semantic_status: InputSemanticStatus,
+    observed_tokens: Vec<ObservedToken>,
     is_challenge: bool,
 }
 
@@ -25,12 +27,16 @@ impl TurnInputContext {
         session_id: String,
         raw_text: String,
         proposition: ParsedProposition,
+        semantic_status: InputSemanticStatus,
+        observed_tokens: Vec<ObservedToken>,
         is_challenge: bool,
     ) -> Self {
         Self {
             session_id,
             raw_text,
             proposition,
+            semantic_status,
+            observed_tokens,
             is_challenge,
         }
     }
@@ -45,6 +51,14 @@ impl TurnInputContext {
 
     pub fn proposition(&self) -> &ParsedProposition {
         &self.proposition
+    }
+
+    pub fn semantic_status(&self) -> &InputSemanticStatus {
+        &self.semantic_status
+    }
+
+    pub fn observed_tokens(&self) -> &[ObservedToken] {
+        &self.observed_tokens
     }
 
     pub fn subject(&self) -> &str {
@@ -372,6 +386,16 @@ impl StageTraceContext for PlannedTurnContext {
                     .collect::<Vec<_>>()
                     .join(",");
                 metadata.insert("predicate_refs".into(), predicate_refs);
+                let fact_ids = plan
+                    .claims()
+                    .iter()
+                    .filter_map(|claim| claim.fact_id())
+                    .map(qxfx0_semantic::FactId::as_str)
+                    .collect::<BTreeSet<_>>()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .join(",");
+                metadata.insert("fact_ids".into(), fact_ids);
                 let provenances = plan
                     .claims()
                     .iter()

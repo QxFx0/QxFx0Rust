@@ -128,6 +128,76 @@ fn session_invariant_output(state: &SystemState, reason: &str) -> TurnOutput {
     }
 }
 
+fn input_boundary_output(state: &mut SystemState, status: &InputSemanticStatus) -> TurnOutput {
+    let response = match status {
+        InputSemanticStatus::Unknown => {
+            "Я вижу тему, но в локальном knowledge pack нет достаточного основания."
+        }
+        InputSemanticStatus::Ambiguous => {
+            "Этот термин допускает несколько интерпретаций. Уточни, какой смысл имеется в виду."
+        }
+        InputSemanticStatus::Resolved(_) => {
+            unreachable!("resolved input is not a boundary failure")
+        }
+    };
+    let response = response.to_string();
+    let family = CanonicalMoveFamily::CMRepair;
+    let guard_status = GuardStatus::Allowed;
+    let turn = state.dialogue.turn_count + 1;
+
+    // This is a handled observation boundary, not a guard rejection. Record
+    // only the fixed system response; the untrusted phrase is neither copied
+    // into last_topic nor admitted into semantic state.
+    state.dialogue.turn_count = turn;
+    state.dialogue.last_family = family;
+    state.dialogue.history.push(response.clone());
+    if state.dialogue.history.len() > 10_000 {
+        let excess = state.dialogue.history.len() - 10_000;
+        state.dialogue.history.drain(0..excess);
+    }
+    state.dialogue.observations.push(DialogueObservation {
+        response_digest: execution_trace::calculate_stable_digest(&response)
+            .unwrap_or_else(|error| format!("digest-error:{error}")),
+        topic: None,
+        turn_seq: turn,
+    });
+    if state.dialogue.observations.len() > 10_000 {
+        let excess = state.dialogue.observations.len() - 10_000;
+        state.dialogue.observations.drain(0..excess);
+    }
+    state.last_turn_decision = Some(TurnDecision {
+        family,
+        force: IllocutionaryForce::IFAsk,
+        guard_status: guard_status.clone(),
+        legitimacy: 1.0,
+    });
+    state.governance_log.append(GovernanceEvent {
+        turn,
+        event_type: GovernanceEventType::TurnCompleted,
+        family,
+        guard_status: guard_status.clone(),
+        timestamp: format!("turn-{turn}"),
+    });
+    state.governance_log.trim(10_000);
+
+    TurnOutput {
+        response,
+        family,
+        guard_status,
+        blocked: false,
+        commitment_engaged: false,
+        governance_events: state.governance_log.len(),
+        conatus_energy: 0.0,
+        path_depth: 0,
+        holistic_dominant: state.semantic.adjunction.holistic_dominant,
+        conversation_state: state
+            .dialogue
+            .conversation_state
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "Idle".into()),
+    }
+}
+
 fn execute_stage<I, O, E, F>(
     trace: &mut Option<&mut execution_trace::PipelineTrace>,
     stage_name: &str,
@@ -165,6 +235,21 @@ where
         }
         metadata.extend(output.trace_metadata());
     }
+    if stage_name == "plan_shadow" {
+        metadata.insert(
+            "pack_set_fingerprint".into(),
+            qxfx0_semantic::active_pack_set().fingerprint().into(),
+        );
+        metadata.insert(
+            "active_pack_ids".into(),
+            qxfx0_semantic::active_pack_set()
+                .summaries()
+                .iter()
+                .map(|pack| format!("{}@{}", pack.pack_id, pack.pack_version))
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+    }
     if let Some(trace) = trace.as_deref_mut() {
         trace.record_step(
             stage_name,
@@ -197,6 +282,7 @@ pub fn process_turn_with_trace(
         input,
         state.dialogue.turn_count,
         state.session_id.as_str(),
+        qxfx0_semantic::active_pack_set().fingerprint(),
     ))
     .unwrap_or_else(|_| "trace-unavailable".into());
     let initial_digest = execution_trace::calculate_stable_digest(&(&*state, input))
@@ -214,6 +300,10 @@ pub fn process_turn_with_trace(
         BTreeMap::from([
             ("blocked".into(), output.blocked.to_string()),
             ("family".into(), format!("{:?}", output.family)),
+            (
+                "pack_set_fingerprint".into(),
+                qxfx0_semantic::active_pack_set().fingerprint().into(),
+            ),
         ]),
     );
     trace.set_total_duration(start.elapsed());
@@ -236,6 +326,16 @@ fn process_turn_internal(
     } else if state.session_id != input.session_id {
         return session_invariant_output(state, "session_id does not match loaded state");
     }
+    let active_pack_fingerprint = qxfx0_semantic::active_pack_set().fingerprint();
+    let migrate_legacy_pack_fingerprint = state.semantic.pack_set_fingerprint.is_empty();
+    if !migrate_legacy_pack_fingerprint
+        && state.semantic.pack_set_fingerprint != active_pack_fingerprint
+    {
+        return session_invariant_output(
+            state,
+            "session knowledge-pack fingerprint differs from the active pack set",
+        );
+    }
     let state_violations = state.validate();
     if !state_violations.is_empty() {
         tracing::error!("state invariant violation: {}", state_violations.join("; "));
@@ -247,6 +347,119 @@ fn process_turn_internal(
 
     // Parse once and retain the typed proposition throughout the pipeline.
     let mut prop = PropositionParser::parse(&input.raw_text);
+    let (phrase_status, observed_tokens) = qxfx0_semantic::resolve_input_status(&input.raw_text);
+    let mut input_status = match (&prop.subject_resolution, prop.object_resolution.as_ref()) {
+        (qxfx0_semantic::ResolutionOutcome::Ambiguous(_), _)
+        | (_, Some(qxfx0_semantic::ResolutionOutcome::Ambiguous(_))) => {
+            InputSemanticStatus::Ambiguous
+        }
+        (qxfx0_semantic::ResolutionOutcome::Unknown, _)
+        | (_, Some(qxfx0_semantic::ResolutionOutcome::Unknown)) => InputSemanticStatus::Unknown,
+        (qxfx0_semantic::ResolutionOutcome::Resolved(entry), _) => {
+            InputSemanticStatus::Resolved(entry.concept_id.clone())
+        }
+    };
+    // Generic assertions often end in a predicate ("свобода существует").
+    // If the parser-selected subject is unknown, resolve the complete phrase
+    // so the longest curated alias can still provide the primary concept.
+    if matches!(input_status, InputSemanticStatus::Unknown) {
+        match phrase_status {
+            InputSemanticStatus::Resolved(concept_id) => {
+                let qxfx0_semantic::ResolutionOutcome::Resolved(entry) =
+                    qxfx0_semantic::get_resolver().resolve(&input.raw_text)
+                else {
+                    unreachable!("resolved phrase status must retain its concept entry");
+                };
+                debug_assert_eq!(entry.concept_id, concept_id);
+                prop.subject = entry.atom_id.as_str().to_string();
+                prop.subject_resolution =
+                    qxfx0_semantic::ResolutionOutcome::Resolved(entry.clone());
+                input_status = InputSemanticStatus::Resolved(entry.concept_id);
+            }
+            InputSemanticStatus::Ambiguous => {
+                input_status = InputSemanticStatus::Ambiguous;
+            }
+            InputSemanticStatus::Unknown => {}
+        }
+    }
+    let boundary_status = if matches!(
+        prop.mode,
+        qxfx0_semantic::PropositionMode::Greeting
+            | qxfx0_semantic::PropositionMode::Purpose
+            | qxfx0_semantic::PropositionMode::WorldCause
+    ) {
+        None
+    } else if matches!(
+        input_status,
+        InputSemanticStatus::Unknown | InputSemanticStatus::Ambiguous
+    ) {
+        Some(input_status.clone())
+    } else {
+        None
+    };
+
+    // Empty/oversized input still belongs to the existing guard rollback
+    // contract. Valid unknown/ambiguous input is handled before any semantic
+    // stage can add atoms, relations, commitments, facts, or essence state.
+    let guard_config = qxfx0_guard::GuardConfig::default();
+    let input_is_guard_invalid = input.raw_text.trim().is_empty()
+        || input.raw_text.chars().count() > guard_config.max_input_length;
+    if !input_is_guard_invalid {
+        if let Some(status) = boundary_status.as_ref() {
+            if let Some(trace) = trace.as_deref_mut() {
+                let semantic_status = match status {
+                    InputSemanticStatus::Unknown => "unknown",
+                    InputSemanticStatus::Ambiguous => "ambiguous",
+                    InputSemanticStatus::Resolved(_) => unreachable!(),
+                };
+                let digest = execution_trace::calculate_stable_digest(&(
+                    semantic_status,
+                    state.dialogue.turn_count,
+                    state.session_id.as_str(),
+                ))
+                .unwrap_or_else(|error| format!("digest-error:{error}"));
+                trace.record_step(
+                    "input_semantic_boundary",
+                    digest.clone(),
+                    digest,
+                    std::time::Duration::ZERO,
+                    BTreeMap::from([
+                        ("semantic_status".into(), semantic_status.into()),
+                        ("trusted_state_mutated".into(), "false".into()),
+                        (
+                            "pack_set_fingerprint".into(),
+                            qxfx0_semantic::active_pack_set().fingerprint().into(),
+                        ),
+                        (
+                            "observed_token_count".into(),
+                            observed_tokens.len().to_string(),
+                        ),
+                        (
+                            "unknown_morphology_count".into(),
+                            observed_tokens
+                                .iter()
+                                .filter(|token| {
+                                    matches!(
+                                        token.morphology,
+                                        qxfx0_types::MorphologyLookupSummary::Unknown
+                                    )
+                                })
+                                .count()
+                                .to_string(),
+                        ),
+                    ]),
+                );
+            }
+            return input_boundary_output(state, status);
+        }
+    }
+
+    // Legacy sessions acquire semantic authority only inside the existing
+    // rollback snapshot. Unknown/ambiguous and guard-blocked turns therefore
+    // preserve the exact pre-turn state.
+    if migrate_legacy_pack_fingerprint {
+        state.semantic.pack_set_fingerprint = active_pack_fingerprint.into();
+    }
 
     // Normalize subject to nominative form using the runtime graph.
     // Users type topics in oblique cases ("об ответственности" → "ответственности")
@@ -254,27 +467,36 @@ fn process_turn_internal(
     if state.semantic.runtime_graph.edges.is_empty() {
         state.semantic.runtime_graph = qxfx0_semantic::seed_graph();
     }
-    if matches!(
-        prop.mode,
-        qxfx0_semantic::PropositionMode::Define | qxfx0_semantic::PropositionMode::Assert
-    ) {
-        if let Some(known_topic) = qxfx0_semantic::PropositionParser::known_topic_in_input(
-            &input.raw_text,
-            &state.semantic.runtime_graph,
+    if let qxfx0_semantic::ResolutionOutcome::Resolved(entry) = &prop.subject_resolution {
+        // This is the only production bridge from stable semantic identity to
+        // the existing graph pipeline. ConceptId remains metadata; AtomId is
+        // the graph key used by every downstream stage.
+        prop.subject = entry.atom_id.as_str().to_string();
+    } else {
+        if matches!(
+            prop.mode,
+            qxfx0_semantic::PropositionMode::Define | qxfx0_semantic::PropositionMode::Assert
         ) {
-            prop.subject = known_topic;
+            if let Some(known_topic) = qxfx0_semantic::PropositionParser::known_topic_in_input(
+                &input.raw_text,
+                &state.semantic.runtime_graph,
+            ) {
+                prop.subject = known_topic;
+            }
         }
+        prop.subject = qxfx0_semantic::PropositionParser::normalize_topic(
+            &prop.subject,
+            &state.semantic.runtime_graph,
+        );
     }
-    prop.subject = qxfx0_semantic::PropositionParser::normalize_topic(
-        &prop.subject,
-        &state.semantic.runtime_graph,
-    );
 
     let is_challenge = detect_challenge(&input.raw_text);
     let input_context = TurnInputContext::new(
         input.session_id.clone(),
         input.raw_text.clone(),
         prop,
+        input_status,
+        observed_tokens,
         is_challenge,
     );
 
@@ -307,7 +529,8 @@ fn process_turn_internal(
     recovery.family = Some(routed.family());
     recovery.conversation_state = Some(routed.conversation_state());
 
-    // Stage 3: Shadow plan (observational; renderer authority is unchanged)
+    // Stage 3: build the renderer-authoritative response plan. The trace stage
+    // retains its historical `plan_shadow` name for replay compatibility.
     let planned = match execute_stage(
         &mut trace,
         "plan_shadow",
@@ -406,6 +629,20 @@ fn process_turn_internal(
         let excess = state.dialogue.history.len() - 10_000;
         state.dialogue.history.drain(0..excess);
     }
+    let observation_topic = match &routed.prepared().input().proposition().subject_resolution {
+        qxfx0_semantic::ResolutionOutcome::Resolved(entry) => Some(entry.concept_id.clone()),
+        _ => None,
+    };
+    state.dialogue.observations.push(DialogueObservation {
+        response_digest: execution_trace::calculate_stable_digest(&response)
+            .unwrap_or_else(|error| format!("digest-error:{error}")),
+        topic: observation_topic,
+        turn_seq: state.dialogue.turn_count,
+    });
+    if state.dialogue.observations.len() > 10_000 {
+        let excess = state.dialogue.observations.len() - 10_000;
+        state.dialogue.observations.drain(0..excess);
+    }
 
     // Field adjustments — skip on blocked turns (rejected output should not
     // reinforce confidence or counterfactual).
@@ -491,6 +728,67 @@ mod tests {
         };
         let output = process_turn(&input, &mut state);
         assert!(!output.response.is_empty());
+    }
+
+    #[test]
+    fn ambiguous_boundary_preserves_trusted_semantic_state() {
+        let mut state = test_state("ambiguous-boundary");
+        state.semantic.runtime_graph = qxfx0_semantic::seed_graph();
+        let semantic_before = serde_json::to_value(&state.semantic).unwrap();
+
+        let output = input_boundary_output(&mut state, &InputSemanticStatus::Ambiguous);
+
+        assert!(!output.blocked);
+        assert_eq!(
+            output.response,
+            "Этот термин допускает несколько интерпретаций. Уточни, какой смысл имеется в виду."
+        );
+        assert_eq!(
+            serde_json::to_value(&state.semantic).unwrap(),
+            semantic_before
+        );
+        assert_eq!(state.dialogue.turn_count, 1);
+        assert_eq!(state.governance_log.len(), 1);
+        assert!(state.dialogue.last_topic.is_none());
+    }
+
+    #[test]
+    fn mismatched_pack_fingerprint_blocks_without_state_mutation() {
+        let mut state = test_state("pack-mismatch");
+        state.semantic.pack_set_fingerprint = "0".repeat(64);
+        let before = serde_json::to_value(&state).unwrap();
+        let input = TurnInput {
+            raw_text: "что такое свобода?".into(),
+            session_id: state.session_id.clone(),
+        };
+
+        let output = process_turn(&input, &mut state);
+
+        assert!(output.blocked);
+        assert_eq!(serde_json::to_value(&state).unwrap(), before);
+        assert!(matches!(
+            output.guard_status,
+            GuardStatus::InvariantBlock(ref reason)
+                if reason.contains("knowledge-pack fingerprint")
+        ));
+    }
+
+    #[test]
+    fn legacy_empty_pack_fingerprint_migrates_on_turn() {
+        let mut state = test_state("pack-migration");
+        assert!(state.semantic.pack_set_fingerprint.is_empty());
+        let input = TurnInput {
+            raw_text: "что такое свобода?".into(),
+            session_id: state.session_id.clone(),
+        };
+
+        let output = process_turn(&input, &mut state);
+
+        assert!(!output.blocked);
+        assert_eq!(
+            state.semantic.pack_set_fingerprint,
+            qxfx0_semantic::active_pack_set().fingerprint()
+        );
     }
 
     #[test]

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "import_id": "haskell-curated-pilot-v1",
+  "status": "audit_only",
+  "promotion_enabled": false,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "source_worktree_dirty": true,
+  "source_sha256": "76b5ceb5e5ce59af9c635c54845930dcde363d11b7b36d9ba6933e0762dfe6ac",
+  "ontology_sha256": "3e65fe01fbab14e0bbe516a87552997cbcaa065173f46d5694438cd60562bab5",
+  "source_rows": 6239,
+  "source_raw_unique_topics": 4050,
+  "source_normalized_unique_topics": 4040,
+  "source_raw_duplicate_topic_rows": 2189,
+  "source_normalized_duplicate_topic_rows": 2199,
+  "source_predicates": 12478,
+  "ontology_records": 336,
+  "pilot_unique_topics": 300,
+  "already_active": 5,
+  "quarantined": 295,
+  "quarantine_reason_counts": {
+    "audited_surface_not_in_source_row": 20,
+    "duplicate_topic_records": 54,
+    "missing_morphology_surface": 162,
+    "missing_typed_slots": 271,
+    "ungrounded_russian_surface": 2,
+    "unknown_concept": 259
+  }
+}

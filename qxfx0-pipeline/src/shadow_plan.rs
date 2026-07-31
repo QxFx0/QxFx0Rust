@@ -1,4 +1,5 @@
-//! Content-bearing planner observed in shadow mode by the current renderer.
+//! Content-bearing response planner. The historical module/stage name remains
+//! replay-stable, but `ReadyResponsePlan` is authoritative for rendering.
 
 use crate::turn_context::RoutedTurnContext;
 use qxfx0_semantic::{
@@ -106,6 +107,19 @@ fn build_outcome(
 }
 
 fn build_argued_plan(goal: ResponseGoal, topic: &ArguedTopic) -> Result<ReadyResponsePlan, String> {
+    let fact_registry = argued_topic_registry().map_err(str::to_owned)?.facts();
+    for statement in [
+        Some(topic.thesis()),
+        Some(topic.counterpoint()),
+        topic.consequence(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        fact_registry
+            .select(statement.fact_id())
+            .map_err(|error| error.to_string())?;
+    }
     let evidence = ClaimEvidence::curated(topic.evidence_record());
     let primary_ref = topic.primary_predicate_ref().clone();
 
@@ -114,6 +128,7 @@ fn build_argued_plan(goal: ResponseGoal, topic: &ArguedTopic) -> Result<ReadyRes
     let thesis = PlannedClaim::new(
         thesis_id.clone(),
         ClaimRole::Thesis,
+        Some(topic.thesis().fact_id().clone()),
         topic.primary_proposition().clone(),
         thesis_refs.clone(),
         evidence.clone(),
@@ -133,6 +148,7 @@ fn build_argued_plan(goal: ResponseGoal, topic: &ArguedTopic) -> Result<ReadyRes
     claims.push(PlannedClaim::new(
         counter_id.clone(),
         ClaimRole::Counterpoint,
+        Some(topic.counterpoint().fact_id().clone()),
         SemanticProposition::Counterpoint {
             statement: counter_ref,
             counters: primary_ref.clone(),
@@ -155,6 +171,7 @@ fn build_argued_plan(goal: ResponseGoal, topic: &ArguedTopic) -> Result<ReadyRes
         claims.push(PlannedClaim::new(
             consequence_id.clone(),
             ClaimRole::Consequence,
+            Some(consequence.fact_id().clone()),
             SemanticProposition::Consequence {
                 statement: consequence_ref,
                 follows_from: primary_ref,
@@ -173,7 +190,7 @@ fn build_argued_plan(goal: ResponseGoal, topic: &ArguedTopic) -> Result<ReadyRes
         SentenceBudget::Two
     };
 
-    ReadyResponsePlan::new(
+    let plan = ReadyResponsePlan::new(
         goal,
         PlanSubject::Topic(topic.topic().clone()),
         claims,
@@ -182,7 +199,9 @@ fn build_argued_plan(goal: ResponseGoal, topic: &ArguedTopic) -> Result<ReadyRes
             claim_id: thesis_id,
         }),
         derivation,
-    )
+    )?;
+    plan.validate_with_facts(fact_registry)?;
+    Ok(plan)
 }
 
 fn build_contract_plan(
@@ -200,6 +219,7 @@ fn build_contract_plan(
     let claim = PlannedClaim::new(
         claim_id.clone(),
         ClaimRole::DialogueAct,
+        None,
         proposition,
         predicate_refs.clone(),
         evidence,
@@ -310,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn all_30_admitted_topics_build_valid_non_empty_plans() {
+    fn all_30_admitted_topics_build_fact_resolved_declarative_plans() {
         let registry = argued_topic_registry().unwrap();
 
         for topic in registry.topics() {
@@ -318,7 +338,18 @@ mod tests {
                 .expect("bundled topic must build");
             let plan = outcome.ready().expect("admitted topic must be ready");
             assert!(plan.claims().len() >= 2);
-            plan.validate().unwrap();
+            plan.validate_with_facts(registry.facts()).unwrap();
+            for claim in plan.claims().iter() {
+                assert_ne!(claim.role(), ClaimRole::DialogueAct);
+                let fact_id = claim
+                    .fact_id()
+                    .expect("every declarative plan claim must carry a FactId");
+                let fact = registry
+                    .facts()
+                    .select(fact_id)
+                    .expect("every declarative FactId must resolve to a curated fact");
+                assert_eq!(fact.status, qxfx0_semantic::FactStatus::Curated);
+            }
             let encoded = serde_json::to_string(plan).unwrap();
             assert!(!encoded.contains(topic.thesis().surface()));
             assert!(!encoded.contains(topic.counterpoint().surface()));

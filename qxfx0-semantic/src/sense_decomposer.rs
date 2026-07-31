@@ -1,13 +1,10 @@
-use qxfx0_morphology::MorphologyData;
+use qxfx0_morphology::MorphologyRuntime;
 use qxfx0_types::atom::{AtomGraph, AtomId, SenseVector};
 use qxfx0_types::RelationType;
 use std::collections::BTreeMap;
-use std::sync::OnceLock;
 
 // Re-export PropositionParser for backward compatibility
 pub use crate::composer::PropositionParser;
-
-static MORPHOLOGY: OnceLock<MorphologyData> = OnceLock::new();
 
 /// Vendored cosine similarity (replaces external context_engine dependency).
 /// Tokenizes both strings into lowercase word-frequency vectors (BTreeMap for
@@ -67,8 +64,8 @@ impl SenseDecomposer {
         let mut vectors: Vec<SenseVector> = Vec::new();
         let mut seen_atoms: std::collections::BTreeSet<AtomId> = std::collections::BTreeSet::new();
 
-        // Initialize morphology data once for the lifetime of the program
-        let morphology = MORPHOLOGY.get_or_init(MorphologyData::new);
+        // Use the shared morphology runtime
+        let morphology = qxfx0_morphology::get_runtime();
 
         for (i, word) in words.iter().enumerate() {
             let cleaned = word.trim_matches(|c: char| !c.is_alphanumeric());
@@ -118,7 +115,7 @@ impl SenseDecomposer {
     fn project_word(
         word: &str,
         graph: &AtomGraph,
-        morphology: &MorphologyData,
+        morphology: &MorphologyRuntime,
     ) -> Vec<(AtomId, f64)> {
         let mut results = Vec::new();
         let word_lower = word.to_lowercase();
@@ -130,13 +127,29 @@ impl SenseDecomposer {
         }
 
         // 1. Lemmatization lookup
-        // If the word is inflected, resolve it to its nominative form and check the graph
-        let lemma = morphology.lemmatize(&word_lower);
-        if lemma != word_lower {
-            let lemma_id = AtomId::new(lemma.clone());
-            if graph.atoms.contains_key(&lemma_id) {
-                results.push((lemma_id, 1.0));
+        // If the word is inflected, resolve it to its nominative form(s) and check the graph
+        match morphology.lemmatize(&word_lower) {
+            qxfx0_types::morphology::MorphologyLookup::Resolved(res) => {
+                let lemma = res.lemma;
+                if lemma != word_lower {
+                    let lemma_id = AtomId::new(lemma);
+                    if graph.atoms.contains_key(&lemma_id) {
+                        results.push((lemma_id, 1.0));
+                    }
+                }
             }
+            qxfx0_types::morphology::MorphologyLookup::Ambiguous(candidates) => {
+                for candidate in candidates {
+                    let lemma = candidate.entry.lemma;
+                    if lemma != word_lower {
+                        let lemma_id = AtomId::new(lemma);
+                        if graph.atoms.contains_key(&lemma_id) {
+                            results.push((lemma_id, 1.0));
+                        }
+                    }
+                }
+            }
+            qxfx0_types::morphology::MorphologyLookup::Unknown => {}
         }
 
         // 2. Case-insensitive lookup across all AtomIds and displays

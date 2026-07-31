@@ -12,6 +12,59 @@ fn test_state(session_id: &str) -> SystemState {
 }
 
 #[test]
+fn test_unknown_input_preserves_state() {
+    let mut state = test_state("unknown-preserve");
+    // Seed the graph manually to avoid seed-on-first-turn growth
+    state.semantic.runtime_graph = qxfx0_semantic::seed_graph();
+
+    let initial_atoms = state.semantic.runtime_graph.atoms.len();
+    let initial_edges = state.semantic.runtime_graph.edges.len();
+    let initial_commitments = state
+        .semantic
+        .semantic_commitments
+        .as_ref()
+        .map(|store| store.active.len() + store.quarantine.len())
+        .unwrap_or(0);
+
+    let input = TurnInput {
+        session_id: "unknown-preserve".into(),
+        raw_text: "что такое квантобус?".into(),
+    };
+    let output = process_turn(&input, &mut state);
+
+    assert!(
+        !output.blocked,
+        "Unknown input is a handled semantic boundary, not a guard rejection"
+    );
+    assert_eq!(
+        output.response,
+        "Я вижу тему, но в локальном knowledge pack нет достаточного основания."
+    );
+
+    assert_eq!(
+        state.semantic.runtime_graph.atoms.len(),
+        initial_atoms,
+        "Unknown input must not add new atoms to the graph"
+    );
+    assert_eq!(
+        state.semantic.runtime_graph.edges.len(),
+        initial_edges,
+        "Unknown input must not add new edges to the graph"
+    );
+
+    let final_commitments = state
+        .semantic
+        .semantic_commitments
+        .as_ref()
+        .map(|store| store.active.len() + store.quarantine.len())
+        .unwrap_or(0);
+    assert_eq!(
+        final_commitments, initial_commitments,
+        "Unknown input must not add new factual commitments"
+    );
+}
+
+#[test]
 fn test_replay_determinism_5_turns() {
     let inputs = [
         "что такое свобода?",
@@ -49,37 +102,37 @@ fn test_replay_determinism_5_turns() {
 }
 
 #[test]
-fn test_pr1_typed_context_output_parity() {
+fn test_fact_renderer_and_typed_contract_surfaces() {
     use qxfx0_types::CanonicalMoveFamily;
 
     let cases = [
         (
             "что такое свобода?",
-            "Размышляя о свободе, можно сказать следующее. Нельзя говорить о свободе, не затрагивая выбора. Потому что без выбора действие не отличается от рефлекса. Более того, свобода нуждается в сознании. Однако трудно совместить свободу и истину. Именно поэтому свобода требует не только возможности, но и осознанности выбора. Что думаешь об этом? Например, смысл «свобода» можно проверить на конкретной ситуации и её последствиях.",
+            "Свобода предполагает возможность выбора. Однако не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным. Поэтому свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу. Что думаешь об этом?",
             CanonicalMoveFamily::CMDefine,
             "Reasoning",
         ),
         (
             "свобода существует",
-            "Размышляя о свободе, можно сказать следующее. Нельзя говорить о свободе, не затрагивая выбора. Потому что без выбора действие не отличается от рефлекса. Более того, свобода нуждается в сознании. Однако трудно совместить свободу и истину. Именно поэтому свобода требует не только возможности, но и осознанности выбора. Что думаешь об этом? Например, смысл «свобода» можно проверить на конкретной ситуации и её последствиях.",
+            "Свобода предполагает возможность выбора. Однако не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным. Поэтому свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу. Что думаешь об этом?",
             CanonicalMoveFamily::CMGround,
             "Reasoning",
         ),
         (
             "свобода это просто отсутствие ограничений",
-            "Размышляя о свободе, можно сказать следующее. Нельзя говорить о свободе, не затрагивая выбора. Потому что без выбора действие не отличается от рефлекса. Более того, свобода нуждается в сознании. Однако трудно совместить свободу и истину. Именно поэтому свобода требует не только возможности, но и осознанности выбора. Что думаешь об этом? Например, смысл «свобода» можно проверить на конкретной ситуации и её последствиях.",
+            "Свобода предполагает возможность выбора. Однако не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным. Поэтому свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу. Что думаешь об этом?",
             CanonicalMoveFamily::CMRepair,
             "Reasoning",
         ),
         (
             "как истина связана с красотой?",
-            "Размышляя об истине, можно сказать следующее. Истина претендует на реальность. Более того, критерием истины служит воспроизводимость. Взгляни на это так: истина и добро переплетены. Что думаешь об этом? Например, смысл «истина» можно проверить на конкретной ситуации и её последствиях.",
+            "Истина претендует на соответствие реальности. Однако доступ к реальности всегда опосредован наблюдателем — и наблюдатель не может выйти за пределы себя. Поэтому истина — не обладание, а дисциплина проверки: то, что выдерживает воспроизведение, ближе к истине. Что думаешь об этом?",
             CanonicalMoveFamily::CMConnect,
             "Reasoning",
         ),
         (
             "что ты думаешь о памяти?",
-            "Размышляя о памяти, можно сказать следующее. Более того, память нуждается в сознании. Взгляни на это так: память структурирует бытие. Что думаешь об этом? Например, смысл «память» можно проверить на конкретной ситуации и её последствиях.",
+            "Память это процесс запоминания хранения и воспроизведения информации. Однако память реконструирует а не просто копирует. Что думаешь об этом?",
             CanonicalMoveFamily::CMReflect,
             "Reflecting",
         ),
@@ -91,13 +144,13 @@ fn test_pr1_typed_context_output_parity() {
         ),
         (
             "в чём функция стола?",
-            "Функция стола определяется устойчивой ролью объекта и результатом его использования.",
+            "Для вопроса о функции «стола» нужен внешний источник. Уточни контекст использования.",
             CanonicalMoveFamily::CMPurpose,
             "Greeting",
         ),
         (
             "почему небо голубое?",
-            "Причину того, почему небо голубое, нужно проверять по внешним фактам; локальный граф может только обозначить рамку рассуждения.",
+            "Для вопроса «небо голубое» нужны внешние факты; локальный knowledge pack не даёт достаточного основания.",
             CanonicalMoveFamily::CMHypothesis,
             "Greeting",
         ),
@@ -271,24 +324,57 @@ fn test_essence_trajectory_accumulates() {
 }
 
 #[test]
-fn test_commitment_store_populated() {
+fn test_generated_response_becomes_observation_not_fact() {
     let mut state = test_state("commit");
+    let facts = qxfx0_semantic::argued_topic_registry().unwrap().facts();
+    let facts_before = facts.records().cloned().collect::<Vec<_>>();
 
     let input = TurnInput {
         session_id: "commit".into(),
         raw_text: "что такое свобода?".into(),
     };
-    process_turn(&input, &mut state);
+    let output = process_turn(&input, &mut state);
 
-    assert!(
-        state.semantic.semantic_commitments.is_some(),
-        "commitment store should be initialised after first turn"
+    assert!(state.semantic.semantic_commitments.is_some());
+    assert_eq!(state.dialogue.observations.len(), 1);
+    let observation = &state.dialogue.observations[0];
+    assert_eq!(observation.turn_seq, 1);
+    assert_eq!(
+        observation.topic.as_ref().map(|topic| topic.0.as_str()),
+        Some("concept.свобода")
     );
-    let store = state.semantic.semantic_commitments.as_ref().unwrap();
-    assert!(
-        !store.active.is_empty(),
-        "at least one commitment should be active"
+    assert!(!observation.response_digest.contains(&output.response));
+    // Legacy commitments may exist for compatibility, but the curated fact
+    // registry is a separate immutable source and has no generated records.
+    assert_eq!(facts.records().cloned().collect::<Vec<_>>(), facts_before);
+    assert!(facts.records().all(|fact| {
+        fact.source_pack != output.response
+            && fact.source_ref != output.response
+            && !fact.id.as_str().contains(&output.response)
+    }));
+}
+
+#[test]
+fn test_user_input_cannot_create_fact_record() {
+    let facts = qxfx0_semantic::argued_topic_registry().unwrap().facts();
+    let facts_before = facts.records().cloned().collect::<Vec<_>>();
+    let raw_text = "свобода это мой совершенно новый факт";
+    let mut state = test_state("user-input-not-fact");
+
+    process_turn(
+        &TurnInput {
+            session_id: "user-input-not-fact".into(),
+            raw_text: raw_text.into(),
+        },
+        &mut state,
     );
+
+    assert_eq!(facts.records().cloned().collect::<Vec<_>>(), facts_before);
+    assert!(facts.records().all(|fact| {
+        fact.source_pack != raw_text
+            && fact.source_ref != raw_text
+            && !fact.id.as_str().contains(raw_text)
+    }));
 }
 
 #[test]
@@ -403,7 +489,6 @@ fn test_fsm_rollback_on_blocked_turn() {
 fn test_language_acceptance_matrix() {
     let cases = [
         ("known", "что такое свобода?", "свобод"),
-        ("unknown", "что такое квантобус?", "квантобус"),
         ("greeting", "привет", "привет"),
         ("assertion", "я купил дом", "дом"),
         ("purpose", "в чём функция стола?", "стола"),
@@ -522,7 +607,7 @@ fn test_stage_trace_is_replay_deterministic() {
         .steps
         .iter()
         .find(|step| step.stage == "plan_shadow")
-        .expect("shadow plan step must be replay-visible");
+        .expect("response plan step must be replay-visible");
     assert_eq!(
         plan_step.metadata.get("plan_outcome").map(String::as_str),
         Some("ready")
@@ -561,56 +646,62 @@ fn test_stage_trace_is_replay_deterministic() {
         .metadata
         .get("predicate_refs")
         .is_some_and(|refs| refs.contains("freedom_choice")));
+    assert!(plan_step
+        .metadata
+        .get("fact_ids")
+        .is_some_and(|facts| facts.contains("fact.freedom_choice")));
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("pack_set_fingerprint")
+            .map(String::as_str),
+        Some(qxfx0_semantic::active_pack_set().fingerprint())
+    );
+    assert_eq!(
+        plan_step
+            .metadata
+            .get("active_pack_ids")
+            .map(String::as_str),
+        Some("philosophy-core-v1@1")
+    );
 }
 
 #[test]
-fn test_shadow_plan_trace_records_unknown_topic_recovery() {
+fn test_trace_records_unknown_input_boundary_without_semantic_stages() {
     let input = TurnInput {
         session_id: "trace-unknown-topic".into(),
         raw_text: "что такое кванточайник?".into(),
     };
     let mut state = test_state(&input.session_id);
     let (output, trace) = process_turn_with_trace(&input, &mut state);
-    let plan_step = trace
+    let boundary_step = trace
         .steps
         .iter()
-        .find(|step| step.stage == "plan_shadow")
-        .expect("shadow plan step must exist");
+        .find(|step| step.stage == "input_semantic_boundary")
+        .expect("semantic boundary step must exist");
 
-    assert!(!output.response.is_empty());
     assert_eq!(
-        plan_step.metadata.get("plan_outcome").map(String::as_str),
-        Some("fallback")
+        output.response,
+        "Я вижу тему, но в локальном knowledge pack нет достаточного основания."
     );
     assert_eq!(
-        plan_step
+        boundary_step
             .metadata
-            .get("fallback_reason")
+            .get("semantic_status")
             .map(String::as_str),
-        Some("unknown_topic")
+        Some("unknown")
     );
     assert_eq!(
-        plan_step
+        boundary_step
             .metadata
-            .get("recovery_strategy")
+            .get("trusted_state_mutated")
             .map(String::as_str),
-        Some("ask_clarification")
+        Some("false")
     );
-    assert_eq!(
-        plan_step.metadata.get("recovery_cause").map(String::as_str),
-        Some("unknown_topic")
-    );
-    assert_eq!(
-        plan_step
-            .metadata
-            .get("recovery_evidence_count")
-            .map(String::as_str),
-        Some("1")
-    );
-    assert!(plan_step
-        .metadata
-        .get("recovery_evidence")
-        .is_some_and(|evidence| evidence.contains("topic_lookup")));
+    assert!(!trace.steps.iter().any(|step| matches!(
+        step.stage.as_str(),
+        "prepare" | "route" | "plan_shadow" | "render" | "finalize" | "guard" | "persist"
+    )));
 }
 
 #[test]
@@ -625,11 +716,15 @@ fn test_shadow_plan_refuses_unaudited_content_for_recognized_topic() {
         .steps
         .iter()
         .find(|step| step.stage == "plan_shadow")
-        .expect("shadow plan step must exist");
+        .expect("response plan step must exist");
 
     assert!(
-        !output.response.is_empty(),
-        "legacy renderer remains active"
+        !output.blocked,
+        "typed fallback must not be rejected by the guard"
+    );
+    assert_eq!(
+        output.response,
+        "Я вижу тему «знание», но в локальном knowledge pack нет достаточного основания."
     );
     assert_eq!(
         plan_step.metadata.get("plan_outcome").map(String::as_str),
@@ -663,12 +758,12 @@ fn test_all_audited_topics_reach_content_plan_in_fresh_sessions() {
             raw_text: format!("что такое {}?", topic.topic().as_str()),
         };
         let mut state = test_state(&session_id);
-        let (_, trace) = process_turn_with_trace(&input, &mut state);
+        let (output, trace) = process_turn_with_trace(&input, &mut state);
         let plan_step = trace
             .steps
             .iter()
             .find(|step| step.stage == "plan_shadow")
-            .expect("shadow plan step must exist");
+            .expect("response plan step must exist");
 
         assert_eq!(
             plan_step.metadata.get("plan_outcome").map(String::as_str),
@@ -687,6 +782,19 @@ fn test_all_audited_topics_reach_content_plan_in_fresh_sessions() {
                 .map(String::as_str),
             Some("true")
         );
+        assert!(!output.blocked, "{} was blocked", topic.topic().as_str());
+        for statement in topic.statements() {
+            assert!(
+                output
+                    .response
+                    .to_lowercase()
+                    .contains(&statement.surface().to_lowercase()),
+                "rendered output for '{}' omitted curated fact '{}': {}",
+                topic.topic().as_str(),
+                statement.fact_id(),
+                output.response
+            );
+        }
     }
 }
 

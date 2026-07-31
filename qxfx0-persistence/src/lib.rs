@@ -275,12 +275,14 @@ impl Persistence {
                 )
                 .optional()?;
 
-            let (dialogue, last_turn_decision, governance_log) = match session {
+            let (dialogue, pack_set_fingerprint, last_turn_decision, governance_log) = match session
+            {
                 Some(state_json) => {
                     let legacy: SystemState = serde_json::from_str(&state_json)
                         .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
                     (
                         legacy.dialogue,
+                        legacy.semantic.pack_set_fingerprint,
                         legacy.last_turn_decision,
                         legacy.governance_log,
                     )
@@ -321,6 +323,7 @@ impl Persistence {
                     qxfx0_types::system_state::SemanticState {
                         field,
                         runtime_graph,
+                        pack_set_fingerprint,
                         semantic_commitments,
                         essence,
                         adjunction,

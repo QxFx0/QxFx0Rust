@@ -189,6 +189,118 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
+    let concepts = qxfx0_semantic::get_resolver();
+    let concept_violations = concepts
+        .records()
+        .filter(|record| {
+            !graph.atoms.contains_key(&qxfx0_types::atom::AtomId::new(
+                record.graph_atom_id.clone(),
+            ))
+        })
+        .map(|record| format!("dangling graph atom for {}", record.concept_id.0))
+        .collect::<Vec<_>>();
+    let missing_topic_concepts = qxfx0_semantic::COVERED_TOPICS
+        .iter()
+        .filter(|topic| {
+            !matches!(
+                concepts.resolve(topic),
+                qxfx0_semantic::ResolutionOutcome::Resolved(ref entry)
+                    if entry.atom_id.as_str() == **topic
+            )
+        })
+        .copied()
+        .collect::<Vec<_>>();
+    report.checks.push(DoctorCheck {
+        name: "Concept registry",
+        passed: concept_violations.is_empty() && missing_topic_concepts.is_empty(),
+        details: if concept_violations.is_empty() && missing_topic_concepts.is_empty() {
+            format!(
+                "{} concepts, {} covered topics, {} ambiguous aliases, fingerprint={}",
+                concepts.concept_count(),
+                qxfx0_semantic::COVERED_TOPICS.len(),
+                concepts.ambiguous_alias_count(),
+                concepts.fingerprint(),
+            )
+        } else {
+            concept_violations
+                .into_iter()
+                .chain(
+                    missing_topic_concepts
+                        .into_iter()
+                        .map(|topic| format!("missing primary concept for {topic}")),
+                )
+                .collect::<Vec<_>>()
+                .join("; ")
+        },
+    });
+
+    let packs = qxfx0_semantic::active_pack_set();
+    let active_pack_details = packs
+        .summaries()
+        .iter()
+        .map(|pack| {
+            format!(
+                "{}@{}(schema={}, concepts={}, facts={}, relations={})",
+                pack.pack_id,
+                pack.pack_version,
+                pack.schema_version,
+                pack.concept_count,
+                pack.fact_count,
+                pack.relation_count
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    report.checks.push(DoctorCheck {
+        name: "Knowledge packs",
+        passed: !packs.summaries().is_empty() && packs.fact_conflict_count() == 0,
+        details: format!(
+            concat!(
+                "active_packs=[{}], manifest_valid=true, ambiguous_aliases={}, ",
+                "fact_conflicts={}, fingerprint={}"
+            ),
+            active_pack_details,
+            packs.ambiguous_alias_count(),
+            packs.fact_conflict_count(),
+            packs.fingerprint(),
+        ),
+    });
+
+    match qxfx0_semantic::corpus_import_report() {
+        Ok(import) => report.checks.push(DoctorCheck {
+            name: "Corpus import pilot",
+            passed: import.metrics.status == "audit_only"
+                && !import.metrics.promotion_enabled
+                && import.metrics.already_active + import.metrics.quarantined
+                    == import.metrics.pilot_unique_topics,
+            details: format!(
+                concat!(
+                    "import_id={}, source_rows={}, raw_unique_topics={}, ",
+                    "normalized_unique_topics={}, predicates={}, ontology_records={}, ",
+                    "pilot_topics={}, already_active={}, quarantine={}, ",
+                    "source_worktree_dirty={}, promotion_enabled={}, fingerprint={}"
+                ),
+                import.metrics.import_id,
+                import.metrics.source_rows,
+                import.metrics.source_raw_unique_topics,
+                import.metrics.source_normalized_unique_topics,
+                import.metrics.source_predicates,
+                import.metrics.ontology_records,
+                import.metrics.pilot_unique_topics,
+                import.metrics.already_active,
+                import.metrics.quarantined,
+                import.metrics.source_worktree_dirty,
+                import.metrics.promotion_enabled,
+                import.fingerprint,
+            ),
+        }),
+        Err(error) => report.checks.push(DoctorCheck {
+            name: "Corpus import pilot",
+            passed: false,
+            details: error.into(),
+        }),
+    }
+
     match argued_topic_registry() {
         Ok(registry) => {
             let metrics = registry.metrics();
@@ -219,6 +331,35 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
                         missing_topics.join(", ")
                     )
                 },
+            });
+            let facts = registry.facts();
+            let self_referential_facts = facts
+                .records()
+                .filter(|fact| fact.subject == fact.object)
+                .count();
+            let semantic_object_concepts = concepts
+                .records()
+                .filter(|record| record.ontology_kind == "semantic_object")
+                .count();
+            report.checks.push(DoctorCheck {
+                name: "Fact model",
+                passed: facts.len() == metrics.content_predicates_total
+                    && facts.count_by_status(qxfx0_semantic::FactStatus::Curated) == facts.len()
+                    && self_referential_facts == 0
+                    && semantic_object_concepts == 30,
+                details: format!(
+                    concat!(
+                        "facts={}, curated={}, deprecated={}, retracted={}, draft={}, ",
+                        "semantic_object_concepts={}, self_referential_facts={}"
+                    ),
+                    facts.len(),
+                    facts.count_by_status(qxfx0_semantic::FactStatus::Curated),
+                    facts.count_by_status(qxfx0_semantic::FactStatus::Deprecated),
+                    facts.count_by_status(qxfx0_semantic::FactStatus::Retracted),
+                    facts.count_by_status(qxfx0_semantic::FactStatus::Draft),
+                    semantic_object_concepts,
+                    self_referential_facts,
+                ),
             });
         }
         Err(error) => report.checks.push(DoctorCheck {
@@ -255,16 +396,60 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
-    let morphology = qxfx0_morphology::MorphologyData::with_seed();
-    let morphology_passed = morphology.lemmatize("свободы") == "свобода"
-        && morphology.to_case(qxfx0_morphology::Case::Prepositional, "дом") == "доме";
+    let morphology = qxfx0_morphology::get_runtime();
+    let morphology_stats = morphology.stats();
+    let morphology_manifest = morphology.manifest.as_ref();
+    let morphology_version_valid =
+        morphology_manifest.is_some_and(|manifest| manifest.bundle_version == 1);
+    let morphology_commit_valid = morphology_manifest.is_some_and(|manifest| {
+        (manifest.source_commit.len() == 40 || manifest.source_commit.len() == 64)
+            && manifest
+                .source_commit
+                .chars()
+                .all(|character| character.is_ascii_hexdigit())
+    });
+    let morphology_passed = morphology_manifest.is_some()
+        && morphology_version_valid
+        && morphology_commit_valid
+        && morphology.manifest_hash_valid()
+        && morphology_stats.total_lexemes > 0
+        && matches!(
+            morphology.lemmatize("свободы"),
+            qxfx0_morphology::MorphologyLookup::Resolved(_)
+        )
+        && morphology.inflect(
+            "дом",
+            qxfx0_morphology::Case::Prepositional,
+            qxfx0_morphology::Number::Singular,
+        ) == Some("доме".into());
     report.checks.push(DoctorCheck {
-        name: "Morphology",
+        name: "Morphology bundle",
         passed: morphology_passed,
         details: if morphology_passed {
-            "seed dictionary and case conversion operational".into()
+            format!(
+                concat!(
+                    "version={}, source_commit={}, sha256={}, lexemes={}, ",
+                    "source_tier_counts={{curated:{}, reviewed:{}, auto_verified:{}, auto_coverage:{}}}, ",
+                    "ambiguous_surfaces={}"
+                ),
+                morphology_manifest.map_or(0, |manifest| manifest.bundle_version),
+                morphology_manifest.map_or("missing", |manifest| manifest.source_commit.as_str()),
+                morphology.lexemes_sha256(),
+                morphology_stats.total_lexemes,
+                morphology_stats.curated_count,
+                morphology_stats.reviewed_count,
+                morphology_stats.auto_verified_count,
+                morphology_stats.auto_coverage_count,
+                morphology.ambiguous_surface_count(),
+            )
         } else {
-            "lemmatization or case conversion probe failed".into()
+            format!(
+                "invalid morphology bundle: version_valid={}, source_commit_valid={}, hash_valid={}, lexemes={}",
+                morphology_version_valid,
+                morphology_commit_valid,
+                morphology.manifest_hash_valid(),
+                morphology_stats.total_lexemes,
+            )
         },
     });
 
@@ -305,6 +490,7 @@ pub fn fresh_state(session_id: &str) -> SystemState {
         session_id: session_id.to_string(),
         semantic: SemanticState {
             runtime_graph: seed_graph(),
+            pack_set_fingerprint: qxfx0_semantic::active_pack_set().fingerprint().into(),
             ..Default::default()
         },
         ..Default::default()
@@ -550,7 +736,29 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 6);
+        assert_eq!(report.checks.len(), 10);
+        let concepts = report
+            .checks
+            .iter()
+            .find(|check| check.name == "Concept registry")
+            .expect("concept registry check");
+        assert!(concepts.details.contains("137 concepts"));
+        assert!(concepts.details.contains("107 covered topics"));
+        let morphology = report
+            .checks
+            .iter()
+            .find(|check| check.name == "Morphology bundle")
+            .expect("morphology bundle check");
+        assert!(morphology.details.contains("source_tier_counts="));
+        assert!(morphology.details.contains("ambiguous_surfaces="));
+        let facts = report
+            .checks
+            .iter()
+            .find(|check| check.name == "Fact model")
+            .expect("fact model check");
+        assert!(facts.details.contains("facts=69"));
+        assert!(facts.details.contains("semantic_object_concepts=30"));
+        assert!(facts.details.contains("self_referential_facts=0"));
         let content_assets = report
             .checks
             .iter()
@@ -560,6 +768,21 @@ mod tests {
         assert!(content_assets
             .details
             .contains("content_predicates_total=69"));
+        let packs = report
+            .checks
+            .iter()
+            .find(|check| check.name == "Knowledge packs")
+            .expect("knowledge packs check");
+        assert!(packs.details.contains("philosophy-core-v1@1"));
+        assert!(packs.details.contains("fact_conflicts=0"));
+        let import = report
+            .checks
+            .iter()
+            .find(|check| check.name == "Corpus import pilot")
+            .expect("corpus import pilot check");
+        assert!(import.details.contains("pilot_topics=300"));
+        assert!(import.details.contains("quarantine=295"));
+        assert!(import.details.contains("promotion_enabled=false"));
         let _ = std::fs::remove_file(path);
     }
 
