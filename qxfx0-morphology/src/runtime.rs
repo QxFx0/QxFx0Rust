@@ -58,15 +58,28 @@ impl PartialEq for MorphologyError {
 /// Result type for morphology operations.
 pub type MorphologyResult<T> = Result<T, MorphologyError>;
 
+/// Compact internal pointer from one surface/case occurrence to the single
+/// canonical `LexemeEntry` stored by the runtime. Public ambiguity results are
+/// materialized only when requested.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct IndexedCandidate {
+    lexeme_index: usize,
+    case_number: CaseNumber,
+    confidence: f64,
+}
+
 /// Runtime morphology data with indexes for fast lookup.
 #[derive(Debug, Clone)]
 pub struct MorphologyRuntime {
-    /// All loaded lexeme entries, keyed by lemma
+    /// All loaded lexeme entries, keyed by lemma. This is the only owned copy
+    /// of each full entry after initialization.
     pub lexemes: BTreeMap<String, LexemeEntry>,
-    /// Surface form to candidates index: surface (lowercase) -> Vec<LexemeCandidate>
-    pub surface_index: BTreeMap<String, Vec<LexemeCandidate>>,
-    /// Lemma to entry index: lemma (lowercase) -> LexemeEntry
-    pub lemma_index: BTreeMap<String, LexemeEntry>,
+    /// Surface form to compact candidates: surface (lowercase) -> entry ids.
+    surface_index: BTreeMap<String, Vec<IndexedCandidate>>,
+    /// Lowercase lemma to its stable position in `lemma_keys`.
+    lemma_index: BTreeMap<String, usize>,
+    /// Stable canonical map keys addressed by compact surface candidates.
+    lemma_keys: Vec<String>,
     /// Bundle manifest for provenance
     pub manifest: Option<MorphologyBundleManifest>,
     lexemes_sha256: String,
@@ -78,6 +91,7 @@ impl MorphologyRuntime {
             lexemes: BTreeMap::new(),
             surface_index: BTreeMap::new(),
             lemma_index: BTreeMap::new(),
+            lemma_keys: Vec::new(),
             manifest: None,
             lexemes_sha256: String::new(),
         }
@@ -98,12 +112,9 @@ impl MorphologyRuntime {
         let manifest: MorphologyBundleManifest = serde_json::from_slice(mb)
             .map_err(|e| MorphologyError::JsonParseError(e.to_string()))?;
 
-        Self::validate_manifest(&manifest, lexemes_bytes)?;
+        let (lexemes, lexemes_sha256) = Self::validate_manifest(&manifest, lexemes_bytes)?;
         runtime.manifest = Some(manifest);
-        runtime.lexemes_sha256 = sha256_hex(lexemes_bytes);
-
-        let lexemes: Vec<LexemeEntry> = serde_json::from_slice(lexemes_bytes)
-            .map_err(|e| MorphologyError::JsonParseError(e.to_string()))?;
+        runtime.lexemes_sha256 = lexemes_sha256;
 
         runtime.build_indexes(lexemes)?;
         Ok(runtime)
@@ -112,7 +123,7 @@ impl MorphologyRuntime {
     fn validate_manifest(
         manifest: &MorphologyBundleManifest,
         lexemes_bytes: &[u8],
-    ) -> MorphologyResult<()> {
+    ) -> MorphologyResult<(Vec<LexemeEntry>, String)> {
         if manifest.bundle_version != 1 {
             return Err(MorphologyError::ValidationError(format!(
                 "Unsupported bundle version: {}. Expected 1",
@@ -170,7 +181,7 @@ impl MorphologyRuntime {
             }
         }
 
-        Ok(())
+        Ok((lexemes, actual_hash))
     }
 
     pub fn load_from_file<P: AsRef<Path>>(
@@ -198,8 +209,6 @@ impl MorphologyRuntime {
     }
 
     fn build_indexes(&mut self, lexemes: Vec<LexemeEntry>) -> MorphologyResult<()> {
-        let mut seen_lemmas = std::collections::HashMap::new();
-
         for entry in lexemes {
             if entry.lemma.is_empty() {
                 return Err(MorphologyError::ValidationError(
@@ -208,7 +217,12 @@ impl MorphologyRuntime {
             }
             let lemma_lower = entry.lemma.to_lowercase();
 
-            if let Some(existing) = seen_lemmas.get(&lemma_lower) {
+            if let Some(existing_index) = self.lemma_index.get(&lemma_lower) {
+                let existing_key = &self.lemma_keys[*existing_index];
+                let existing = self
+                    .lexemes
+                    .get(existing_key)
+                    .expect("lemma index must address a canonical entry");
                 if existing != &entry {
                     return Err(MorphologyError::ValidationError(format!(
                         "Duplicate lemma with different entries: {}",
@@ -217,10 +231,8 @@ impl MorphologyRuntime {
                 }
                 continue;
             }
-            seen_lemmas.insert(lemma_lower.clone(), entry.clone());
 
-            self.lexemes.insert(entry.lemma.clone(), entry.clone());
-            self.lemma_index.insert(lemma_lower.clone(), entry.clone());
+            let lexeme_index = self.lemma_keys.len();
 
             let all_forms = vec![
                 ("nom_sg", &entry.forms.nom_sg),
@@ -243,23 +255,37 @@ impl MorphologyRuntime {
                 }
                 let surface_lower = form.to_lowercase();
                 if let Some(case_num) = parse_case_number(case_num_str) {
-                    let mut candidate =
-                        LexemeCandidate::new(form.to_string(), entry.clone(), case_num);
-                    candidate.confidence = entry.quality;
                     self.surface_index
-                        .entry(surface_lower.clone())
+                        .entry(surface_lower)
                         .or_default()
-                        .push(candidate);
+                        .push(IndexedCandidate {
+                            lexeme_index,
+                            case_number: case_num,
+                            confidence: entry.quality,
+                        });
                 }
             }
+
+            let lemma_key = entry.lemma.clone();
+            self.lexemes.insert(lemma_key.clone(), entry);
+            self.lemma_keys.push(lemma_key);
+            self.lemma_index.insert(lemma_lower, lexeme_index);
         }
 
+        let lexemes = &self.lexemes;
+        let lemma_keys = &self.lemma_keys;
         for candidates in self.surface_index.values_mut() {
             candidates.sort_by(|a, b| {
-                b.entry
+                let a_entry = lexemes
+                    .get(&lemma_keys[a.lexeme_index])
+                    .expect("surface index must address a canonical entry");
+                let b_entry = lexemes
+                    .get(&lemma_keys[b.lexeme_index])
+                    .expect("surface index must address a canonical entry");
+                b_entry
                     .source_tier
                     .trust_rank()
-                    .cmp(&a.entry.source_tier.trust_rank())
+                    .cmp(&a_entry.source_tier.trust_rank())
                     .then_with(|| {
                         b.confidence
                             .partial_cmp(&a.confidence)
@@ -274,37 +300,48 @@ impl MorphologyRuntime {
         self.lexemes.get(lemma)
     }
 
-    pub fn get_candidates(&self, surface: &str) -> Vec<&LexemeCandidate> {
+    /// Materialize the public candidate representation on demand. The hot
+    /// resolved lookup path uses compact internal candidates and performs no
+    /// full-entry clone.
+    pub fn get_candidates(&self, surface: &str) -> Vec<LexemeCandidate> {
         let surface_lower = surface.to_lowercase();
         self.surface_index
             .get(&surface_lower)
-            .map(|v| v.iter().collect())
+            .map(|candidates| self.materialize_candidates(candidates))
             .unwrap_or_default()
     }
 
     pub fn resolve_surface(&self, surface: &str) -> MorphologyResult<LexemeEntry> {
-        let candidates = self.get_candidates(surface);
+        let surface_lower = surface.to_lowercase();
+        let candidates = self.indexed_candidates(&surface_lower);
         if candidates.is_empty() {
             return Err(MorphologyError::UnknownSurface(surface.to_string()));
         }
-        let best_candidate = candidates[0];
+        let best_candidate = &candidates[0];
+        let best_entry = self.entry_for_candidate(best_candidate);
         if candidates.len() > 1 {
-            let best_tier = best_candidate.entry.source_tier;
+            let best_tier = best_entry.source_tier;
             let best_quality = best_candidate.confidence;
             // Count unique lemmas among candidates with the best tier and quality.
             // Multiple forms of the same lemma (e.g. non-inflectable words) do not
             // constitute ambiguity.
-            let unique_lemmas: std::collections::HashSet<&str> = candidates
+            let unique_lemmas: std::collections::HashSet<usize> = candidates
                 .iter()
-                .filter(|c| c.entry.source_tier == best_tier && c.confidence == best_quality)
-                .map(|c| c.entry.lemma.as_str())
+                .filter(|candidate| {
+                    self.entry_for_candidate(candidate).source_tier == best_tier
+                        && candidate.confidence == best_quality
+                })
+                .map(|candidate| candidate.lexeme_index)
                 .collect();
             if unique_lemmas.len() > 1 {
-                let surfaces: Vec<&str> = candidates.iter().map(|c| c.surface.as_str()).collect();
+                let surfaces = candidates
+                    .iter()
+                    .map(|candidate| self.surface_for_candidate(candidate))
+                    .collect::<Vec<_>>();
                 return Err(MorphologyError::Ambiguous(surfaces.join(", ")));
             }
         }
-        Ok(best_candidate.entry.clone())
+        Ok(best_entry.clone())
     }
 
     pub fn inflect(&self, lemma: &str, case: Case, number: Number) -> Option<String> {
@@ -325,10 +362,11 @@ impl MorphologyRuntime {
                 candidates
                     .iter()
                     .filter(|candidate| {
-                        candidate.entry.source_tier == best.entry.source_tier
+                        self.entry_for_candidate(candidate).source_tier
+                            == self.entry_for_candidate(best).source_tier
                             && candidate.confidence == best.confidence
                     })
-                    .map(|candidate| candidate.entry.lemma.as_str())
+                    .map(|candidate| candidate.lexeme_index)
                     .collect::<std::collections::BTreeSet<_>>()
                     .len()
                     > 1
@@ -358,39 +396,72 @@ impl MorphologyRuntime {
     }
 
     pub fn lemmatize(&self, surface: &str) -> MorphologyLookup {
-        let candidates = self.get_candidates(surface);
+        let surface_lower = surface.to_lowercase();
+        let candidates = self.indexed_candidates(&surface_lower);
         if candidates.is_empty() {
             return MorphologyLookup::Unknown;
         }
-        let best_candidate = candidates[0];
+        let best_candidate = &candidates[0];
+        let best_entry = self.entry_for_candidate(best_candidate);
         if candidates.len() > 1 {
-            let best_tier = best_candidate.entry.source_tier;
+            let best_tier = best_entry.source_tier;
             let best_quality = best_candidate.confidence;
             // Count unique lemmas among candidates with the best tier and quality.
             // Multiple forms of the same lemma (e.g. non-inflectable words) do not
             // constitute ambiguity.
-            let unique_lemmas: std::collections::HashSet<&str> = candidates
+            let unique_lemmas: std::collections::HashSet<usize> = candidates
                 .iter()
-                .filter(|c| c.entry.source_tier == best_tier && c.confidence == best_quality)
-                .map(|c| c.entry.lemma.as_str())
+                .filter(|candidate| {
+                    self.entry_for_candidate(candidate).source_tier == best_tier
+                        && candidate.confidence == best_quality
+                })
+                .map(|candidate| candidate.lexeme_index)
                 .collect();
             if unique_lemmas.len() > 1 {
-                return MorphologyLookup::Ambiguous(
-                    candidates.iter().map(|c| (**c).clone()).collect(),
-                );
+                return MorphologyLookup::Ambiguous(self.materialize_candidates(candidates));
             }
         }
         MorphologyLookup::Resolved(LexemeResolution {
-            lemma: best_candidate.entry.lemma.clone(),
-            surface: best_candidate.surface.clone(),
+            lemma: best_entry.lemma.clone(),
+            surface: self.surface_for_candidate(best_candidate).to_string(),
             case: best_candidate.case_number.case,
             number: best_candidate.case_number.number,
-            pos: best_candidate.entry.features.pos,
-            gender: best_candidate.entry.features.gender,
-            animacy: best_candidate.entry.features.animacy,
-            source_tier: best_candidate.entry.source_tier,
-            quality: best_candidate.entry.quality,
+            pos: best_entry.features.pos,
+            gender: best_entry.features.gender,
+            animacy: best_entry.features.animacy,
+            source_tier: best_entry.source_tier,
+            quality: best_entry.quality,
         })
+    }
+
+    fn indexed_candidates(&self, surface_lower: &str) -> &[IndexedCandidate] {
+        self.surface_index
+            .get(surface_lower)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+    }
+
+    fn entry_for_candidate(&self, candidate: &IndexedCandidate) -> &LexemeEntry {
+        self.lexemes
+            .get(&self.lemma_keys[candidate.lexeme_index])
+            .expect("surface index must address a canonical entry")
+    }
+
+    fn surface_for_candidate(&self, candidate: &IndexedCandidate) -> &str {
+        self.entry_for_candidate(candidate)
+            .get_form(candidate.case_number.case, candidate.case_number.number)
+    }
+
+    fn materialize_candidates(&self, candidates: &[IndexedCandidate]) -> Vec<LexemeCandidate> {
+        candidates
+            .iter()
+            .map(|candidate| LexemeCandidate {
+                surface: self.surface_for_candidate(candidate).to_string(),
+                entry: self.entry_for_candidate(candidate).clone(),
+                case_number: candidate.case_number,
+                confidence: candidate.confidence,
+            })
+            .collect()
     }
 
     pub fn stats(&self) -> MorphologyStats {
@@ -431,6 +502,7 @@ fn is_valid_commit_id(s: &str) -> bool {
     }
 }
 
+#[cfg(test)]
 fn sha256_hex(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
