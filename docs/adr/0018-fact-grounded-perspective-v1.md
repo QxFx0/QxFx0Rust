@@ -53,6 +53,6 @@ existing typed block before semantic execution.
 - Static FactRecords remain process-global and are not copied into sessions.
 - Deterministic trace output exposes opinion and episode counts.
 - Doctor reports Perspective limits and available curated counterpoint links.
-- This slice does not alter renderer wording. A stance-aware adapter is a
-  separate change and must still render exclusively through FactId-authorized
-  leaves.
+- Renderer wording remains governed by FactId-authorized leaves. ADR-0019 adds
+  a stance decision on top of those leaves without introducing another
+  declarative surface path.

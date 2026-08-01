@@ -14,8 +14,8 @@ use qxfx0_render::RenderEngine;
 use qxfx0_self::{
     collapse_essence, commit_essence,
     deliberation::{self, DeliberationModulation, Plan},
-    integrate_curated_claims, should_commit_essence, witness_essence, Conatus, EssenceMode,
-    EssenceModulation, Salience, SelfBlanket,
+    integrate_curated_claims, resolve_render_stance, should_commit_essence, witness_essence,
+    Conatus, EssenceMode, EssenceModulation, PerspectiveRenderStance, Salience, SelfBlanket,
 };
 use qxfx0_semantic::{
     argued_topic_registry, derive_atoms, normalize_punctuation, seed_graph, ClaimRole,
@@ -230,7 +230,8 @@ pub fn render_stage(
                 .iter()
                 .any(|claim| claim.role() != ClaimRole::DialogueAct) =>
         {
-            let response = render_curated_plan(plan, fp.narrative_tone())?;
+            let response =
+                render_curated_plan(plan, fp.narrative_tone(), &state.semantic.perspective)?;
             return Ok(RenderedTurnContext::new(
                 planned, response, path_depth, false,
             ));
@@ -293,6 +294,7 @@ pub fn render_stage(
 fn render_curated_plan(
     plan: &ReadyResponsePlan,
     tone: qxfx0_types::NarrativeTone,
+    perspective: &qxfx0_types::PerspectiveState,
 ) -> Result<String, String> {
     let registry = argued_topic_registry().map_err(str::to_owned)?;
     plan.validate_with_facts(registry.facts())?;
@@ -366,7 +368,14 @@ fn render_curated_plan(
             ));
         }
         let prefix = match claim.role() {
-            ClaimRole::Thesis => "",
+            ClaimRole::Thesis => {
+                match resolve_render_stance(perspective, &topic_concept, fact_id, registry.facts())?
+                {
+                    PerspectiveRenderStance::Neutral => "",
+                    PerspectiveRenderStance::Affirmed => "Я сохраняю позицию: ",
+                    PerspectiveRenderStance::Qualified => "Моя позиция остаётся с оговоркой: ",
+                }
+            }
             ClaimRole::Support => "Кроме того, ",
             ClaimRole::Counterpoint => "Однако ",
             ClaimRole::Consequence => "Поэтому ",
