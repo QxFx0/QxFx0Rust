@@ -13,6 +13,16 @@ pub struct PerspectiveUpdate {
     pub episodes_added: usize,
 }
 
+/// A renderer-facing decision derived only from persisted semantic identity.
+/// The enum deliberately contains no surface text: wording remains owned by
+/// the renderer, while this module only authorizes which stance it may expose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PerspectiveRenderStance {
+    Neutral,
+    Affirmed,
+    Qualified,
+}
+
 impl PerspectiveUpdate {
     fn unchanged() -> Self {
         Self {
@@ -82,6 +92,89 @@ pub fn integrate_curated_claims(
             episodes_added,
         },
     ))
+}
+
+/// Resolve the stance that may be exposed while rendering a curated thesis.
+///
+/// The current thesis and every persisted grounding id are re-selected through
+/// the immutable registry. Corrupt, stale or unsupported state therefore
+/// fails closed before any stance wording is emitted. In particular,
+/// `Opposed` is not renderable in v1 because no Perspective transition can
+/// establish it from curated evidence yet.
+pub fn resolve_render_stance(
+    state: &PerspectiveState,
+    topic: &ConceptId,
+    thesis_fact_id: &FactId,
+    facts: &FactRegistry,
+) -> Result<PerspectiveRenderStance, String> {
+    let thesis = facts
+        .select(thesis_fact_id)
+        .map_err(|error| error.to_string())?;
+    if &thesis.subject != topic {
+        return Err(format!(
+            "Perspective thesis '{}' is not about topic '{}'",
+            thesis_fact_id, topic.0
+        ));
+    }
+
+    let Some(opinion) = state.opinions.get(topic) else {
+        return Ok(PerspectiveRenderStance::Neutral);
+    };
+    if &opinion.topic != topic {
+        return Err(format!(
+            "Perspective opinion key '{}' differs from payload topic '{}'",
+            topic.0, opinion.topic.0
+        ));
+    }
+    if &opinion.primary_fact != thesis_fact_id {
+        return Err(format!(
+            "Perspective opinion for '{}' cites primary fact '{}' instead of rendered thesis '{}'",
+            topic.0, opinion.primary_fact, thesis_fact_id
+        ));
+    }
+    if !opinion.grounding_facts.contains(thesis_fact_id) {
+        return Err(format!(
+            "Perspective opinion for '{}' omits rendered thesis '{}' from its grounding",
+            topic.0, thesis_fact_id
+        ));
+    }
+
+    let mut has_curated_counterpoint = false;
+    for grounding_id in &opinion.grounding_facts {
+        let grounding = facts
+            .select(grounding_id)
+            .map_err(|error| error.to_string())?;
+        if &grounding.subject != topic {
+            return Err(format!(
+                "Perspective grounding fact '{}' is not about topic '{}'",
+                grounding_id, topic.0
+            ));
+        }
+        has_curated_counterpoint |= grounding.conditions.iter().any(|condition| {
+            matches!(condition, FactCondition::Counters(target) if target == thesis_fact_id)
+        });
+    }
+
+    match opinion.polarity {
+        BeliefPolarity::Affirmed if !has_curated_counterpoint => {
+            Ok(PerspectiveRenderStance::Affirmed)
+        }
+        BeliefPolarity::Affirmed => Err(format!(
+            "Perspective opinion for '{}' is affirmed despite a curated counterpoint",
+            topic.0
+        )),
+        BeliefPolarity::Qualified if has_curated_counterpoint => {
+            Ok(PerspectiveRenderStance::Qualified)
+        }
+        BeliefPolarity::Qualified => Err(format!(
+            "Perspective opinion for '{}' is qualified without a curated counterpoint",
+            topic.0
+        )),
+        BeliefPolarity::Opposed => Err(format!(
+            "Perspective opinion for '{}' uses unsupported opposed polarity",
+            topic.0
+        )),
+    }
 }
 
 fn establish_opinion(
@@ -311,5 +404,58 @@ mod tests {
             qxfx0_semantic::active_pack_set().facts(),
         )
         .is_err());
+    }
+
+    #[test]
+    fn render_stance_is_neutral_before_evidence_and_qualified_after_integration() {
+        let facts = qxfx0_semantic::active_pack_set().facts();
+        let topic = ConceptId("concept.свобода".into());
+        let thesis = FactId::try_new("fact.freedom_choice").unwrap();
+        assert_eq!(
+            resolve_render_stance(&PerspectiveState::default(), &topic, &thesis, facts).unwrap(),
+            PerspectiveRenderStance::Neutral
+        );
+
+        let thesis_only = vec![(ClaimRole::Thesis, thesis.clone())];
+        let (affirmed, _) =
+            integrate_curated_claims(&PerspectiveState::default(), 1, &thesis_only, facts).unwrap();
+        assert_eq!(
+            resolve_render_stance(&affirmed, &topic, &thesis, facts).unwrap(),
+            PerspectiveRenderStance::Affirmed
+        );
+
+        let (state, _) =
+            integrate_curated_claims(&PerspectiveState::default(), 1, &freedom_claims(), facts)
+                .unwrap();
+        assert_eq!(
+            resolve_render_stance(&state, &topic, &thesis, facts).unwrap(),
+            PerspectiveRenderStance::Qualified
+        );
+    }
+
+    #[test]
+    fn render_stance_rejects_forged_grounding_and_unsupported_opposition() {
+        let facts = qxfx0_semantic::active_pack_set().facts();
+        let topic = ConceptId("concept.свобода".into());
+        let thesis = FactId::try_new("fact.freedom_choice").unwrap();
+        let (mut state, _) =
+            integrate_curated_claims(&PerspectiveState::default(), 1, &freedom_claims(), facts)
+                .unwrap();
+        state
+            .opinions
+            .get_mut(&topic)
+            .unwrap()
+            .grounding_facts
+            .insert(FactId::try_new("fact.forged").unwrap());
+        assert!(resolve_render_stance(&state, &topic, &thesis, facts).is_err());
+
+        state
+            .opinions
+            .get_mut(&topic)
+            .unwrap()
+            .grounding_facts
+            .remove(&FactId::try_new("fact.forged").unwrap());
+        state.opinions.get_mut(&topic).unwrap().polarity = BeliefPolarity::Opposed;
+        assert!(resolve_render_stance(&state, &topic, &thesis, facts).is_err());
     }
 }

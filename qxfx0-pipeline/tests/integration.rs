@@ -437,6 +437,43 @@ fn test_repeated_curated_plan_does_not_duplicate_perspective_episodes() {
 }
 
 #[test]
+fn test_repeated_curated_plan_exposes_only_fact_grounded_qualified_stance() {
+    let mut state = test_state("perspective-renderer-adapter");
+    let input = TurnInput {
+        session_id: state.session_id.clone(),
+        raw_text: "что такое свобода?".into(),
+    };
+
+    let first = process_turn(&input, &mut state);
+    assert!(!first.blocked);
+    assert!(!first.response.contains("Моя позиция"));
+    let perspective_after_first = state.semantic.perspective.clone();
+
+    let second = process_turn(&input, &mut state);
+    assert!(!second.blocked);
+    assert!(second
+        .response
+        .starts_with("Моя позиция остаётся с оговоркой: свобода предполагает возможность выбора."));
+    assert_eq!(state.semantic.perspective, perspective_after_first);
+
+    let topic = qxfx0_semantic::argued_topic_registry()
+        .unwrap()
+        .get("свобода")
+        .unwrap();
+    for statement in topic.statements() {
+        assert!(
+            second
+                .response
+                .to_lowercase()
+                .contains(&statement.surface().to_lowercase()),
+            "stance adapter omitted FactId-authorized leaf '{}': {}",
+            statement.fact_id(),
+            second.response
+        );
+    }
+}
+
+#[test]
 fn test_user_input_cannot_create_fact_record() {
     let facts = qxfx0_semantic::argued_topic_registry().unwrap().facts();
     let facts_before = facts.records().cloned().collect::<Vec<_>>();

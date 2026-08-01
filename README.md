@@ -106,6 +106,8 @@ Example output:
 - seed-graph identities, endpoints, indexes and covered topics;
 - concept, fact and active knowledge-pack manifests, hashes and conflicts;
 - FactId-grounded Perspective capacity and curated counterpoint links;
+- FactId-authorized stance rendering with fail-closed validation of persisted
+  opinions;
 - the non-promoting Haskell corpus pilot and its quarantine counts;
 - embedded template syntax, weights and relation-type coverage;
 - morphology manifest, hash, provenance, tier counts and ambiguity metrics;
