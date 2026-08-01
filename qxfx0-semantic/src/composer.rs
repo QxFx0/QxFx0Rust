@@ -1,12 +1,17 @@
+use qxfx0_morphology::MorphologyRuntime;
 use qxfx0_types::atom::{AtomGraph, AtomId, GeneratedSurface, PathProof, Relation};
 use qxfx0_types::field::FieldProfile;
 use serde::{Deserialize, Serialize};
+
+use crate::concept_resolver::ResolutionOutcome;
 
 /// Proposition parser — parses user input into typed proposition.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParsedProposition {
     pub subject: String,
+    pub subject_resolution: ResolutionOutcome,
     pub object: Option<String>,
+    pub object_resolution: Option<ResolutionOutcome>,
     pub mode: PropositionMode,
 }
 
@@ -25,6 +30,10 @@ pub enum PropositionMode {
 pub struct PropositionParser;
 
 impl PropositionParser {
+    fn resolve_phrase(phrase: &str) -> ResolutionOutcome {
+        crate::concept_resolver::get_resolver().resolve(phrase)
+    }
+
     /// Parse user input into a typed proposition.
     pub fn parse(input: &str) -> ParsedProposition {
         let lower = input.to_lowercase();
@@ -46,9 +55,12 @@ impl PropositionParser {
                 )
             })
         {
+            let subject = greeting.join(" ");
             return ParsedProposition {
-                subject: greeting.join(" "),
+                subject_resolution: Self::resolve_phrase(&subject),
+                subject,
                 object: None,
+                object_resolution: None,
                 mode: PropositionMode::Greeting,
             };
         }
@@ -61,13 +73,16 @@ impl PropositionParser {
                 let topic = Self::clean_topic(&trimmed[idx + marker.len()..]);
                 if !topic.is_empty() {
                     return ParsedProposition {
+                        subject_resolution: Self::resolve_phrase(&topic),
                         subject: topic,
                         object: None,
+                        object_resolution: None,
                         mode: PropositionMode::Purpose,
                     };
                 }
             }
         }
+
         for marker in [
             "зачем нужен ",
             "зачем нужна ",
@@ -78,8 +93,10 @@ impl PropositionParser {
                 let topic = Self::clean_topic(&trimmed[idx + marker.len()..]);
                 if !topic.is_empty() {
                     return ParsedProposition {
+                        subject_resolution: Self::resolve_phrase(&topic),
                         subject: topic,
                         object: None,
+                        object_resolution: None,
                         mode: PropositionMode::Purpose,
                     };
                 }
@@ -90,13 +107,16 @@ impl PropositionParser {
         // frame instead of being reduced to a definition of "почему".
         if let Some(rest) = trimmed.strip_prefix("почему ") {
             let topic = Self::clean_topic(rest);
+            let subject = if topic.is_empty() {
+                "явление".to_string()
+            } else {
+                topic
+            };
             return ParsedProposition {
-                subject: if topic.is_empty() {
-                    "явление".to_string()
-                } else {
-                    topic
-                },
+                subject_resolution: Self::resolve_phrase(&subject),
+                subject,
                 object: None,
+                object_resolution: None,
                 mode: PropositionMode::WorldCause,
             };
         }
@@ -104,9 +124,12 @@ impl PropositionParser {
         // Define: "что такое X?"
         if let Some(topic) = Self::extract_after(trimmed, &["что такое", "что есть", "определи"])
         {
+            let subject = Self::clean_topic(&topic);
             return ParsedProposition {
-                subject: Self::clean_topic(&topic),
+                subject_resolution: Self::resolve_phrase(&subject),
+                subject,
                 object: None,
+                object_resolution: None,
                 mode: PropositionMode::Define,
             };
         }
@@ -122,9 +145,13 @@ impl PropositionParser {
             };
             let parts: Vec<&str> = after.splitn(2, " и ").collect();
             if parts.len() == 2 {
+                let subject = Self::clean_topic(parts[0]);
+                let object = Self::clean_topic(parts[1]);
                 return ParsedProposition {
-                    subject: Self::clean_topic(parts[0]),
-                    object: Some(Self::clean_topic(parts[1])),
+                    subject_resolution: Self::resolve_phrase(&subject),
+                    subject,
+                    object_resolution: Some(Self::resolve_phrase(&object)),
+                    object: Some(object),
                     mode: PropositionMode::Connect,
                 };
             }
@@ -143,10 +170,14 @@ impl PropositionParser {
             for pattern in &challenge_patterns {
                 if let Some(idx) = trimmed.find(pattern) {
                     let before = trimmed[..idx].trim();
-                    let subject = before.split_whitespace().next().unwrap_or("неизвестный");
+                    let subject = Self::clean_topic(
+                        before.split_whitespace().next().unwrap_or("неизвестный"),
+                    );
                     return ParsedProposition {
-                        subject: Self::clean_topic(subject),
+                        subject_resolution: Self::resolve_phrase(&subject),
+                        subject,
                         object: None,
+                        object_resolution: None,
                         mode: PropositionMode::Challenge,
                     };
                 }
@@ -168,9 +199,12 @@ impl PropositionParser {
             "оспариваю",
         ];
         if challenge_markers.iter().any(|m| trimmed.contains(m)) {
+            let subject = Self::extract_topic_or_unknown(trimmed);
             return ParsedProposition {
-                subject: Self::extract_topic_or_unknown(trimmed),
+                subject_resolution: Self::resolve_phrase(&subject),
+                subject,
                 object: None,
+                object_resolution: None,
                 mode: PropositionMode::Challenge,
             };
         }
@@ -201,9 +235,12 @@ impl PropositionParser {
                 let after = trimmed[idx + pattern.len()..].trim();
                 let topic = after.trim_end_matches('?').trim();
                 if !topic.is_empty() {
+                    let subject = Self::clean_topic(topic);
                     return ParsedProposition {
-                        subject: Self::clean_topic(topic),
+                        subject_resolution: Self::resolve_phrase(&subject),
+                        subject,
                         object: None,
+                        object_resolution: None,
                         mode: PropositionMode::Reflect,
                     };
                 }
@@ -232,9 +269,13 @@ impl PropositionParser {
                         conn_pattern_masc.len()
                     };
                     let object = after[conn_idx + rel_len..].trim_end_matches('?').trim();
+                    let subject = Self::clean_topic(subject);
+                    let object = Self::clean_topic(object);
                     return ParsedProposition {
-                        subject: Self::clean_topic(subject),
-                        object: Some(Self::clean_topic(object)),
+                        subject_resolution: Self::resolve_phrase(&subject),
+                        subject,
+                        object_resolution: Some(Self::resolve_phrase(&object)),
+                        object: Some(object),
                         mode: PropositionMode::Connect,
                     };
                 }
@@ -245,9 +286,12 @@ impl PropositionParser {
         // definition requests. In both cases prefer the final content word,
         // which is substantially closer to a Russian noun phrase than the
         // old "first word with at least three bytes" heuristic.
+        let subject = Self::extract_topic_or_unknown(trimmed);
         ParsedProposition {
-            subject: Self::extract_topic_or_unknown(trimmed),
+            subject_resolution: Self::resolve_phrase(&subject),
+            subject,
             object: None,
+            object_resolution: None,
             mode: if trimmed.ends_with('?') {
                 PropositionMode::Define
             } else {
@@ -278,12 +322,18 @@ impl PropositionParser {
             .to_string()
     }
 
+    /// Get the global morphology runtime.
+    pub fn get_runtime() -> &'static MorphologyRuntime {
+        qxfx0_morphology::get_runtime()
+    }
+
     /// Try to normalize a topic to its nominative form by checking if any
     /// graph atom's inflected form matches the input. Returns the original
     /// string if no match is found.
     pub fn normalize_topic(topic: &str, graph: &AtomGraph) -> String {
-        use qxfx0_morphology::{Case, MorphologyData};
-        let morph = MorphologyData::with_seed();
+        use qxfx0_morphology::Number;
+        use qxfx0_types::morphology::Case as MorphCase;
+        let morph = Self::get_runtime();
         let lower = topic.to_lowercase();
 
         for (id, atom) in &graph.atoms {
@@ -292,15 +342,16 @@ impl PropositionParser {
                 return id.as_str().to_string();
             }
             for case in [
-                Case::Genitive,
-                Case::Dative,
-                Case::Accusative,
-                Case::Instrumental,
-                Case::Prepositional,
+                MorphCase::Genitive,
+                MorphCase::Dative,
+                MorphCase::Accusative,
+                MorphCase::Instrumental,
+                MorphCase::Prepositional,
             ] {
-                let inflected = morph.to_case(case, &display).to_lowercase();
-                if inflected == lower {
-                    return id.as_str().to_string();
+                if let Some(inflected) = morph.inflect(&display, case, Number::Singular) {
+                    if inflected.to_lowercase() == lower {
+                        return id.as_str().to_string();
+                    }
                 }
             }
         }
@@ -311,8 +362,9 @@ impl PropositionParser {
     /// parsing generic assertions/questions and keeps explicit parser modes
     /// (purpose, cause, connection) in control of their own subject grammar.
     pub fn known_topic_in_input(input: &str, graph: &AtomGraph) -> Option<String> {
-        use qxfx0_morphology::{Case, MorphologyData};
-        let morph = MorphologyData::with_seed();
+        use qxfx0_morphology::Number;
+        use qxfx0_types::morphology::Case as MorphCase;
+        let morph = Self::get_runtime();
         let words: Vec<String> = input
             .to_lowercase()
             .split_whitespace()
@@ -327,14 +379,16 @@ impl PropositionParser {
                     return Some(id.as_str().to_string());
                 }
                 for case in [
-                    Case::Genitive,
-                    Case::Dative,
-                    Case::Accusative,
-                    Case::Instrumental,
-                    Case::Prepositional,
+                    MorphCase::Genitive,
+                    MorphCase::Dative,
+                    MorphCase::Accusative,
+                    MorphCase::Instrumental,
+                    MorphCase::Prepositional,
                 ] {
-                    if word == morph.to_case(case, &display).to_lowercase() {
-                        return Some(id.as_str().to_string());
+                    if let Some(inflected) = morph.inflect(&display, case, Number::Singular) {
+                        if word == inflected.to_lowercase() {
+                            return Some(id.as_str().to_string());
+                        }
                     }
                 }
             }

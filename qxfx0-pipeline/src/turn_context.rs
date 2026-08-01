@@ -20,7 +20,6 @@ pub struct TurnInputContext {
     proposition: ParsedProposition,
     is_challenge: bool,
 }
-
 impl TurnInputContext {
     pub(crate) fn new(
         session_id: String,

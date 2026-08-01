@@ -1,6 +1,6 @@
 # ADR-0013: Shadow response outcome and typed recovery
 
-- Status: Accepted
+- Status: Superseded by ADR-0014 and ADR-0015
 - Date: 2026-07-27
 
 ## Context
@@ -23,6 +23,9 @@ Insert `PlannedTurnContext` between route and render. It carries
 The shadow plan is observational. Renderer continues to use the routed context
 embedded in `PlannedTurnContext`; responses and persistent state must remain
 identical. `plan_shadow` is a replay-visible pipeline step with stable metadata.
+
+ADR-0015 retains the trace name for replay compatibility but makes the
+`ContentV1` plan renderer-authoritative.
 Guard rejection also emits the same recovery taxonomy in trace metadata.
 
 ## Deferred

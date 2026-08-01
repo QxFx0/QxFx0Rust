@@ -8,6 +8,7 @@ mod conjugate_pipeline;
 pub mod conversation_fsm;
 #[path = "tracing.rs"]
 pub mod execution_trace;
+pub mod fact_grounded;
 pub mod shadow_plan;
 mod stages;
 pub mod stance_request;

@@ -1,27 +1,20 @@
+pub mod runtime;
+pub use runtime::{
+    get_runtime, load_from_directory, MorphologyError, MorphologyResult, MorphologyRuntime,
+    MorphologyStats, EMBEDDED_BUNDLE_SIZE_BYTES, EMBEDDED_LEXEMES_SIZE_BYTES,
+    EMBEDDED_MANIFEST_SIZE_BYTES,
+};
+
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
 /// Russian morphology engine — replaces GF (Grammatical Framework).
 /// Handles 6-case inflection for philosophical dialogue.
 /// Deterministic: same input → same output, always.
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Case {
-    Nominative,
-    Genitive,
-    Dative,
-    Accusative,
-    Instrumental,
-    Prepositional,
-}
-
-/// Gender of a Russian noun.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Gender {
-    Masculine,
-    Feminine,
-    Neuter,
-}
+pub use qxfx0_types::morphology::{
+    Animacy, Case, Gender, GrammarFeatures, InflectionForms, LexemeCandidate, LexemeEntry,
+    MorphologyBundleManifest, MorphologyLookup, Number, PartOfSpeech, SourceTier,
+};
 
 /// Morphology data — case forms lookup + heuristic rules.
 #[derive(Debug, Clone, Default)]
@@ -623,6 +616,7 @@ fn heuristic_inflect(case: Case, word: &str) -> String {
             }
         }
         Gender::Neuter => inflect_neuter(word),
+        Gender::Unknown => inflect_neuter(word),
     };
 
     match case {
