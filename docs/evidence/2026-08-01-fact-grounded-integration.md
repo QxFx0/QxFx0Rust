@@ -25,7 +25,7 @@
 
 - `cargo fmt --all -- --check`: pass.
 - `cargo clippy --workspace --all-targets -- -D warnings`: pass.
-- `cargo test --workspace --all-targets -q`: pass.
+- `cargo test --workspace --all-targets -q`: 518 passed, 0 failed.
 - `cargo build --workspace --release`: pass.
 - Doctor: 11/11, including pack, FactRegistry, Perspective and stance checks.
 - Renderer audit test: 30 admitted topics pass.
