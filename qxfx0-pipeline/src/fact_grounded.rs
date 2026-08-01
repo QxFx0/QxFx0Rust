@@ -11,20 +11,15 @@ use qxfx0_types::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FactGroundedRollout {
+    #[default]
     Disabled,
     Shadow,
     TraceOnly,
     LimitedNonProduction,
     Enabled,
-}
-
-impl Default for FactGroundedRollout {
-    fn default() -> Self {
-        Self::Disabled
-    }
 }
 
 impl FactGroundedRollout {
@@ -39,6 +34,18 @@ pub struct ComposedRenderDecision {
     /// separate exact decision and never converted into `Opposed`.
     pub grounding: PerspectiveRenderStance,
     pub authority: Option<SystemStanceDecision>,
+}
+
+pub struct FactGroundedCompositionInput<'a> {
+    pub rollout: FactGroundedRollout,
+    pub state: &'a PerspectiveState,
+    pub topic: &'a ConceptId,
+    pub topic_for_authority: &'a StanceTopic,
+    pub thesis_fact_id: &'a FactId,
+    pub facts: &'a FactRegistry,
+    pub persisted_pack_fingerprint: &'a str,
+    pub active_pack_fingerprint: &'a str,
+    pub verified_authority: Option<&'a VerifiedStanceDecision>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -70,25 +77,23 @@ pub fn validate_pack_fingerprint(
 /// `Qualified` never becomes system authority, and `Rejected` never becomes
 /// the unsupported fact-grounded `Opposed` polarity.
 pub fn compose_render_decision(
-    rollout: FactGroundedRollout,
-    state: &PerspectiveState,
-    topic: &ConceptId,
-    topic_for_authority: &StanceTopic,
-    thesis_fact_id: &FactId,
-    facts: &FactRegistry,
-    persisted_pack_fingerprint: &str,
-    active_pack_fingerprint: &str,
-    verified_authority: Option<&VerifiedStanceDecision>,
+    input: FactGroundedCompositionInput<'_>,
 ) -> Result<ComposedRenderDecision, FactGroundedCompositionError> {
-    if !rollout.permits_render_authorization() {
+    if !input.rollout.permits_render_authorization() {
         return Err(FactGroundedCompositionError::Disabled);
     }
-    validate_pack_fingerprint(persisted_pack_fingerprint, active_pack_fingerprint)?;
-    let grounding = resolve_render_stance(state, topic, thesis_fact_id, facts)
-        .map_err(FactGroundedCompositionError::InvalidState)?;
-    let authority = verified_authority.map(|verified| verified.decision().clone());
+    validate_pack_fingerprint(
+        input.persisted_pack_fingerprint,
+        input.active_pack_fingerprint,
+    )?;
+    let grounding =
+        resolve_render_stance(input.state, input.topic, input.thesis_fact_id, input.facts)
+            .map_err(FactGroundedCompositionError::InvalidState)?;
+    let authority = input
+        .verified_authority
+        .map(|verified| verified.decision().clone());
     if let Some(decision) = &authority {
-        if decision.topic != *topic_for_authority {
+        if decision.topic != *input.topic_for_authority {
             return Err(FactGroundedCompositionError::AuthorityTopicMismatch);
         }
     }
@@ -105,17 +110,20 @@ mod tests {
     #[test]
     fn default_off_does_not_authorize_composition() {
         let packs = qxfx0_semantic::active_pack_set();
-        let error = compose_render_decision(
-            FactGroundedRollout::Disabled,
-            &PerspectiveState::default(),
-            &ConceptId("concept.свобода".into()),
-            &StanceTopic::new("свобода").unwrap(),
-            &FactId::try_new("fact.freedom_choice").unwrap(),
-            packs.facts(),
-            packs.fingerprint(),
-            packs.fingerprint(),
-            None,
-        )
+        let topic = ConceptId("concept.свобода".into());
+        let authority_topic = StanceTopic::new("свобода").unwrap();
+        let thesis = FactId::try_new("fact.freedom_choice").unwrap();
+        let error = compose_render_decision(FactGroundedCompositionInput {
+            rollout: FactGroundedRollout::Disabled,
+            state: &PerspectiveState::default(),
+            topic: &topic,
+            topic_for_authority: &authority_topic,
+            thesis_fact_id: &thesis,
+            facts: packs.facts(),
+            persisted_pack_fingerprint: packs.fingerprint(),
+            active_pack_fingerprint: packs.fingerprint(),
+            verified_authority: None,
+        })
         .unwrap_err();
         assert_eq!(error, FactGroundedCompositionError::Disabled);
     }
@@ -125,31 +133,33 @@ mod tests {
         let packs = qxfx0_semantic::active_pack_set();
         let topic = ConceptId("concept.свобода".into());
         let thesis = FactId::try_new("fact.freedom_choice").unwrap();
-        let decision = compose_render_decision(
-            FactGroundedRollout::LimitedNonProduction,
-            &PerspectiveState::default(),
-            &topic,
-            &StanceTopic::new("свобода").unwrap(),
-            &thesis,
-            packs.facts(),
-            packs.fingerprint(),
-            packs.fingerprint(),
-            None,
-        )
+        let authority_topic = StanceTopic::new("свобода").unwrap();
+        let decision = compose_render_decision(FactGroundedCompositionInput {
+            rollout: FactGroundedRollout::LimitedNonProduction,
+            state: &PerspectiveState::default(),
+            topic: &topic,
+            topic_for_authority: &authority_topic,
+            thesis_fact_id: &thesis,
+            facts: packs.facts(),
+            persisted_pack_fingerprint: packs.fingerprint(),
+            active_pack_fingerprint: packs.fingerprint(),
+            verified_authority: None,
+        })
         .unwrap();
         assert_eq!(decision.grounding, PerspectiveRenderStance::Neutral);
 
-        let error = compose_render_decision(
-            FactGroundedRollout::LimitedNonProduction,
-            &PerspectiveState::default(),
-            &topic,
-            &StanceTopic::new("свобода").unwrap(),
-            &thesis,
-            packs.facts(),
-            &"f".repeat(64),
-            packs.fingerprint(),
-            None,
-        )
+        let wrong_fingerprint = "f".repeat(64);
+        let error = compose_render_decision(FactGroundedCompositionInput {
+            rollout: FactGroundedRollout::LimitedNonProduction,
+            state: &PerspectiveState::default(),
+            topic: &topic,
+            topic_for_authority: &authority_topic,
+            thesis_fact_id: &thesis,
+            facts: packs.facts(),
+            persisted_pack_fingerprint: &wrong_fingerprint,
+            active_pack_fingerprint: packs.fingerprint(),
+            verified_authority: None,
+        })
         .unwrap_err();
         assert_eq!(error, FactGroundedCompositionError::PackFingerprintMismatch);
     }
