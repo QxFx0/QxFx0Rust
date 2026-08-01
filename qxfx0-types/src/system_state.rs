@@ -7,7 +7,7 @@ use crate::governance::GovernanceLog;
 use crate::illocutionary_force::IllocutionaryForce;
 use crate::move_family::CanonicalMoveFamily;
 use crate::network::SemanticNetwork;
-use crate::ConceptId;
+use crate::{ConceptId, PerspectiveState};
 
 /// Dialogue state — multi-turn context, history, last routing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,6 +164,10 @@ pub struct SemanticState {
     #[serde(default)]
     pub pack_set_fingerprint: String,
     pub semantic_commitments: Option<SemanticCommitmentStore>,
+    /// FactId-grounded positions and replay-stable semantic episodes. Static
+    /// fact records remain in the active knowledge packs.
+    #[serde(default)]
+    pub perspective: PerspectiveState,
     /// Essence trajectory — the system's commitment history.
     pub essence: EssenceState,
     /// Adjunction balance — Holistic ⊣ Formal categorical state.
@@ -241,6 +245,7 @@ impl SystemState {
                 violations.push("commitment contradiction log exceeds 10000 entries".into());
             }
         }
+        violations.extend(self.semantic.perspective.validate());
         if self.semantic.essence.witnesses.len() > self.semantic.essence.capacity.max(32) {
             violations.push("essence witness trajectory exceeds its capacity".into());
         }

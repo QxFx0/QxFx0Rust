@@ -1,4 +1,7 @@
 pub mod deliberation;
+pub mod perspective;
+
+pub use perspective::{integrate_curated_claims, PerspectiveUpdate};
 
 use qxfx0_types::field::Field;
 use qxfx0_types::system_state::*;

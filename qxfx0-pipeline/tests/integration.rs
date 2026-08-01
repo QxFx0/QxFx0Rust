@@ -3,6 +3,7 @@
 use qxfx0_pipeline::{process_turn, process_turn_with_trace, TurnInput};
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
+use qxfx0_types::{BeliefPolarity, ConceptId, PerspectiveRevisionReason};
 
 fn test_state(session_id: &str) -> SystemState {
     SystemState {
@@ -62,6 +63,8 @@ fn test_unknown_input_preserves_state() {
         final_commitments, initial_commitments,
         "Unknown input must not add new factual commitments"
     );
+    assert!(state.semantic.perspective.opinions.is_empty());
+    assert!(state.semantic.perspective.episodes.is_empty());
 }
 
 #[test]
@@ -228,6 +231,8 @@ fn test_persistence_round_trip_3_turns() {
     assert_eq!(loaded.dialogue.turn_count, 3);
     assert_eq!(loaded.dialogue.history.len(), 3);
     assert_eq!(loaded.session_id, "persist-test");
+    assert_eq!(loaded.semantic.perspective, state.semantic.perspective);
+    assert!(!loaded.semantic.perspective.opinions.is_empty());
 }
 
 #[test]
@@ -355,6 +360,83 @@ fn test_generated_response_becomes_observation_not_fact() {
 }
 
 #[test]
+fn test_curated_plan_builds_fact_grounded_perspective() {
+    let mut state = test_state("perspective-grounding");
+    let raw_text = "что такое свобода?";
+    let (output, trace) = process_turn_with_trace(
+        &TurnInput {
+            session_id: state.session_id.clone(),
+            raw_text: raw_text.into(),
+        },
+        &mut state,
+    );
+
+    assert!(!output.blocked);
+    let topic = ConceptId("concept.свобода".into());
+    let opinion = state.semantic.perspective.opinions.get(&topic).unwrap();
+    assert_eq!(opinion.polarity, BeliefPolarity::Qualified);
+    assert_eq!(opinion.primary_fact.as_str(), "fact.freedom_choice");
+    assert_eq!(opinion.grounding_facts.len(), 3);
+    assert_eq!(state.semantic.perspective.episodes.len(), 3);
+    let revision = &state.semantic.perspective.episodes[1];
+    assert_eq!(
+        revision.reason,
+        PerspectiveRevisionReason::QualifiedByCuratedCounterpoint
+    );
+    assert_eq!(revision.previous_polarity, Some(BeliefPolarity::Affirmed));
+    assert_eq!(revision.resulting_polarity, BeliefPolarity::Qualified);
+    assert_eq!(revision.turn_seq, 1);
+
+    let facts = qxfx0_semantic::active_pack_set().facts();
+    for fact_id in opinion.grounding_facts.iter().chain(
+        state
+            .semantic
+            .perspective
+            .episodes
+            .iter()
+            .flat_map(|episode| episode.cited_facts.iter()),
+    ) {
+        let fact = facts.select(fact_id).unwrap();
+        assert_eq!(fact.subject, topic);
+    }
+    let encoded = serde_json::to_string(&state.semantic.perspective).unwrap();
+    assert!(!encoded.contains(raw_text));
+    assert!(!encoded.contains(&output.response));
+
+    let turn_output = trace.steps.last().unwrap();
+    assert_eq!(turn_output.stage, "turn_output");
+    assert_eq!(
+        turn_output
+            .metadata
+            .get("perspective_opinions")
+            .map(String::as_str),
+        Some("1")
+    );
+    assert_eq!(
+        turn_output
+            .metadata
+            .get("perspective_episodes")
+            .map(String::as_str),
+        Some("3")
+    );
+}
+
+#[test]
+fn test_repeated_curated_plan_does_not_duplicate_perspective_episodes() {
+    let mut state = test_state("perspective-idempotent");
+    let input = TurnInput {
+        session_id: state.session_id.clone(),
+        raw_text: "что такое свобода?".into(),
+    };
+    process_turn(&input, &mut state);
+    let perspective_after_first = state.semantic.perspective.clone();
+
+    process_turn(&input, &mut state);
+
+    assert_eq!(state.semantic.perspective, perspective_after_first);
+}
+
+#[test]
 fn test_user_input_cannot_create_fact_record() {
     let facts = qxfx0_semantic::argued_topic_registry().unwrap().facts();
     let facts_before = facts.records().cloned().collect::<Vec<_>>();
@@ -401,6 +483,12 @@ fn test_fsm_state_transitions_across_turns() {
 #[test]
 fn test_blocked_turn_preserves_state() {
     let mut state = test_state("block");
+    let admitted = TurnInput {
+        session_id: "block".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    assert!(!process_turn(&admitted, &mut state).blocked);
+    assert!(!state.semantic.perspective.opinions.is_empty());
 
     let semantic_before = serde_json::to_value(&state.semantic).unwrap();
 
@@ -416,9 +504,9 @@ fn test_blocked_turn_preserves_state() {
         semantic_before,
         "blocked turn must roll back the complete persistent semantic state"
     );
-    assert_eq!(state.dialogue.turn_count, 1);
-    assert_eq!(state.dialogue.history.len(), 1);
-    assert_eq!(state.governance_log.len(), 1);
+    assert_eq!(state.dialogue.turn_count, 2);
+    assert_eq!(state.dialogue.history.len(), 2);
+    assert_eq!(state.governance_log.len(), 2);
     assert!(state.governance_log.has_blocks());
     assert!(matches!(
         state.last_turn_decision.as_ref().map(|d| &d.guard_status),
@@ -783,6 +871,18 @@ fn test_all_audited_topics_reach_content_plan_in_fresh_sessions() {
             Some("true")
         );
         assert!(!output.blocked, "{} was blocked", topic.topic().as_str());
+        assert_eq!(
+            state.semantic.perspective.opinions.len(),
+            1,
+            "{} must produce one FactId-grounded opinion",
+            topic.topic().as_str()
+        );
+        assert_eq!(
+            state.semantic.perspective.episodes.len(),
+            topic.statement_count(),
+            "{} must record one episode per newly integrated curated fact",
+            topic.topic().as_str()
+        );
         for statement in topic.statements() {
             assert!(
                 output

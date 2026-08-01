@@ -26,6 +26,50 @@ pub struct Persistence {
     conn: Connection,
 }
 
+fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
+    let active_packs = qxfx0_semantic::active_pack_set();
+    if !state.semantic.pack_set_fingerprint.is_empty()
+        && state.semantic.pack_set_fingerprint != active_packs.fingerprint()
+    {
+        // The pipeline owns the typed pack-mismatch block. Do not reinterpret
+        // ids against a different active pack while loading an old session.
+        return Vec::new();
+    }
+    let facts = active_packs.facts();
+    let mut violations = Vec::new();
+    for (topic, opinion) in &state.semantic.perspective.opinions {
+        for fact_id in &opinion.grounding_facts {
+            match facts.select(fact_id) {
+                Ok(fact) if &fact.subject == topic => {}
+                Ok(fact) => violations.push(format!(
+                    "perspective fact '{}' belongs to '{}' instead of '{}'",
+                    fact_id, fact.subject.0, topic.0
+                )),
+                Err(error) => violations.push(format!(
+                    "perspective opinion '{}' has invalid authority: {}",
+                    topic.0, error
+                )),
+            }
+        }
+    }
+    for episode in &state.semantic.perspective.episodes {
+        for fact_id in &episode.cited_facts {
+            match facts.select(fact_id) {
+                Ok(fact) if fact.subject == episode.topic => {}
+                Ok(fact) => violations.push(format!(
+                    "perspective episode {} cites fact '{}' for another topic '{}'",
+                    episode.id.0, fact_id, fact.subject.0
+                )),
+                Err(error) => violations.push(format!(
+                    "perspective episode {} has invalid authority: {}",
+                    episode.id.0, error
+                )),
+            }
+        }
+    }
+    violations
+}
+
 impl Persistence {
     fn configure_connection(conn: &Connection) -> Result<(), PersistenceError> {
         conn.busy_timeout(Duration::from_secs(5))?;
@@ -154,7 +198,7 @@ impl Persistence {
     /// The state is split into three tables:
     /// - `runtime_sessions`: dialogue, last_turn_decision, governance_log
     /// - `session_graphs`: runtime graph atoms/edges
-    /// - `session_semantic`: field, essence, adjunction, commitments
+    /// - `session_semantic`: field, essence, adjunction, commitments, perspective
     ///
     /// All writes happen in a single transaction so a session is never left
     /// in a half-persisted state.
@@ -169,7 +213,8 @@ impl Persistence {
                 session_id, state.session_id
             )));
         }
-        let violations = state.validate();
+        let mut violations = state.validate();
+        violations.extend(perspective_authority_violations(state));
         if !violations.is_empty() {
             return Err(PersistenceError::InvalidState(violations.join("; ")));
         }
@@ -186,6 +231,8 @@ impl Persistence {
         let adjunction_json = serde_json::to_string(&state.semantic.adjunction)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
         let commitments_json = serde_json::to_string(&state.semantic.semantic_commitments)
+            .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
+        let perspective_json = serde_json::to_string(&state.semantic.perspective)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
 
         let state_json = serde_json::to_string(state)
@@ -214,14 +261,22 @@ impl Persistence {
         )?;
 
         tx.execute(
-            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json)
-             VALUES (?1, ?2, ?3, ?4, ?5)
+            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, perspective_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(session_id) DO UPDATE SET
                 field_json=excluded.field_json,
                 essence_json=excluded.essence_json,
                 adjunction_json=excluded.adjunction_json,
-                commitments_json=excluded.commitments_json",
-            params![session_id, field_json, essence_json, adjunction_json, commitments_json],
+                commitments_json=excluded.commitments_json,
+                perspective_json=excluded.perspective_json",
+            params![
+                session_id,
+                field_json,
+                essence_json,
+                adjunction_json,
+                commitments_json,
+                perspective_json
+            ],
         )?;
 
         tx.commit()?;
@@ -247,7 +302,7 @@ impl Persistence {
         let semantic = self
             .conn
             .query_row(
-                "SELECT field_json, essence_json, adjunction_json, commitments_json
+                "SELECT field_json, essence_json, adjunction_json, commitments_json, perspective_json
                  FROM session_semantic WHERE session_id = ?1",
                 params![session_id],
                 |row| {
@@ -256,6 +311,7 @@ impl Persistence {
                         row.get::<_, String>(1)?,
                         row.get::<_, String>(2)?,
                         row.get::<_, Option<String>>(3)?,
+                        row.get::<_, String>(4)?,
                     ))
                 },
             )
@@ -263,7 +319,7 @@ impl Persistence {
 
         if let (
             Some((atoms_json, edges_json)),
-            Some((field_json, essence_json, adjunction_json, commitments_json)),
+            Some((field_json, essence_json, adjunction_json, commitments_json, perspective_json)),
         ) = (graph, semantic)
         {
             let session = self
@@ -308,6 +364,8 @@ impl Persistence {
                         .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
                 ),
             };
+            let perspective = serde_json::from_str(&perspective_json)
+                .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
 
             let state = SystemState {
                 session_id: session_id.into(),
@@ -325,6 +383,7 @@ impl Persistence {
                         runtime_graph,
                         pack_set_fingerprint,
                         semantic_commitments,
+                        perspective,
                         essence,
                         adjunction,
                         cached_edge_count: 0,
@@ -334,7 +393,8 @@ impl Persistence {
                 last_turn_decision,
                 governance_log,
             };
-            let violations = state.validate();
+            let mut violations = state.validate();
+            violations.extend(perspective_authority_violations(&state));
             if !violations.is_empty() {
                 return Err(PersistenceError::InvalidState(violations.join("; ")));
             }
@@ -464,11 +524,42 @@ mod tests {
     use qxfx0_types::governance::{GovernanceEvent, GovernanceEventType};
     use qxfx0_types::system_state::DialogueState;
     use qxfx0_types::system_state::*;
+    use qxfx0_types::{BeliefPolarity, ConceptId, FactId, OpinionCore};
 
     #[test]
     fn test_open_memory() {
         let db = Persistence::open_memory();
         assert!(db.is_ok());
+    }
+
+    #[test]
+    fn test_perspective_rejects_unknown_fact_authority() {
+        let db = Persistence::open_memory().unwrap();
+        let topic = ConceptId("concept.свобода".into());
+        let forged = FactId::try_new("fact.user-forged").unwrap();
+        let mut state = SystemState {
+            session_id: "forged-perspective".into(),
+            ..Default::default()
+        };
+        state.semantic.pack_set_fingerprint =
+            qxfx0_semantic::active_pack_set().fingerprint().into();
+        state.semantic.perspective.opinions.insert(
+            topic.clone(),
+            OpinionCore {
+                topic,
+                primary_fact: forged.clone(),
+                polarity: BeliefPolarity::Affirmed,
+                grounding_facts: std::collections::BTreeSet::from([forged]),
+                confidence_basis_points: 9_000,
+                revision_seq: 1,
+            },
+        );
+
+        let error = db
+            .save_state("forged-perspective", &state)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("invalid authority"), "{error}");
     }
 
     #[test]
@@ -639,7 +730,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 7);
+        assert_eq!(db.schema_version().unwrap(), 8);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -694,7 +785,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 7);
+            assert_eq!(db.schema_version().unwrap(), 8);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db
