@@ -5,6 +5,9 @@ pub mod doubt;
 pub mod stance;
 pub mod temporal_recovery;
 
+/// Fact-grounded session evidence and renderer authorization. This remains
+/// separate from the authoritative PerspectiveRegistry above.
+pub mod fact_perspective;
 pub mod perspective;
 
 use qxfx0_types::field::Field;

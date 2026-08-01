@@ -1,0 +1,13 @@
+{
+  "pack_id": "philosophy-core-v1",
+  "pack_version": 1,
+  "schema_version": 1,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "license": "MIT",
+  "files": {
+    "concepts.json": "70e35764c92b7e948fdd0a53ef877575410303ad4d291ab80936f6919d3d6b1f",
+    "facts.json": "3b12492e0462efda35f67fb3bc8541f3ae3ffd872c3cfcbaef02d5654b1955bd",
+    "relations.json": "21d25e498259051f911e11d8e09a750dbdf9dbdb3398b9ed396f74c8a74dba22"
+  }
+}

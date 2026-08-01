@@ -118,6 +118,53 @@ pub const COVERED_TOPICS: &[&str] = &[
     "спор",
 ];
 
+/// Curated graph identities for canonical object slots used by Fact Model v1.
+/// They are semantic objects, not additional covered dialogue topics.
+const FACT_OBJECT_ATOMS: &[(&str, &str)] = &[
+    ("vozmozhnost_vybora", "возможность выбора"),
+    ("otsutstvie_ogranicheniy", "отсутствие ограничений"),
+    ("otvechat_za_svoi_deystviya", "отвечать за свои действия"),
+    ("sootvetstvie_realnosti", "соответствие реальности"),
+    ("pozitsiyu_subekta", "позиция субъекта"),
+    (
+        "protsess_zapominaniya_hraneniya_i_vosproizvedeniya_informatsii",
+        "процесс запоминания хранения и воспроизведения информации",
+    ),
+    ("perezhitoe_v_novoy_ramke", "пережитое в новой рамке"),
+    (
+        "sposobnost_osoznavat_okruzhayushchiy_mir_i_samogo_sebya",
+        "способность осознавать окружающий мир и самого себя",
+    ),
+    ("refleksivnost_subekta", "рефлексивность субъекта"),
+    ("prinyatiya_bez_dokazatelstva", "принятие без доказательства"),
+    ("esteticheskoe_perezhivanie", "эстетическое переживание"),
+    ("deystvie_nezavisimo", "действие независимо от желания"),
+    ("cherez_opyt", "через опыт"),
+    ("paralizovat_deystvie", "парализовать действие"),
+    (
+        "deystvie_neopredelennost",
+        "действие в условиях неопределённости",
+    ),
+    ("sorazmernosti", "соразмерность"),
+    ("proshloe_nedostupno", "недоступное прошлое"),
+    ("ot_intuitsii", "от интуиции"),
+    ("fakt_sushchestvovaniya", "факт существования"),
+    ("ot_tochki_zreniya", "от точки зрения"),
+    ("s_myshleniem", "с мышлением"),
+    ("deystvie_k_tseli", "действие к цели"),
+    (
+        "prekrashchenie_sushchestvovaniya",
+        "прекращение существования",
+    ),
+    ("otsutstvie_drugogo", "отсутствие другого"),
+    ("na_drugogo", "на другого"),
+    ("s_potrebnostyu", "с потребностью"),
+    ("otsutstvie_dvizheniya", "отсутствие движения"),
+    ("vliyat_na_drugih", "влиять на других"),
+    ("na_sootvetstvie_faktam", "на соответствие фактам"),
+    ("s_rechyu", "с речью"),
+];
+
 /// Seed the AtomGraph with core philosophical relations.
 pub fn seed_graph() -> AtomGraph {
     let mut graph = AtomGraph::new();
@@ -189,6 +236,14 @@ pub fn seed_graph() -> AtomGraph {
         graph.atoms.entry(id.clone()).or_insert(Atom {
             id: id.clone(),
             display: concept.to_string(),
+            category: AtomCategory::CatConcept,
+        });
+    }
+    for (semantic_id, display) in FACT_OBJECT_ATOMS {
+        let id = AtomId::new(*semantic_id);
+        graph.atoms.entry(id.clone()).or_insert(Atom {
+            id,
+            display: (*display).into(),
             category: AtomCategory::CatConcept,
         });
     }

@@ -3,8 +3,10 @@
 use qxfx0_types::AtomId;
 use serde::{Deserialize, Serialize};
 
-/// Version of the transitional shadow contract. The full response-plan
-/// contract will receive its own explicit version when it replaces this one.
+use crate::FactId;
+
+/// Version of the response-plan contract. `ShadowV1` remains for replaying
+/// historical fallback traces; `ContentV1` is renderer-authoritative.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PlanVersion {
@@ -89,7 +91,7 @@ impl ExternalSubject {
     }
 }
 
-/// A subject admitted for a ready shadow plan. Unresolved topics are excluded
+/// A subject admitted for a ready response plan. Unresolved topics are excluded
 /// and exist only in `FallbackSubject`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -382,6 +384,7 @@ impl SemanticProposition {
 pub struct PlannedClaim {
     id: ClaimId,
     role: ClaimRole,
+    fact_id: Option<FactId>,
     proposition: SemanticProposition,
     predicate_refs: NonEmptyVec<PredicateRef>,
     evidence: ClaimEvidence,
@@ -392,6 +395,7 @@ impl PlannedClaim {
     pub fn new(
         id: ClaimId,
         role: ClaimRole,
+        fact_id: Option<FactId>,
         proposition: SemanticProposition,
         predicate_refs: NonEmptyVec<PredicateRef>,
         evidence: ClaimEvidence,
@@ -400,6 +404,7 @@ impl PlannedClaim {
         Self {
             id,
             role,
+            fact_id,
             proposition,
             predicate_refs,
             evidence,
@@ -413,6 +418,12 @@ impl PlannedClaim {
 
     pub fn role(&self) -> ClaimRole {
         self.role
+    }
+
+    /// Curated factual authority for declarative claims. Dialogue/system acts
+    /// intentionally carry no FactId.
+    pub fn fact_id(&self) -> Option<&FactId> {
+        self.fact_id.as_ref()
     }
 
     pub fn proposition(&self) -> &SemanticProposition {
@@ -626,6 +637,18 @@ impl ReadyResponsePlan {
                     claim.id().as_str()
                 ));
             }
+            if claim.role() != ClaimRole::DialogueAct && claim.fact_id().is_none() {
+                return Err(format!(
+                    "declarative claim '{}' has no FactId",
+                    claim.id().as_str()
+                ));
+            }
+            if claim.role() == ClaimRole::DialogueAct && claim.fact_id().is_some() {
+                return Err(format!(
+                    "dialogue claim '{}' must not masquerade as a fact",
+                    claim.id().as_str()
+                ));
+            }
             if !claim_ids.insert(claim.id().as_str()) {
                 return Err(format!("duplicate claim id '{}'", claim.id().as_str()));
             }
@@ -644,6 +667,20 @@ impl ReadyResponsePlan {
             if !claim_ids.contains(claim_id.as_str()) {
                 return Err("dialogue obligation references a claim outside the plan".into());
             }
+        }
+        Ok(())
+    }
+
+    pub fn validate_with_facts(&self, facts: &crate::FactRegistry) -> Result<(), String> {
+        self.validate()?;
+        for claim in self.claims.iter() {
+            if claim.role() == ClaimRole::DialogueAct {
+                continue;
+            }
+            let fact_id = claim
+                .fact_id()
+                .ok_or_else(|| format!("claim '{}' has no FactId", claim.id().as_str()))?;
+            facts.select(fact_id).map_err(|error| error.to_string())?;
         }
         Ok(())
     }
@@ -1019,6 +1056,7 @@ mod tests {
         let claim = PlannedClaim::new(
             claim_id,
             ClaimRole::DialogueAct,
+            None,
             SemanticProposition::DialogueAct(DialogueSubject::Contact),
             NonEmptyVec::one(predicate_ref),
             ClaimEvidence::system_contract(),

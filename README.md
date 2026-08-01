@@ -8,9 +8,12 @@ The system is self-contained: it does not call an LLM or an external knowledge s
 
 The CLI is the supported production surface. It includes:
 
-- atomic SQLite persistence and automatic compatibility migration to schema v7;
+- atomic SQLite persistence and automatic compatibility migration to schema v8;
 - six-stage turn processing with guard rollback and governance events;
-- 107 curated topics, 142 seed atoms and 276 semantic relations;
+- 107 recognized topics, of which 30 have audited declarative content;
+- 172 seed atoms, 276 semantic relations and 69 curated `FactRecord` values;
+- bounded FactId-grounded positions and replay-stable semantic episodes;
+- a manifest-validated active knowledge pack with a replay-visible SHA-256 fingerprint;
 - 127 Russian surface templates and six-case morphology;
 - a real Rust code registry with 97 typed atoms and type-directed composition edges;
 - stable SHA-256 stage digests for deterministic replay diagnostics;
@@ -25,7 +28,7 @@ qxfx0-cli          CLI: turn, chat, doctor, backup, metrics, sessions, code
        │
 qxfx0-pipeline     Prepare → Route → Render → Finalize → Guard → Persist
        │
-       ├── qxfx0-self         conatus, salience, deliberation, essence trajectory
+       ├── qxfx0-self         conatus, deliberation, Perspective, semantic episodes
        ├── qxfx0-semantic     parser, seed graph, activation, selection, composition
        ├── qxfx0-render       typed semantic-frame rendering
        ├── qxfx0-guard        input, quality and post-render safety gates
@@ -40,6 +43,10 @@ qxfx0-morphology   Russian case conversion and lemmatization
 ```
 
 Persistent maps use ordered containers. Semantic-network caches are derived in memory, are invalidated when the graph changes and are deliberately excluded from persisted JSON.
+
+Static knowledge packs are process-global and are never copied into
+`SystemState`. A session stores only the active pack-set fingerprint so replay
+cannot silently cross a semantic-authority change.
 
 ## Quick start
 
@@ -75,6 +82,8 @@ cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db sessions
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db doctor
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db doctor --json
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db metrics
+cargo run -p qxfx0-cli -- benchmark --samples 100 --warmup 10
+cargo run -p qxfx0-cli -- renderer-audit
 cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db backup /tmp/qxfx0-backup.db
 cargo run -p qxfx0-cli -- discover свобода
 cargo run -p qxfx0-cli -- code "посчитать сумму элементов"
@@ -93,18 +102,25 @@ Example output:
 
 `doctor` is an executable health gate, not an informational banner. It checks:
 
-- SQLite `quick_check`, foreign keys, schema v7 and every stored session;
+- SQLite `quick_check`, foreign keys, schema v8 and every stored session;
 - seed-graph identities, endpoints, indexes and covered topics;
+- concept, fact and active knowledge-pack manifests, hashes and conflicts;
+- FactId-grounded Perspective capacity and curated counterpoint links;
+- FactId-authorized stance rendering with fail-closed validation of persisted
+  opinions;
+- the non-promoting Haskell corpus pilot and its quarantine counts;
 - embedded template syntax, weights and relation-type coverage;
-- morphology probes;
+- morphology manifest, hash, provenance, tier counts and ambiguity metrics;
 - production code-registry identities, endpoints, indexes and `RelComposes` edges.
 
 It exits non-zero if any check fails:
 
 ```text
 QxFx0 Rust v0.1.1 health check:
-  [OK] SQLite: schema v7, quick_check/foreign keys/session states valid
-  [OK] Seed graph: 142 atoms, 276 relations, 107 covered topics
+  [OK] SQLite: schema v8, quick_check/foreign keys/session states valid
+  [OK] Seed graph: 172 atoms, 276 relations, 107 covered topics
+  [OK] Knowledge packs: active_packs=[philosophy-core-v1@1(...)], fact_conflicts=0, fingerprint=...
+  [OK] Corpus import pilot: pilot_topics=300, already_active=5, quarantine=295, promotion_enabled=false
   [OK] Templates: 127 templates for 33 types; direct coverage 22/23 used relation types
   [OK] Morphology: seed dictionary and case conversion operational
   [OK] Code registry: 97 typed atoms, 1353 relations, 1322 RelComposes edges
@@ -115,9 +131,38 @@ Use `doctor --json` for automation. The `metrics` command additionally emits
 Prometheus gauges for doctor health, total DB/WAL/SHM bytes, doctor duration,
 and the duration and health of an in-memory response probe.
 
+## Performance and renderer baselines
+
+The built-in benchmark separates the first lazy in-memory turn from a warmed
+distribution. It reports min/p50/p95/max latency, resident memory before and
+after initialization, executable size and the exact embedded morphology asset
+size. Each measured turn uses a fresh state so session history does not skew
+the result:
+
+```bash
+target/release/qxfx0 benchmark --samples 100 --warmup 10 --json
+```
+
+Full process startup is measured separately without requiring GNU `time`.
+This runner starts a new process and temporary database per sample; it does
+not flush the operating system's filesystem page cache:
+
+```bash
+python3 scripts/benchmark_runtime.py --samples 10
+```
+
+Renderer breadth is measured independently across all 30 audited topics. The
+audit reports unique responses and sentences, repeated sentence counts, and
+topic-normalized opening n-grams. It is diagnostic and does not change the
+renderer or semantic state:
+
+```bash
+target/release/qxfx0 renderer-audit --opening-words 3 --json
+```
+
 ## SQLite migration, backup and recovery
 
-The database is upgraded automatically on open. Migration v7 is idempotent and transactional. It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
+The database is upgraded automatically on open. Migration v8 is idempotent and transactional. It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
 
 Back up before upgrading a valuable database. The built-in command opens the
 source read-only, uses SQLite's online backup API, verifies the partial copy,
@@ -149,10 +194,38 @@ Determinism is verified both in-process and across fresh CLI processes. The pipe
 The trace covers:
 
 ```text
-prepare → route → render → finalize → guard → persist → turn_output
+prepare → route → plan_shadow → render → finalize → guard → persist → turn_output
 ```
 
 Raw user text is not written to normal CLI tracing logs. Traces contain digests and bounded metadata.
+The response-plan and turn-output steps include the active pack-set fingerprint.
+
+## Knowledge packs and corpus audit
+
+The active build embeds `data/packs/philosophy-core-v1`. Its manifest hashes
+`concepts.json`, `facts.json` and `relations.json` before any record is
+admitted. Duplicate IDs fail the complete active set, duplicate aliases remain
+explicitly ambiguous, and conflicting facts fail closed.
+
+Rebuild the current pack from audited Rust assets:
+
+```bash
+python3 scripts/build_core_pack.py
+```
+
+The Haskell corpus is not an active pack. The bounded importer is audit-only:
+
+```bash
+python3 scripts/import_haskell_corpus.py --limit 300
+```
+
+It writes a normalized inventory, an explicit quarantine and a hash-validated
+metrics report under `data/imports/haskell-curated-pilot-v1`. Promotion is
+disabled. The current source contains 6,239 rows and 12,478 surfaces but only
+4,050 trimmed raw topic strings (4,040 after normalization); the 300-topic pilot admits
+no new facts and quarantines 295 candidates for review. The source worktree was
+dirty when the report was generated, which is exposed by `doctor` and must be
+resolved before a production import pack can claim commit-exact provenance.
 
 Production examples for daily backup retention, five-minute monitoring,
 systemd timers and logrotate are in [`ops/`](ops/README.md). `metrics` exits
@@ -186,7 +259,8 @@ target/release/qxfx0 --db /tmp/qxfx0-doctor.db doctor
 CI and local release checks use the Rust 1.93.1 toolchain pinned in
 `rust-toolchain.toml`, including the matching `clippy` and `rustfmt` components.
 
-The workspace currently contains 358 Rust tests across unit, integration, migration, CLI replay and soak coverage. The count may increase; the commands above are the authoritative release gate.
+The exact test count is intentionally not hardcoded because it changes with
+each semantic contract. The commands above are the authoritative release gate.
 
 The audited content-plan corpus is part of `cargo test --workspace --all-targets`.
 Run it in isolation with:
@@ -218,6 +292,8 @@ contracts.
 ## Operational limits
 
 - QxFx0 is a deterministic local semantic system, not a general-purpose factual assistant.
+- Recognition covers 107 topics, but declarative rendering is currently admitted for only 30.
+- There is no active autonomous learning or promotion loop; corpus expansion remains review-gated.
 - External-world causal questions are explicitly marked as requiring external facts.
 - The morphology engine combines a curated dictionary with heuristics; unusual names and unseen word forms can still be awkward.
 - SQLite supports concurrent readers and serialized writers; it is not a distributed session store.

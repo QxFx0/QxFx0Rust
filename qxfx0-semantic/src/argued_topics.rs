@@ -1,5 +1,6 @@
 //! Audited admission registry for the first content-bearing response plans.
 
+use crate::fact_model::{FactId, FactRegistry};
 use crate::response_plan::{PredicateRef, SemanticId, SemanticProposition};
 use crate::seed::COVERED_TOPICS;
 use qxfx0_types::AtomId;
@@ -13,12 +14,17 @@ pub const CONTENT_PROFILE: &str = "audited_v1";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AdmittedStatement {
     predicate_ref: PredicateRef,
+    fact_id: FactId,
     surface: String,
 }
 
 impl AdmittedStatement {
     pub fn predicate_ref(&self) -> &PredicateRef {
         &self.predicate_ref
+    }
+
+    pub fn fact_id(&self) -> &FactId {
+        &self.fact_id
     }
 
     /// Grounded renderer leaf. Response plans carry only `predicate_ref`.
@@ -80,6 +86,17 @@ impl ArguedTopic {
     pub fn statement_count(&self) -> usize {
         2 + usize::from(self.consequence.is_some())
     }
+
+    pub fn statements(&self) -> impl Iterator<Item = &AdmittedStatement> {
+        std::iter::once(&self.thesis)
+            .chain(std::iter::once(&self.counterpoint))
+            .chain(self.consequence.iter())
+    }
+
+    pub fn statement_for_fact_id(&self, fact_id: &FactId) -> Option<&AdmittedStatement> {
+        self.statements()
+            .find(|statement| statement.fact_id() == fact_id)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,6 +113,7 @@ pub struct ArguedTopicRegistry {
     topics: BTreeMap<String, ArguedTopic>,
     predicate_refs: BTreeSet<PredicateRef>,
     content_predicates_total: usize,
+    facts: FactRegistry,
 }
 
 impl ArguedTopicRegistry {
@@ -159,6 +177,15 @@ impl ArguedTopicRegistry {
             let consequence_ref = (!consequence.is_empty())
                 .then(|| PredicateRef::try_new(format!("{predicate_id}.consequence")))
                 .transpose()?;
+            let primary_fact_id = FactId::try_new(format!("fact.{predicate_id}"))
+                .map_err(|error| error.to_string())?;
+            let counterpoint_fact_id = FactId::try_new(format!("fact.{predicate_id}.counterpoint"))
+                .map_err(|error| error.to_string())?;
+            let consequence_fact_id = consequence_ref
+                .as_ref()
+                .map(|_| FactId::try_new(format!("fact.{predicate_id}.consequence")))
+                .transpose()
+                .map_err(|error| error.to_string())?;
             for predicate_ref in std::iter::once(&primary_ref)
                 .chain(std::iter::once(&counterpoint_ref))
                 .chain(consequence_ref.iter())
@@ -173,16 +200,23 @@ impl ArguedTopicRegistry {
 
             let thesis_statement = AdmittedStatement {
                 predicate_ref: primary_ref.clone(),
+                fact_id: primary_fact_id.clone(),
                 surface: thesis.into(),
             };
             let counterpoint_statement = AdmittedStatement {
-                predicate_ref: counterpoint_ref,
+                predicate_ref: counterpoint_ref.clone(),
+                fact_id: counterpoint_fact_id.clone(),
                 surface: counterpoint.into(),
             };
-            let consequence_statement = consequence_ref.map(|predicate_ref| AdmittedStatement {
-                predicate_ref,
-                surface: consequence.into(),
-            });
+            let consequence_statement = consequence_ref
+                .clone()
+                .zip(consequence_fact_id.clone())
+                .map(|(predicate_ref, fact_id)| AdmittedStatement {
+                    predicate_ref,
+                    fact_id,
+                    surface: consequence.into(),
+                });
+
             let entry = ArguedTopic {
                 topic: AtomId::new(topic),
                 primary_predicate_ref: primary_ref,
@@ -209,10 +243,26 @@ impl ArguedTopicRegistry {
             ));
         }
 
+        let facts = crate::active_pack_set().facts().clone();
+        if facts.len() != content_predicates_total {
+            return Err(format!(
+                "every admitted predicate must have one fact: {} facts for {} predicates",
+                facts.len(),
+                content_predicates_total
+            ));
+        }
+
+        for predicate_ref in &predicate_refs {
+            facts
+                .select_by_predicate(predicate_ref)
+                .map_err(|error| error.to_string())?;
+        }
+
         Ok(Self {
             topics,
             predicate_refs,
             content_predicates_total,
+            facts,
         })
     }
 
@@ -226,6 +276,10 @@ impl ArguedTopicRegistry {
 
     pub fn contains_predicate(&self, predicate_ref: &PredicateRef) -> bool {
         self.predicate_refs.contains(predicate_ref)
+    }
+
+    pub fn facts(&self) -> &FactRegistry {
+        &self.facts
     }
 
     pub fn metrics(&self) -> ContentAssetMetrics {
@@ -251,6 +305,7 @@ pub fn argued_topic_registry() -> Result<&'static ArguedTopicRegistry, &'static 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::FactStatus;
 
     #[test]
     fn audited_profile_has_expected_admission_boundary() {
@@ -261,6 +316,8 @@ mod tests {
         assert_eq!(metrics.argued_topics_admitted, 30);
         assert_eq!(metrics.argued_predicates_admitted, 30);
         assert_eq!(metrics.content_predicates_total, 69);
+        assert_eq!(registry.facts().len(), 69);
+        assert_eq!(registry.facts().count_by_status(FactStatus::Curated), 69);
         assert_eq!(metrics.profile_enabled, "audited_v1");
     }
 
@@ -276,16 +333,40 @@ mod tests {
         );
         assert_eq!(freedom.statement_count(), 3);
         assert!(registry.contains_predicate(freedom.thesis().predicate_ref()));
+        assert_eq!(
+            registry
+                .facts()
+                .fact_id_for_predicate(freedom.thesis().predicate_ref())
+                .map(FactId::as_str),
+            Some("fact.freedom_choice")
+        );
+        assert_eq!(freedom.thesis().fact_id().as_str(), "fact.freedom_choice");
+        assert!(registry.facts().select(freedom.thesis().fact_id()).is_ok());
     }
 
     #[test]
     fn every_admitted_topic_is_recognized_and_argued() {
         let registry = argued_topic_registry().unwrap();
+        let concepts = crate::get_resolver();
 
         for topic in registry.topics() {
             assert!(COVERED_TOPICS.contains(&topic.topic().as_str()));
             assert!(!topic.thesis().surface().trim().is_empty());
             assert!(!topic.counterpoint().surface().trim().is_empty());
+            assert!(registry.facts().select(topic.thesis().fact_id()).is_ok());
+            assert!(registry
+                .facts()
+                .select(topic.counterpoint().fact_id())
+                .is_ok());
+            for statement in topic.statements() {
+                let fact = registry.facts().select(statement.fact_id()).unwrap();
+                assert_ne!(fact.subject, fact.object);
+                let object_record = concepts
+                    .records()
+                    .find(|record| record.concept_id == fact.object)
+                    .expect("fact object must resolve to a concept record");
+                assert_eq!(object_record.ontology_kind, "semantic_object");
+            }
         }
     }
 }

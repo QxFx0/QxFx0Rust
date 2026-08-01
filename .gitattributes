@@ -1,2 +1,4 @@
 scripts/soak-report.sh text eol=lf
 scripts/diagnostic-soak-1000.sh text eol=lf
+# Knowledge-pack bytes are hashed as their canonical LF representation.
+data/** text eol=lf

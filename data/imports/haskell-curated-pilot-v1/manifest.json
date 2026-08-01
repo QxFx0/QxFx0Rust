@@ -1,0 +1,12 @@
+{
+  "import_id": "haskell-curated-pilot-v1",
+  "schema_version": 1,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "license": "MIT",
+  "files": {
+    "inventory.jsonl": "ad0a859da906c1c4972d09613fea55e1fde9904c2955e64bee583f743a35adf5",
+    "quarantine.jsonl": "4094ecb020f0fc73c06c7f994f04cd1d752bc4fe7ffc8cedc2ae405d1654411b",
+    "metrics.json": "0ac01b3c5da38de6041d4c611dd59609c92f749a7e0ecac1574870ae8e4c65cf"
+  }
+}
