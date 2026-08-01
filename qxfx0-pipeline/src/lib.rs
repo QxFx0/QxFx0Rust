@@ -301,6 +301,14 @@ pub fn process_turn_with_trace(
             ("blocked".into(), output.blocked.to_string()),
             ("family".into(), format!("{:?}", output.family)),
             (
+                "perspective_opinions".into(),
+                state.semantic.perspective.opinions.len().to_string(),
+            ),
+            (
+                "perspective_episodes".into(),
+                state.semantic.perspective.episodes.len().to_string(),
+            ),
+            (
                 "pack_set_fingerprint".into(),
                 qxfx0_semantic::active_pack_set().fingerprint().into(),
             ),

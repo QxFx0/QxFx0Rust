@@ -376,6 +376,42 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         }),
     }
 
+    let perspective_facts = qxfx0_semantic::active_pack_set().facts();
+    let perspective_counterpoints = perspective_facts
+        .records()
+        .filter(|fact| {
+            fact.conditions
+                .iter()
+                .any(|condition| matches!(condition, qxfx0_semantic::FactCondition::Counters(_)))
+        })
+        .count();
+    let perspective_consequences = perspective_facts
+        .records()
+        .filter(|fact| {
+            fact.conditions
+                .iter()
+                .any(|condition| matches!(condition, qxfx0_semantic::FactCondition::FollowsFrom(_)))
+        })
+        .count();
+    let perspective_grounding_valid = perspective_facts
+        .records()
+        .all(|fact| perspective_facts.select(&fact.id).is_ok());
+    report.checks.push(DoctorCheck {
+        name: "Perspective model",
+        passed: perspective_grounding_valid && perspective_counterpoints >= 30,
+        details: format!(
+            concat!(
+                "fact_id_grounded={}, counterpoint_links={}, consequence_links={}, ",
+                "max_opinions={}, max_episodes={}"
+            ),
+            perspective_grounding_valid,
+            perspective_counterpoints,
+            perspective_consequences,
+            qxfx0_types::MAX_PERSPECTIVE_OPINIONS,
+            qxfx0_types::MAX_PERSPECTIVE_EPISODES,
+        ),
+    });
+
     let templates = qxfx0_semantic::TemplateRegistry::load();
     let template_violations = templates.validate();
     let used_relation_types = graph
@@ -743,7 +779,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 10);
+        assert_eq!(report.checks.len(), 11);
         let concepts = report
             .checks
             .iter()
@@ -766,6 +802,13 @@ mod tests {
         assert!(facts.details.contains("facts=69"));
         assert!(facts.details.contains("semantic_object_concepts=30"));
         assert!(facts.details.contains("self_referential_facts=0"));
+        let perspective = report
+            .checks
+            .iter()
+            .find(|check| check.name == "Perspective model")
+            .expect("perspective model check");
+        assert!(perspective.details.contains("fact_id_grounded=true"));
+        assert!(perspective.details.contains("counterpoint_links=30"));
         let content_assets = report
             .checks
             .iter()

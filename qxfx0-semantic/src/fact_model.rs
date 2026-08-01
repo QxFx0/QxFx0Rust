@@ -1,36 +1,10 @@
 //! Immutable, curated fact model separated from graph edges and dialogue state.
 
 use crate::{ConceptResolver, PredicateRef, SemanticId};
+pub use qxfx0_types::FactId;
 use qxfx0_types::{ConceptId, RelationType};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct FactId(pub String);
-
-impl FactId {
-    pub fn try_new(value: impl Into<String>) -> Result<Self, FactRegistryError> {
-        let value = value.into();
-        if value.trim().is_empty() {
-            Err(FactRegistryError::Validation(
-                "fact id must not be empty".into(),
-            ))
-        } else {
-            Ok(Self(value))
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl fmt::Display for FactId {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.as_str())
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

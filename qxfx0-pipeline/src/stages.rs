@@ -14,8 +14,8 @@ use qxfx0_render::RenderEngine;
 use qxfx0_self::{
     collapse_essence, commit_essence,
     deliberation::{self, DeliberationModulation, Plan},
-    should_commit_essence, witness_essence, Conatus, EssenceMode, EssenceModulation, Salience,
-    SelfBlanket,
+    integrate_curated_claims, should_commit_essence, witness_essence, Conatus, EssenceMode,
+    EssenceModulation, Salience, SelfBlanket,
 };
 use qxfx0_semantic::{
     argued_topic_registry, derive_atoms, normalize_punctuation, seed_graph, ClaimRole,
@@ -463,6 +463,25 @@ pub fn finalize_stage(
     };
 
     let em = EssenceModulation::default();
+
+    if let Some(plan) = rendered.planned().shadow_plan().ready() {
+        let fact_claims = plan
+            .claims()
+            .iter()
+            .filter_map(|claim| {
+                claim
+                    .fact_id()
+                    .map(|fact_id| (claim.role(), fact_id.clone()))
+            })
+            .collect::<Vec<_>>();
+        if !fact_claims.is_empty() {
+            let facts = argued_topic_registry().map_err(str::to_owned)?.facts();
+            let (perspective, _update) =
+                integrate_curated_claims(&state.semantic.perspective, turn, &fact_claims, facts)?;
+            state.semantic.perspective = perspective;
+        }
+    }
+
     let witness_input = qxfx0_self::WitnessInput {
         mode: essence_mode,
         statement: response.clone(),

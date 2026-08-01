@@ -8,10 +8,11 @@ The system is self-contained: it does not call an LLM or an external knowledge s
 
 The CLI is the supported production surface. It includes:
 
-- atomic SQLite persistence and automatic compatibility migration to schema v7;
+- atomic SQLite persistence and automatic compatibility migration to schema v8;
 - six-stage turn processing with guard rollback and governance events;
 - 107 recognized topics, of which 30 have audited declarative content;
 - 172 seed atoms, 276 semantic relations and 69 curated `FactRecord` values;
+- bounded FactId-grounded positions and replay-stable semantic episodes;
 - a manifest-validated active knowledge pack with a replay-visible SHA-256 fingerprint;
 - 127 Russian surface templates and six-case morphology;
 - a real Rust code registry with 97 typed atoms and type-directed composition edges;
@@ -27,7 +28,7 @@ qxfx0-cli          CLI: turn, chat, doctor, backup, metrics, sessions, code
        │
 qxfx0-pipeline     Prepare → Route → Render → Finalize → Guard → Persist
        │
-       ├── qxfx0-self         conatus, salience, deliberation, essence trajectory
+       ├── qxfx0-self         conatus, deliberation, Perspective, semantic episodes
        ├── qxfx0-semantic     parser, seed graph, activation, selection, composition
        ├── qxfx0-render       typed semantic-frame rendering
        ├── qxfx0-guard        input, quality and post-render safety gates
@@ -101,9 +102,10 @@ Example output:
 
 `doctor` is an executable health gate, not an informational banner. It checks:
 
-- SQLite `quick_check`, foreign keys, schema v7 and every stored session;
+- SQLite `quick_check`, foreign keys, schema v8 and every stored session;
 - seed-graph identities, endpoints, indexes and covered topics;
 - concept, fact and active knowledge-pack manifests, hashes and conflicts;
+- FactId-grounded Perspective capacity and curated counterpoint links;
 - the non-promoting Haskell corpus pilot and its quarantine counts;
 - embedded template syntax, weights and relation-type coverage;
 - morphology manifest, hash, provenance, tier counts and ambiguity metrics;
@@ -113,7 +115,7 @@ It exits non-zero if any check fails:
 
 ```text
 QxFx0 Rust v0.1.1 health check:
-  [OK] SQLite: schema v7, quick_check/foreign keys/session states valid
+  [OK] SQLite: schema v8, quick_check/foreign keys/session states valid
   [OK] Seed graph: 172 atoms, 276 relations, 107 covered topics
   [OK] Knowledge packs: active_packs=[philosophy-core-v1@1(...)], fact_conflicts=0, fingerprint=...
   [OK] Corpus import pilot: pilot_topics=300, already_active=5, quarantine=295, promotion_enabled=false
@@ -158,7 +160,7 @@ target/release/qxfx0 renderer-audit --opening-words 3 --json
 
 ## SQLite migration, backup and recovery
 
-The database is upgraded automatically on open. Migration v7 is idempotent and transactional. It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
+The database is upgraded automatically on open. Migration v8 is idempotent and transactional. It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
 
 Back up before upgrading a valuable database. The built-in command opens the
 source read-only, uses SQLite's online backup API, verifies the partial copy,
