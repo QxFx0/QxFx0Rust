@@ -3,10 +3,13 @@
 //! This module is intentionally pure. It does not contact an issuer, manage
 //! keys, mutate persistence, or change the legacy pipeline route.
 
-use qxfx0_self::fact_perspective::{resolve_render_stance, PerspectiveRenderStance};
-use qxfx0_semantic::FactRegistry;
+use qxfx0_self::fact_perspective::{
+    integrate_curated_claims, resolve_render_stance, PerspectiveRenderStance, PerspectiveUpdate,
+};
+use qxfx0_semantic::{ClaimRole, FactRegistry};
 use qxfx0_types::{
-    ConceptId, FactId, PerspectiveState, StanceTopic, SystemStanceDecision, VerifiedStanceDecision,
+    ConceptId, FactId, PerspectiveState, StanceTopic, SystemStanceDecision, SystemState,
+    VerifiedStanceDecision,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -58,6 +61,40 @@ pub enum FactGroundedCompositionError {
     AuthorityTopicMismatch,
     #[error("fact-grounded state is invalid: {0}")]
     InvalidState(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FactGroundedFinalize {
+    Skipped(FactGroundedRollout),
+    Applied(PerspectiveUpdate),
+}
+
+/// Apply semantic evidence after the caller has rendered the audited leaf.
+/// Disabled/shadow/trace-only modes are observational and leave state
+/// unchanged. The caller can place this operation in its rollback snapshot.
+pub fn finalize_fact_grounded_state(
+    rollout: FactGroundedRollout,
+    state: &mut SystemState,
+    turn_seq: usize,
+    claims: &[(ClaimRole, FactId)],
+    facts: &FactRegistry,
+    active_pack_fingerprint: &str,
+) -> Result<FactGroundedFinalize, FactGroundedCompositionError> {
+    if !rollout.permits_render_authorization() {
+        return Ok(FactGroundedFinalize::Skipped(rollout));
+    }
+    validate_pack_fingerprint(
+        &state.semantic.pack_set_fingerprint,
+        active_pack_fingerprint,
+    )?;
+    let (next_perspective, update) =
+        integrate_curated_claims(&state.semantic.perspective, turn_seq, claims, facts)
+            .map_err(FactGroundedCompositionError::InvalidState)?;
+    state.semantic.perspective = next_perspective;
+    if state.semantic.pack_set_fingerprint.is_empty() {
+        state.semantic.pack_set_fingerprint = active_pack_fingerprint.into();
+    }
+    Ok(FactGroundedFinalize::Applied(update))
 }
 
 /// Validate a persisted session's pack identity before any semantic stage.
@@ -162,5 +199,45 @@ mod tests {
         })
         .unwrap_err();
         assert_eq!(error, FactGroundedCompositionError::PackFingerprintMismatch);
+    }
+
+    #[test]
+    fn post_render_finalize_is_default_off_and_updates_only_when_enabled() {
+        let packs = qxfx0_semantic::active_pack_set();
+        let claims = vec![(
+            ClaimRole::Thesis,
+            FactId::try_new("fact.freedom_choice").unwrap(),
+        )];
+        let mut state = SystemState {
+            session_id: "fact-finalize".into(),
+            ..Default::default()
+        };
+        let before = state.clone();
+        assert_eq!(
+            finalize_fact_grounded_state(
+                FactGroundedRollout::Disabled,
+                &mut state,
+                1,
+                &claims,
+                packs.facts(),
+                packs.fingerprint(),
+            )
+            .unwrap(),
+            FactGroundedFinalize::Skipped(FactGroundedRollout::Disabled)
+        );
+        assert_eq!(state.semantic.perspective, before.semantic.perspective);
+
+        let result = finalize_fact_grounded_state(
+            FactGroundedRollout::LimitedNonProduction,
+            &mut state,
+            1,
+            &claims,
+            packs.facts(),
+            packs.fingerprint(),
+        )
+        .unwrap();
+        assert!(matches!(result, FactGroundedFinalize::Applied(_)));
+        assert_eq!(state.semantic.pack_set_fingerprint, packs.fingerprint());
+        assert_eq!(state.semantic.perspective.episodes.len(), 1);
     }
 }
