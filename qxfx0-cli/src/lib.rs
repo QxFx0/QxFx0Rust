@@ -3,8 +3,11 @@
 //! Exposes the same entry point used by `main.rs` so integration tests can
 //! drive the turn / chat flow without spawning a subprocess.
 
+pub mod measurement;
+
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_persistence::SaveStateTimings;
+use qxfx0_pipeline::fact_grounded::FactGroundedRollout;
 use qxfx0_pipeline::{
     process_turn, process_turn_with_renderer, process_turn_with_renderer_and_stance_provenance,
     process_turn_with_timing_and_renderer,
@@ -491,6 +494,67 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
             )
         } else {
             code_violations.join("; ")
+        },
+    });
+
+    let packs = qxfx0_semantic::active_pack_set();
+    let pack_valid = packs.fingerprint().len() == 64;
+    report.checks.push(DoctorCheck {
+        name: "Knowledge pack",
+        passed: pack_valid,
+        details: if pack_valid {
+            format!(
+                "active immutable pack fingerprint sha256:{}, {} facts",
+                packs.fingerprint(),
+                packs.facts().len()
+            )
+        } else {
+            "active pack fingerprint is not a SHA-256 identifier".into()
+        },
+    });
+
+    let fact_registry_valid = packs
+        .facts()
+        .records()
+        .all(|record| packs.facts().select(&record.id).is_ok());
+    report.checks.push(DoctorCheck {
+        name: "Curated FactRegistry",
+        passed: fact_registry_valid,
+        details: if fact_registry_valid {
+            format!(
+                "{} curated FactId records re-resolve successfully",
+                packs.facts().len()
+            )
+        } else {
+            "active FactRegistry contains a non-selectable record".into()
+        },
+    });
+
+    let perspective_valid = qxfx0_types::PerspectiveState::default()
+        .validate()
+        .is_empty()
+        && FactGroundedRollout::default() == FactGroundedRollout::Disabled;
+    report.checks.push(DoctorCheck {
+        name: "Perspective boundary",
+        passed: perspective_valid,
+        details: if perspective_valid {
+            "bounded PerspectiveState valid; fact-grounded rollout default is Disabled".into()
+        } else {
+            "PerspectiveState or default-off rollout contract failed".into()
+        },
+    });
+
+    let stance_contract_valid = qxfx0_types::STANCE_ATTESTATION_VERSION == 1
+        && qxfx0_types::STANCE_PROVENANCE_VERSION == 1
+        && qxfx0_types::StanceTopic::new("doctor").is_ok()
+        && qxfx0_types::BoundedStanceProvenance::default().capacity() > 0;
+    report.checks.push(DoctorCheck {
+        name: "Stance authority",
+        passed: stance_contract_valid,
+        details: if stance_contract_valid {
+            "signed attestation, bounded provenance, and temporal contract versions valid".into()
+        } else {
+            "stance authority contract probe failed".into()
         },
     });
 
@@ -1153,7 +1217,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 7);
+        assert_eq!(report.checks.len(), 11);
         assert!(report
             .checks
             .iter()
