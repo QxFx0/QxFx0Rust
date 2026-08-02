@@ -1,7 +1,8 @@
 //! Certified realization boundary (ADR-0034 §7).
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
 
 use super::assertion::AssertionAuthorizedPlan;
 use super::snapshot::{RealizationSnapshot, SnapshotError};
@@ -41,6 +42,22 @@ pub fn try_realize(
     lexicon: &ValencyLexicon,
     morphology: &MorphologyRuntime,
 ) -> Result<RealizablePlan, RealizationError> {
+    let expected = authorized
+        .certified()
+        .candidate()
+        .projected_claims()
+        .into_iter()
+        .map(|claim| occurrence_label(&claim.occurrence))
+        .collect::<Vec<_>>();
+    let actual = syn_tree
+        .iter()
+        .map(|(occurrence, _)| occurrence_label(occurrence))
+        .collect::<Vec<_>>();
+    let expected_set = expected.iter().collect::<BTreeSet<_>>();
+    let actual_set = actual.iter().collect::<BTreeSet<_>>();
+    if expected.len() != actual.len() || expected_set != actual_set {
+        return Err(RealizationError::OccurrenceMismatch { expected, actual });
+    }
     let resolved = super::syn_tree::resolve(syn_tree, lexicon, morphology)?;
     let certificate = resolved.certificate().clone();
     if certificate.valency_fingerprint != snapshot.valency_digest
@@ -60,7 +77,15 @@ pub fn try_realize(
     })
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+fn occurrence_label(occurrence: &super::discourse::DiscourseOccurrenceId) -> String {
+    format!(
+        "{}:{}",
+        occurrence.discourse_root_digest(),
+        occurrence.canonical_path()
+    )
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RealizedSurface {
     pub clauses: Vec<String>,
     pub surface_digest: String,
@@ -105,4 +130,71 @@ fn digest<T: Serialize>(domain: &[u8], value: &T) -> String {
     hasher.update((encoded.len() as u64).to_be_bytes());
     hasher.update(encoded);
     format!("{:x}", hasher.finalize())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::response_plan_v2::{
+        build_audited_topic, preposition_allomorphs, valency_lexicon, SynTree,
+    };
+
+    fn snapshot() -> RealizationSnapshot {
+        RealizationSnapshot::new(
+            valency_lexicon().fingerprint(),
+            "audited-corpus-grammar-v1",
+            qxfx0_morphology::get_runtime().lexemes_sha256(),
+            preposition_allomorphs().fingerprint(),
+        )
+    }
+
+    #[test]
+    fn every_authorized_occurrence_requires_exactly_one_syntax_node() {
+        let plan = build_audited_topic("свобода").expect("audited topic");
+        let authorized = plan.authorized().clone();
+        let full = plan.syn_tree(valency_lexicon()).expect("syntax adapter");
+
+        assert!(matches!(
+            try_realize(
+                authorized.clone(),
+                &SynTree::new(),
+                &snapshot(),
+                valency_lexicon(),
+                qxfx0_morphology::get_runtime(),
+            ),
+            Err(RealizationError::OccurrenceMismatch { .. })
+        ));
+
+        let mut duplicated = full.clone();
+        let (occurrence, node) = full.iter().next().expect("syntax node").clone();
+        duplicated.push_node(occurrence, node);
+        assert!(matches!(
+            try_realize(
+                authorized,
+                &duplicated,
+                &snapshot(),
+                valency_lexicon(),
+                qxfx0_morphology::get_runtime(),
+            ),
+            Err(RealizationError::OccurrenceMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn audited_plan_resolves_clause_and_fixed_claim_nodes() {
+        let plan = build_audited_topic("свобода").expect("audited topic");
+        let tree = plan.syn_tree(valency_lexicon()).expect("syntax adapter");
+        let realized = try_realize(
+            plan.into_authorized(),
+            &tree,
+            &snapshot(),
+            valency_lexicon(),
+            qxfx0_morphology::get_runtime(),
+        )
+        .expect("complete realization");
+
+        assert_eq!(realized.completeness_certificate().clauses, 1);
+        assert_eq!(realized.completeness_certificate().fixed_nodes, 2);
+        assert_eq!(realized.resolved_syn_tree().linearize().len(), 3);
+    }
 }

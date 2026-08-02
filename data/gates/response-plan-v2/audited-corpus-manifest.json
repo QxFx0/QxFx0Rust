@@ -1,702 +1,14 @@
 {
   "diagnostics": {
-    "parity_byte": 12,
-    "parity_semantic": 18,
-    "statements_total": 69,
+    "claims_total": 69,
+    "exact_clause_surfaces": 12,
+    "fixed_phrase_surfaces": 39,
+    "governed_clause_surfaces": 18,
     "topics_total": 30
   },
-  "manifest_digest": "63e191970089a12209e9450cef0686d326ed71e15073edc8420230e1c2235b9a",
-  "manifest_id": "response-plan-v2-audited-corpus-v1",
-  "rows": [
-    {
-      "approved_surfaces": [
-        "свобода предполагает возможность выбора",
-        "не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным",
-        "свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу"
-      ],
-      "fact_ids": [
-        "fact.freedom_choice",
-        "fact.freedom_choice.counterpoint",
-        "fact.freedom_choice.consequence"
-      ],
-      "object_lemma": "возможность выбора",
-      "parity_class": "byte",
-      "predicate_id": "freedom_choice",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "predpolagaet",
-      "statement_count": 3,
-      "subject_lemma": "свобода",
-      "surface_digests": [
-        "ce266378bba5c2eec6606c66538b0a9e2d8fe5e28c0bec83509dc319c774a342",
-        "85be97364c5582368d658d6ed4918897e50fe76684f3f6303ce4b8cc235753a0",
-        "e3269ad3e51c36de1c77e6b7a81e2509f9bd9aa71c5558c28bd1a0d00b9498df"
-      ],
-      "topic": "свобода"
-    },
-    {
-      "approved_surfaces": [
-        "произвол выражает отсутствие ограничений",
-        "произвол разрушает доверие между субъектами"
-      ],
-      "fact_ids": [
-        "fact.arbitrariness_absence_constraints",
-        "fact.arbitrariness_absence_constraints.counterpoint"
-      ],
-      "object_lemma": "отсутствие ограничений",
-      "parity_class": "byte",
-      "predicate_id": "arbitrariness_absence_constraints",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "vyrazhaet",
-      "statement_count": 2,
-      "subject_lemma": "произвол",
-      "surface_digests": [
-        "5e3608ceaebf48ba2ec372470a4ee87c849a7b2b8427f18acc9857769eb93e0f",
-        "8464322d4621d37325e8a5089a49f469827ab6f189a7d9a85b7081242600c87c"
-      ],
-      "topic": "произвол"
-    },
-    {
-      "approved_surfaces": [
-        "ответственность — это необходимость отвечать за свои действия",
-        "ответственность связана с обязательствами перед другими"
-      ],
-      "fact_ids": [
-        "fact.responsibility_accountability",
-        "fact.responsibility_accountability.counterpoint"
-      ],
-      "object_lemma": "отвечать за свои действия",
-      "parity_class": "byte",
-      "predicate_id": "responsibility_accountability",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "eto_neobhodimost",
-      "statement_count": 2,
-      "subject_lemma": "ответственность",
-      "surface_digests": [
-        "dc9a7542180ce71009b84937c947a89703cf126093c442793b19f133e1fdfaef",
-        "b33f4e4bc2479b553446b028026a18bb0ba3e6671b3e081362200fbbc520cd20"
-      ],
-      "topic": "ответственность"
-    },
-    {
-      "approved_surfaces": [
-        "истина претендует на соответствие реальности",
-        "доступ к реальности всегда опосредован наблюдателем — и наблюдатель не может выйти за пределы себя",
-        "истина — не обладание, а дисциплина проверки: то, что выдерживает воспроизведение, ближе к истине"
-      ],
-      "fact_ids": [
-        "fact.truth_reality",
-        "fact.truth_reality.counterpoint",
-        "fact.truth_reality.consequence"
-      ],
-      "object_lemma": "соответствие реальности",
-      "parity_class": "byte",
-      "predicate_id": "truth_reality",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "pretenduet",
-      "statement_count": 3,
-      "subject_lemma": "истина",
-      "surface_digests": [
-        "8486fa6c557b6611d10474a5b4c1ddbc018eff0911c5503d0b10ab87ea5e757d",
-        "eb59928c7280dc1de6abebc7291f1d0a4730e5afce8e7c9b34749e76e75d1d9c",
-        "0965ec10724e8d89543e4534cc01ac458672e3949d665250a1af2c95a4650521"
-      ],
-      "topic": "истина"
-    },
-    {
-      "approved_surfaces": [
-        "мнение выражает позицию субъекта",
-        "субъективность мнения не означает его ложности — она означает его ограниченность перспективой",
-        "ценность мнения не в безличной истине, а в том, чью позицию оно раскрывает"
-      ],
-      "fact_ids": [
-        "fact.opinion_position",
-        "fact.opinion_position.counterpoint",
-        "fact.opinion_position.consequence"
-      ],
-      "object_lemma": "позиция субъекта",
-      "parity_class": "semantic",
-      "predicate_id": "opinion_position",
-      "reason": "object lemma is a space phrase carried verbatim in the nominative, but the approved surface inflects it into the accusative the head governs",
-      "relation_id": "vyrazhaet",
-      "statement_count": 3,
-      "subject_lemma": "мнение",
-      "surface_digests": [
-        "55fa43f52b5eecad4a433f6c78d4b2de675ab99316ff5ca93ebaa156f89beaaf",
-        "096ff33042437e6f38673ad9911e0a005d17a0b1b501447a4d98ad97a32d9079",
-        "2a5c88de203449bbe1a7eadff38ca2b6ecae084a62c4cb498fc15a161702c3e3"
-      ],
-      "topic": "мнение"
-    },
-    {
-      "approved_surfaces": [
-        "память это процесс запоминания хранения и воспроизведения информации",
-        "память реконструирует а не просто копирует"
-      ],
-      "fact_ids": [
-        "fact.memory_information_process",
-        "fact.memory_information_process.counterpoint"
-      ],
-      "object_lemma": "процесс запоминания хранения и воспроизведения информации",
-      "parity_class": "byte",
-      "predicate_id": "memory_information_process",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "eto",
-      "statement_count": 2,
-      "subject_lemma": "память",
-      "surface_digests": [
-        "254834c879aef4440e8979b4d7671e2774b2638fcdc17e1b457c78a8a26337d6",
-        "6db52b9872d9bbeb2b700f29cff93203da19a18ac2612d0af76dd0871c3f9189"
-      ],
-      "topic": "память"
-    },
-    {
-      "approved_surfaces": [
-        "воспоминание восстанавливает пережитое в новой рамке",
-        "реконструкция неизбежно привносит настоящее — мы вспоминаем не то, что пережили, а то, кем стали после пережитого",
-        "два человека, пережившие одно событие, помнят его по-разному — и оба правдивы в своей памяти"
-      ],
-      "fact_ids": [
-        "fact.recollection_new_frame",
-        "fact.recollection_new_frame.counterpoint",
-        "fact.recollection_new_frame.consequence"
-      ],
-      "object_lemma": "пережитое в новой рамке",
-      "parity_class": "byte",
-      "predicate_id": "recollection_new_frame",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "vosstanavlivaet",
-      "statement_count": 3,
-      "subject_lemma": "воспоминание",
-      "surface_digests": [
-        "e70d1db63c4977da88c2cb6c53d154c316c10d181f37b06fa3f0a9b8a544330d",
-        "96f711d2a1de4d69985a1ab3c5e83e351900c1006f5fb4840eecc83df31a2a6a",
-        "44dd71a0d71c2dd2847caf517bd2db8fe85fafe79b80bf5aa744e9e3f5033d94"
-      ],
-      "topic": "воспоминание"
-    },
-    {
-      "approved_surfaces": [
-        "сознание это способность осознавать окружающий мир и самого себя",
-        "сознание имеет аспект от первого лица"
-      ],
-      "fact_ids": [
-        "fact.consciousness_awareness",
-        "fact.consciousness_awareness.counterpoint"
-      ],
-      "object_lemma": "способность осознавать окружающий мир и самого себя",
-      "parity_class": "byte",
-      "predicate_id": "consciousness_awareness",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "eto",
-      "statement_count": 2,
-      "subject_lemma": "сознание",
-      "surface_digests": [
-        "2a2fe37dee5da55812590239e13f103bf8927ee105db0b68d794a8528310c2a7",
-        "3a9f9c0c4ca506b247fec14fb57f46dda6e87fa63a4cb7c296605415992ccb0b"
-      ],
-      "topic": "сознание"
-    },
-    {
-      "approved_surfaces": [
-        "самосознание выражает рефлексивность субъекта",
-        "самосознание предполагает наличие сознания как своего основания"
-      ],
-      "fact_ids": [
-        "fact.self_awareness_reflexivity",
-        "fact.self_awareness_reflexivity.counterpoint"
-      ],
-      "object_lemma": "рефлексивность субъекта",
-      "parity_class": "byte",
-      "predicate_id": "self_awareness_reflexivity",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "vyrazhaet",
-      "statement_count": 2,
-      "subject_lemma": "самосознание",
-      "surface_digests": [
-        "f898d29b6349edce66448ebb7731f755f868d2aef2c293b5e4713af6a149e43d",
-        "4e32e26a198d56c0ff3b34023f4bf1c68594ed80ebc6d66b1e2c7c6c14a951e1"
-      ],
-      "topic": "самосознание"
-    },
-    {
-      "approved_surfaces": [
-        "вера требует принятия без полного доказательства",
-        "принятие без доказательств не означает принятия вопреки доказательствам — вера, игнорирующая факты, перестаёт быть верой и становится самообманом",
-        "вера — не замена знанию, а решение действовать в условиях неполноты"
-      ],
-      "fact_ids": [
-        "fact.faith_acceptance",
-        "fact.faith_acceptance.counterpoint",
-        "fact.faith_acceptance.consequence"
-      ],
-      "object_lemma": "принятие без доказательства",
-      "parity_class": "semantic",
-      "predicate_id": "faith_acceptance",
-      "reason": "object lemma 'принятие без доказательства' is carried verbatim in the nominative while the approved surface governs the genitive and adds the attribute 'полного'",
-      "relation_id": "trebuet",
-      "statement_count": 3,
-      "subject_lemma": "вера",
-      "surface_digests": [
-        "eb095f253ca79860fb00f2432722407d6e6ba1a45ff70e4407e54fb5ce912919",
-        "d6d1a779c34dced1381227e9afb671b20343c58f9c68dd8ca218f252645dab99",
-        "e5f7fe492ecdbe0d683a4abdad030d4998bc9339f004ed4dbf9cc2422803b2ea"
-      ],
-      "topic": "вера"
-    },
-    {
-      "approved_surfaces": [
-        "красота вызывает эстетическое переживание",
-        "красота зависит от воспринимающего и культурной рамки"
-      ],
-      "fact_ids": [
-        "fact.beauty_experience",
-        "fact.beauty_experience.counterpoint"
-      ],
-      "object_lemma": "эстетическое переживание",
-      "parity_class": "byte",
-      "predicate_id": "beauty_experience",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "vyzyvaet",
-      "statement_count": 2,
-      "subject_lemma": "красота",
-      "surface_digests": [
-        "851d378da6899ca9c91b5d0a494137fb390ae0e158f0e56825942bc587a7b0c1",
-        "639b276c00c14b824a1ab6d6718df05a5bfd84dcbfc2ac31069553745f281760"
-      ],
-      "topic": "красота"
-    },
-    {
-      "approved_surfaces": [
-        "долг предписывает действие независимо от желания",
-        "долг, лишённый внутреннего согласия, превращается в принуждение — и перестаёт быть моральным",
-        "зрелый долг — не подчинение внешнему правилу, а принятие правила как своего"
-      ],
-      "fact_ids": [
-        "fact.duty_action_singular",
-        "fact.duty_action_singular.counterpoint",
-        "fact.duty_action_singular.consequence"
-      ],
-      "object_lemma": "действие независимо от желания",
-      "parity_class": "byte",
-      "predicate_id": "duty_action_singular",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "predpisyvaet",
-      "statement_count": 3,
-      "subject_lemma": "долг",
-      "surface_digests": [
-        "f061d2467c0ae7a5b07d87d3568000bc63f7fe3b05a780301ab740fee876f7aa",
-        "eaed24ea99391e4120d77adaeefe6330b37c52d230db2f0b15ad3cb3d950b85c",
-        "ed2032dc38ea5f65d138a32f8eb583c38361e948f635287cb66c5d29539922ec"
-      ],
-      "topic": "долг"
-    },
-    {
-      "approved_surfaces": [
-        "доверие строится через повторяемый позитивный опыт",
-        "доверие уязвимо: один провал может разрушить то, что строилось годами — потому что доверие асимметрично",
-        "доверие — не ставка на гарантию, а решение принять риск"
-      ],
-      "fact_ids": [
-        "fact.trust_experience",
-        "fact.trust_experience.counterpoint",
-        "fact.trust_experience.consequence"
-      ],
-      "object_lemma": "через опыт",
-      "parity_class": "semantic",
-      "predicate_id": "trust_experience",
-      "reason": "approved surface adds the attributes 'повторяемый позитивный' to the object",
-      "relation_id": "stroitsya",
-      "statement_count": 3,
-      "subject_lemma": "доверие",
-      "surface_digests": [
-        "2fefab54e077ae2691418a70880bbd5927d78dc4734d8a35f02c785f4ed0f509",
-        "e177b6566ca95a4d90e82e66efd914778790e8188d152b098db15365ac6456ca",
-        "f48228ac48a630816e2ad523e912a9d8eb1f9b8443b723e791febba049d19131"
-      ],
-      "topic": "доверие"
-    },
-    {
-      "approved_surfaces": [
-        "страх может парализовать действие или мобилизовать его",
-        "страх сигнализирует об угрозе целостности субъекта"
-      ],
-      "fact_ids": [
-        "fact.fear_action",
-        "fact.fear_action.counterpoint"
-      ],
-      "object_lemma": "парализовать действие",
-      "parity_class": "semantic",
-      "predicate_id": "fear_action",
-      "reason": "approved surface adds the disjunctive coordination 'или мобилизовать его'",
-      "relation_id": "mozhet",
-      "statement_count": 2,
-      "subject_lemma": "страх",
-      "surface_digests": [
-        "0d99d16bb82f03f2265869536c1ebe088c3386ab1320fb413f3b6d9d55b133c8",
-        "d49ecec45cb72f09e1f89d046d604a6690188a1f5d6cb362308b2d0d5ccf7760"
-      ],
-      "topic": "страх"
-    },
-    {
-      "approved_surfaces": [
-        "надежда поддерживает действие в условиях неопределённости",
-        "надежда ориентирует на возможность будущего"
-      ],
-      "fact_ids": [
-        "fact.hope_action",
-        "fact.hope_action.counterpoint"
-      ],
-      "object_lemma": "действие в условиях неопределённости",
-      "parity_class": "byte",
-      "predicate_id": "hope_action",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "podderzhivaet",
-      "statement_count": 2,
-      "subject_lemma": "надежда",
-      "surface_digests": [
-        "195eaa58fe92f5b09ba9fbe5e8e26fcebc17c94888c00d4dbfc8d64ec700ef2c",
-        "ae110595f3cfc14a768caa9d5cb58fa01bd3e1eb53a0ada08f6f7fe404d6141b"
-      ],
-      "topic": "надежда"
-    },
-    {
-      "approved_surfaces": [
-        "справедливость требует соразмерности между деянием и воздаянием",
-        "соразмерность трудно измерить: как взвесить страдание или измерить ущерб намерению?",
-        "справедливость — не точная формула, а направление: стремление к соразмерности важнее точности"
-      ],
-      "fact_ids": [
-        "fact.justice_proportionality",
-        "fact.justice_proportionality.counterpoint",
-        "fact.justice_proportionality.consequence"
-      ],
-      "object_lemma": "соразмерность",
-      "parity_class": "semantic",
-      "predicate_id": "justice_proportionality",
-      "reason": "approved surface adds the subordinate material 'между деянием и воздаянием'",
-      "relation_id": "trebuet",
-      "statement_count": 3,
-      "subject_lemma": "справедливость",
-      "surface_digests": [
-        "a52114faca1c9a969c0da093f91a2ee491e9a079300c27417d7d3c03dfdbaf2e",
-        "70c70b91bd7152ac87e9f2dea3af564ef2c72e458c0c6e6976f6592c4ac760d2",
-        "30236fcef6a6196b6f82b3d41983c20062744d979587b45e5387dee249e68359"
-      ],
-      "topic": "справедливость"
-    },
-    {
-      "approved_surfaces": [
-        "время необратимо — прошлое недоступно для изменения",
-        "время задаёт порядок следования событий"
-      ],
-      "fact_ids": [
-        "fact.time_irreversible",
-        "fact.time_irreversible.counterpoint"
-      ],
-      "object_lemma": "недоступное прошлое",
-      "parity_class": "semantic",
-      "predicate_id": "time_irreversible",
-      "reason": "approved surface adds the dash-linked clause 'прошлое недоступно для изменения'",
-      "relation_id": "neobratimo",
-      "statement_count": 2,
-      "subject_lemma": "время",
-      "surface_digests": [
-        "0865b4bd4699fa992673ad84a6ef425a8e410a9e9cef2e0c69cdab71ad6b33f4",
-        "9e915929a9279fd6b0b05bb70dddd0bb9fb16e03713a5827825367b022f7a8dc"
-      ],
-      "topic": "время"
-    },
-    {
-      "approved_surfaces": [
-        "разум отличается от интуиции потребностью в доказательстве",
-        "разум способен к обобщению и абстракции"
-      ],
-      "fact_ids": [
-        "fact.reason_proof",
-        "fact.reason_proof.counterpoint"
-      ],
-      "object_lemma": "от интуиции",
-      "parity_class": "semantic",
-      "predicate_id": "reason_proof",
-      "reason": "approved surface adds 'потребностью в доказательстве'",
-      "relation_id": "otlichaetsya",
-      "statement_count": 2,
-      "subject_lemma": "разум",
-      "surface_digests": [
-        "ac26431b0d006cb1e7cb69543ecef11dd84b8e31682007cfd7b0335f839fd18c",
-        "f86589e2e0cdb7221fa798f6ac90feed5c426c104836dca8911d5e22ad307e8f"
-      ],
-      "topic": "разум"
-    },
-    {
-      "approved_surfaces": [
-        "бытие обозначает сам факт существования",
-        "бытие рассматривается как условие возможности любого суждения"
-      ],
-      "fact_ids": [
-        "fact.being_existence",
-        "fact.being_existence.counterpoint"
-      ],
-      "object_lemma": "факт существования",
-      "parity_class": "semantic",
-      "predicate_id": "being_existence",
-      "reason": "approved surface adds the attribute 'сам'",
-      "relation_id": "oboznachaet",
-      "statement_count": 2,
-      "subject_lemma": "бытие",
-      "surface_digests": [
-        "26a4a654767f4af4e6dc43da5ef699feff4217036ce43ca44cdfab666ab8004a",
-        "d5e7836f4b30a69eb379daeb0f435f19fdc90d1fc3ef282db46349b9ad5f5ab2"
-      ],
-      "topic": "бытие"
-    },
-    {
-      "approved_surfaces": [
-        "история зависит от точки зрения рассказчика",
-        "история связывает прошлое с настоящим через интерпретацию"
-      ],
-      "fact_ids": [
-        "fact.history_viewpoint",
-        "fact.history_viewpoint.counterpoint"
-      ],
-      "object_lemma": "от точки зрения",
-      "parity_class": "semantic",
-      "predicate_id": "history_viewpoint",
-      "reason": "approved surface adds the attribute 'рассказчика'",
-      "relation_id": "zavisit",
-      "statement_count": 2,
-      "subject_lemma": "история",
-      "surface_digests": [
-        "9382b670ed106b6f4ebf512c50a437db6d1217eed7000ac5ead17771ab5de298",
-        "fe8e42da275a9a36c401c82fda78e184f7ae931815a8f30b49b96ece79ef24c1"
-      ],
-      "topic": "история"
-    },
-    {
-      "approved_surfaces": [
-        "язык связан с мышлением — он не только выражает, но и формирует мысль",
-        "язык структурирует опыт через различение и именование"
-      ],
-      "fact_ids": [
-        "fact.language_thought",
-        "fact.language_thought.counterpoint"
-      ],
-      "object_lemma": "с мышлением",
-      "parity_class": "semantic",
-      "predicate_id": "language_thought",
-      "reason": "approved surface adds the dash-linked clause 'он не только выражает, но и формирует мысль'",
-      "relation_id": "svyazan",
-      "statement_count": 2,
-      "subject_lemma": "язык",
-      "surface_digests": [
-        "7401695ae259273cb7d3b5b953ed0ce30f7cca32336e6c404ebf93c4cf130a05",
-        "73cd37927323f40d3e5f8c8600a308e9108b367d72fc09b290e447959228cc76"
-      ],
-      "topic": "язык"
-    },
-    {
-      "approved_surfaces": [
-        "воля направляет действие к выбранной цели",
-        "сила воли не бесконечна — она истощается, как мышца, и требует восстановления",
-        "воля — не характер, а практика: она тренируется через повторение, а не даётся от рождения"
-      ],
-      "fact_ids": [
-        "fact.will_goal",
-        "fact.will_goal.counterpoint",
-        "fact.will_goal.consequence"
-      ],
-      "object_lemma": "действие к цели",
-      "parity_class": "semantic",
-      "predicate_id": "will_goal",
-      "reason": "approved surface adds the attribute 'выбранной'",
-      "relation_id": "napravlyaet",
-      "statement_count": 3,
-      "subject_lemma": "воля",
-      "surface_digests": [
-        "fbe888e30a81fe7a961eb867f9fa136747c9a06af8b49386d1617fbf02a114ac",
-        "db7724066b43aa043a24c90dfad0ae95c3dd5c2febef2bd3aa46843074e5b134",
-        "0099041e07dc09b5e4a9199b1270086ccc8c9bc480ae8f74b7e7d5f0ecbacf25"
-      ],
-      "topic": "воля"
-    },
-    {
-      "approved_surfaces": [
-        "смерть обозначает необратимое прекращение существования",
-        "смерть задаёт границу, через которую жизнь обретает конечную форму"
-      ],
-      "fact_ids": [
-        "fact.death_cessation",
-        "fact.death_cessation.counterpoint"
-      ],
-      "object_lemma": "прекращение существования",
-      "parity_class": "semantic",
-      "predicate_id": "death_cessation",
-      "reason": "approved surface adds the attribute 'необратимое'",
-      "relation_id": "oboznachaet",
-      "statement_count": 2,
-      "subject_lemma": "смерть",
-      "surface_digests": [
-        "a569b504f04165a4143b45ef22e3d44d69d52906c0d352d1360381c225676396",
-        "363425fab0ad82c50c3178c2779301b59f982c42dcc2f2c547b6671fc2d392ef"
-      ],
-      "topic": "смерть"
-    },
-    {
-      "approved_surfaces": [
-        "одиночество выражает отсутствие значимого другого",
-        "одиночество может быть избрано или навязано обстоятельствами"
-      ],
-      "fact_ids": [
-        "fact.loneliness_absence",
-        "fact.loneliness_absence.counterpoint"
-      ],
-      "object_lemma": "отсутствие другого",
-      "parity_class": "semantic",
-      "predicate_id": "loneliness_absence",
-      "reason": "approved surface adds the attribute 'значимого'",
-      "relation_id": "vyrazhaet",
-      "statement_count": 2,
-      "subject_lemma": "одиночество",
-      "surface_digests": [
-        "3faf054fa64bc0c14f94bbfd5a4e9c6991b1db4cdb5909c42e6b9c046ef77d08",
-        "9c81ffb13a0797474bc7c966586ef4d25709f8ae32f4857c83280b0e945db42a"
-      ],
-      "topic": "одиночество"
-    },
-    {
-      "approved_surfaces": [
-        "любовь направлена на конкретного другого как на безусловно ценного",
-        "любовь предполагает уязвимость и риск потери"
-      ],
-      "fact_ids": [
-        "fact.love_other",
-        "fact.love_other.counterpoint"
-      ],
-      "object_lemma": "на другого",
-      "parity_class": "semantic",
-      "predicate_id": "love_other",
-      "reason": "approved surface adds 'конкретного другого как на безусловно ценного'",
-      "relation_id": "napravlena",
-      "statement_count": 2,
-      "subject_lemma": "любовь",
-      "surface_digests": [
-        "0fc8d1d80fafb4062ccbb28491c6093e029eb8de70b4e06fdb1f96e6c6842290",
-        "7703141aeb93d99fa91f75b2dc70a3cd243757dca09a1b3ce1b3cd96cdfd44b8"
-      ],
-      "topic": "любовь"
-    },
-    {
-      "approved_surfaces": [
-        "труд связан с потребностью и распределением ресурсов",
-        "труд преобразует материал через целенаправленное усилие"
-      ],
-      "fact_ids": [
-        "fact.labor_resources",
-        "fact.labor_resources.counterpoint"
-      ],
-      "object_lemma": "с потребностью",
-      "parity_class": "semantic",
-      "predicate_id": "labor_resources",
-      "reason": "approved surface adds the coordinated object 'и распределением ресурсов'",
-      "relation_id": "svyazan",
-      "statement_count": 2,
-      "subject_lemma": "труд",
-      "surface_digests": [
-        "c23f8d9bca582e0a98d3072633a241c9ae54c5b35e861a7bee77654f35356917",
-        "8c51786de191dbd3a7c59763db5edfa4f8e4c2ebdb14af56d859dc0027bca3b5"
-      ],
-      "topic": "труд"
-    },
-    {
-      "approved_surfaces": [
-        "покой обозначает отсутствие движения и напряжения",
-        "покой необходим для восстановления и интеграции опыта"
-      ],
-      "fact_ids": [
-        "fact.rest_absence",
-        "fact.rest_absence.counterpoint"
-      ],
-      "object_lemma": "отсутствие движения",
-      "parity_class": "semantic",
-      "predicate_id": "rest_absence",
-      "reason": "approved surface adds the coordinated object 'и напряжения'",
-      "relation_id": "oboznachaet",
-      "statement_count": 2,
-      "subject_lemma": "покой",
-      "surface_digests": [
-        "b91dcd096febba75a2c48f64d210355e5d04f630197e6bcd66bf5e731581b25a",
-        "066b81efd10e031110897a1f73f0b512049be9acacf833647c192b80a4ce4470"
-      ],
-      "topic": "покой"
-    },
-    {
-      "approved_surfaces": [
-        "власть означает способность влиять на действия других",
-        "власть определяет, чья воля становится законом"
-      ],
-      "fact_ids": [
-        "fact.power_influence",
-        "fact.power_influence.counterpoint"
-      ],
-      "object_lemma": "влиять на других",
-      "parity_class": "semantic",
-      "predicate_id": "power_influence",
-      "reason": "approved surface adds 'способность ... на действия' to the object phrase",
-      "relation_id": "oznachaet",
-      "statement_count": 2,
-      "subject_lemma": "власть",
-      "surface_digests": [
-        "e5d5d4882f45dbcc6b31b762cc33db5281f7d3c48aa9c8a1ba832838cc7ff11d",
-        "3451f2df5d34348fdc496a1d487c4ce7fa210d3c4d8ed6fba2b5ee8ffa4321e1"
-      ],
-      "topic": "власть"
-    },
-    {
-      "approved_surfaces": [
-        "правда претендует на соответствие фактам",
-        "правда отличается от истины личной вовлечённостью рассказчика"
-      ],
-      "fact_ids": [
-        "fact.truthfulness_facts",
-        "fact.truthfulness_facts.counterpoint"
-      ],
-      "object_lemma": "на соответствие фактам",
-      "parity_class": "byte",
-      "predicate_id": "truthfulness_facts",
-      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
-      "relation_id": "pretenduet",
-      "statement_count": 2,
-      "subject_lemma": "правда",
-      "surface_digests": [
-        "4085f0ca4f2ae3039dbea2fb5a429418b7b3dabdacdfd0abba18541219a3feb9",
-        "738f02e9dbeb42d743bf77fac6ed0d6cc102dbcd8bfebcd6d830a3400211081f"
-      ],
-      "topic": "правда"
-    },
-    {
-      "approved_surfaces": [
-        "молчание контрастирует с речью, но не тождественно пустоте",
-        "молчание может быть актом отказа или знаком присутствия"
-      ],
-      "fact_ids": [
-        "fact.silence_speech",
-        "fact.silence_speech.counterpoint"
-      ],
-      "object_lemma": "с речью",
-      "parity_class": "semantic",
-      "predicate_id": "silence_speech",
-      "reason": "approved surface adds the contrast clause 'но не тождественно пустоте'",
-      "relation_id": "kontrastiruet",
-      "statement_count": 2,
-      "subject_lemma": "молчание",
-      "surface_digests": [
-        "cbe950e10ba2a3d6f5879ef7614f092deec61ee6eda0d34f9da1c36847c3db76",
-        "dd5fad87ab2597f95ee23d816da5acf1d4f74532a2453781489219747af726e0"
-      ],
-      "topic": "молчание"
-    }
-  ],
-  "schema_version": 1,
+  "manifest_digest": "9f44646c3f3b6bfe55b7d43f019794bf4b30f11d86a1472e0ae5c7e35b92143e",
+  "manifest_id": "response-plan-v2-audited-corpus-v2",
+  "schema_version": 2,
   "source_files": {
     "argued_topics.tsv": "85d9d77275bd0680668e0a6dcac89e7895065577ead03c38775f192ed97c63a0",
     "concepts.json": "70e35764c92b7e948fdd0a53ef877575410303ad4d291ab80936f6919d3d6b1f",
@@ -704,5 +16,760 @@
     "manifest.json": "742bc65882172528a0760ca6a53bc53699c8e1d5b2f342b06133bb6bd4698f2f",
     "relations.json": "21d25e498259051f911e11d8e09a750dbdf9dbdb3398b9ed396f74c8a74dba22",
     "valency_frames.tsv": "ee2737d82c84ba7030cf370659dc3a3bae1b4c10d8d0d92e2b243b4aa4589d37"
+  },
+  "topics": {
+    "бытие": {
+      "claims": {
+        "366893172d0159f560eb5adca134ff8d314c3a368a49b8d92115f1256f9d6116": {
+          "approved_surface": "бытие обозначает сам факт существования",
+          "approved_surface_sha256": "26a4a654767f4af4e6dc43da5ef699feff4217036ce43ca44cdfab666ab8004a",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "4a2060447349e85790121cf5e57fa54b95ace318916fe45e490e38a60e1d14c1",
+          "fact_id": "fact.being_existence",
+          "proposition_id": "48f186ec10f56a0f2a85adaf265dc0f59c02e3e7b97147f007012245adfd6bb8",
+          "realization_strategy": "clause"
+        },
+        "95ec3f4d5e9ebf872efcb878421adcda29ea12888735d07d6805d40b40faf5e8": {
+          "approved_surface": "бытие рассматривается как условие возможности любого суждения",
+          "approved_surface_sha256": "d5e7836f4b30a69eb379daeb0f435f19fdc90d1fc3ef282db46349b9ad5f5ab2",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "4a2060447349e85790121cf5e57fa54b95ace318916fe45e490e38a60e1d14c1",
+          "fact_id": "fact.being_existence.counterpoint",
+          "proposition_id": "4542809b53a08797bb081f84b28e87859e6ec2c8a6472d6aa326df70346beeed",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "вера": {
+      "claims": {
+        "6c24e758d1afa2d2c753e87eb6151f47f73d8471651abfab84c9634ed91a106b": {
+          "approved_surface": "вера — не замена знанию, а решение действовать в условиях неполноты",
+          "approved_surface_sha256": "e5f7fe492ecdbe0d683a4abdad030d4998bc9339f004ed4dbf9cc2422803b2ea",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "33f9fc79c63dd3ccefd4deabb56e9e21d8d77902c46b73f6d76e9108de568d02",
+          "fact_id": "fact.faith_acceptance.consequence",
+          "proposition_id": "680e5d06e75691836593cbb4a7998a678184ff5a401f3ad862f9f2d339dd8d28",
+          "realization_strategy": "fixed_phrase"
+        },
+        "70bbb7a32538858ddbbda6b4c45deb3adb59fde2a1280367c8fd84f355a07680": {
+          "approved_surface": "вера требует принятия без полного доказательства",
+          "approved_surface_sha256": "eb095f253ca79860fb00f2432722407d6e6ba1a45ff70e4407e54fb5ce912919",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "33f9fc79c63dd3ccefd4deabb56e9e21d8d77902c46b73f6d76e9108de568d02",
+          "fact_id": "fact.faith_acceptance",
+          "proposition_id": "590ad5791c4dd73eaffed5bc30f1eb172e02733156320f2643500cbf799fa049",
+          "realization_strategy": "clause"
+        },
+        "7d8fcb8a6ccc2d8f8e3e60846ded77d9b104046dfd34e62e37c84ad21e5d46ac": {
+          "approved_surface": "принятие без доказательств не означает принятия вопреки доказательствам — вера, игнорирующая факты, перестаёт быть верой и становится самообманом",
+          "approved_surface_sha256": "d6d1a779c34dced1381227e9afb671b20343c58f9c68dd8ca218f252645dab99",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "33f9fc79c63dd3ccefd4deabb56e9e21d8d77902c46b73f6d76e9108de568d02",
+          "fact_id": "fact.faith_acceptance.counterpoint",
+          "proposition_id": "e736f4fefce951dcad16f53ea2c38eede7ef6aac855b5329f6f0ca232e38d19b",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "власть": {
+      "claims": {
+        "0db32fdb559cf912df8d95dddeda51bc76a79b03172cc90d74fc093d9812c4e7": {
+          "approved_surface": "власть определяет, чья воля становится законом",
+          "approved_surface_sha256": "3451f2df5d34348fdc496a1d487c4ce7fa210d3c4d8ed6fba2b5ee8ffa4321e1",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "f8cc97290d0a8062647ce603daccb0efa7a183e98e666a9e8341e3e24f7b123a",
+          "fact_id": "fact.power_influence.counterpoint",
+          "proposition_id": "05c7df072094502952b731fa12c4a827d965c3eec3b30e49e6f49adddab03d12",
+          "realization_strategy": "fixed_phrase"
+        },
+        "d17ae0bc1bf98e91ccb2fc0a633a98f3d3441d9691b660fad075491e87575ac0": {
+          "approved_surface": "власть означает способность влиять на действия других",
+          "approved_surface_sha256": "e5d5d4882f45dbcc6b31b762cc33db5281f7d3c48aa9c8a1ba832838cc7ff11d",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "f8cc97290d0a8062647ce603daccb0efa7a183e98e666a9e8341e3e24f7b123a",
+          "fact_id": "fact.power_influence",
+          "proposition_id": "8337687af19da9560366702edb0cb9cf1f0a8668545c15c86f37f568579bb39b",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "воля": {
+      "claims": {
+        "47e6d1f82038d8e27968800a3665b3f4e228bc63786c27328bb4a07f820a5854": {
+          "approved_surface": "воля направляет действие к выбранной цели",
+          "approved_surface_sha256": "fbe888e30a81fe7a961eb867f9fa136747c9a06af8b49386d1617fbf02a114ac",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "480d74c5b81abce367203db62f684925a54066cbdbb51091f12376690b07b70d",
+          "fact_id": "fact.will_goal",
+          "proposition_id": "48ec6fbe1f10692e24d0661c1ad4f2660dd8bd0981a3440969d72182811a2fe8",
+          "realization_strategy": "clause"
+        },
+        "6dc3675c124b5a87a26448320a241637394526dfc04b85024bab5d2952dc6066": {
+          "approved_surface": "воля — не характер, а практика: она тренируется через повторение, а не даётся от рождения",
+          "approved_surface_sha256": "0099041e07dc09b5e4a9199b1270086ccc8c9bc480ae8f74b7e7d5f0ecbacf25",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "480d74c5b81abce367203db62f684925a54066cbdbb51091f12376690b07b70d",
+          "fact_id": "fact.will_goal.consequence",
+          "proposition_id": "31ee4a3df1a83b14e0bacf05aa6d502ded8d220734992140fc9c2dbbc9b5b9e2",
+          "realization_strategy": "fixed_phrase"
+        },
+        "c61a4adcbc5552ad303cd3a20d9d78fa177f828e3e7d9ec3c76631970311c6c1": {
+          "approved_surface": "сила воли не бесконечна — она истощается, как мышца, и требует восстановления",
+          "approved_surface_sha256": "db7724066b43aa043a24c90dfad0ae95c3dd5c2febef2bd3aa46843074e5b134",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "480d74c5b81abce367203db62f684925a54066cbdbb51091f12376690b07b70d",
+          "fact_id": "fact.will_goal.counterpoint",
+          "proposition_id": "d735322d59b5d0149eb994be339c2af3c2f5abfe5876afafb8c85aee1646959b",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "воспоминание": {
+      "claims": {
+        "6607ed6197a5158c31cbb3dc5f4f17b8b5c4f36bc45c71dbc3efe5473b235cf0": {
+          "approved_surface": "два человека, пережившие одно событие, помнят его по-разному — и оба правдивы в своей памяти",
+          "approved_surface_sha256": "44dd71a0d71c2dd2847caf517bd2db8fe85fafe79b80bf5aa744e9e3f5033d94",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "2a57cabf6bde0553ce13f50cb628e6f134826a452359b8fdac35c2c76b9fbccc",
+          "fact_id": "fact.recollection_new_frame.consequence",
+          "proposition_id": "2b5b71f97497b69a4b837b1d7fd27e3c56e714274c07623be16d739dd2782852",
+          "realization_strategy": "fixed_phrase"
+        },
+        "b2cbd730ddc6f2fdbb06d6ce3e33105ff47537d44750a17aaa9b6ba878b02e43": {
+          "approved_surface": "воспоминание восстанавливает пережитое в новой рамке",
+          "approved_surface_sha256": "e70d1db63c4977da88c2cb6c53d154c316c10d181f37b06fa3f0a9b8a544330d",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "2a57cabf6bde0553ce13f50cb628e6f134826a452359b8fdac35c2c76b9fbccc",
+          "expected_clause_surface_sha256": "e70d1db63c4977da88c2cb6c53d154c316c10d181f37b06fa3f0a9b8a544330d",
+          "fact_id": "fact.recollection_new_frame",
+          "proposition_id": "158a11aa7b62616750a6a4d38916b08557b6d311247ce6e290df39473302a31c",
+          "realization_strategy": "clause"
+        },
+        "ce6551ff157fb6dd22f3f662204e0b65231178614752320e7469195ba35154ee": {
+          "approved_surface": "реконструкция неизбежно привносит настоящее — мы вспоминаем не то, что пережили, а то, кем стали после пережитого",
+          "approved_surface_sha256": "96f711d2a1de4d69985a1ab3c5e83e351900c1006f5fb4840eecc83df31a2a6a",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "2a57cabf6bde0553ce13f50cb628e6f134826a452359b8fdac35c2c76b9fbccc",
+          "fact_id": "fact.recollection_new_frame.counterpoint",
+          "proposition_id": "b4e32b90763e5e769c03a465479fa8ed20c42606244f1d226d72ec93b2617ef2",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "время": {
+      "claims": {
+        "0a2409b2bd698f203ec70c12c455acf35f0406f3400675dc62fb0f16897584aa": {
+          "approved_surface": "время необратимо — прошлое недоступно для изменения",
+          "approved_surface_sha256": "0865b4bd4699fa992673ad84a6ef425a8e410a9e9cef2e0c69cdab71ad6b33f4",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "f8af2a0b5ea77fdef5ebfd74ac457b3a2a744789e4b89da57804be8a8f3710df",
+          "fact_id": "fact.time_irreversible",
+          "proposition_id": "127df83677145b0e009e520a58c9d98c4e589bf7cdd527c7bd7680a3acc4d6df",
+          "realization_strategy": "clause"
+        },
+        "1d5b54f604c134ba0b96c3d54aded70e887ca6b3fe79073857c7c66ad82c0ead": {
+          "approved_surface": "время задаёт порядок следования событий",
+          "approved_surface_sha256": "9e915929a9279fd6b0b05bb70dddd0bb9fb16e03713a5827825367b022f7a8dc",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "f8af2a0b5ea77fdef5ebfd74ac457b3a2a744789e4b89da57804be8a8f3710df",
+          "fact_id": "fact.time_irreversible.counterpoint",
+          "proposition_id": "89444a87f675e48e5bdb1b969cc1b1a292bdc485cb354ef232e85d69eb409d73",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "доверие": {
+      "claims": {
+        "2b54ed78a10a438addc2818df41bce4edb9c1c4fcf6d02630beeafa46e090460": {
+          "approved_surface": "доверие уязвимо: один провал может разрушить то, что строилось годами — потому что доверие асимметрично",
+          "approved_surface_sha256": "e177b6566ca95a4d90e82e66efd914778790e8188d152b098db15365ac6456ca",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "d16400aabfd2d84a165ea08dd4ba4adec8685a49f3f436a10ba60b293a53967f",
+          "fact_id": "fact.trust_experience.counterpoint",
+          "proposition_id": "d684b6865eb446c0a0ca38cc8f3a740765f661b9968900b2693fec93c62488be",
+          "realization_strategy": "fixed_phrase"
+        },
+        "3ef6e1cb6ca4833a9a31a7c039fa94496c3c693e5706542a4b9f0efac547b817": {
+          "approved_surface": "доверие — не ставка на гарантию, а решение принять риск",
+          "approved_surface_sha256": "f48228ac48a630816e2ad523e912a9d8eb1f9b8443b723e791febba049d19131",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "d16400aabfd2d84a165ea08dd4ba4adec8685a49f3f436a10ba60b293a53967f",
+          "fact_id": "fact.trust_experience.consequence",
+          "proposition_id": "20f29f918695be93b0a920806fc73227b6c5042f3746ed7de69c345c97165f2e",
+          "realization_strategy": "fixed_phrase"
+        },
+        "d2512f48cd44f997dac2a76a70d4a24b788ba7473b69ede7a7601cdff2dab3cc": {
+          "approved_surface": "доверие строится через повторяемый позитивный опыт",
+          "approved_surface_sha256": "2fefab54e077ae2691418a70880bbd5927d78dc4734d8a35f02c785f4ed0f509",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "d16400aabfd2d84a165ea08dd4ba4adec8685a49f3f436a10ba60b293a53967f",
+          "fact_id": "fact.trust_experience",
+          "proposition_id": "98a605a0706d29f8de70c8c44f6d2435518d6b168068261ef79195db1806c192",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "долг": {
+      "claims": {
+        "04d3a743c7bd7f842618d0e96ba96f1c36f81f7acafbffa753801c62b4c0e99a": {
+          "approved_surface": "долг, лишённый внутреннего согласия, превращается в принуждение — и перестаёт быть моральным",
+          "approved_surface_sha256": "eaed24ea99391e4120d77adaeefe6330b37c52d230db2f0b15ad3cb3d950b85c",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "082a944c8a989a1dfe1db9dfe53055a91517da3ea8fafc0ca0dff34a85e217d5",
+          "fact_id": "fact.duty_action_singular.counterpoint",
+          "proposition_id": "c0e94672d5cfb6b97766badf51eaaea87bb135c0509323108e977c8e75566b5e",
+          "realization_strategy": "fixed_phrase"
+        },
+        "790b8937b09f7cd59a98b7989925612834d6d35eea4c651bb7649cf444ec684d": {
+          "approved_surface": "долг предписывает действие независимо от желания",
+          "approved_surface_sha256": "f061d2467c0ae7a5b07d87d3568000bc63f7fe3b05a780301ab740fee876f7aa",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "082a944c8a989a1dfe1db9dfe53055a91517da3ea8fafc0ca0dff34a85e217d5",
+          "expected_clause_surface_sha256": "f061d2467c0ae7a5b07d87d3568000bc63f7fe3b05a780301ab740fee876f7aa",
+          "fact_id": "fact.duty_action_singular",
+          "proposition_id": "8b0cdb4c6caf1322378fc25d3679a65b633e53be1a42a842c7ee4190d16d77e7",
+          "realization_strategy": "clause"
+        },
+        "9610a74456090487013760f76344095d215c1bd551c336d6dbc59ff49cbf5002": {
+          "approved_surface": "зрелый долг — не подчинение внешнему правилу, а принятие правила как своего",
+          "approved_surface_sha256": "ed2032dc38ea5f65d138a32f8eb583c38361e948f635287cb66c5d29539922ec",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "082a944c8a989a1dfe1db9dfe53055a91517da3ea8fafc0ca0dff34a85e217d5",
+          "fact_id": "fact.duty_action_singular.consequence",
+          "proposition_id": "306cfbf9ccdb3f23db1d2d62b1591f015b8104b59625727cb42a52ac62cf9a27",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "истина": {
+      "claims": {
+        "223bd3136885e1d4fae24d59e99ebe0d9bdb5d5c045150fe816a946439a866f2": {
+          "approved_surface": "истина — не обладание, а дисциплина проверки: то, что выдерживает воспроизведение, ближе к истине",
+          "approved_surface_sha256": "0965ec10724e8d89543e4534cc01ac458672e3949d665250a1af2c95a4650521",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "1b35973621ada66e9847a73e86c0e83bb4000c96ca61488794f897eaaaafd04c",
+          "fact_id": "fact.truth_reality.consequence",
+          "proposition_id": "44042bea425a70c798f4e06d869ef79ac68a175bba0e1f61a0027dd91d1f7e16",
+          "realization_strategy": "fixed_phrase"
+        },
+        "570b1ebd89f788f07d893c2edd4f93c9a6ff549b30336c68d8319c3899fa91fe": {
+          "approved_surface": "истина претендует на соответствие реальности",
+          "approved_surface_sha256": "8486fa6c557b6611d10474a5b4c1ddbc018eff0911c5503d0b10ab87ea5e757d",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "1b35973621ada66e9847a73e86c0e83bb4000c96ca61488794f897eaaaafd04c",
+          "expected_clause_surface_sha256": "8486fa6c557b6611d10474a5b4c1ddbc018eff0911c5503d0b10ab87ea5e757d",
+          "fact_id": "fact.truth_reality",
+          "proposition_id": "b8e849cc496d3b7bf5ff485ed1c1dad0642cb7ebb05fd81d9510944d8d09eafe",
+          "realization_strategy": "clause"
+        },
+        "b3deaac139f6450743945f728da4aeea2b68d2270c67ef0688d9afe0cdfaa02f": {
+          "approved_surface": "доступ к реальности всегда опосредован наблюдателем — и наблюдатель не может выйти за пределы себя",
+          "approved_surface_sha256": "eb59928c7280dc1de6abebc7291f1d0a4730e5afce8e7c9b34749e76e75d1d9c",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "1b35973621ada66e9847a73e86c0e83bb4000c96ca61488794f897eaaaafd04c",
+          "fact_id": "fact.truth_reality.counterpoint",
+          "proposition_id": "f97212f9caf8b6e1bf5b950584334c9042bc26883735857188b05a8800eb6feb",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "история": {
+      "claims": {
+        "3ee3d1ca22084bd87408e9dad4f4ca9a0747bbc1667b6ed04e595e3435e3f3c6": {
+          "approved_surface": "история зависит от точки зрения рассказчика",
+          "approved_surface_sha256": "9382b670ed106b6f4ebf512c50a437db6d1217eed7000ac5ead17771ab5de298",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "9033b2ad2bf7adb4d86b0ed79b4c49ebf3672c396344965e1f35849d3f411a85",
+          "fact_id": "fact.history_viewpoint",
+          "proposition_id": "c0cd53ecb31acadba10108114f1481c60e1a6c1fe032a278017b68d23f79d700",
+          "realization_strategy": "clause"
+        },
+        "73d20c7ba12367d83b72946d1118842527189d488521c0c2195752aed923ca96": {
+          "approved_surface": "история связывает прошлое с настоящим через интерпретацию",
+          "approved_surface_sha256": "fe8e42da275a9a36c401c82fda78e184f7ae931815a8f30b49b96ece79ef24c1",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "9033b2ad2bf7adb4d86b0ed79b4c49ebf3672c396344965e1f35849d3f411a85",
+          "fact_id": "fact.history_viewpoint.counterpoint",
+          "proposition_id": "1c86c4a736fb16b9176be24a363ab1193e5e1bc0a17f004fff8b3612f58a0f3a",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "красота": {
+      "claims": {
+        "123a4fb50cdda1a0c079eaa266ef56032d292f393102a8e3f07805bc596bb12d": {
+          "approved_surface": "красота зависит от воспринимающего и культурной рамки",
+          "approved_surface_sha256": "639b276c00c14b824a1ab6d6718df05a5bfd84dcbfc2ac31069553745f281760",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "ba73afa34ae6b019f26eb49593fa0aa0e40dfb9a77b86e058d7a300cb4bfe52d",
+          "fact_id": "fact.beauty_experience.counterpoint",
+          "proposition_id": "084f7c49d78411374dba9ac1369ba52d542c1c56b5b74a50053d51821a0fef7a",
+          "realization_strategy": "fixed_phrase"
+        },
+        "e457a9b9871aa71b8e3d1f4caf788f3b286f3655bb08fe2dfafc47870636b8a5": {
+          "approved_surface": "красота вызывает эстетическое переживание",
+          "approved_surface_sha256": "851d378da6899ca9c91b5d0a494137fb390ae0e158f0e56825942bc587a7b0c1",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "ba73afa34ae6b019f26eb49593fa0aa0e40dfb9a77b86e058d7a300cb4bfe52d",
+          "expected_clause_surface_sha256": "851d378da6899ca9c91b5d0a494137fb390ae0e158f0e56825942bc587a7b0c1",
+          "fact_id": "fact.beauty_experience",
+          "proposition_id": "da0bd9c909b049fb5354884056294bf9e7420066ce341e37cad153b31ca85e0e",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "любовь": {
+      "claims": {
+        "35689c36b4ccdb87dfc70487dee48031492e1abde73a6016866d1b0364735385": {
+          "approved_surface": "любовь предполагает уязвимость и риск потери",
+          "approved_surface_sha256": "7703141aeb93d99fa91f75b2dc70a3cd243757dca09a1b3ce1b3cd96cdfd44b8",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "551127f19fa73ffcf59e9bf39b9d2f9ce5b07f43fa9b79827545e1f75f344593",
+          "fact_id": "fact.love_other.counterpoint",
+          "proposition_id": "1db608cf6aca18bfa2e6ac85110c8fffdf0756822d0ec090c96ea862c33ccf6f",
+          "realization_strategy": "fixed_phrase"
+        },
+        "f784612fa2b99b790e59963ab75e2c35cf721d78bf6e01440eece1ac64e6e151": {
+          "approved_surface": "любовь направлена на конкретного другого как на безусловно ценного",
+          "approved_surface_sha256": "0fc8d1d80fafb4062ccbb28491c6093e029eb8de70b4e06fdb1f96e6c6842290",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "551127f19fa73ffcf59e9bf39b9d2f9ce5b07f43fa9b79827545e1f75f344593",
+          "fact_id": "fact.love_other",
+          "proposition_id": "fe16988c1aaf8f1cf31bf3fa2048dc27086c4b78dcfe6eb8cbc7462a4d243cee",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "мнение": {
+      "claims": {
+        "072dcd9ad36c5430f880102a6d72f14084011edc51147ce3fff7b14f1cbc4734": {
+          "approved_surface": "ценность мнения не в безличной истине, а в том, чью позицию оно раскрывает",
+          "approved_surface_sha256": "2a5c88de203449bbe1a7eadff38ca2b6ecae084a62c4cb498fc15a161702c3e3",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "2ce417cb40237d9ad78071834ef2b071175dd4ea6fee36209f825865959d99f6",
+          "fact_id": "fact.opinion_position.consequence",
+          "proposition_id": "1b53add2283a02b808b914f2c03eba315662c8b55dcacac61de5c8957d5d9b14",
+          "realization_strategy": "fixed_phrase"
+        },
+        "c59a7618cef1f4f9f345a19eb8089c602b1f40403687e23d7cf936efc3717a70": {
+          "approved_surface": "субъективность мнения не означает его ложности — она означает его ограниченность перспективой",
+          "approved_surface_sha256": "096ff33042437e6f38673ad9911e0a005d17a0b1b501447a4d98ad97a32d9079",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "2ce417cb40237d9ad78071834ef2b071175dd4ea6fee36209f825865959d99f6",
+          "fact_id": "fact.opinion_position.counterpoint",
+          "proposition_id": "a0230c17bb6fd1a110c57c2e0d0b6c100b499ac8e5e4bcf3d3e1fc2f20fff047",
+          "realization_strategy": "fixed_phrase"
+        },
+        "fb698e8936b67a930e1d6554d6d8e64b2d4973599a5527d88f6b26e465d99f9b": {
+          "approved_surface": "мнение выражает позицию субъекта",
+          "approved_surface_sha256": "55fa43f52b5eecad4a433f6c78d4b2de675ab99316ff5ca93ebaa156f89beaaf",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "2ce417cb40237d9ad78071834ef2b071175dd4ea6fee36209f825865959d99f6",
+          "fact_id": "fact.opinion_position",
+          "proposition_id": "cd8edb4807f695edca6c3533178d337348fc2dee022933b89387e5e5ad199df1",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "молчание": {
+      "claims": {
+        "4af79f900e2940caf8c6dc1b37148a0f7417eb650a072480e0aef2a5e080a1c0": {
+          "approved_surface": "молчание контрастирует с речью, но не тождественно пустоте",
+          "approved_surface_sha256": "cbe950e10ba2a3d6f5879ef7614f092deec61ee6eda0d34f9da1c36847c3db76",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "c912d8dc124b5c827792e4b46b809cf6a45a3a6590f593f745b25a47a8a1e90c",
+          "fact_id": "fact.silence_speech",
+          "proposition_id": "8a51856cbcf0210d79a9e3253eca6cfa0ecdc7c421b0ad855dd3b3596add3fd9",
+          "realization_strategy": "clause"
+        },
+        "4fc436c4dfec43b393e8d3524e3316149d9fb7acfb552bcb80addba63d575228": {
+          "approved_surface": "молчание может быть актом отказа или знаком присутствия",
+          "approved_surface_sha256": "dd5fad87ab2597f95ee23d816da5acf1d4f74532a2453781489219747af726e0",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "c912d8dc124b5c827792e4b46b809cf6a45a3a6590f593f745b25a47a8a1e90c",
+          "fact_id": "fact.silence_speech.counterpoint",
+          "proposition_id": "8a51856cbcf0210d79a9e3253eca6cfa0ecdc7c421b0ad855dd3b3596add3fd9",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "надежда": {
+      "claims": {
+        "3b5591e7803709d95d829ec1b5a0643ceb6c8c20fbb74e9888b3974fb7fa7ae2": {
+          "approved_surface": "надежда поддерживает действие в условиях неопределённости",
+          "approved_surface_sha256": "195eaa58fe92f5b09ba9fbe5e8e26fcebc17c94888c00d4dbfc8d64ec700ef2c",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "7eb16e5576343f3445373716c99747080d72fc64405c82e71e61e577eeef335e",
+          "expected_clause_surface_sha256": "195eaa58fe92f5b09ba9fbe5e8e26fcebc17c94888c00d4dbfc8d64ec700ef2c",
+          "fact_id": "fact.hope_action",
+          "proposition_id": "a9f97f4b4937d711af0c2d833e8a7ad618d421de43546a2a776cc38956812799",
+          "realization_strategy": "clause"
+        },
+        "980a8acda9ac16ad8ebbdfa8b489bfb62be098106992dddcdc533845733a87da": {
+          "approved_surface": "надежда ориентирует на возможность будущего",
+          "approved_surface_sha256": "ae110595f3cfc14a768caa9d5cb58fa01bd3e1eb53a0ada08f6f7fe404d6141b",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "7eb16e5576343f3445373716c99747080d72fc64405c82e71e61e577eeef335e",
+          "fact_id": "fact.hope_action.counterpoint",
+          "proposition_id": "b4f90414305506312a0ca0313d5bb8b53ff26bccc4ebd417ad4b57f99ba26291",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "одиночество": {
+      "claims": {
+        "5a312ae7111e9483b48f271e6e47538a1c2c594c7bd7459e36b4466c21e42706": {
+          "approved_surface": "одиночество может быть избрано или навязано обстоятельствами",
+          "approved_surface_sha256": "9c81ffb13a0797474bc7c966586ef4d25709f8ae32f4857c83280b0e945db42a",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "59ce9374997a438b40578daba4c541d6c99463738a34f9dee2c309e2395977d1",
+          "fact_id": "fact.loneliness_absence.counterpoint",
+          "proposition_id": "812ad2727b8cf299d024195d0804ba518593e9de4ae39f7742bf9e75d46feb45",
+          "realization_strategy": "fixed_phrase"
+        },
+        "5c79085aaad4450e7e91f229c329817523451b2ae67ed6b5659cea6c5516a5e5": {
+          "approved_surface": "одиночество выражает отсутствие значимого другого",
+          "approved_surface_sha256": "3faf054fa64bc0c14f94bbfd5a4e9c6991b1db4cdb5909c42e6b9c046ef77d08",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "59ce9374997a438b40578daba4c541d6c99463738a34f9dee2c309e2395977d1",
+          "fact_id": "fact.loneliness_absence",
+          "proposition_id": "e3fec239495ccd4bee50eae86b9621c46ff4f61b864e7a20032702f03aaef4ff",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "ответственность": {
+      "claims": {
+        "8be6b610786a73e3c6730cb6970e3ae37212fac3dccb708d15ddf9324ced1d3e": {
+          "approved_surface": "ответственность связана с обязательствами перед другими",
+          "approved_surface_sha256": "b33f4e4bc2479b553446b028026a18bb0ba3e6671b3e081362200fbbc520cd20",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "5b365c6436fe9b118d4cca1fe486cfbf297b4e25a31c58f16f77e045ceb943d9",
+          "fact_id": "fact.responsibility_accountability.counterpoint",
+          "proposition_id": "9d75ed67c952c1d4cc1cc11c69a3dcd6b517509f95fd7649e2fc0a095c32b8b0",
+          "realization_strategy": "fixed_phrase"
+        },
+        "8d6db49b130794670b2243d18bada1ec834f4140580b24dcf832a4627af0378e": {
+          "approved_surface": "ответственность — это необходимость отвечать за свои действия",
+          "approved_surface_sha256": "dc9a7542180ce71009b84937c947a89703cf126093c442793b19f133e1fdfaef",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "5b365c6436fe9b118d4cca1fe486cfbf297b4e25a31c58f16f77e045ceb943d9",
+          "expected_clause_surface_sha256": "dc9a7542180ce71009b84937c947a89703cf126093c442793b19f133e1fdfaef",
+          "fact_id": "fact.responsibility_accountability",
+          "proposition_id": "01d144d10cfc923acc5e39615eebde2d6d7d493272493dfe4effd8eca87b89a8",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "память": {
+      "claims": {
+        "b1f34bc00d602b4c322b9a6d3218331fbcd5c78c7c63435b650881f780cdcfbd": {
+          "approved_surface": "память это процесс запоминания хранения и воспроизведения информации",
+          "approved_surface_sha256": "254834c879aef4440e8979b4d7671e2774b2638fcdc17e1b457c78a8a26337d6",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "17e27b25ee52213bea59945e4950fcbfc981847a52c552b4e16b6e83dbb4f543",
+          "expected_clause_surface_sha256": "254834c879aef4440e8979b4d7671e2774b2638fcdc17e1b457c78a8a26337d6",
+          "fact_id": "fact.memory_information_process",
+          "proposition_id": "7378665b4ffc78dd79275b78a6228a71c6b688c58f84c7ad60ecdd445ecde3f3",
+          "realization_strategy": "clause"
+        },
+        "c9b36cf1bf92802c9887965b23d9d24d8d49dc00c1d3441afcf8526ae3c64d29": {
+          "approved_surface": "память реконструирует а не просто копирует",
+          "approved_surface_sha256": "6db52b9872d9bbeb2b700f29cff93203da19a18ac2612d0af76dd0871c3f9189",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "17e27b25ee52213bea59945e4950fcbfc981847a52c552b4e16b6e83dbb4f543",
+          "fact_id": "fact.memory_information_process.counterpoint",
+          "proposition_id": "ad83ab9707d00de11a2e0641dd95ef7433cbceae9652a2637f18c8a0f4790e17",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "покой": {
+      "claims": {
+        "41d3d4c11226b4dac798521b736afc926322d9080df490e30833c9302f9103e7": {
+          "approved_surface": "покой обозначает отсутствие движения и напряжения",
+          "approved_surface_sha256": "b91dcd096febba75a2c48f64d210355e5d04f630197e6bcd66bf5e731581b25a",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "a73413a9b9ea786803600790d6c5aef29a7300f39c337c402982129f613e0e65",
+          "fact_id": "fact.rest_absence",
+          "proposition_id": "6090adb2d7420596778b6556631060fae8d9f49eacabf74347039d03174ba670",
+          "realization_strategy": "clause"
+        },
+        "4b4ec3ca60de53d6ff076eb27668dbc8160b86d3c8b98454e64705f56608d63e": {
+          "approved_surface": "покой необходим для восстановления и интеграции опыта",
+          "approved_surface_sha256": "066b81efd10e031110897a1f73f0b512049be9acacf833647c192b80a4ce4470",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "a73413a9b9ea786803600790d6c5aef29a7300f39c337c402982129f613e0e65",
+          "fact_id": "fact.rest_absence.counterpoint",
+          "proposition_id": "5e14024ebcddbb06ccb2bfcc80b247d30aa279dcc6381cb75003db858e1e184d",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "правда": {
+      "claims": {
+        "3a2892d4276ea7a2855df7e0d55cce2174f6fb25298e58fe32367d3a844fbbbf": {
+          "approved_surface": "правда отличается от истины личной вовлечённостью рассказчика",
+          "approved_surface_sha256": "738f02e9dbeb42d743bf77fac6ed0d6cc102dbcd8bfebcd6d830a3400211081f",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "523bcdc6bad1072930a0b0853371f634ba5648d2cb1ed3f95aa3d32ad9007333",
+          "fact_id": "fact.truthfulness_facts.counterpoint",
+          "proposition_id": "f1b301d06f1b89acfc297223885542be01963a3b9b110a5cd2c2e2ba1eead0ed",
+          "realization_strategy": "fixed_phrase"
+        },
+        "c6f0aa7f123b53afcf2c1d1f28f2c89cea155f4bd12d3b1c4878d1fb429d3d60": {
+          "approved_surface": "правда претендует на соответствие фактам",
+          "approved_surface_sha256": "4085f0ca4f2ae3039dbea2fb5a429418b7b3dabdacdfd0abba18541219a3feb9",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "523bcdc6bad1072930a0b0853371f634ba5648d2cb1ed3f95aa3d32ad9007333",
+          "expected_clause_surface_sha256": "4085f0ca4f2ae3039dbea2fb5a429418b7b3dabdacdfd0abba18541219a3feb9",
+          "fact_id": "fact.truthfulness_facts",
+          "proposition_id": "a7bd693a88729cc36483437a88cfa8e435fc5123cef0a08ba769fb27b1ad1998",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "произвол": {
+      "claims": {
+        "cb8281eb1518a90eefa93e963b29190c4c7bf679aff0aa22fe869c07c5a58670": {
+          "approved_surface": "произвол разрушает доверие между субъектами",
+          "approved_surface_sha256": "8464322d4621d37325e8a5089a49f469827ab6f189a7d9a85b7081242600c87c",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "fd427c8e6ead8ca0110a211613b6fdc32eb44b3eb7fb6f8173852f96bbfb73d3",
+          "fact_id": "fact.arbitrariness_absence_constraints.counterpoint",
+          "proposition_id": "fe88e2332795d70780e71c1ae3270fdc2ca43ed7ad6488de4334dd16b947976f",
+          "realization_strategy": "fixed_phrase"
+        },
+        "f16418c145f25b67325831f931af0a8d34a2548e31f3080a3538bfb4684afbdf": {
+          "approved_surface": "произвол выражает отсутствие ограничений",
+          "approved_surface_sha256": "5e3608ceaebf48ba2ec372470a4ee87c849a7b2b8427f18acc9857769eb93e0f",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "fd427c8e6ead8ca0110a211613b6fdc32eb44b3eb7fb6f8173852f96bbfb73d3",
+          "expected_clause_surface_sha256": "5e3608ceaebf48ba2ec372470a4ee87c849a7b2b8427f18acc9857769eb93e0f",
+          "fact_id": "fact.arbitrariness_absence_constraints",
+          "proposition_id": "1b19267463104a37d490331816e1b0653fc48c7290398b0987fe9f78d7ac3be3",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "разум": {
+      "claims": {
+        "c15140edaabd1cda7d1318cbbd20d8ddc39e1e6c64477d7f2dde93ea92e02632": {
+          "approved_surface": "разум способен к обобщению и абстракции",
+          "approved_surface_sha256": "f86589e2e0cdb7221fa798f6ac90feed5c426c104836dca8911d5e22ad307e8f",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "b2b79f3e361810e94238f8a46f988a9c71b5d46e81f6b81ff6ad4bf5832d1eca",
+          "fact_id": "fact.reason_proof.counterpoint",
+          "proposition_id": "a0e44590da2faa9493c171f0cf960090a83486639f975cf037a88c5ff2b08791",
+          "realization_strategy": "fixed_phrase"
+        },
+        "c7e1cad94540fa176936cc3c88d9abc3feca10e8afb065506a693d6d6dba195d": {
+          "approved_surface": "разум отличается от интуиции потребностью в доказательстве",
+          "approved_surface_sha256": "ac26431b0d006cb1e7cb69543ecef11dd84b8e31682007cfd7b0335f839fd18c",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "b2b79f3e361810e94238f8a46f988a9c71b5d46e81f6b81ff6ad4bf5832d1eca",
+          "fact_id": "fact.reason_proof",
+          "proposition_id": "859e9c3fabd93cb1398e611c5ecbb6213ce8c5f39b29a2a7a14d15b2406939ec",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "самосознание": {
+      "claims": {
+        "3866f07b2e647708516923a6324c0df04f82676728b0a132f38abbc486b3be2b": {
+          "approved_surface": "самосознание выражает рефлексивность субъекта",
+          "approved_surface_sha256": "f898d29b6349edce66448ebb7731f755f868d2aef2c293b5e4713af6a149e43d",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "9db5acc912d1d41a0bb776db8adc3d5979281d1c73ed4365a3f912f1b72764dd",
+          "expected_clause_surface_sha256": "f898d29b6349edce66448ebb7731f755f868d2aef2c293b5e4713af6a149e43d",
+          "fact_id": "fact.self_awareness_reflexivity",
+          "proposition_id": "bf2f91c9842dcffac0abbf850d86f60cbd238c39ea05a6040f95bbd14cdf2cee",
+          "realization_strategy": "clause"
+        },
+        "e9b84e447b258f56fc400dc3066a1f6f8e56343f72170d9957e0d6f2c33d0aa1": {
+          "approved_surface": "самосознание предполагает наличие сознания как своего основания",
+          "approved_surface_sha256": "4e32e26a198d56c0ff3b34023f4bf1c68594ed80ebc6d66b1e2c7c6c14a951e1",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "9db5acc912d1d41a0bb776db8adc3d5979281d1c73ed4365a3f912f1b72764dd",
+          "fact_id": "fact.self_awareness_reflexivity.counterpoint",
+          "proposition_id": "1c7228ba1fbeba88c91ab0cfbddbdae337edc8d3085f64a83cfe4b7a8b499ce0",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "свобода": {
+      "claims": {
+        "7e36e12116f4bcafddcbcf2272972f8fe195d4a11df9fcaaa0072c62a5c62724": {
+          "approved_surface": "свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу",
+          "approved_surface_sha256": "e3269ad3e51c36de1c77e6b7a81e2509f9bd9aa71c5558c28bd1a0d00b9498df",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
+          "fact_id": "fact.freedom_choice.consequence",
+          "proposition_id": "5506eb68729f402502485553d8e80c94340ba25ae187b6059a10295af692410a",
+          "realization_strategy": "fixed_phrase"
+        },
+        "cfcd256820d7fa3c9ab638e23c5db978f853f14b06d774830ec8e5e7815c87d7": {
+          "approved_surface": "не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным",
+          "approved_surface_sha256": "85be97364c5582368d658d6ed4918897e50fe76684f3f6303ce4b8cc235753a0",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
+          "fact_id": "fact.freedom_choice.counterpoint",
+          "proposition_id": "954e3b2c840d5e11e027e1d89ce263a0bde063c0be16ebe3ed10ddc4408c0753",
+          "realization_strategy": "fixed_phrase"
+        },
+        "ddc5fdbc1d3a581884c7a4b50e6d8133f3c5db031207caa22c2fd95c1120e2bb": {
+          "approved_surface": "свобода предполагает возможность выбора",
+          "approved_surface_sha256": "ce266378bba5c2eec6606c66538b0a9e2d8fe5e28c0bec83509dc319c774a342",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
+          "expected_clause_surface_sha256": "ce266378bba5c2eec6606c66538b0a9e2d8fe5e28c0bec83509dc319c774a342",
+          "fact_id": "fact.freedom_choice",
+          "proposition_id": "657f1af2512ed69d28a78ce2d1882daa5b689ac64c0f9027457852062c534e22",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "смерть": {
+      "claims": {
+        "5bfa92bff477dbd97ac1141b3161c55e033f6c0814962807c3a61578df0ee3cc": {
+          "approved_surface": "смерть задаёт границу, через которую жизнь обретает конечную форму",
+          "approved_surface_sha256": "363425fab0ad82c50c3178c2779301b59f982c42dcc2f2c547b6671fc2d392ef",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "ca2c2b9da0556d4237b76b00836ccc292387c4884367418fcb7a8e98856b6889",
+          "fact_id": "fact.death_cessation.counterpoint",
+          "proposition_id": "2fa042c1d73b642502d076e96182bff4daed3bb182098c5f7c01e8f6921dd180",
+          "realization_strategy": "fixed_phrase"
+        },
+        "824c295d58c2b3dddcee73ae26dc6b00b194c374d41e207f3da776039d49e19f": {
+          "approved_surface": "смерть обозначает необратимое прекращение существования",
+          "approved_surface_sha256": "a569b504f04165a4143b45ef22e3d44d69d52906c0d352d1360381c225676396",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "ca2c2b9da0556d4237b76b00836ccc292387c4884367418fcb7a8e98856b6889",
+          "fact_id": "fact.death_cessation",
+          "proposition_id": "51dd414cab6b635fae1d199c1d15d121e60ad859b66a9018193644e4c6fb4c46",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "сознание": {
+      "claims": {
+        "c649931db9ca5af10dc14bea95d4f7b708a5becd06facf66609b9f63255117a7": {
+          "approved_surface": "сознание это способность осознавать окружающий мир и самого себя",
+          "approved_surface_sha256": "2a2fe37dee5da55812590239e13f103bf8927ee105db0b68d794a8528310c2a7",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "4aa27ce4e1327a799d84403f6a70755c05ac42534a559ac7d68cce637ac3b71c",
+          "expected_clause_surface_sha256": "2a2fe37dee5da55812590239e13f103bf8927ee105db0b68d794a8528310c2a7",
+          "fact_id": "fact.consciousness_awareness",
+          "proposition_id": "1f189e54f21910060abbbd9aee277d5f2307b8244f5cb7a449e5718e89729512",
+          "realization_strategy": "clause"
+        },
+        "dd0804b1407007afef47808042de91fa34f9c8be89898caf56aac58be66b7980": {
+          "approved_surface": "сознание имеет аспект от первого лица",
+          "approved_surface_sha256": "3a9f9c0c4ca506b247fec14fb57f46dda6e87fa63a4cb7c296605415992ccb0b",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "4aa27ce4e1327a799d84403f6a70755c05ac42534a559ac7d68cce637ac3b71c",
+          "fact_id": "fact.consciousness_awareness.counterpoint",
+          "proposition_id": "158dcf1940e5b977eb7429f21b176087c92cdbcfd04ea7af50f80393798e8678",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "справедливость": {
+      "claims": {
+        "76f647f8c6fd4c41675590908727a2c29c098fcc8124fc0fb1b622bd49f0ebe0": {
+          "approved_surface": "справедливость требует соразмерности между деянием и воздаянием",
+          "approved_surface_sha256": "a52114faca1c9a969c0da093f91a2ee491e9a079300c27417d7d3c03dfdbaf2e",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "e5632d5ad92447408c0fd65696dff2046d58aa12234a9a27b2b06931d7cca853",
+          "fact_id": "fact.justice_proportionality",
+          "proposition_id": "147b711eb9de84e3eec07b416dd9f83ee57ffbd3126be305f875de6d319cabf9",
+          "realization_strategy": "clause"
+        },
+        "982a20d43dcd8bfd271bbd9bb87877c159307063a0cd96087813511afc84d540": {
+          "approved_surface": "справедливость — не точная формула, а направление: стремление к соразмерности важнее точности",
+          "approved_surface_sha256": "30236fcef6a6196b6f82b3d41983c20062744d979587b45e5387dee249e68359",
+          "canonical_path": "2.consequence",
+          "discourse_root_digest": "e5632d5ad92447408c0fd65696dff2046d58aa12234a9a27b2b06931d7cca853",
+          "fact_id": "fact.justice_proportionality.consequence",
+          "proposition_id": "e6766442c3820ea39444b0afb0d6a22061e6828818c2c892060c2c91de8e1e0c",
+          "realization_strategy": "fixed_phrase"
+        },
+        "d0783f6707af918db926ecb014fefee97900872ad05fa8769a0b531fe2790628": {
+          "approved_surface": "соразмерность трудно измерить: как взвесить страдание или измерить ущерб намерению?",
+          "approved_surface_sha256": "70c70b91bd7152ac87e9f2dea3af564ef2c72e458c0c6e6976f6592c4ac760d2",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "e5632d5ad92447408c0fd65696dff2046d58aa12234a9a27b2b06931d7cca853",
+          "fact_id": "fact.justice_proportionality.counterpoint",
+          "proposition_id": "029e252babb44627287340f546930e9e45c96fd59d40c5bf039d18d657932462",
+          "realization_strategy": "fixed_phrase"
+        }
+      }
+    },
+    "страх": {
+      "claims": {
+        "24504afa060a48c0e16c3a51935b95508b2fdf6b9d66381796c445ac1fffa2de": {
+          "approved_surface": "страх сигнализирует об угрозе целостности субъекта",
+          "approved_surface_sha256": "d49ecec45cb72f09e1f89d046d604a6690188a1f5d6cb362308b2d0d5ccf7760",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "fcf35cee8575d7d2001cc05e722741c10da0c7f45320783548851d85ae915bf8",
+          "fact_id": "fact.fear_action.counterpoint",
+          "proposition_id": "8c993b3d5f55fe75498f244ad8995fa44cd2ff7d31c4fe5263bc372c9f5480c7",
+          "realization_strategy": "fixed_phrase"
+        },
+        "f1139f63aed55dd551a98361e612564ab3eb727c376315be26e90f5c5c5e753a": {
+          "approved_surface": "страх может парализовать действие или мобилизовать его",
+          "approved_surface_sha256": "0d99d16bb82f03f2265869536c1ebe088c3386ab1320fb413f3b6d9d55b133c8",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "fcf35cee8575d7d2001cc05e722741c10da0c7f45320783548851d85ae915bf8",
+          "fact_id": "fact.fear_action",
+          "proposition_id": "2e70d56fc608946e74dd80906d0ba5cb13c6d4fcdc7e1b3e62cef1b529991295",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "труд": {
+      "claims": {
+        "411058a115616ffc61b0bb20cd70bc549a5ac563c627ef2467aed3be3995de2d": {
+          "approved_surface": "труд преобразует материал через целенаправленное усилие",
+          "approved_surface_sha256": "8c51786de191dbd3a7c59763db5edfa4f8e4c2ebdb14af56d859dc0027bca3b5",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "183b37907a59fb558611ec688c1c7b32e46811ae2bda20be490047b7aff98fb9",
+          "fact_id": "fact.labor_resources.counterpoint",
+          "proposition_id": "e986253e0f520f56b665cb9044ca4ff7f1bd9e9692eae84033a09a9d979b3df1",
+          "realization_strategy": "fixed_phrase"
+        },
+        "6d91a40bfb863106552be2a4e60bf0750bb7a09ddf55b20c798ed7ed3e778e2b": {
+          "approved_surface": "труд связан с потребностью и распределением ресурсов",
+          "approved_surface_sha256": "c23f8d9bca582e0a98d3072633a241c9ae54c5b35e861a7bee77654f35356917",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "183b37907a59fb558611ec688c1c7b32e46811ae2bda20be490047b7aff98fb9",
+          "fact_id": "fact.labor_resources",
+          "proposition_id": "46ed8f8655a234d002cdc861cfa7fa9dd4804147e5c0e66dc739709830674ee1",
+          "realization_strategy": "clause"
+        }
+      }
+    },
+    "язык": {
+      "claims": {
+        "207ea684ebfc4f547f0ae44aa97f1feb7ce6295ca82f98da4308100c7def4acc": {
+          "approved_surface": "язык структурирует опыт через различение и именование",
+          "approved_surface_sha256": "73cd37927323f40d3e5f8c8600a308e9108b367d72fc09b290e447959228cc76",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "bce2153d938b8f514a6da25452d47ed37ea542bd7ef509b4064e2bd4851a2ecb",
+          "fact_id": "fact.language_thought.counterpoint",
+          "proposition_id": "e37e15e616a658b504715710cc4ee6a4bee73ba8c8e5e3be9348f629426caa23",
+          "realization_strategy": "fixed_phrase"
+        },
+        "b06d8e03b46e2267c3615192cfef072faa44e64e9bd52b432a00f39a3781b952": {
+          "approved_surface": "язык связан с мышлением — он не только выражает, но и формирует мысль",
+          "approved_surface_sha256": "7401695ae259273cb7d3b5b953ed0ce30f7cca32336e6c404ebf93c4cf130a05",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "bce2153d938b8f514a6da25452d47ed37ea542bd7ef509b4064e2bd4851a2ecb",
+          "fact_id": "fact.language_thought",
+          "proposition_id": "57b72f33aa36f7ace0c5c5ac35301e6b7700823dec2525d26c9e7966439d05d7",
+          "realization_strategy": "clause"
+        }
+      }
+    }
   }
 }

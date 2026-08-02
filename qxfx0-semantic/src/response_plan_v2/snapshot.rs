@@ -7,6 +7,8 @@ use super::derivation::InferenceRuleId;
 use super::selection::{
     SelectionPolicy, SelectionReceipt, NUMERIC_SEMANTICS_VERSION, RANKING_VERSION,
 };
+use super::syn_tree::ResolvedSynNode;
+use super::{RealizablePlan, RealizedSurface};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuthoritySnapshot {
@@ -147,12 +149,170 @@ impl TurnContractSnapshot {
     }
 }
 
-/// Replay-stable selection record. Local timing and host state are absent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReplayInputEnvelope {
+    pub topic: String,
+    pub logical_turn: u64,
+    pub authority_as_of: Option<String>,
+}
+
+/// Fully selected realization material. Reproduction concatenates only these
+/// captured values and never consults a process-global pack, lexicon or
+/// morphology runtime.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CapturedRealizationNode {
+    Clause {
+        discourse_root_digest: String,
+        canonical_path: String,
+        subject_surface: String,
+        head_surface: String,
+        preposition: Option<String>,
+        complement_surface: Option<String>,
+    },
+    FixedPhrase {
+        discourse_root_digest: String,
+        canonical_path: String,
+        surface: String,
+    },
+}
+
+impl CapturedRealizationNode {
+    fn linearize(&self) -> String {
+        match self {
+            Self::Clause {
+                subject_surface,
+                head_surface,
+                preposition,
+                complement_surface,
+                ..
+            } => {
+                let mut parts = vec![subject_surface.clone(), head_surface.clone()];
+                if let Some(preposition) = preposition {
+                    parts.push(preposition.clone());
+                }
+                if let Some(complement) = complement_surface {
+                    parts.push(complement.clone());
+                }
+                parts.join(" ")
+            }
+            Self::FixedPhrase { surface, .. } => surface.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExactReplayBundle {
+    pub schema_version: u32,
+    pub input: ReplayInputEnvelope,
+    pub contract_digest: String,
+    pub candidate_merkle_root: String,
+    pub nodes: Vec<CapturedRealizationNode>,
+    pub expected_surface: RealizedSurface,
+    pub bundle_digest: String,
+}
+
+impl ExactReplayBundle {
+    pub fn new(
+        input: ReplayInputEnvelope,
+        contract_digest: impl Into<String>,
+        candidate_merkle_root: impl Into<String>,
+        nodes: Vec<CapturedRealizationNode>,
+        expected_surface: RealizedSurface,
+    ) -> Self {
+        let mut value = Self {
+            schema_version: 2,
+            input,
+            contract_digest: contract_digest.into(),
+            candidate_merkle_root: candidate_merkle_root.into(),
+            nodes,
+            expected_surface,
+            bundle_digest: String::new(),
+        };
+        value.bundle_digest = replay_bundle_fingerprint(&value);
+        value
+    }
+
+    pub fn capture(
+        input: ReplayInputEnvelope,
+        contract: &TurnContractSnapshot,
+        selection: &SelectionReceipt,
+        plan: &RealizablePlan,
+        surface: RealizedSurface,
+    ) -> Self {
+        let nodes = plan
+            .resolved_syn_tree()
+            .nodes()
+            .iter()
+            .map(|node| match node {
+                ResolvedSynNode::Clause(clause) => CapturedRealizationNode::Clause {
+                    discourse_root_digest: clause.occurrence.discourse_root_digest().to_string(),
+                    canonical_path: clause.occurrence.canonical_path().to_string(),
+                    subject_surface: clause.subject_surface.clone(),
+                    head_surface: clause.head_surface.clone(),
+                    preposition: clause.preposition.clone(),
+                    complement_surface: clause.complement_surface.clone(),
+                },
+                ResolvedSynNode::FixedPhrase {
+                    occurrence,
+                    surface,
+                } => CapturedRealizationNode::FixedPhrase {
+                    discourse_root_digest: occurrence.discourse_root_digest().to_string(),
+                    canonical_path: occurrence.canonical_path().to_string(),
+                    surface: surface.clone(),
+                },
+            })
+            .collect();
+        Self::new(
+            input,
+            &contract.digest,
+            &selection.candidate_merkle_root,
+            nodes,
+            surface,
+        )
+    }
+
+    fn verify_integrity(&self) -> Result<(), SnapshotError> {
+        let actual = replay_bundle_fingerprint(self);
+        if self.schema_version != 2 || actual != self.bundle_digest {
+            return Err(SnapshotError::IntegrityMismatch {
+                domain: "exact_replay_bundle",
+                expected: self.bundle_digest.clone(),
+                actual,
+            });
+        }
+        Ok(())
+    }
+
+    pub fn reproduce(&self) -> Result<RealizedSurface, SnapshotError> {
+        self.verify_integrity()?;
+        let clauses = self
+            .nodes
+            .iter()
+            .map(CapturedRealizationNode::linearize)
+            .collect::<Vec<_>>();
+        let surface_digest = domain_digest(b"qxfx0:realized-surface:v1", &clauses);
+        let reproduced = RealizedSurface {
+            clauses,
+            surface_digest,
+            realization_snapshot_digest: self.expected_surface.realization_snapshot_digest.clone(),
+            completeness_digest: self.expected_surface.completeness_digest.clone(),
+        };
+        if reproduced != self.expected_surface {
+            return Err(SnapshotError::ReproducedSurfaceMismatch);
+        }
+        Ok(reproduced)
+    }
+}
+
+/// Replay-stable V2 turn record. Local timing and host state are absent.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TurnRecord {
+    pub schema_version: u32,
     pub contract: TurnContractSnapshot,
     pub selection: SelectionReceipt,
     pub binary_digest: String,
+    pub exact_replay: ExactReplayBundle,
     pub stage_digest: String,
 }
 
@@ -161,19 +321,29 @@ impl TurnRecord {
         contract: TurnContractSnapshot,
         selection: SelectionReceipt,
         binary_digest: impl Into<String>,
+        exact_replay: ExactReplayBundle,
     ) -> Self {
         let mut value = Self {
+            schema_version: 2,
             contract,
             selection,
             binary_digest: binary_digest.into(),
+            exact_replay,
             stage_digest: String::new(),
         };
-        value.stage_digest = fingerprint(b"qxfx0:v2-turn-record:v1", &value);
+        value.stage_digest = fingerprint(b"qxfx0:v2-turn-record:v2", &value);
         value
     }
 
     fn verify_integrity(&self) -> Result<(), SnapshotError> {
         self.contract.verify_integrity()?;
+        self.exact_replay.verify_integrity()?;
+        if self.schema_version != 2
+            || self.exact_replay.contract_digest != self.contract.digest
+            || self.exact_replay.candidate_merkle_root != self.selection.candidate_merkle_root
+        {
+            return Err(SnapshotError::ReplayBundleMismatch);
+        }
         if self.selection.policy_digest != self.contract.selection.self_policy_digest
             || self.selection.ranking_version != self.contract.selection.ranking_version
             || self.selection.numeric_semantics_version
@@ -181,7 +351,7 @@ impl TurnRecord {
         {
             return Err(SnapshotError::SelectionContractMismatch);
         }
-        let actual = fingerprint(b"qxfx0:v2-turn-record:v1", self);
+        let actual = fingerprint(b"qxfx0:v2-turn-record:v2", self);
         if actual != self.stage_digest {
             return Err(SnapshotError::IntegrityMismatch {
                 domain: "turn_record",
@@ -212,6 +382,7 @@ pub struct ReplayMaterials<'a> {
 pub struct ReplayVerification {
     pub level: ReplayLevel,
     pub turn_record_digest: String,
+    pub reproduced_surface: Option<RealizedSurface>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -230,10 +401,18 @@ pub enum SnapshotError {
     AuthoritySnapshotMismatch,
     #[error("turn contract snapshot mismatch")]
     ContractSnapshotMismatch,
+    #[error("planning policy snapshot mismatch")]
+    PlanningPolicySnapshotMismatch,
+    #[error("selection policy snapshot mismatch")]
+    SelectionPolicySnapshotMismatch,
     #[error("reproduction binary mismatch")]
     BinaryMismatch,
     #[error("realization snapshot mismatch")]
     RealizationSnapshotMismatch,
+    #[error("exact replay bundle does not match its turn record")]
+    ReplayBundleMismatch,
+    #[error("captured realization did not reproduce the expected surface")]
+    ReproducedSurfaceMismatch,
 }
 
 pub fn verify_replay(
@@ -250,23 +429,39 @@ pub fn verify_replay(
             return Err(SnapshotError::AuthoritySnapshotMismatch);
         }
     }
-    if level == ReplayLevel::Reproduction {
+    let reproduced_surface = if level == ReplayLevel::Reproduction {
         let contract = materials
             .contract
             .ok_or(SnapshotError::SnapshotUnavailable { level })?;
         let binary_digest = materials
             .binary_digest
             .ok_or(SnapshotError::SnapshotUnavailable { level })?;
-        if contract != &record.contract {
+        if contract.authority != record.contract.authority {
+            return Err(SnapshotError::AuthoritySnapshotMismatch);
+        }
+        if contract.planning != record.contract.planning {
+            return Err(SnapshotError::PlanningPolicySnapshotMismatch);
+        }
+        if contract.realization != record.contract.realization {
+            return Err(SnapshotError::RealizationSnapshotMismatch);
+        }
+        if contract.selection != record.contract.selection {
+            return Err(SnapshotError::SelectionPolicySnapshotMismatch);
+        }
+        if contract.digest != record.contract.digest {
             return Err(SnapshotError::ContractSnapshotMismatch);
         }
         if binary_digest != record.binary_digest {
             return Err(SnapshotError::BinaryMismatch);
         }
-    }
+        Some(record.exact_replay.reproduce()?)
+    } else {
+        None
+    };
     Ok(ReplayVerification {
         level,
         turn_record_digest: record.stage_digest.clone(),
+        reproduced_surface,
     })
 }
 
@@ -283,6 +478,24 @@ fn fingerprint<T: Serialize>(domain: &[u8], value: &T) -> String {
         fields.remove("stage_digest");
     }
     let encoded = serde_json::to_vec(&canonical).expect("canonical snapshot serializes");
+    let mut hasher = Sha256::new();
+    hasher.update(domain);
+    hasher.update((encoded.len() as u64).to_be_bytes());
+    hasher.update(encoded);
+    format!("{:x}", hasher.finalize())
+}
+
+fn replay_bundle_fingerprint(bundle: &ExactReplayBundle) -> String {
+    let mut value = serde_json::to_value(bundle).expect("replay bundle serializes");
+    value
+        .as_object_mut()
+        .expect("replay bundle is an object")
+        .remove("bundle_digest");
+    domain_digest(b"qxfx0:exact-replay-bundle:v2", &value)
+}
+
+fn domain_digest<T: Serialize>(domain: &[u8], value: &T) -> String {
+    let encoded = serde_json::to_vec(value).expect("replay value serializes");
     let mut hasher = Sha256::new();
     hasher.update(domain);
     hasher.update((encoded.len() as u64).to_be_bytes());
@@ -348,22 +561,44 @@ mod tests {
 
     fn record() -> TurnRecord {
         let contract = contract();
-        TurnRecord::new(
-            contract.clone(),
-            SelectionReceipt {
-                candidate_merkle_root: "candidate".into(),
-                score: 42,
-                context: SelfSelectionContext {
-                    conatus: BasisPoints::from_raw(12_000),
-                    salience: BasisPoints::from_raw(5_000),
-                    doubt: BasisPoints::from_raw(1_000),
-                },
-                policy_digest: contract.selection.self_policy_digest.clone(),
-                ranking_version: contract.selection.ranking_version.clone(),
-                numeric_semantics_version: contract.selection.numeric_semantics_version.clone(),
+        let selection = SelectionReceipt {
+            candidate_merkle_root: "candidate".into(),
+            score: 42,
+            context: SelfSelectionContext {
+                conatus: BasisPoints::from_raw(12_000),
+                salience: BasisPoints::from_raw(5_000),
+                doubt: BasisPoints::from_raw(1_000),
             },
-            "binary-digest",
-        )
+            policy_digest: contract.selection.self_policy_digest.clone(),
+            ranking_version: contract.selection.ranking_version.clone(),
+            numeric_semantics_version: contract.selection.numeric_semantics_version.clone(),
+        };
+        let clauses = vec!["истина зависит от разума".to_string()];
+        let surface = RealizedSurface {
+            surface_digest: domain_digest(b"qxfx0:realized-surface:v1", &clauses),
+            clauses,
+            realization_snapshot_digest: contract.realization.fingerprint.clone(),
+            completeness_digest: "completeness".into(),
+        };
+        let bundle = ExactReplayBundle::new(
+            ReplayInputEnvelope {
+                topic: "истина".into(),
+                logical_turn: 42,
+                authority_as_of: None,
+            },
+            &contract.digest,
+            &selection.candidate_merkle_root,
+            vec![CapturedRealizationNode::Clause {
+                discourse_root_digest: "root".into(),
+                canonical_path: "0.thesis".into(),
+                subject_surface: "истина".into(),
+                head_surface: "зависит".into(),
+                preposition: Some("от".into()),
+                complement_surface: Some("разума".into()),
+            }],
+            surface,
+        );
+        TurnRecord::new(contract, selection, "binary-digest", bundle)
     }
 
     #[test]
@@ -438,5 +673,65 @@ mod tests {
         )
         .expect("reproduction");
         assert_eq!(verified.turn_record_digest, record.stage_digest);
+        assert_eq!(
+            verified
+                .reproduced_surface
+                .expect("reproduced surface")
+                .clauses,
+            vec!["истина зависит от разума"]
+        );
+    }
+
+    #[test]
+    fn reproduction_attributes_realization_and_binary_mismatches() {
+        let record = record();
+        let changed = TurnContractSnapshot::new(
+            record.contract.authority.clone(),
+            record.contract.planning.clone(),
+            RealizationSnapshot::new("other", "grammar", "morph", "depth"),
+            record.contract.selection.clone(),
+        );
+        assert!(matches!(
+            verify_replay(
+                &record,
+                ReplayLevel::Reproduction,
+                ReplayMaterials {
+                    authority: Some(&record.contract.authority),
+                    contract: Some(&changed),
+                    binary_digest: Some("binary-digest"),
+                }
+            ),
+            Err(SnapshotError::RealizationSnapshotMismatch)
+        ));
+        assert!(matches!(
+            verify_replay(
+                &record,
+                ReplayLevel::Reproduction,
+                ReplayMaterials {
+                    authority: Some(&record.contract.authority),
+                    contract: Some(&record.contract),
+                    binary_digest: Some("other"),
+                }
+            ),
+            Err(SnapshotError::BinaryMismatch)
+        ));
+    }
+
+    #[test]
+    fn exact_bundle_tampering_is_detected_before_reproduction() {
+        let mut record = record();
+        let CapturedRealizationNode::Clause { head_surface, .. } =
+            &mut record.exact_replay.nodes[0]
+        else {
+            panic!("fixture is a clause")
+        };
+        *head_surface = "дрейфует".into();
+        assert!(matches!(
+            verify_replay(&record, ReplayLevel::Integrity, ReplayMaterials::default()),
+            Err(SnapshotError::IntegrityMismatch {
+                domain: "exact_replay_bundle",
+                ..
+            })
+        ));
     }
 }

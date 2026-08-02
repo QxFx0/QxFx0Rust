@@ -1,4 +1,4 @@
-//! Syntactic realization: NP/VP/Clause, resolution, linearization
+//! Syntactic realization: clauses and admitted fixed surfaces, resolution and linearization
 //! (ADR-0034 §7).
 //!
 //! The chain is `plan → SynTree → ResolvedSynTree → surface`. Its point is that
@@ -133,7 +133,18 @@ impl Clause {
 /// so it is serializable for tracing but never deserialized from storage.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
 pub struct SynTree {
-    clauses: Vec<(DiscourseOccurrenceId, Clause)>,
+    nodes: Vec<(DiscourseOccurrenceId, SynNode)>,
+}
+
+/// One honest realization strategy for a stated discourse occurrence.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SynNode {
+    /// A morphologically and valency-governed clause.
+    Clause(Clause),
+    /// An independently audited whole-claim surface. This is deliberately not
+    /// represented as compositional syntax.
+    FixedPhrase(String),
 }
 
 impl SynTree {
@@ -142,19 +153,27 @@ impl SynTree {
     }
 
     pub fn push(&mut self, occurrence: DiscourseOccurrenceId, clause: Clause) {
-        self.clauses.push((occurrence, clause));
+        self.nodes.push((occurrence, SynNode::Clause(clause)));
+    }
+
+    pub fn push_fixed(&mut self, occurrence: DiscourseOccurrenceId, surface: impl Into<String>) {
+        self.push_node(occurrence, SynNode::FixedPhrase(surface.into()));
+    }
+
+    pub fn push_node(&mut self, occurrence: DiscourseOccurrenceId, node: SynNode) {
+        self.nodes.push((occurrence, node));
     }
 
     pub fn len(&self) -> usize {
-        self.clauses.len()
+        self.nodes.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.clauses.is_empty()
+        self.nodes.is_empty()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &(DiscourseOccurrenceId, Clause)> {
-        self.clauses.iter()
+    pub fn iter(&self) -> impl Iterator<Item = &(DiscourseOccurrenceId, SynNode)> {
+        self.nodes.iter()
     }
 }
 
@@ -196,6 +215,13 @@ pub enum RealizationError {
     UninflectableSubject,
     #[error("realization snapshot mismatch: expected {expected}, actual {actual}")]
     SnapshotMismatch { expected: String, actual: String },
+    #[error(
+        "authorized and syntax occurrence sets differ: expected {expected:?}, actual {actual:?}"
+    )]
+    OccurrenceMismatch {
+        expected: Vec<String>,
+        actual: Vec<String>,
+    },
 }
 
 /// A clause whose every slot is filled.
@@ -210,10 +236,31 @@ pub struct ResolvedClause {
     pub governed_case: Option<Case>,
 }
 
+/// A syntax node whose surface is fully determined.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResolvedSynNode {
+    Clause(ResolvedClause),
+    FixedPhrase {
+        occurrence: DiscourseOccurrenceId,
+        surface: String,
+    },
+}
+
+impl ResolvedSynNode {
+    pub fn occurrence(&self) -> &DiscourseOccurrenceId {
+        match self {
+            Self::Clause(clause) => &clause.occurrence,
+            Self::FixedPhrase { occurrence, .. } => occurrence,
+        }
+    }
+}
+
 /// Evidence that resolution left nothing open (ADR-0034 §7).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RealizationCompletenessCertificate {
     pub clauses: usize,
+    pub fixed_nodes: usize,
     pub resolved_slots: usize,
     pub agreeing_heads: usize,
     pub fixed_phrases: usize,
@@ -227,13 +274,20 @@ pub struct RealizationCompletenessCertificate {
 /// Syntax with no unresolved slots. Linearization of this type is total.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ResolvedSynTree {
-    clauses: Vec<ResolvedClause>,
+    nodes: Vec<ResolvedSynNode>,
     certificate: RealizationCompletenessCertificate,
 }
 
 impl ResolvedSynTree {
-    pub fn clauses(&self) -> &[ResolvedClause] {
-        &self.clauses
+    pub fn nodes(&self) -> &[ResolvedSynNode] {
+        &self.nodes
+    }
+
+    pub fn clauses(&self) -> impl Iterator<Item = &ResolvedClause> {
+        self.nodes.iter().filter_map(|node| match node {
+            ResolvedSynNode::Clause(clause) => Some(clause),
+            ResolvedSynNode::FixedPhrase { .. } => None,
+        })
     }
 
     pub fn certificate(&self) -> &RealizationCompletenessCertificate {
@@ -245,17 +299,21 @@ impl ResolvedSynTree {
     /// There is no fallible path here by construction: every surface was
     /// already chosen at resolution, so this only concatenates.
     pub fn linearize(&self) -> Vec<String> {
-        self.clauses
+        self.nodes
             .iter()
-            .map(|clause| {
-                let mut parts = vec![clause.subject_surface.clone(), clause.head_surface.clone()];
-                if let Some(preposition) = &clause.preposition {
-                    parts.push(preposition.clone());
+            .map(|node| match node {
+                ResolvedSynNode::Clause(clause) => {
+                    let mut parts =
+                        vec![clause.subject_surface.clone(), clause.head_surface.clone()];
+                    if let Some(preposition) = &clause.preposition {
+                        parts.push(preposition.clone());
+                    }
+                    if let Some(complement) = &clause.complement_surface {
+                        parts.push(complement.clone());
+                    }
+                    parts.join(" ")
                 }
-                if let Some(complement) = &clause.complement_surface {
-                    parts.push(complement.clone());
-                }
-                parts.join(" ")
+                ResolvedSynNode::FixedPhrase { surface, .. } => surface.clone(),
             })
             .collect()
     }
@@ -267,14 +325,29 @@ pub fn resolve(
     lexicon: &ValencyLexicon,
     morphology: &MorphologyRuntime,
 ) -> Result<ResolvedSynTree, RealizationError> {
-    let mut clauses = Vec::with_capacity(tree.len());
+    let mut nodes = Vec::with_capacity(tree.len());
+    let mut clause_count = 0usize;
+    let mut fixed_nodes = 0usize;
     let mut resolved_slots = 0usize;
     let mut agreeing_heads = 0usize;
     let mut fixed_phrases = 0usize;
     let mut prepositions_embedded = 0usize;
     let mut preposition_allomorphs_applied = 0usize;
 
-    for (occurrence, clause) in tree.iter() {
+    for (occurrence, node) in tree.iter() {
+        let SynNode::Clause(clause) = node else {
+            let SynNode::FixedPhrase(surface) = node else {
+                unreachable!()
+            };
+            fixed_nodes += 1;
+            resolved_slots += 1;
+            nodes.push(ResolvedSynNode::FixedPhrase {
+                occurrence: occurrence.clone(),
+                surface: surface.clone(),
+            });
+            continue;
+        };
+        clause_count += 1;
         let frame = lexicon.get(clause.predicate().relation_id())?;
 
         // The subject must be inflectable: its features drive agreement, and a
@@ -402,7 +475,7 @@ pub fn resolve(
             }
         };
 
-        clauses.push(ResolvedClause {
+        nodes.push(ResolvedSynNode::Clause(ResolvedClause {
             occurrence: occurrence.clone(),
             subject_surface,
             head_surface,
@@ -410,12 +483,13 @@ pub fn resolve(
             complement_surface,
             agreement,
             governed_case,
-        });
+        }));
     }
 
     Ok(ResolvedSynTree {
         certificate: RealizationCompletenessCertificate {
-            clauses: clauses.len(),
+            clauses: clause_count,
+            fixed_nodes,
             resolved_slots,
             agreeing_heads,
             fixed_phrases,
@@ -425,7 +499,7 @@ pub fn resolve(
             morphology_sha256: morphology.lexemes_sha256().to_string(),
             morphology_depth_fingerprint: preposition_allomorphs().fingerprint().to_string(),
         },
-        clauses,
+        nodes,
     })
 }
 
@@ -473,10 +547,10 @@ fn subject_agreement(morphology: &MorphologyRuntime, lemma: &str) -> AgreementFe
 }
 
 /// Build a `BTreeMap` view of the resolved clauses by occurrence.
-pub fn by_occurrence(tree: &ResolvedSynTree) -> BTreeMap<&DiscourseOccurrenceId, &ResolvedClause> {
-    tree.clauses()
+pub fn by_occurrence(tree: &ResolvedSynTree) -> BTreeMap<&DiscourseOccurrenceId, &ResolvedSynNode> {
+    tree.nodes()
         .iter()
-        .map(|clause| (&clause.occurrence, clause))
+        .map(|node| (node.occurrence(), node))
         .collect()
 }
 
@@ -521,8 +595,10 @@ mod tests {
         );
         resolve(&tree, valency_lexicon(), morphology())
             .expect("resolution")
-            .clauses
-            .remove(0)
+            .clauses()
+            .next()
+            .expect("resolved clause")
+            .clone()
     }
 
     /// The case comes from the lexicon, never from the plan or a template.
@@ -635,7 +711,12 @@ mod tests {
         );
         let resolved = resolve(&tree, valency_lexicon(), morphology()).expect("resolution");
         assert_eq!(
-            resolved.clauses()[0].complement_surface.as_deref(),
+            resolved
+                .clauses()
+                .next()
+                .expect("resolved clause")
+                .complement_surface
+                .as_deref(),
             Some("возможность выбора")
         );
         assert_eq!(resolved.certificate().fixed_phrases, 1);
@@ -686,7 +767,7 @@ mod tests {
             ),
         );
         let resolved = resolve(&tree, valency_lexicon(), morphology()).expect("resolution");
-        let clause = &resolved.clauses()[0];
+        let clause = resolved.clauses().next().expect("resolved clause");
         assert_eq!(clause.preposition, None);
         assert_eq!(clause.complement_surface.as_deref(), Some("с мышлением"));
         assert_eq!(resolved.certificate().prepositions_embedded, 1);

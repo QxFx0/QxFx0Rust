@@ -27,9 +27,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use qxfx0_semantic::response_plan_v2::valency::{starts_with_word, valency_lexicon, Complement};
+use qxfx0_semantic::response_plan_v2::valency::valency_lexicon;
 use qxfx0_semantic::response_plan_v2::{
-    build_audited_topic, Clause, NounPhrase, SynTree, VerbPhrase,
+    build_audited_topic, execute_audited_topic_at, AssertionPolicy, AuthoritySnapshot,
+    PlanningPolicySnapshot, RealizationSnapshot, SelectionPolicy, SelectionPolicySnapshot,
+    SelfSelectionContext, TurnContractSnapshot, V2Attempt, V2BudgetPolicy, V2ExecutionResult,
 };
 
 const MATRIX_PATH: &str = "data/gates/response-plan-v2/template-agreement-matrix.json";
@@ -37,10 +39,10 @@ const MATRIX_SCHEMA_VERSION: u32 = 1;
 const MATRIX_ID: &str = "template-agreement-matrix-v1";
 
 const AUDITED_CORPUS_PATH: &str = "data/gates/response-plan-v2/audited-corpus-manifest.json";
-const AUDITED_CORPUS_SCHEMA_VERSION: u32 = 1;
-const AUDITED_CORPUS_ID: &str = "response-plan-v2-audited-corpus-v1";
+const AUDITED_CORPUS_SCHEMA_VERSION: u32 = 2;
+const AUDITED_CORPUS_ID: &str = "response-plan-v2-audited-corpus-v2";
 const REPLAY_MANIFEST_PATH: &str = "data/gates/response-plan-v2/replay-manifest.json";
-const REPLAY_MANIFEST_ID: &str = "response-plan-v2-replay-v1";
+const REPLAY_MANIFEST_ID: &str = "response-plan-v2-replay-v2";
 
 /// Embedded so a release binary can run the gate without a working tree.
 const EMBEDDED_MATRIX: &str =
@@ -51,6 +53,8 @@ const EMBEDDED_AUDITED_CORPUS: &str =
     include_str!("../../data/gates/response-plan-v2/audited-corpus-manifest.json");
 const EMBEDDED_REPLAY_MANIFEST: &str =
     include_str!("../../data/gates/response-plan-v2/replay-manifest.json");
+const EMBEDDED_TURN_RECORD_V2: &str =
+    include_str!("../../data/gates/response-plan-v2/turn-record-v2.json");
 const EMBEDDED_SELECTION_VECTORS: &[u8] =
     include_bytes!("../../docs/reference-vectors/response-plan-v2-selection-v1.json");
 const EMBEDDED_REALIZATION_VECTORS: &[u8] =
@@ -321,27 +325,30 @@ pub const fn replay_manifest_path() -> &'static str {
 #[derive(Debug, Clone, Deserialize)]
 struct AuditedCorpusDiagnostics {
     topics_total: usize,
-    statements_total: usize,
-    parity_byte: usize,
-    parity_semantic: usize,
+    claims_total: usize,
+    exact_clause_surfaces: usize,
+    fixed_phrase_surfaces: usize,
+    governed_clause_surfaces: usize,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct AuditedCorpusRow {
-    topic: String,
-    predicate_id: String,
-    relation_id: String,
-    subject_lemma: String,
-    object_lemma: String,
-    statement_count: usize,
-    fact_ids: Vec<String>,
-    approved_surfaces: Vec<String>,
-    surface_digests: Vec<String>,
-    parity_class: String,
-    /// Census note for operators; the gate does not enforce it.
-    #[allow(dead_code)]
-    reason: String,
+struct AuditedCorpusClaim {
+    discourse_root_digest: String,
+    canonical_path: String,
+    fact_id: String,
+    proposition_id: String,
+    approved_surface: String,
+    approved_surface_sha256: String,
+    realization_strategy: String,
+    #[serde(default)]
+    expected_clause_surface_sha256: Option<String>,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+struct AuditedCorpusTopic {
+    claims: BTreeMap<String, AuditedCorpusClaim>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct AuditedCorpusManifest {
     schema_version: u32,
@@ -350,7 +357,7 @@ struct AuditedCorpusManifest {
     manifest_digest: String,
     source_files: BTreeMap<String, String>,
     diagnostics: AuditedCorpusDiagnostics,
-    rows: Vec<AuditedCorpusRow>,
+    topics: BTreeMap<String, AuditedCorpusTopic>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -366,6 +373,10 @@ struct ReplayManifest {
     claims_total: usize,
     selection_vectors_digest: String,
     realization_vectors_digest: String,
+    turn_record_fixture_sha256: String,
+    turn_record_stage_digest: String,
+    turn_record_bundle_digest: String,
+    reference_binary_digest: String,
     legacy_graph_declarative_fallback: bool,
 }
 
@@ -388,8 +399,8 @@ fn run_replay_gate() -> GateReport {
         Err(error) => return GateReport::failed(GatePhase::D, vec![error.to_string()]),
     };
     let mut violations = Vec::new();
-    if manifest.schema_version != 1 {
-        violations.push("replay manifest schema_version must be 1".into());
+    if manifest.schema_version != 2 {
+        violations.push("replay manifest schema_version must be 2".into());
     }
     if manifest.manifest_id != REPLAY_MANIFEST_ID {
         violations.push("replay manifest id drifted".into());
@@ -442,6 +453,38 @@ fn run_replay_gate() -> GateReport {
     }
     if manifest.realization_vectors_digest != sha256_hex(EMBEDDED_REALIZATION_VECTORS) {
         violations.push("realization reference vectors drifted".into());
+    }
+    if manifest.turn_record_fixture_sha256 != sha256_hex(EMBEDDED_TURN_RECORD_V2.as_bytes()) {
+        violations.push("TurnRecord v2 fixture bytes drifted".into());
+    }
+    match serde_json::from_str::<qxfx0_semantic::response_plan_v2::TurnRecord>(
+        EMBEDDED_TURN_RECORD_V2,
+    ) {
+        Ok(record) => {
+            if record.stage_digest != manifest.turn_record_stage_digest
+                || record.exact_replay.bundle_digest != manifest.turn_record_bundle_digest
+                || record.binary_digest != manifest.reference_binary_digest
+            {
+                violations.push("TurnRecord v2 fixture metadata drifted".into());
+            }
+            let materials = qxfx0_semantic::response_plan_v2::ReplayMaterials {
+                authority: Some(&record.contract.authority),
+                contract: Some(&record.contract),
+                binary_digest: Some(&manifest.reference_binary_digest),
+            };
+            match qxfx0_pipeline::replay::verify_turn_record_replay(
+                &record,
+                qxfx0_semantic::response_plan_v2::ReplayLevel::Reproduction,
+                materials,
+            ) {
+                Ok(verified)
+                    if verified.reproduced_surface
+                        == Some(record.exact_replay.expected_surface.clone()) => {}
+                Ok(_) => violations.push("TurnRecord v2 reproduced a different surface".into()),
+                Err(error) => violations.push(format!("TurnRecord v2 replay failed: {error}")),
+            }
+        }
+        Err(error) => violations.push(format!("TurnRecord v2 fixture parse failed: {error}")),
     }
     if manifest.legacy_graph_declarative_fallback {
         violations.push("legacy_graph is forbidden as a declarative fallback".into());
@@ -521,55 +564,35 @@ fn run_phase_b() -> GateReport {
             manifest.diagnostics.topics_total
         ));
     }
-    if manifest.diagnostics.statements_total != 69 {
+    if manifest.diagnostics.claims_total != 69 {
         violations.push(format!(
-            "audited-corpus must cover exactly 69 statements, manifest says {}",
-            manifest.diagnostics.statements_total
+            "audited-corpus must cover exactly 69 claims, manifest says {}",
+            manifest.diagnostics.claims_total
         ));
     }
-    if manifest.diagnostics.parity_byte + manifest.diagnostics.parity_semantic
-        != manifest.diagnostics.topics_total
-    {
-        violations.push("parity diagnostics must partition the topics".into());
-    }
-    if manifest.rows.len() != 30 {
+    if manifest.topics.len() != 30 {
         violations.push(format!(
-            "audited-corpus must contain exactly 30 rows, found {}",
-            manifest.rows.len()
+            "audited-corpus must contain exactly 30 topics, found {}",
+            manifest.topics.len()
         ));
     }
     let mut topics = std::collections::BTreeSet::new();
-    let mut manifest_statements = 0usize;
-    let mut actual_byte = 0usize;
-    let mut actual_semantic = 0usize;
+    let mut manifest_claims = 0usize;
+    let mut exact_clause_topics = 0usize;
+    let mut fixed_phrase_claims = 0usize;
+    let mut governed_clause_topics = 0usize;
 
     let argued = qxfx0_semantic::argued_topic_registry().map_err(|error| error.to_string());
-    let mut byte_rows = 0usize;
-    let mut semantic_rows = 0usize;
     let mut claims_authorized = 0usize;
 
-    for row in &manifest.rows {
-        if !topics.insert(row.topic.clone()) {
+    for (topic_name, topic_manifest) in &manifest.topics {
+        if !topics.insert(topic_name.clone()) {
             violations.push(format!(
                 "duplicate audited-corpus topic '{}', manifest is not a set",
-                row.topic
+                topic_name
             ));
         }
-        manifest_statements += row.statement_count;
-        match row.parity_class.as_str() {
-            "byte" => actual_byte += 1,
-            "semantic" => actual_semantic += 1,
-            _ => {}
-        }
-        if row.approved_surfaces.len() != row.surface_digests.len()
-            || row.approved_surfaces.len() != row.statement_count
-            || row.approved_surfaces.is_empty()
-        {
-            violations.push(format!(
-                "{}: approved surfaces/digests must be non-empty and match statement_count",
-                row.topic
-            ));
-        }
+        manifest_claims += topic_manifest.claims.len();
         let argued = match &argued {
             Ok(registry) => registry,
             Err(error) => {
@@ -577,90 +600,86 @@ fn run_phase_b() -> GateReport {
                 break;
             }
         };
-        let Some(topic) = argued.get(&row.topic) else {
-            violations.push(format!("manifest topic '{}' is not audited", row.topic));
+        let Some(topic) = argued.get(topic_name) else {
+            violations.push(format!("manifest topic '{}' is not audited", topic_name));
             continue;
         };
-        if topic.primary_predicate_ref().as_str() != row.predicate_id {
-            violations.push(format!(
-                "{}: primary predicate drifted from the registry: manifest={}, registry={}",
-                row.topic,
-                row.predicate_id,
-                topic.primary_predicate_ref().as_str()
-            ));
-        }
-        if topic.statement_count() != row.statement_count {
+        if topic.statement_count() != topic_manifest.claims.len() {
             violations.push(format!(
                 "{}: registry states {} statements, manifest records {}",
-                row.topic,
+                topic_name,
                 topic.statement_count(),
-                row.statement_count
+                topic_manifest.claims.len()
             ));
         }
-        let registry_fact_ids: Vec<String> = topic
-            .statements()
-            .map(|statement| statement.fact_id().as_str().to_string())
-            .collect();
-        if registry_fact_ids != row.fact_ids {
-            violations.push(format!(
-                "{}: fact ids drifted from the registry: manifest={:?}, registry={:?}",
-                row.topic, row.fact_ids, registry_fact_ids
-            ));
-        }
-        let registry_surfaces: Vec<String> = topic
-            .statements()
-            .map(|statement| statement.surface().to_string())
-            .collect();
-        if registry_surfaces != row.approved_surfaces {
-            violations.push(format!(
-                "{}: approved surfaces drifted from the registry",
-                row.topic
-            ));
-        }
-        for (surface, recorded) in row.approved_surfaces.iter().zip(&row.surface_digests) {
-            let actual = sha256_hex(surface.as_bytes());
-            if actual != *recorded {
+        let plan = match build_audited_topic(topic_name) {
+            Ok(plan) => plan,
+            Err(error) => {
+                violations.push(format!("{}: {error}", topic_name));
+                continue;
+            }
+        };
+        for (claim, statement) in plan
+            .authorized()
+            .certified()
+            .candidate()
+            .projected_claims()
+            .iter()
+            .zip(topic.statements())
+        {
+            let Some(recorded) = topic_manifest.claims.get(claim.claim_id.as_str()) else {
                 violations.push(format!(
-                    "{}: surface digest drifted: manifest={recorded}, actual={actual}",
-                    row.topic
+                    "{}: claim {} missing from manifest",
+                    topic_name,
+                    claim.claim_id.as_str()
                 ));
+                continue;
+            };
+            if recorded.fact_id != statement.fact_id().as_str()
+                || recorded.proposition_id != claim.proposition.as_str()
+                || recorded.canonical_path != claim.occurrence.canonical_path()
+                || recorded.discourse_root_digest != claim.occurrence.discourse_root_digest()
+                || recorded.approved_surface != statement.surface()
+                || recorded.approved_surface_sha256 != sha256_hex(statement.surface().as_bytes())
+            {
+                violations.push(format!(
+                    "{}: claim {} drifted from the registry",
+                    topic_name,
+                    claim.claim_id.as_str()
+                ));
+            }
+            if recorded.realization_strategy == "fixed_phrase" {
+                fixed_phrase_claims += 1;
+            }
+            if recorded.expected_clause_surface_sha256.is_some() {
+                exact_clause_topics += 1;
+            }
+            if recorded.realization_strategy == "clause"
+                && recorded.expected_clause_surface_sha256.is_none()
+            {
+                governed_clause_topics += 1;
+            }
+            let actual = sha256_hex(recorded.approved_surface.as_bytes());
+            if actual != recorded.approved_surface_sha256 {
+                violations.push(format!("{}: claim surface digest drifted", topic_name));
             }
         }
 
         // Semantic + authority parity: the whole certificate chain must
         // authorize every stated claim of the topic.
-        match build_audited_topic(&row.topic) {
-            Ok(plan) => {
-                let claims = plan.claims();
-                if claims.len() != row.statement_count {
-                    violations.push(format!(
-                        "{}: chain authorized {} claims for {} statements",
-                        row.topic,
-                        claims.len(),
-                        row.statement_count
-                    ));
-                }
-                claims_authorized += claims.len();
-            }
-            Err(error) => violations.push(format!("{}: {}", row.topic, error)),
-        }
-
-        match row.parity_class.as_str() {
-            "byte" => byte_rows += 1,
-            "semantic" => semantic_rows += 1,
-            other => violations.push(format!("{}: unknown parity_class '{other}'", row.topic)),
-        }
+        claims_authorized += topic.statement_count();
     }
 
-    if manifest_statements != 69 {
+    if manifest_claims != 69 {
         violations.push(format!(
-            "audited-corpus rows contain {manifest_statements} statements, expected 69"
+            "audited-corpus topics contain {manifest_claims} claims, expected 69"
         ));
     }
-    if actual_byte != manifest.diagnostics.parity_byte
-        || actual_semantic != manifest.diagnostics.parity_semantic
+    if exact_clause_topics != manifest.diagnostics.exact_clause_surfaces
+        || fixed_phrase_claims != manifest.diagnostics.fixed_phrase_surfaces
+        || governed_clause_topics != manifest.diagnostics.governed_clause_surfaces
     {
-        violations.push("audited-corpus parity diagnostics do not match row classes".into());
+        violations.push("audited-corpus realization diagnostics do not match claims".into());
     }
 
     if violations.is_empty() {
@@ -668,14 +687,15 @@ fn run_phase_b() -> GateReport {
             gate: GatePhase::B.as_str(),
             passed: true,
             details: format!(
-                "manifest={}, topics={}, statements={}, claims_authorized={}, \
-                 parity byte/semantic={}/{}",
+                "manifest={}, topics={}, claims={}, claims_authorized={}, \
+                 realization exact/fixed/governed={}/{}/{}",
                 &manifest.manifest_digest[..16],
                 manifest.diagnostics.topics_total,
-                manifest.diagnostics.statements_total,
+                manifest.diagnostics.claims_total,
                 claims_authorized,
-                byte_rows,
-                semantic_rows,
+                exact_clause_topics,
+                fixed_phrase_claims,
+                governed_clause_topics,
             ),
             violations,
         }
@@ -684,11 +704,10 @@ fn run_phase_b() -> GateReport {
     }
 }
 
-/// Phase C: realization parity over the approved V2 surfaces. A `byte` row
-/// must be reproduced byte-for-byte by the V2 clause realization; a
-/// `semantic` row records that the audited surface is a multi-clause
-/// rhetorical sentence approved by digest, and the gate verifies the clause
-/// still realizes with the lexicon-governed case.
+/// Phase C: realization parity over the approved V2 claim surfaces. Thesis
+/// claims carrying an expected clause digest must reproduce it exactly; the
+/// remaining thesis clauses must preserve lexicon-governed case. Fixed-phrase
+/// claims are bound to their approved surfaces by digest in the same manifest.
 fn run_phase_c() -> GateReport {
     let manifest: AuditedCorpusManifest = match serde_json::from_str(EMBEDDED_AUDITED_CORPUS) {
         Ok(manifest) => manifest,
@@ -699,137 +718,165 @@ fn run_phase_c() -> GateReport {
             )
         }
     };
-
     let mut violations = Vec::new();
-    let mut byte_rows = 0usize;
-    let mut byte_matches = 0usize;
-    let mut semantic_rows = 0usize;
+    let mut exact_clauses = 0usize;
+    let mut governed_clauses = 0usize;
+    let mut claims_realized = 0usize;
+    let mut fixed_surface_claims = 0usize;
 
-    for row in &manifest.rows {
-        let plan = match build_audited_topic(&row.topic) {
-            Ok(plan) => plan,
-            Err(error) => {
-                violations.push(format!(
-                    "{}: chain failed before realization: {error}",
-                    row.topic
-                ));
-                continue;
-            }
-        };
-        let thesis_claim = plan
-            .authorized()
-            .certified()
-            .candidate()
-            .projected_claims()
-            .remove(0);
+    let policy = SelectionPolicy::default();
+    let budgets = V2BudgetPolicy::default();
+    let contract = TurnContractSnapshot::new(
+        AuthoritySnapshot::new(
+            qxfx0_semantic::active_pack_set().fingerprint(),
+            AssertionPolicy::v1().digest(),
+        ),
+        PlanningPolicySnapshot::new(budgets.digest(), "proposition-canon-v1"),
+        RealizationSnapshot::new(
+            valency_lexicon().fingerprint(),
+            "clause-grammar-v1",
+            qxfx0_morphology::get_runtime().lexemes_sha256(),
+            qxfx0_semantic::response_plan_v2::preposition_allomorphs().fingerprint(),
+        ),
+        SelectionPolicySnapshot::new(policy),
+    );
 
-        let frame = match valency_lexicon().get(&row.relation_id) {
-            Ok(frame) => frame,
-            Err(error) => {
-                violations.push(format!(
-                    "{}: no valency frame for relation '{}': {error}",
-                    row.topic, row.relation_id
-                ));
-                continue;
-            }
-        };
-        let complement = match frame.complement() {
-            Complement::None => None,
-            // An uninflected complement is carried verbatim: no case is
-            // demanded of it.
-            Complement::Uninflected => Some(NounPhrase::fixed(row.object_lemma.clone(), None)),
-            governing => {
-                let required = governing.required_case().expect("governing names a case");
-                if row.object_lemma.contains(' ') {
-                    // The corpus cannot inflect this phrase; it must already
-                    // stand in the governed case. When the phrase already
-                    // begins with the governed preposition, the frame's own
-                    // preposition must not be emitted again.
-                    let embedded = governing
-                        .preposition()
-                        .is_some_and(|p| starts_with_word(&row.object_lemma, p));
-                    if embedded {
-                        Some(NounPhrase::fixed_with_preposition(
-                            row.object_lemma.clone(),
-                            required,
-                        ))
-                    } else {
-                        Some(NounPhrase::fixed(row.object_lemma.clone(), Some(required)))
-                    }
-                } else {
-                    Some(NounPhrase::lexical(row.object_lemma.clone()))
-                }
-            }
-        };
-
-        let mut tree = SynTree::new();
-        tree.push(
-            thesis_claim.occurrence,
-            Clause::new(
-                NounPhrase::lexical(row.subject_lemma.clone()),
-                VerbPhrase::new(row.relation_id.clone(), complement),
-            ),
-        );
-        let resolved = match qxfx0_semantic::response_plan_v2::resolve(
-            &tree,
+    for (topic_name, topic_manifest) in &manifest.topics {
+        let execution = execute_audited_topic_at(
+            topic_name,
+            qxfx0_semantic::response_plan_v2::EvidenceEvaluationContext::new(0, None),
+            &budgets,
+            &contract,
+            SelfSelectionContext::quantize(0.0, 0.0, 0.0),
+            policy,
             valency_lexicon(),
             qxfx0_morphology::get_runtime(),
-        ) {
-            Ok(resolved) => resolved,
-            Err(error) => {
-                violations.push(format!("{}: realization failed: {error}", row.topic));
+        );
+        let plan = match &execution.result {
+            V2ExecutionResult::Attempt(V2Attempt::Realizable(plan)) => plan.as_ref(),
+            result => {
+                violations.push(format!(
+                    "{}: audited execution did not produce a realizable plan: {result:?}",
+                    topic_name,
+                ));
                 continue;
             }
         };
-        let surfaces = resolved.linearize();
-        let Some(surface) = surfaces.first() else {
-            violations.push(format!("{}: realization produced no surface", row.topic));
+        let projected = plan.authorized().certified().candidate().projected_claims();
+        let topic = match qxfx0_semantic::argued_topic_registry()
+            .ok()
+            .and_then(|registry| registry.get(topic_name))
+        {
+            Some(topic) => topic,
+            None => {
+                violations.push(format!("{}: audited topic unavailable", topic_name));
+                continue;
+            }
+        };
+        for (claim, statement) in projected.iter().zip(topic.statements()) {
+            let Some(recorded) = topic_manifest.claims.get(claim.claim_id.as_str()) else {
+                violations.push(format!(
+                    "{}: claim {} has no manifest surface",
+                    topic_name,
+                    claim.claim_id.as_str()
+                ));
+                continue;
+            };
+            let bound = plan
+                .authorized()
+                .certified()
+                .bindings()
+                .get(&claim.claim_id);
+            if recorded.proposition_id != claim.proposition.as_str()
+                || recorded.discourse_root_digest != claim.occurrence.discourse_root_digest()
+                || recorded.canonical_path != claim.occurrence.canonical_path()
+                || bound.map(|fact| fact.as_str()) != Some(recorded.fact_id.as_str())
+                || statement.surface() != recorded.approved_surface
+                || sha256_hex(recorded.approved_surface.as_bytes())
+                    != recorded.approved_surface_sha256
+            {
+                violations.push(format!(
+                    "{}: claim {} manifest identity/surface mismatch",
+                    topic_name,
+                    claim.claim_id.as_str()
+                ));
+                continue;
+            }
+            claims_realized += 1;
+            if recorded.realization_strategy == "fixed_phrase" {
+                fixed_surface_claims += 1;
+            }
+        }
+
+        let Some(thesis_manifest) = projected.iter().find_map(|claim| {
+            topic_manifest
+                .claims
+                .get(claim.claim_id.as_str())
+                .filter(|recorded| recorded.realization_strategy == "clause")
+        }) else {
+            violations.push(format!("{}: no clause claim in manifest", topic_name));
+            continue;
+        };
+        let resolved = plan.resolved_syn_tree();
+        if !matches!(
+            resolved.nodes().first(),
+            Some(qxfx0_semantic::response_plan_v2::ResolvedSynNode::Clause(_))
+        ) {
+            violations.push(format!("{}: thesis is not compositional", topic_name));
+            continue;
+        }
+        let relation_id = topic
+            .primary_proposition()
+            .canonical_slots()
+            .map(|(_, relation, _)| relation.as_str())
+            .expect("audited primary proposition has canonical slots");
+        let Some(surface) = execution
+            .realized
+            .as_ref()
+            .and_then(|surface| surface.clauses.first())
+        else {
+            violations.push(format!("{}: realization produced no surface", topic_name));
             continue;
         };
 
-        if row.approved_surfaces.is_empty() || row.surface_digests.is_empty() {
-            violations.push(format!(
-                "{}: approved golden surface vector is empty",
-                row.topic
-            ));
-            continue;
-        }
-        match row.parity_class.as_str() {
-            "byte" => {
-                byte_rows += 1;
-                if *surface == row.approved_surfaces[0] {
-                    byte_matches += 1;
-                } else {
-                    violations.push(format!(
-                        "{}: byte parity violated: realized '{surface}', approved '{}'",
-                        row.topic, row.approved_surfaces[0]
-                    ));
-                }
+        if let Some(expected) = &thesis_manifest.expected_clause_surface_sha256 {
+            exact_clauses += 1;
+            let actual = sha256_hex(surface.as_bytes());
+            if actual != *expected {
+                violations.push(format!(
+                    "{}: exact clause digest mismatch: expected={expected}, actual={actual}",
+                    topic_name
+                ));
             }
-            "semantic" => {
-                semantic_rows += 1;
-                let actual = sha256_hex(row.approved_surfaces[0].as_bytes());
-                if actual != row.surface_digests[0] {
-                    violations.push(format!(
-                        "{}: approved surface digest drifted: recorded={}, actual={actual}",
-                        row.topic, row.surface_digests[0]
-                    ));
-                }
-                let governed = resolved
-                    .clauses()
-                    .first()
-                    .expect("realization produced a clause")
-                    .governed_case;
-                let required = frame.complement().required_case();
-                if required.is_some() && governed != required {
-                    violations.push(format!(
-                        "{}: realized case {governed:?} does not match lexicon {required:?}",
-                        row.topic
-                    ));
-                }
+        } else {
+            governed_clauses += 1;
+            let governed = resolved
+                .clauses()
+                .next()
+                .expect("realization produced a clause")
+                .governed_case;
+            let required = valency_lexicon()
+                .get(relation_id)
+                .expect("audited relation has a valency frame")
+                .complement()
+                .required_case();
+            if required.is_some() && governed != required {
+                violations.push(format!(
+                    "{}: realized case {governed:?} does not match lexicon {required:?}",
+                    topic_name
+                ));
             }
-            other => violations.push(format!("{}: unknown parity_class '{other}'", row.topic)),
         }
+    }
+
+    if claims_realized != 69
+        || fixed_surface_claims != 39
+        || exact_clauses != manifest.diagnostics.exact_clause_surfaces
+        || governed_clauses != manifest.diagnostics.governed_clause_surfaces
+    {
+        violations.push(format!(
+            "claim-surface coverage mismatch: realized={claims_realized}, fixed={fixed_surface_claims}, exact={exact_clauses}, governed={governed_clauses}"
+        ));
     }
 
     if violations.is_empty() {
@@ -837,10 +884,8 @@ fn run_phase_c() -> GateReport {
             gate: GatePhase::C.as_str(),
             passed: true,
             details: format!(
-                "manifest={}, byte parity {byte_matches}/{byte_rows}, \
-                 semantic approved {semantic_rows}/{}",
+                "manifest={}, claims realized {claims_realized}/69 (exact/governed/fixed={exact_clauses}/{governed_clauses}/{fixed_surface_claims})",
                 &manifest.manifest_digest[..16],
-                manifest.diagnostics.topics_total,
             ),
             violations,
         }
