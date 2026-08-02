@@ -678,6 +678,7 @@ mod tests {
                 "lexemes.json".to_string(),
                 "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
             )]),
+            local_amendments: Vec::new(),
         };
         let result = MorphologyRuntime::validate_manifest(&manifest, b"[]");
         assert!(result.is_err());
@@ -699,6 +700,7 @@ mod tests {
             license: "MIT".into(),
             created_at: String::new(),
             files: BTreeMap::new(),
+            local_amendments: Vec::new(),
         };
         let result = MorphologyRuntime::validate_manifest(&manifest, b"[]");
         assert!(result.is_err());
@@ -714,6 +716,7 @@ mod tests {
             license: "MIT".into(),
             created_at: String::new(),
             files: BTreeMap::new(),
+            local_amendments: Vec::new(),
         };
         let result = MorphologyRuntime::validate_manifest(&manifest, b"[]");
         assert!(result.is_err());
@@ -729,6 +732,7 @@ mod tests {
             license: "GPL-3.0".into(),
             created_at: String::new(),
             files: BTreeMap::new(),
+            local_amendments: Vec::new(),
         };
         let result = MorphologyRuntime::validate_manifest(&manifest, b"[]");
         assert!(result.is_err());
@@ -747,6 +751,7 @@ mod tests {
                 "lexemes.json".to_string(),
                 format!("{:x}", Sha256::digest(b"[]")),
             )]),
+            local_amendments: Vec::new(),
         };
         let result = MorphologyRuntime::validate_manifest(&manifest, b"[]");
         assert!(result.is_err());
@@ -762,6 +767,7 @@ mod tests {
             license: "MIT".into(),
             created_at: String::new(),
             files: BTreeMap::new(),
+            local_amendments: Vec::new(),
         };
         let result = MorphologyRuntime::validate_manifest(&manifest, b"[]");
         assert!(result.is_err());
