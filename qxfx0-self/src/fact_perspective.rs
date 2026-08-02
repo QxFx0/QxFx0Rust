@@ -177,6 +177,205 @@ pub fn resolve_render_stance(
     }
 }
 
+/// Validate persisted Perspective semantics against one immutable pack set.
+/// This is shared by persistence save/load paths so well-formed JSON cannot
+/// bypass the transition rules enforced by the mutation operators above.
+pub fn validate_perspective_against_pack(
+    state: &PerspectiveState,
+    packs: &qxfx0_semantic::KnowledgePackSet,
+) -> Vec<String> {
+    let mut violations = state.validate();
+    let facts = packs.facts();
+
+    for (topic, opinion) in &state.opinions {
+        let primary = match facts.select(&opinion.primary_fact) {
+            Ok(fact) if &fact.subject == topic => Some(fact),
+            Ok(fact) => {
+                violations.push(format!(
+                    "perspective primary fact '{}' belongs to '{}' instead of '{}'",
+                    opinion.primary_fact, fact.subject.0, topic.0
+                ));
+                None
+            }
+            Err(error) => {
+                violations.push(format!(
+                    "perspective opinion '{}' has invalid primary authority: {}",
+                    topic.0, error
+                ));
+                None
+            }
+        };
+        let mut has_counterpoint = false;
+        for fact_id in &opinion.grounding_facts {
+            match facts.select(fact_id) {
+                Ok(fact) if &fact.subject == topic => {
+                    has_counterpoint |= fact.conditions.iter().any(|condition| {
+                        matches!(
+                            condition,
+                            FactCondition::Counters(target) if target == &opinion.primary_fact
+                        )
+                    });
+                }
+                Ok(fact) => violations.push(format!(
+                    "perspective fact '{}' belongs to '{}' instead of '{}'",
+                    fact_id, fact.subject.0, topic.0
+                )),
+                Err(error) => violations.push(format!(
+                    "perspective opinion '{}' has invalid authority: {}",
+                    topic.0, error
+                )),
+            }
+        }
+        match opinion.polarity {
+            BeliefPolarity::Affirmed if has_counterpoint => violations.push(format!(
+                "perspective opinion '{}' is affirmed despite a curated counterpoint",
+                topic.0
+            )),
+            BeliefPolarity::Qualified if !has_counterpoint => violations.push(format!(
+                "perspective opinion '{}' is qualified without a curated counterpoint",
+                topic.0
+            )),
+            BeliefPolarity::Opposed => violations.push(format!(
+                "perspective opinion '{}' uses unsupported opposed polarity",
+                topic.0
+            )),
+            BeliefPolarity::Affirmed | BeliefPolarity::Qualified => {}
+        }
+        if primary.is_some() && opinion.revision_seq == 0 {
+            violations.push(format!(
+                "perspective opinion '{}' has zero revision sequence",
+                topic.0
+            ));
+        }
+    }
+
+    let mut topic_polarity = std::collections::BTreeMap::new();
+    let mut topic_episode_count = std::collections::BTreeMap::<ConceptId, usize>::new();
+    let mut previous_turn = None;
+    for episode in &state.episodes {
+        if episode.turn_seq == 0 {
+            violations.push(format!(
+                "perspective episode {} has zero turn sequence",
+                episode.id.0
+            ));
+        }
+        if previous_turn.is_some_and(|turn| episode.turn_seq < turn) {
+            violations.push("perspective episode turn sequences are not monotonic".into());
+        }
+        previous_turn = Some(episode.turn_seq);
+
+        let Some(opinion) = state.opinions.get(&episode.topic) else {
+            violations.push(format!(
+                "perspective episode {} has no opinion for '{}'",
+                episode.id.0, episode.topic.0
+            ));
+            continue;
+        };
+        let expected_previous = topic_polarity.get(&episode.topic).copied();
+        if expected_previous.is_some() && episode.previous_polarity != expected_previous {
+            violations.push(format!(
+                "perspective episode {} previous polarity breaks topic history",
+                episode.id.0
+            ));
+        }
+
+        let mut has_primary = false;
+        let mut has_counter = false;
+        let mut has_consequence = false;
+        for fact_id in &episode.cited_facts {
+            match facts.select(fact_id) {
+                Ok(fact) if fact.subject == episode.topic => {
+                    has_primary |= fact_id == &opinion.primary_fact;
+                    has_counter |= fact.conditions.iter().any(|condition| {
+                        matches!(
+                            condition,
+                            FactCondition::Counters(target) if target == &opinion.primary_fact
+                        )
+                    });
+                    has_consequence |= fact.conditions.iter().any(|condition| {
+                        matches!(
+                            condition,
+                            FactCondition::FollowsFrom(target) if target == &opinion.primary_fact
+                        )
+                    });
+                }
+                Ok(fact) => violations.push(format!(
+                    "perspective episode {} cites fact '{}' for another topic '{}'",
+                    episode.id.0, fact_id, fact.subject.0
+                )),
+                Err(error) => violations.push(format!(
+                    "perspective episode {} has invalid authority: {}",
+                    episode.id.0, error
+                )),
+            }
+        }
+        match episode.reason {
+            PerspectiveRevisionReason::EstablishedFromCuratedFact => {
+                if episode.previous_polarity.is_some()
+                    || episode.resulting_polarity != BeliefPolarity::Affirmed
+                    || !has_primary
+                {
+                    violations.push(format!(
+                        "perspective episode {} is not a valid establishment transition",
+                        episode.id.0
+                    ));
+                }
+            }
+            PerspectiveRevisionReason::QualifiedByCuratedCounterpoint => {
+                if episode.previous_polarity.is_none()
+                    || episode.resulting_polarity != BeliefPolarity::Qualified
+                    || !has_primary
+                    || !has_counter
+                {
+                    violations.push(format!(
+                        "perspective episode {} is not a valid qualification transition",
+                        episode.id.0
+                    ));
+                }
+            }
+            PerspectiveRevisionReason::ReinforcedByCuratedConsequence => {
+                if episode.previous_polarity != Some(episode.resulting_polarity)
+                    || !has_primary
+                    || !has_consequence
+                {
+                    violations.push(format!(
+                        "perspective episode {} is not a valid reinforcement transition",
+                        episode.id.0
+                    ));
+                }
+            }
+        }
+        topic_polarity.insert(episode.topic.clone(), episode.resulting_polarity);
+        *topic_episode_count
+            .entry(episode.topic.clone())
+            .or_default() += 1;
+    }
+
+    for (topic, opinion) in &state.opinions {
+        let episode_count = topic_episode_count.get(topic).copied().unwrap_or(0);
+        if episode_count == 0 {
+            violations.push(format!(
+                "perspective opinion '{}' has no revision episode",
+                topic.0
+            ));
+        } else if opinion.revision_seq < episode_count {
+            violations.push(format!(
+                "perspective opinion '{}' revision sequence precedes its episodes",
+                topic.0
+            ));
+        }
+        if let Some(resulting) = topic_polarity.get(topic) {
+            if resulting != &opinion.polarity {
+                violations.push(format!(
+                    "perspective opinion '{}' polarity differs from its latest episode",
+                    topic.0
+                ));
+            }
+        }
+    }
+    violations
+}
+
 fn establish_opinion(
     state: &mut PerspectiveState,
     turn_seq: usize,
@@ -341,6 +540,9 @@ fn append_episode(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use qxfx0_semantic::{KnowledgePackSet, KnowledgePackSource};
+    use serde_json::{json, Value};
+    use sha2::{Digest, Sha256};
 
     fn freedom_claims() -> Vec<(ClaimRole, FactId)> {
         [
@@ -351,6 +553,41 @@ mod tests {
         .into_iter()
         .map(|(role, id)| (role, FactId::try_new(id).unwrap()))
         .collect()
+    }
+
+    fn active_pack_without_freedom_counter_condition() -> KnowledgePackSet {
+        let concepts = include_bytes!("../../data/packs/philosophy-core-v1/concepts.json").to_vec();
+        let relations =
+            include_bytes!("../../data/packs/philosophy-core-v1/relations.json").to_vec();
+        let mut facts: Value = serde_json::from_slice(include_bytes!(
+            "../../data/packs/philosophy-core-v1/facts.json"
+        ))
+        .unwrap();
+        let counterpoint = facts
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|binding| binding["record"]["id"] == json!("fact.freedom_choice.counterpoint"))
+            .unwrap();
+        counterpoint["record"]["conditions"] = json!([]);
+        let facts = serde_json::to_vec(&facts).unwrap();
+
+        let mut manifest: Value = serde_json::from_slice(include_bytes!(
+            "../../data/packs/philosophy-core-v1/manifest.json"
+        ))
+        .unwrap();
+        manifest["files"]["facts.json"] = json!(format!("{:x}", Sha256::digest(&facts)));
+        let manifest = serde_json::to_vec(&manifest).unwrap();
+        KnowledgePackSet::load(
+            &[KnowledgePackSource {
+                manifest: &manifest,
+                concepts: &concepts,
+                facts: &facts,
+                relations: &relations,
+            }],
+            &qxfx0_semantic::seed_graph(),
+        )
+        .unwrap()
     }
 
     #[test]
@@ -457,5 +694,58 @@ mod tests {
             .remove(&FactId::try_new("fact.forged").unwrap());
         state.opinions.get_mut(&topic).unwrap().polarity = BeliefPolarity::Opposed;
         assert!(resolve_render_stance(&state, &topic, &thesis, facts).is_err());
+    }
+
+    #[test]
+    fn semantic_validation_rejects_qualified_opinion_with_only_its_thesis() {
+        let packs = qxfx0_semantic::active_pack_set();
+        let topic = ConceptId("concept.свобода".into());
+        let thesis = FactId::try_new("fact.freedom_choice").unwrap();
+        let (mut state, _) = integrate_curated_claims(
+            &PerspectiveState::default(),
+            1,
+            &[(ClaimRole::Thesis, thesis)],
+            packs.facts(),
+        )
+        .unwrap();
+        state.opinions.get_mut(&topic).unwrap().polarity = BeliefPolarity::Qualified;
+        assert!(
+            state.validate().is_empty(),
+            "fixture must remain well formed"
+        );
+
+        let violations = validate_perspective_against_pack(&state, packs);
+        assert!(
+            violations
+                .iter()
+                .any(|violation| violation.contains("qualified without a curated counterpoint")),
+            "{violations:?}"
+        );
+    }
+
+    #[test]
+    fn changed_pack_conditions_with_same_fact_ids_invalidate_perspective() {
+        let active = qxfx0_semantic::active_pack_set();
+        let (qualified, _) = integrate_curated_claims(
+            &PerspectiveState::default(),
+            1,
+            &freedom_claims(),
+            active.facts(),
+        )
+        .unwrap();
+        assert!(validate_perspective_against_pack(&qualified, active).is_empty());
+
+        let changed = active_pack_without_freedom_counter_condition();
+        assert_ne!(changed.fingerprint(), active.fingerprint());
+        for (_, fact_id) in freedom_claims() {
+            assert!(changed.facts().select(&fact_id).is_ok());
+        }
+        let violations = validate_perspective_against_pack(&qualified, &changed);
+        assert!(
+            violations
+                .iter()
+                .any(|violation| violation.contains("qualified without a curated counterpoint")),
+            "{violations:?}"
+        );
     }
 }

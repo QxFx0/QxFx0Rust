@@ -353,13 +353,124 @@ where
     result
 }
 
+/// Explicit, default-off feature selection for a single turn.
+///
+/// Every axis defaults to the standard production path: the legacy renderer
+/// with all staged integrations disabled. A new staged feature extends this
+/// struct instead of multiplying `process_turn_*` entry points, so behaviour
+/// selection stays data rather than a combinatorial set of function names.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub struct TurnOptions {
+    pub renderer_authority: RendererAuthority,
+    pub doubt_shadow: DoubtShadowMode,
+    pub anomaly_shadow: AnomalyShadowMode,
+    pub clarification: ClarificationMode,
+    pub suppression: SameTopicSuppressionMode,
+    pub fact_grounded: fact_grounded::FactGroundedRollout,
+}
+
+impl TurnOptions {
+    /// Standard production path: legacy renderer, every staged feature off.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_renderer(mut self, renderer_authority: RendererAuthority) -> Self {
+        self.renderer_authority = renderer_authority;
+        self
+    }
+
+    pub fn with_doubt_shadow(mut self, doubt_shadow: DoubtShadowMode) -> Self {
+        self.doubt_shadow = doubt_shadow;
+        self
+    }
+
+    pub fn with_anomaly_shadow(mut self, anomaly_shadow: AnomalyShadowMode) -> Self {
+        self.anomaly_shadow = anomaly_shadow;
+        self
+    }
+
+    pub fn with_clarification(mut self, clarification: ClarificationMode) -> Self {
+        self.clarification = clarification;
+        self
+    }
+
+    pub fn with_suppression(mut self, suppression: SameTopicSuppressionMode) -> Self {
+        self.suppression = suppression;
+        self
+    }
+
+    pub fn with_fact_grounded(mut self, fact_grounded: fact_grounded::FactGroundedRollout) -> Self {
+        self.fact_grounded = fact_grounded;
+        self
+    }
+}
+
+/// Process a turn with an explicit option set and no collected diagnostics.
+///
+/// This and its three sibling collection shapes are the only entry points that
+/// reach the pipeline directly; every named `process_turn_*` wrapper below
+/// delegates here so there is a single behavioural implementation.
+pub fn process_turn_with_options(
+    input: &TurnInput,
+    state: &mut SystemState,
+    options: TurnOptions,
+) -> TurnOutput {
+    process_turn_internal(input, state, None, None, options)
+}
+
+/// Process a turn with an option set, collecting observational stage timings.
+pub fn process_turn_with_options_and_timing(
+    input: &TurnInput,
+    state: &mut SystemState,
+    options: TurnOptions,
+) -> (TurnOutput, PipelineStageTimings) {
+    let started = Instant::now();
+    let mut timings = PipelineStageTimings::default();
+    let output = process_turn_internal(input, state, None, Some(&mut timings), options);
+    timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
+    (output, timings)
+}
+
+/// Process a turn with an option set, collecting a replay-stable stage trace.
+pub fn process_turn_with_options_and_trace(
+    input: &TurnInput,
+    state: &mut SystemState,
+    options: TurnOptions,
+) -> (TurnOutput, execution_trace::PipelineTrace) {
+    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
+    let output = process_turn_internal(input, state, Some(&mut trace), None, options);
+    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
+    (output, trace)
+}
+
+/// Process a turn with an option set, collecting both timings and a trace
+/// without running the pipeline twice.
+pub fn process_turn_with_options_timing_and_trace(
+    input: &TurnInput,
+    state: &mut SystemState,
+    options: TurnOptions,
+) -> (
+    TurnOutput,
+    PipelineStageTimings,
+    execution_trace::PipelineTrace,
+) {
+    let started = Instant::now();
+    let mut timings = PipelineStageTimings::default();
+    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
+    let output = process_turn_internal(input, state, Some(&mut trace), Some(&mut timings), options);
+    timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
+    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
+    (output, timings, trace)
+}
+
 /// Process a single turn synchronously through all 7 stages.
 ///
 /// If any stage before the guard fails, the state is rolled back to its
 /// pre-turn snapshot and a blocked recovery output is returned. This prevents
 /// partial side effects from corrupting the session.
 pub fn process_turn(input: &TurnInput, state: &mut SystemState) -> TurnOutput {
-    process_turn_with_renderer(input, state, RendererAuthority::LegacyShadow)
+    process_turn_with_options(input, state, TurnOptions::new())
 }
 
 /// Process a turn with an explicit renderer-authority feature flag.
@@ -368,16 +479,27 @@ pub fn process_turn_with_renderer(
     state: &mut SystemState,
     renderer_authority: RendererAuthority,
 ) -> TurnOutput {
-    process_turn_internal(
+    process_turn_with_options(
         input,
         state,
-        None,
-        None,
-        renderer_authority,
-        DoubtShadowMode::Disabled,
-        AnomalyShadowMode::Disabled,
-        ClarificationMode::Disabled,
-        SameTopicSuppressionMode::Disabled,
+        TurnOptions::new().with_renderer(renderer_authority),
+    )
+}
+
+/// Process a turn with an explicit fact-grounded rollout. Only a successful
+/// audited-plan render can produce Perspective evidence.
+pub fn process_turn_with_renderer_and_fact_grounded(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    fact_grounded_rollout: fact_grounded::FactGroundedRollout,
+) -> TurnOutput {
+    process_turn_with_options(
+        input,
+        state,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_fact_grounded(fact_grounded_rollout),
     )
 }
 
@@ -512,21 +634,11 @@ pub fn process_turn_with_timing_and_renderer(
     state: &mut SystemState,
     renderer_authority: RendererAuthority,
 ) -> (TurnOutput, PipelineStageTimings) {
-    let started = Instant::now();
-    let mut timings = PipelineStageTimings::default();
-    let output = process_turn_internal(
+    process_turn_with_options_and_timing(
         input,
         state,
-        None,
-        Some(&mut timings),
-        renderer_authority,
-        DoubtShadowMode::Disabled,
-        AnomalyShadowMode::Disabled,
-        ClarificationMode::Disabled,
-        SameTopicSuppressionMode::Disabled,
-    );
-    timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
-    (output, timings)
+        TurnOptions::new().with_renderer(renderer_authority),
+    )
 }
 
 /// Process a turn and return a stage-level trace with cross-process stable
@@ -553,6 +665,22 @@ pub fn process_turn_with_trace_and_renderer(
     )
 }
 
+/// Process a turn with deterministic fact-grounded rollout evidence.
+pub fn process_turn_with_trace_and_renderer_and_fact_grounded(
+    input: &TurnInput,
+    state: &mut SystemState,
+    renderer_authority: RendererAuthority,
+    fact_grounded_rollout: fact_grounded::FactGroundedRollout,
+) -> (TurnOutput, execution_trace::PipelineTrace) {
+    process_turn_with_options_and_trace(
+        input,
+        state,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_fact_grounded(fact_grounded_rollout),
+    )
+}
+
 /// Process a turn with explicit renderer and observation-only doubt settings.
 pub fn process_turn_with_trace_and_renderer_and_doubt_shadow(
     input: &TurnInput,
@@ -576,20 +704,13 @@ pub fn process_turn_with_trace_and_renderer_and_anomaly_shadow(
     renderer_authority: RendererAuthority,
     anomaly_shadow: AnomalyShadowMode,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
-    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
-    let output = process_turn_internal(
+    process_turn_with_options_and_trace(
         input,
         state,
-        Some(&mut trace),
-        None,
-        renderer_authority,
-        DoubtShadowMode::Disabled,
-        anomaly_shadow,
-        ClarificationMode::Disabled,
-        SameTopicSuppressionMode::Disabled,
-    );
-    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
-    (output, trace)
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_anomaly_shadow(anomaly_shadow),
+    )
 }
 
 /// Process a turn with explicit staged cognitive integrations. Standard paths
@@ -622,20 +743,15 @@ pub fn process_turn_with_trace_and_renderer_and_features_and_suppression(
     clarification: ClarificationMode,
     suppression: SameTopicSuppressionMode,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
-    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
-    let output = process_turn_internal(
+    process_turn_with_options_and_trace(
         input,
         state,
-        Some(&mut trace),
-        None,
-        renderer_authority,
-        doubt_shadow,
-        AnomalyShadowMode::Disabled,
-        clarification,
-        suppression,
-    );
-    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
-    (output, trace)
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(doubt_shadow)
+            .with_clarification(clarification)
+            .with_suppression(suppression),
+    )
 }
 
 /// Process a turn with both performance timings and deterministic trace
@@ -672,23 +788,13 @@ pub fn process_turn_with_timing_trace_and_renderer_and_anomaly_shadow(
     PipelineStageTimings,
     execution_trace::PipelineTrace,
 ) {
-    let started = Instant::now();
-    let mut timings = PipelineStageTimings::default();
-    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
-    let output = process_turn_internal(
+    process_turn_with_options_timing_and_trace(
         input,
         state,
-        Some(&mut trace),
-        Some(&mut timings),
-        renderer_authority,
-        DoubtShadowMode::Disabled,
-        anomaly_shadow,
-        ClarificationMode::Disabled,
-        SameTopicSuppressionMode::Disabled,
-    );
-    timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
-    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
-    (output, timings, trace)
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_anomaly_shadow(anomaly_shadow),
+    )
 }
 
 /// Timing and deterministic trace evidence for all explicit cognitive modes.
@@ -704,23 +810,15 @@ pub fn process_turn_with_timing_trace_and_features_and_suppression(
     PipelineStageTimings,
     execution_trace::PipelineTrace,
 ) {
-    let started = Instant::now();
-    let mut timings = PipelineStageTimings::default();
-    let (mut trace, initial_digest, trace_started) = new_pipeline_trace(input, state);
-    let output = process_turn_internal(
+    process_turn_with_options_timing_and_trace(
         input,
         state,
-        Some(&mut trace),
-        Some(&mut timings),
-        renderer_authority,
-        doubt_shadow,
-        AnomalyShadowMode::Disabled,
-        clarification,
-        suppression,
-    );
-    timings.total_ms = PipelineStageTimings::duration_ms(started.elapsed());
-    finish_pipeline_trace(initial_digest, state, &output, trace_started, &mut trace);
-    (output, timings, trace)
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(doubt_shadow)
+            .with_clarification(clarification)
+            .with_suppression(suppression),
+    )
 }
 
 fn new_pipeline_trace(
@@ -770,12 +868,16 @@ fn process_turn_internal(
     state: &mut SystemState,
     mut trace: Option<&mut execution_trace::PipelineTrace>,
     mut timings: Option<&mut PipelineStageTimings>,
-    renderer_authority: RendererAuthority,
-    doubt_shadow: DoubtShadowMode,
-    anomaly_shadow: AnomalyShadowMode,
-    clarification: ClarificationMode,
-    suppression: SameTopicSuppressionMode,
+    options: TurnOptions,
 ) -> TurnOutput {
+    let TurnOptions {
+        renderer_authority,
+        doubt_shadow,
+        anomaly_shadow,
+        clarification,
+        suppression,
+        fact_grounded: fact_grounded_rollout,
+    } = options;
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
         || input.session_id.chars().any(char::is_control)
@@ -899,6 +1001,20 @@ fn process_turn_internal(
         }
     };
     recovery.path_depth = Some(rendered.path_depth());
+    let active_packs = qxfx0_semantic::active_pack_set();
+    let rendered_receipt = if fact_grounded_rollout.observes() {
+        match fact_grounded::RenderedPlanReceipt::from_rendered(&rendered, state, active_packs) {
+            Ok(receipt) => Ok(receipt),
+            Err(error) if fact_grounded_rollout.permits_render_authorization() => {
+                tracing::error!("fact-grounded receipt failed: {error}");
+                *state = snapshot;
+                return recovery_output(state, &recovery);
+            }
+            Err(error) => Err(error),
+        }
+    } else {
+        Ok(None)
+    };
 
     // Stage 5: Finalize
     let finalized = match execute_stage(
@@ -936,6 +1052,41 @@ fn process_turn_internal(
     if let Some(rejection) = guarded.rejection() {
         // A guard rejection is an expected turn outcome, not a pipeline fault.
         tracing::warn!("guard rejected turn: {rejection}");
+    }
+
+    if fact_grounded_rollout.observes() {
+        let outcome = if guarded.blocked() {
+            Ok(None)
+        } else {
+            match &rendered_receipt {
+                Ok(Some(receipt)) => fact_grounded::finalize_fact_grounded_state(
+                    fact_grounded_rollout,
+                    state,
+                    receipt,
+                    active_packs,
+                )
+                .map(Some),
+                Ok(None) => Ok(None),
+                Err(error) => Err(error.clone()),
+            }
+        };
+        if let Some(trace) = trace.as_deref_mut() {
+            record_fact_grounded_trace(
+                trace,
+                fact_grounded_rollout,
+                state,
+                guarded.blocked(),
+                rendered_receipt.as_ref().ok().and_then(Option::as_ref),
+                &outcome,
+            );
+        }
+        if let Err(error) = outcome {
+            if fact_grounded_rollout.permits_render_authorization() {
+                tracing::error!("fact-grounded finalize failed: {error}");
+                *state = snapshot;
+                return recovery_output(state, &recovery);
+            }
+        }
     }
 
     // Stage 7: Persist
@@ -1038,6 +1189,71 @@ fn process_turn_internal(
         holistic_dominant: state.semantic.adjunction.holistic_dominant,
         conversation_state,
     }
+}
+
+fn record_fact_grounded_trace(
+    trace: &mut execution_trace::PipelineTrace,
+    rollout: fact_grounded::FactGroundedRollout,
+    state: &SystemState,
+    blocked: bool,
+    receipt: Option<&fact_grounded::RenderedPlanReceipt>,
+    outcome: &Result<
+        Option<fact_grounded::FactGroundedFinalize>,
+        fact_grounded::FactGroundedCompositionError,
+    >,
+) {
+    let input_digest = execution_trace::calculate_stable_digest(&(
+        rollout,
+        blocked,
+        receipt.map(fact_grounded::RenderedPlanReceipt::response_digest),
+    ))
+    .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let mut metadata = BTreeMap::from([
+        ("rollout".into(), format!("{rollout:?}").to_lowercase()),
+        ("blocked".into(), blocked.to_string()),
+        ("receipt_present".into(), receipt.is_some().to_string()),
+    ]);
+    if let Some(receipt) = receipt {
+        metadata.insert(
+            "topic".into(),
+            receipt.binding().stance_topic().as_str().into(),
+        );
+        metadata.insert(
+            "concept_id".into(),
+            receipt.binding().concept_id().0.clone(),
+        );
+        metadata.insert(
+            "thesis_fact_id".into(),
+            receipt.binding().thesis_fact_id().0.clone(),
+        );
+    }
+    let status = match outcome {
+        Ok(Some(fact_grounded::FactGroundedFinalize::Applied(update))) => {
+            metadata.insert("episodes_added".into(), update.episodes_added.to_string());
+            "applied"
+        }
+        Ok(Some(fact_grounded::FactGroundedFinalize::Observed { claim_count, .. })) => {
+            metadata.insert("claim_count".into(), claim_count.to_string());
+            "observed"
+        }
+        Ok(Some(fact_grounded::FactGroundedFinalize::Skipped(_))) => "skipped",
+        Ok(None) if blocked => "blocked",
+        Ok(None) => "no_audited_plan_receipt",
+        Err(error) => {
+            metadata.insert("error".into(), error.to_string());
+            "rejected"
+        }
+    };
+    metadata.insert("status".into(), status.into());
+    let output_digest = execution_trace::calculate_stable_digest(&(state, &metadata))
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    trace.record_step(
+        "fact_grounded_finalize",
+        input_digest,
+        output_digest,
+        Duration::ZERO,
+        metadata,
+    );
 }
 
 /// Record pure doubt/episodic evidence after topic normalization. The local
@@ -1593,6 +1809,207 @@ mod tests {
         assert!(!output.response.is_empty());
     }
 
+    fn parity_input(session_id: &str) -> TurnInput {
+        TurnInput {
+            session_id: session_id.into(),
+            raw_text: "что такое свобода?".into(),
+        }
+    }
+
+    /// A named wrapper under parity test, paired with the option set it must
+    /// be equivalent to.
+    type ParityCase<R> = (
+        &'static str,
+        TurnOptions,
+        fn(&TurnInput, &mut SystemState) -> R,
+    );
+    type OutputParityCase = ParityCase<TurnOutput>;
+    type TraceParityCase = ParityCase<(TurnOutput, execution_trace::PipelineTrace)>;
+
+    /// Every named wrapper must be exactly its `TurnOptions` equivalent, in
+    /// both the returned output and the resulting persisted state. This is the
+    /// lock that lets the wrappers stay thin: if one ever grows behaviour of
+    /// its own, this fails.
+    #[test]
+    fn named_wrappers_equal_their_turn_options_equivalent() {
+        let expectations: Vec<OutputParityCase> = vec![
+            ("process_turn", TurnOptions::new(), |input, state| {
+                process_turn(input, state)
+            }),
+            (
+                "with_renderer",
+                TurnOptions::new().with_renderer(RendererAuthority::AuditedPlan),
+                |input, state| {
+                    process_turn_with_renderer(input, state, RendererAuthority::AuditedPlan)
+                },
+            ),
+            (
+                "with_renderer_and_fact_grounded",
+                TurnOptions::new()
+                    .with_renderer(RendererAuthority::AuditedPlan)
+                    .with_fact_grounded(fact_grounded::FactGroundedRollout::Shadow),
+                |input, state| {
+                    process_turn_with_renderer_and_fact_grounded(
+                        input,
+                        state,
+                        RendererAuthority::AuditedPlan,
+                        fact_grounded::FactGroundedRollout::Shadow,
+                    )
+                },
+            ),
+        ];
+
+        for (label, options, wrapper) in expectations {
+            let mut wrapper_state = test_state("parity");
+            let wrapper_output = wrapper(&parity_input("parity"), &mut wrapper_state);
+
+            let mut options_state = test_state("parity");
+            let options_output =
+                process_turn_with_options(&parity_input("parity"), &mut options_state, options);
+
+            assert_eq!(
+                wrapper_output.response, options_output.response,
+                "{label}: response diverged from its TurnOptions equivalent"
+            );
+            assert_eq!(
+                wrapper_output.family, options_output.family,
+                "{label}: family diverged"
+            );
+            assert_eq!(
+                wrapper_output.blocked, options_output.blocked,
+                "{label}: blocked flag diverged"
+            );
+            assert_eq!(
+                execution_trace::calculate_stable_digest(&wrapper_state).unwrap(),
+                execution_trace::calculate_stable_digest(&options_state).unwrap(),
+                "{label}: persisted state diverged"
+            );
+        }
+    }
+
+    /// The trace-collecting wrappers must likewise match, including the
+    /// replay-visible stage sequence.
+    #[test]
+    fn trace_wrappers_equal_their_turn_options_equivalent() {
+        let cases: Vec<TraceParityCase> = vec![
+            ("with_trace", TurnOptions::new(), |input, state| {
+                process_turn_with_trace(input, state)
+            }),
+            (
+                "with_trace_and_renderer_and_doubt_shadow",
+                TurnOptions::new()
+                    .with_renderer(RendererAuthority::AuditedPlan)
+                    .with_doubt_shadow(DoubtShadowMode::TraceOnly),
+                |input, state| {
+                    process_turn_with_trace_and_renderer_and_doubt_shadow(
+                        input,
+                        state,
+                        RendererAuthority::AuditedPlan,
+                        DoubtShadowMode::TraceOnly,
+                    )
+                },
+            ),
+            (
+                "with_trace_and_renderer_and_anomaly_shadow",
+                TurnOptions::new()
+                    .with_renderer(RendererAuthority::AuditedPlan)
+                    .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
+                |input, state| {
+                    process_turn_with_trace_and_renderer_and_anomaly_shadow(
+                        input,
+                        state,
+                        RendererAuthority::AuditedPlan,
+                        AnomalyShadowMode::TraceOnly,
+                    )
+                },
+            ),
+            (
+                "with_trace_and_renderer_and_features_and_suppression",
+                TurnOptions::new()
+                    .with_renderer(RendererAuthority::AuditedPlan)
+                    .with_doubt_shadow(DoubtShadowMode::TraceOnly)
+                    .with_clarification(ClarificationMode::TraceOnly)
+                    .with_suppression(SameTopicSuppressionMode::TraceOnly),
+                |input, state| {
+                    process_turn_with_trace_and_renderer_and_features_and_suppression(
+                        input,
+                        state,
+                        RendererAuthority::AuditedPlan,
+                        DoubtShadowMode::TraceOnly,
+                        ClarificationMode::TraceOnly,
+                        SameTopicSuppressionMode::TraceOnly,
+                    )
+                },
+            ),
+        ];
+
+        for (label, options, wrapper) in cases {
+            let mut wrapper_state = test_state("trace-parity");
+            let (wrapper_output, wrapper_trace) =
+                wrapper(&parity_input("trace-parity"), &mut wrapper_state);
+
+            let mut options_state = test_state("trace-parity");
+            let (options_output, options_trace) = process_turn_with_options_and_trace(
+                &parity_input("trace-parity"),
+                &mut options_state,
+                options,
+            );
+
+            assert_eq!(
+                wrapper_output.response, options_output.response,
+                "{label}: response diverged"
+            );
+            assert_eq!(
+                wrapper_trace
+                    .steps
+                    .iter()
+                    .map(|step| step.stage.as_str())
+                    .collect::<Vec<_>>(),
+                options_trace
+                    .steps
+                    .iter()
+                    .map(|step| step.stage.as_str())
+                    .collect::<Vec<_>>(),
+                "{label}: trace stage sequence diverged"
+            );
+            assert_eq!(
+                execution_trace::calculate_stable_digest(&wrapper_state).unwrap(),
+                execution_trace::calculate_stable_digest(&options_state).unwrap(),
+                "{label}: persisted state diverged"
+            );
+        }
+    }
+
+    /// A default option set is the standard production path, so it must be
+    /// byte-identical to the bare `process_turn` entry point.
+    #[test]
+    fn default_turn_options_are_the_standard_production_path() {
+        assert_eq!(
+            TurnOptions::default().renderer_authority,
+            RendererAuthority::LegacyShadow
+        );
+        assert_eq!(
+            TurnOptions::default().fact_grounded,
+            fact_grounded::FactGroundedRollout::Disabled
+        );
+
+        let mut bare_state = test_state("default-parity");
+        let bare = process_turn(&parity_input("default-parity"), &mut bare_state);
+
+        let mut options_state = test_state("default-parity");
+        let via_options = process_turn_with_options(
+            &parity_input("default-parity"),
+            &mut options_state,
+            TurnOptions::default(),
+        );
+
+        assert_eq!(bare.response, via_options.response);
+        assert_eq!(
+            execution_trace::calculate_stable_digest(&bare_state).unwrap(),
+            execution_trace::calculate_stable_digest(&options_state).unwrap()
+        );
+    }
+
     #[test]
     fn timed_pipeline_preserves_the_standard_turn_output() {
         let input = TurnInput {
@@ -1707,6 +2124,155 @@ mod tests {
             state.semantic.field.confidence, field_before.confidence,
             "blocked turn should not change field confidence"
         );
+    }
+
+    #[test]
+    fn fact_grounded_pipeline_rejects_blocked_fallback_and_legacy_evidence() {
+        let enabled = fact_grounded::FactGroundedRollout::Enabled;
+
+        let mut blocked = test_state("fact-grounded-blocked");
+        let blocked_before = blocked.semantic.perspective.clone();
+        let blocked_output = process_turn_with_renderer_and_fact_grounded(
+            &TurnInput {
+                session_id: blocked.session_id.clone(),
+                raw_text: "a".repeat(10_000),
+            },
+            &mut blocked,
+            RendererAuthority::AuditedPlan,
+            enabled,
+        );
+        assert!(blocked_output.blocked);
+        assert_eq!(blocked.semantic.perspective, blocked_before);
+        assert!(blocked.semantic.pack_set_fingerprint.is_empty());
+
+        let mut fallback = test_state("fact-grounded-fallback");
+        let (_, fallback_trace) = process_turn_with_trace_and_renderer_and_fact_grounded(
+            &TurnInput {
+                session_id: fallback.session_id.clone(),
+                raw_text: "что такое совершенно-неизвестный-термин?".into(),
+            },
+            &mut fallback,
+            RendererAuthority::AuditedPlan,
+            enabled,
+        );
+        assert!(fallback.semantic.perspective.opinions.is_empty());
+        assert!(fallback.semantic.pack_set_fingerprint.is_empty());
+        let plan_step = fallback_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "plan_shadow")
+            .expect("fallback turn must retain plan evidence");
+        assert_eq!(
+            plan_step.metadata.get("plan_outcome").map(String::as_str),
+            Some("fallback")
+        );
+        let fact_step = fallback_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "fact_grounded_finalize")
+            .expect("fallback turn must record fact-grounded evidence");
+        assert_eq!(
+            fact_step.metadata.get("status").map(String::as_str),
+            Some("no_audited_plan_receipt")
+        );
+
+        let mut legacy = test_state("fact-grounded-legacy");
+        process_turn_with_renderer_and_fact_grounded(
+            &TurnInput {
+                session_id: legacy.session_id.clone(),
+                raw_text: "что такое свобода?".into(),
+            },
+            &mut legacy,
+            RendererAuthority::LegacyShadow,
+            enabled,
+        );
+        assert!(legacy.semantic.perspective.opinions.is_empty());
+        assert!(legacy.semantic.pack_set_fingerprint.is_empty());
+    }
+
+    #[test]
+    fn fact_grounded_shadow_and_trace_only_are_deterministic_and_observational() {
+        let input = TurnInput {
+            session_id: "fact-grounded-observe".into(),
+            raw_text: "что такое свобода?".into(),
+        };
+        for rollout in [
+            fact_grounded::FactGroundedRollout::Shadow,
+            fact_grounded::FactGroundedRollout::TraceOnly,
+        ] {
+            let mut first_state = test_state(&input.session_id);
+            let mut replay_state = first_state.clone();
+            let (first_output, first_trace) =
+                process_turn_with_trace_and_renderer_and_fact_grounded(
+                    &input,
+                    &mut first_state,
+                    RendererAuthority::AuditedPlan,
+                    rollout,
+                );
+            let (replay_output, replay_trace) =
+                process_turn_with_trace_and_renderer_and_fact_grounded(
+                    &input,
+                    &mut replay_state,
+                    RendererAuthority::AuditedPlan,
+                    rollout,
+                );
+
+            assert_eq!(first_output.response, replay_output.response);
+            assert_eq!(
+                serde_json::to_vec(&first_state).unwrap(),
+                serde_json::to_vec(&replay_state).unwrap()
+            );
+            assert!(first_state.semantic.perspective.opinions.is_empty());
+            assert!(first_state.semantic.pack_set_fingerprint.is_empty());
+            assert_eq!(
+                serde_json::to_vec(&first_trace).unwrap(),
+                serde_json::to_vec(&replay_trace).unwrap()
+            );
+            let fact_step = first_trace
+                .steps
+                .iter()
+                .find(|step| step.stage == "fact_grounded_finalize")
+                .expect("observational rollout must produce a trace step");
+            assert_eq!(
+                fact_step.metadata.get("status").map(String::as_str),
+                Some("observed")
+            );
+            assert_eq!(
+                fact_step
+                    .metadata
+                    .get("receipt_present")
+                    .map(String::as_str),
+                Some("true")
+            );
+        }
+    }
+
+    #[test]
+    fn fact_grounded_enabled_turn_updates_perspective_inside_pipeline_snapshot() {
+        let input = TurnInput {
+            session_id: "fact-grounded-enabled".into(),
+            raw_text: "что такое свобода?".into(),
+        };
+        let mut state = test_state(&input.session_id);
+        let output = process_turn_with_renderer_and_fact_grounded(
+            &input,
+            &mut state,
+            RendererAuthority::AuditedPlan,
+            fact_grounded::FactGroundedRollout::LimitedNonProduction,
+        );
+        assert!(!output.blocked);
+        assert_eq!(
+            state.semantic.pack_set_fingerprint,
+            qxfx0_semantic::active_pack_set().fingerprint()
+        );
+        let opinion = state
+            .semantic
+            .perspective
+            .opinions
+            .get(&ConceptId("concept.свобода".into()))
+            .expect("audited factual leaves must be finalized");
+        assert_eq!(opinion.polarity, BeliefPolarity::Qualified);
+        assert_eq!(state.semantic.perspective.episodes.len(), 3);
     }
 
     #[test]
