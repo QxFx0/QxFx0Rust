@@ -254,6 +254,13 @@ impl FactRegistry {
         self.predicate_facts.get(predicate_ref)
     }
 
+    /// The set of fact ids bound to predicate references. Used by the
+    /// admission profile to test static membership: a fact that is not bound
+    /// to any predicate belongs to no profile.
+    pub fn fact_id_for_predicate_members(&self) -> BTreeSet<&FactId> {
+        self.predicate_facts.values().collect()
+    }
+
     pub fn get(&self, fact_id: &FactId) -> Option<&FactRecord> {
         self.records.get(fact_id)
     }

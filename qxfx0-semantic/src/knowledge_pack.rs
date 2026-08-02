@@ -338,6 +338,40 @@ pub fn active_pack_set() -> &'static KnowledgePackSet {
     })
 }
 
+/// SHA-256 digests of the embedded active pack asset bytes, keyed by file
+/// name. The gates use these to lock the census manifests to the exact bytes
+/// a release binary carries, so a drifted data file cannot silently change
+/// what a manifest claims to approve.
+pub fn active_pack_asset_digests() -> Vec<(&'static str, String)> {
+    let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
+    vec![
+        (
+            "manifest.json",
+            digest(include_bytes!(
+                "../../data/packs/philosophy-core-v1/manifest.json"
+            )),
+        ),
+        (
+            "concepts.json",
+            digest(include_bytes!(
+                "../../data/packs/philosophy-core-v1/concepts.json"
+            )),
+        ),
+        (
+            "facts.json",
+            digest(include_bytes!(
+                "../../data/packs/philosophy-core-v1/facts.json"
+            )),
+        ),
+        (
+            "relations.json",
+            digest(include_bytes!(
+                "../../data/packs/philosophy-core-v1/relations.json"
+            )),
+        ),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
