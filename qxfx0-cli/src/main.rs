@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use qxfx0_cli::measurement::{run_renderer_diversity_audit, run_runtime_benchmark};
 use qxfx0_cli::{
     append_turn_diagnostics, create_anomaly_shadow_trace_sink, create_cognitive_pilot_trace_sink,
     create_doubt_shadow_trace_sink, load_or_create_state, run_doctor, run_operational_metrics,
@@ -81,6 +82,10 @@ enum Commands {
         /// Emit a machine-readable JSON report
         #[arg(long)]
         json: bool,
+        /// Run a named version-contract gate instead of the health check
+        /// (response-plan-v2-phase-a | -b | -c), see ADR-0034
+        #[arg(long)]
+        gate: Option<String>,
     },
     /// Create a verified online SQLite backup
     Backup {
@@ -98,6 +103,22 @@ enum Commands {
         /// Fail if the in-memory response probe exceeds this duration
         #[arg(long, default_value_t = 2_000)]
         max_response_ms: u64,
+    },
+    /// Measure first-turn and steady-state in-memory runtime latency
+    Benchmark {
+        #[arg(long, default_value_t = 100)]
+        samples: usize,
+        #[arg(long, default_value_t = 10)]
+        warmup: usize,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Audit diversity of the authoritative audited-plan renderer
+    RendererAudit {
+        #[arg(long, default_value_t = 3)]
+        opening_words: usize,
+        #[arg(long)]
+        json: bool,
     },
     /// List sessions
     Sessions,
@@ -492,7 +513,36 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
-        Commands::Doctor { json } => {
+        Commands::Doctor { json, gate } => {
+            if let Some(name) = gate {
+                // A named gate is a version contract, not a health check, so it
+                // never opens the database and never mixes with health output.
+                let Some(phase) = qxfx0_cli::response_plan_v2_gate::GatePhase::parse(&name) else {
+                    return Err(anyhow::anyhow!(
+                        "unknown gate '{name}'; expected response-plan-v2-phase-{{a,b,c}}"
+                    ));
+                };
+                info!(gate = %name, "Running version-contract gate");
+                let report = qxfx0_cli::response_plan_v2_gate::run_gate(phase);
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&report)?);
+                } else {
+                    println!(
+                        "[{}] {}: {}",
+                        if report.passed { "OK" } else { "FAIL" },
+                        report.gate,
+                        report.details
+                    );
+                    for violation in &report.violations {
+                        println!("  - {violation}");
+                    }
+                }
+                return if report.passed {
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!("gate {} failed", report.gate))
+                };
+            }
             info!("Performing system health check");
             let report = run_doctor(&cli.db);
             if json {
@@ -550,6 +600,44 @@ fn main() -> anyhow::Result<()> {
             } else {
                 Err(anyhow::anyhow!(violations.join("; ")))
             }
+        }
+        Commands::Benchmark {
+            samples,
+            warmup,
+            json,
+        } => {
+            let report = run_runtime_benchmark(samples, warmup).map_err(anyhow::Error::msg)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!(
+                    "first_turn={}us steady_p50={}us steady_p95={}us samples={}",
+                    report.first_turn_micros,
+                    report.steady_state_micros.p50,
+                    report.steady_state_micros.p95,
+                    report.steady_state_micros.samples
+                );
+            }
+            Ok(())
+        }
+        Commands::RendererAudit {
+            opening_words,
+            json,
+        } => {
+            let report = run_renderer_diversity_audit(opening_words).map_err(anyhow::Error::msg)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!(
+                    "topics={} ready={} blocked={} unique_responses={} unique_openings={}",
+                    report.audited_topics,
+                    report.ready_plans,
+                    report.blocked_topics.len(),
+                    report.unique_responses,
+                    report.unique_normalized_openings
+                );
+            }
+            Ok(())
         }
         Commands::Sessions => {
             debug!("Listing all sessions from database: {}", cli.db);

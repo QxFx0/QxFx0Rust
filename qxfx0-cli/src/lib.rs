@@ -4,6 +4,7 @@
 //! drive the turn / chat flow without spawning a subprocess.
 
 pub mod measurement;
+pub mod response_plan_v2_gate;
 
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_persistence::SaveStateTimings;
