@@ -5,6 +5,7 @@ use crate::response_plan::{PredicateRef, SemanticId, SemanticProposition};
 use crate::seed::COVERED_TOPICS;
 use qxfx0_types::AtomId;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::OnceLock;
 
@@ -278,6 +279,14 @@ impl ArguedTopicRegistry {
         self.predicate_refs.contains(predicate_ref)
     }
 
+    /// Static membership of a fact in the audited profile: the fact is bound
+    /// to an admitted predicate of the profile. This is the admission canon
+    /// the leaf boundary reads (ADR-0034 §2, §4); it is stable across pack
+    /// versions as long as the bindings do not change.
+    pub fn contains_fact_id(&self, fact_id: &FactId) -> bool {
+        self.facts.fact_id_for_predicate_members().contains(fact_id)
+    }
+
     pub fn facts(&self) -> &FactRegistry {
         &self.facts
     }
@@ -300,6 +309,12 @@ pub fn argued_topic_registry() -> Result<&'static ArguedTopicRegistry, &'static 
         .get_or_init(|| ArguedTopicRegistry::parse(ARGUED_TOPICS_TSV))
         .as_ref()
         .map_err(String::as_str)
+}
+
+/// SHA-256 of the embedded argued-topics source bytes, for the gates to lock
+/// census manifests against.
+pub fn argued_topics_source_digest() -> String {
+    format!("{:x}", Sha256::digest(ARGUED_TOPICS_TSV.as_bytes()))
 }
 
 #[cfg(test)]

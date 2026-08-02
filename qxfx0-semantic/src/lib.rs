@@ -19,8 +19,8 @@ pub mod syntactic_generator;
 pub mod template_registry;
 
 pub use argued_topics::{
-    argued_topic_registry, AdmittedStatement, ArguedTopic, ArguedTopicRegistry,
-    ContentAssetMetrics, CONTENT_PROFILE,
+    argued_topic_registry, argued_topics_source_digest, AdmittedStatement, ArguedTopic,
+    ArguedTopicRegistry, ContentAssetMetrics, CONTENT_PROFILE,
 };
 pub use composer::{
     ContextualComposer, GraphEngagement, ParsedProposition, PropositionMode, PropositionParser,
@@ -43,8 +43,8 @@ pub use fact_model::{
 pub use gate::GeneratedPredicateGate;
 pub use inference::derive_atoms;
 pub use knowledge_pack::{
-    active_pack_set, KnowledgePackError, KnowledgePackManifest, KnowledgePackSet,
-    KnowledgePackSource, KnowledgePackSummary, PackRelationRecord,
+    active_pack_asset_digests, active_pack_set, KnowledgePackError, KnowledgePackManifest,
+    KnowledgePackSet, KnowledgePackSource, KnowledgePackSummary, PackRelationRecord,
 };
 pub use network::{activate, build_semantic_network, cached_semantic_network, get_activated_atoms};
 pub use pathfinder::PathFinder;

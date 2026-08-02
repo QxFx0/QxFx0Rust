@@ -11,24 +11,33 @@
 //! → RealizedSurface           execution receipt
 //! ```
 //!
-//! This module implements the candidate stratum only: the recursive
-//! proposition algebra with Merkle identity, the typed entailment layer over
-//! it, the rhetorical structure, and the structural certificate that joins the
-//! three. Nothing here is wired into the runtime — the V1 audited renderer
-//! remains authoritative until `doctor --gate response-plan-v2-phase-b` is
-//! implemented and flipped.
-//!
-//! The four admission/evidence/assertion/realization certificates are
-//! deliberately absent rather than stubbed, so the type system does not
-//! suggest a boundary that has not been designed in code yet.
+//! This module implements the candidate stratum and the first three
+//! certificates of the chain. Nothing here is wired into the runtime — the V1
+//! audited renderer remains authoritative until `doctor --gate
+//! response-plan-v2-phase-b` is implemented and flipped.
 
+pub mod admission;
+pub mod assertion;
+pub mod audited_corpus;
 pub mod candidate;
 pub mod derivation;
 pub mod discourse;
+pub mod evidence;
 pub mod proposition;
 pub mod syn_tree;
 pub mod valency;
 
+pub use admission::{
+    prove_leaf_admission, AdmissionError, LeafAdmissionProof, LeafAdmittedPlan, ADMISSION_DOMAIN,
+};
+pub use assertion::{
+    AssertionAuthorizedPlan, AssertionError, AssertionFailureReason, AssertionPolicy,
+    ClaimAuthority, QualifierAdmission, ASSERTION_POLICY_DOMAIN,
+};
+pub use audited_corpus::{
+    audit_audited_corpus, build_audited_topic, AuditedCorpusError, AuditedCorpusReport,
+    AuditedTopicPlan,
+};
 pub use candidate::{CandidateInvariantError, CandidateResponsePlan};
 pub use derivation::{
     DerivationDag, DerivationDagBuilder, DerivationId, DerivationInvariantError, DerivationNode,
@@ -37,6 +46,10 @@ pub use derivation::{
 pub use discourse::{
     projected_roles, ClaimId, DiscourseInvariantError, DiscourseOccurrenceId, DiscoursePlan,
     DiscourseTree, ProjectedClaim, CLAIM_DOMAIN, DISCOURSE_DOMAIN,
+};
+pub use evidence::{
+    certify_claim, EvidenceAuthorityCertificate, EvidenceCertifiedPlan, EvidenceError,
+    EvidenceEvaluationContext, EVIDENCE_DOMAIN,
 };
 pub use proposition::{
     PropositionDag, PropositionDagBuilder, PropositionId, PropositionInvariantError,

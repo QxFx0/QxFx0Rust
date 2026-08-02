@@ -1,0 +1,708 @@
+{
+  "diagnostics": {
+    "parity_byte": 12,
+    "parity_semantic": 18,
+    "statements_total": 69,
+    "topics_total": 30
+  },
+  "manifest_digest": "63e191970089a12209e9450cef0686d326ed71e15073edc8420230e1c2235b9a",
+  "manifest_id": "response-plan-v2-audited-corpus-v1",
+  "rows": [
+    {
+      "approved_surfaces": [
+        "свобода предполагает возможность выбора",
+        "не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным",
+        "свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу"
+      ],
+      "fact_ids": [
+        "fact.freedom_choice",
+        "fact.freedom_choice.counterpoint",
+        "fact.freedom_choice.consequence"
+      ],
+      "object_lemma": "возможность выбора",
+      "parity_class": "byte",
+      "predicate_id": "freedom_choice",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "predpolagaet",
+      "statement_count": 3,
+      "subject_lemma": "свобода",
+      "surface_digests": [
+        "ce266378bba5c2eec6606c66538b0a9e2d8fe5e28c0bec83509dc319c774a342",
+        "85be97364c5582368d658d6ed4918897e50fe76684f3f6303ce4b8cc235753a0",
+        "e3269ad3e51c36de1c77e6b7a81e2509f9bd9aa71c5558c28bd1a0d00b9498df"
+      ],
+      "topic": "свобода"
+    },
+    {
+      "approved_surfaces": [
+        "произвол выражает отсутствие ограничений",
+        "произвол разрушает доверие между субъектами"
+      ],
+      "fact_ids": [
+        "fact.arbitrariness_absence_constraints",
+        "fact.arbitrariness_absence_constraints.counterpoint"
+      ],
+      "object_lemma": "отсутствие ограничений",
+      "parity_class": "byte",
+      "predicate_id": "arbitrariness_absence_constraints",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "vyrazhaet",
+      "statement_count": 2,
+      "subject_lemma": "произвол",
+      "surface_digests": [
+        "5e3608ceaebf48ba2ec372470a4ee87c849a7b2b8427f18acc9857769eb93e0f",
+        "8464322d4621d37325e8a5089a49f469827ab6f189a7d9a85b7081242600c87c"
+      ],
+      "topic": "произвол"
+    },
+    {
+      "approved_surfaces": [
+        "ответственность — это необходимость отвечать за свои действия",
+        "ответственность связана с обязательствами перед другими"
+      ],
+      "fact_ids": [
+        "fact.responsibility_accountability",
+        "fact.responsibility_accountability.counterpoint"
+      ],
+      "object_lemma": "отвечать за свои действия",
+      "parity_class": "byte",
+      "predicate_id": "responsibility_accountability",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "eto_neobhodimost",
+      "statement_count": 2,
+      "subject_lemma": "ответственность",
+      "surface_digests": [
+        "dc9a7542180ce71009b84937c947a89703cf126093c442793b19f133e1fdfaef",
+        "b33f4e4bc2479b553446b028026a18bb0ba3e6671b3e081362200fbbc520cd20"
+      ],
+      "topic": "ответственность"
+    },
+    {
+      "approved_surfaces": [
+        "истина претендует на соответствие реальности",
+        "доступ к реальности всегда опосредован наблюдателем — и наблюдатель не может выйти за пределы себя",
+        "истина — не обладание, а дисциплина проверки: то, что выдерживает воспроизведение, ближе к истине"
+      ],
+      "fact_ids": [
+        "fact.truth_reality",
+        "fact.truth_reality.counterpoint",
+        "fact.truth_reality.consequence"
+      ],
+      "object_lemma": "соответствие реальности",
+      "parity_class": "byte",
+      "predicate_id": "truth_reality",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "pretenduet",
+      "statement_count": 3,
+      "subject_lemma": "истина",
+      "surface_digests": [
+        "8486fa6c557b6611d10474a5b4c1ddbc018eff0911c5503d0b10ab87ea5e757d",
+        "eb59928c7280dc1de6abebc7291f1d0a4730e5afce8e7c9b34749e76e75d1d9c",
+        "0965ec10724e8d89543e4534cc01ac458672e3949d665250a1af2c95a4650521"
+      ],
+      "topic": "истина"
+    },
+    {
+      "approved_surfaces": [
+        "мнение выражает позицию субъекта",
+        "субъективность мнения не означает его ложности — она означает его ограниченность перспективой",
+        "ценность мнения не в безличной истине, а в том, чью позицию оно раскрывает"
+      ],
+      "fact_ids": [
+        "fact.opinion_position",
+        "fact.opinion_position.counterpoint",
+        "fact.opinion_position.consequence"
+      ],
+      "object_lemma": "позиция субъекта",
+      "parity_class": "semantic",
+      "predicate_id": "opinion_position",
+      "reason": "object lemma is a space phrase carried verbatim in the nominative, but the approved surface inflects it into the accusative the head governs",
+      "relation_id": "vyrazhaet",
+      "statement_count": 3,
+      "subject_lemma": "мнение",
+      "surface_digests": [
+        "55fa43f52b5eecad4a433f6c78d4b2de675ab99316ff5ca93ebaa156f89beaaf",
+        "096ff33042437e6f38673ad9911e0a005d17a0b1b501447a4d98ad97a32d9079",
+        "2a5c88de203449bbe1a7eadff38ca2b6ecae084a62c4cb498fc15a161702c3e3"
+      ],
+      "topic": "мнение"
+    },
+    {
+      "approved_surfaces": [
+        "память это процесс запоминания хранения и воспроизведения информации",
+        "память реконструирует а не просто копирует"
+      ],
+      "fact_ids": [
+        "fact.memory_information_process",
+        "fact.memory_information_process.counterpoint"
+      ],
+      "object_lemma": "процесс запоминания хранения и воспроизведения информации",
+      "parity_class": "byte",
+      "predicate_id": "memory_information_process",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "eto",
+      "statement_count": 2,
+      "subject_lemma": "память",
+      "surface_digests": [
+        "254834c879aef4440e8979b4d7671e2774b2638fcdc17e1b457c78a8a26337d6",
+        "6db52b9872d9bbeb2b700f29cff93203da19a18ac2612d0af76dd0871c3f9189"
+      ],
+      "topic": "память"
+    },
+    {
+      "approved_surfaces": [
+        "воспоминание восстанавливает пережитое в новой рамке",
+        "реконструкция неизбежно привносит настоящее — мы вспоминаем не то, что пережили, а то, кем стали после пережитого",
+        "два человека, пережившие одно событие, помнят его по-разному — и оба правдивы в своей памяти"
+      ],
+      "fact_ids": [
+        "fact.recollection_new_frame",
+        "fact.recollection_new_frame.counterpoint",
+        "fact.recollection_new_frame.consequence"
+      ],
+      "object_lemma": "пережитое в новой рамке",
+      "parity_class": "byte",
+      "predicate_id": "recollection_new_frame",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "vosstanavlivaet",
+      "statement_count": 3,
+      "subject_lemma": "воспоминание",
+      "surface_digests": [
+        "e70d1db63c4977da88c2cb6c53d154c316c10d181f37b06fa3f0a9b8a544330d",
+        "96f711d2a1de4d69985a1ab3c5e83e351900c1006f5fb4840eecc83df31a2a6a",
+        "44dd71a0d71c2dd2847caf517bd2db8fe85fafe79b80bf5aa744e9e3f5033d94"
+      ],
+      "topic": "воспоминание"
+    },
+    {
+      "approved_surfaces": [
+        "сознание это способность осознавать окружающий мир и самого себя",
+        "сознание имеет аспект от первого лица"
+      ],
+      "fact_ids": [
+        "fact.consciousness_awareness",
+        "fact.consciousness_awareness.counterpoint"
+      ],
+      "object_lemma": "способность осознавать окружающий мир и самого себя",
+      "parity_class": "byte",
+      "predicate_id": "consciousness_awareness",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "eto",
+      "statement_count": 2,
+      "subject_lemma": "сознание",
+      "surface_digests": [
+        "2a2fe37dee5da55812590239e13f103bf8927ee105db0b68d794a8528310c2a7",
+        "3a9f9c0c4ca506b247fec14fb57f46dda6e87fa63a4cb7c296605415992ccb0b"
+      ],
+      "topic": "сознание"
+    },
+    {
+      "approved_surfaces": [
+        "самосознание выражает рефлексивность субъекта",
+        "самосознание предполагает наличие сознания как своего основания"
+      ],
+      "fact_ids": [
+        "fact.self_awareness_reflexivity",
+        "fact.self_awareness_reflexivity.counterpoint"
+      ],
+      "object_lemma": "рефлексивность субъекта",
+      "parity_class": "byte",
+      "predicate_id": "self_awareness_reflexivity",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "vyrazhaet",
+      "statement_count": 2,
+      "subject_lemma": "самосознание",
+      "surface_digests": [
+        "f898d29b6349edce66448ebb7731f755f868d2aef2c293b5e4713af6a149e43d",
+        "4e32e26a198d56c0ff3b34023f4bf1c68594ed80ebc6d66b1e2c7c6c14a951e1"
+      ],
+      "topic": "самосознание"
+    },
+    {
+      "approved_surfaces": [
+        "вера требует принятия без полного доказательства",
+        "принятие без доказательств не означает принятия вопреки доказательствам — вера, игнорирующая факты, перестаёт быть верой и становится самообманом",
+        "вера — не замена знанию, а решение действовать в условиях неполноты"
+      ],
+      "fact_ids": [
+        "fact.faith_acceptance",
+        "fact.faith_acceptance.counterpoint",
+        "fact.faith_acceptance.consequence"
+      ],
+      "object_lemma": "принятие без доказательства",
+      "parity_class": "semantic",
+      "predicate_id": "faith_acceptance",
+      "reason": "object lemma 'принятие без доказательства' is carried verbatim in the nominative while the approved surface governs the genitive and adds the attribute 'полного'",
+      "relation_id": "trebuet",
+      "statement_count": 3,
+      "subject_lemma": "вера",
+      "surface_digests": [
+        "eb095f253ca79860fb00f2432722407d6e6ba1a45ff70e4407e54fb5ce912919",
+        "d6d1a779c34dced1381227e9afb671b20343c58f9c68dd8ca218f252645dab99",
+        "e5f7fe492ecdbe0d683a4abdad030d4998bc9339f004ed4dbf9cc2422803b2ea"
+      ],
+      "topic": "вера"
+    },
+    {
+      "approved_surfaces": [
+        "красота вызывает эстетическое переживание",
+        "красота зависит от воспринимающего и культурной рамки"
+      ],
+      "fact_ids": [
+        "fact.beauty_experience",
+        "fact.beauty_experience.counterpoint"
+      ],
+      "object_lemma": "эстетическое переживание",
+      "parity_class": "byte",
+      "predicate_id": "beauty_experience",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "vyzyvaet",
+      "statement_count": 2,
+      "subject_lemma": "красота",
+      "surface_digests": [
+        "851d378da6899ca9c91b5d0a494137fb390ae0e158f0e56825942bc587a7b0c1",
+        "639b276c00c14b824a1ab6d6718df05a5bfd84dcbfc2ac31069553745f281760"
+      ],
+      "topic": "красота"
+    },
+    {
+      "approved_surfaces": [
+        "долг предписывает действие независимо от желания",
+        "долг, лишённый внутреннего согласия, превращается в принуждение — и перестаёт быть моральным",
+        "зрелый долг — не подчинение внешнему правилу, а принятие правила как своего"
+      ],
+      "fact_ids": [
+        "fact.duty_action_singular",
+        "fact.duty_action_singular.counterpoint",
+        "fact.duty_action_singular.consequence"
+      ],
+      "object_lemma": "действие независимо от желания",
+      "parity_class": "byte",
+      "predicate_id": "duty_action_singular",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "predpisyvaet",
+      "statement_count": 3,
+      "subject_lemma": "долг",
+      "surface_digests": [
+        "f061d2467c0ae7a5b07d87d3568000bc63f7fe3b05a780301ab740fee876f7aa",
+        "eaed24ea99391e4120d77adaeefe6330b37c52d230db2f0b15ad3cb3d950b85c",
+        "ed2032dc38ea5f65d138a32f8eb583c38361e948f635287cb66c5d29539922ec"
+      ],
+      "topic": "долг"
+    },
+    {
+      "approved_surfaces": [
+        "доверие строится через повторяемый позитивный опыт",
+        "доверие уязвимо: один провал может разрушить то, что строилось годами — потому что доверие асимметрично",
+        "доверие — не ставка на гарантию, а решение принять риск"
+      ],
+      "fact_ids": [
+        "fact.trust_experience",
+        "fact.trust_experience.counterpoint",
+        "fact.trust_experience.consequence"
+      ],
+      "object_lemma": "через опыт",
+      "parity_class": "semantic",
+      "predicate_id": "trust_experience",
+      "reason": "approved surface adds the attributes 'повторяемый позитивный' to the object",
+      "relation_id": "stroitsya",
+      "statement_count": 3,
+      "subject_lemma": "доверие",
+      "surface_digests": [
+        "2fefab54e077ae2691418a70880bbd5927d78dc4734d8a35f02c785f4ed0f509",
+        "e177b6566ca95a4d90e82e66efd914778790e8188d152b098db15365ac6456ca",
+        "f48228ac48a630816e2ad523e912a9d8eb1f9b8443b723e791febba049d19131"
+      ],
+      "topic": "доверие"
+    },
+    {
+      "approved_surfaces": [
+        "страх может парализовать действие или мобилизовать его",
+        "страх сигнализирует об угрозе целостности субъекта"
+      ],
+      "fact_ids": [
+        "fact.fear_action",
+        "fact.fear_action.counterpoint"
+      ],
+      "object_lemma": "парализовать действие",
+      "parity_class": "semantic",
+      "predicate_id": "fear_action",
+      "reason": "approved surface adds the disjunctive coordination 'или мобилизовать его'",
+      "relation_id": "mozhet",
+      "statement_count": 2,
+      "subject_lemma": "страх",
+      "surface_digests": [
+        "0d99d16bb82f03f2265869536c1ebe088c3386ab1320fb413f3b6d9d55b133c8",
+        "d49ecec45cb72f09e1f89d046d604a6690188a1f5d6cb362308b2d0d5ccf7760"
+      ],
+      "topic": "страх"
+    },
+    {
+      "approved_surfaces": [
+        "надежда поддерживает действие в условиях неопределённости",
+        "надежда ориентирует на возможность будущего"
+      ],
+      "fact_ids": [
+        "fact.hope_action",
+        "fact.hope_action.counterpoint"
+      ],
+      "object_lemma": "действие в условиях неопределённости",
+      "parity_class": "byte",
+      "predicate_id": "hope_action",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "podderzhivaet",
+      "statement_count": 2,
+      "subject_lemma": "надежда",
+      "surface_digests": [
+        "195eaa58fe92f5b09ba9fbe5e8e26fcebc17c94888c00d4dbfc8d64ec700ef2c",
+        "ae110595f3cfc14a768caa9d5cb58fa01bd3e1eb53a0ada08f6f7fe404d6141b"
+      ],
+      "topic": "надежда"
+    },
+    {
+      "approved_surfaces": [
+        "справедливость требует соразмерности между деянием и воздаянием",
+        "соразмерность трудно измерить: как взвесить страдание или измерить ущерб намерению?",
+        "справедливость — не точная формула, а направление: стремление к соразмерности важнее точности"
+      ],
+      "fact_ids": [
+        "fact.justice_proportionality",
+        "fact.justice_proportionality.counterpoint",
+        "fact.justice_proportionality.consequence"
+      ],
+      "object_lemma": "соразмерность",
+      "parity_class": "semantic",
+      "predicate_id": "justice_proportionality",
+      "reason": "approved surface adds the subordinate material 'между деянием и воздаянием'",
+      "relation_id": "trebuet",
+      "statement_count": 3,
+      "subject_lemma": "справедливость",
+      "surface_digests": [
+        "a52114faca1c9a969c0da093f91a2ee491e9a079300c27417d7d3c03dfdbaf2e",
+        "70c70b91bd7152ac87e9f2dea3af564ef2c72e458c0c6e6976f6592c4ac760d2",
+        "30236fcef6a6196b6f82b3d41983c20062744d979587b45e5387dee249e68359"
+      ],
+      "topic": "справедливость"
+    },
+    {
+      "approved_surfaces": [
+        "время необратимо — прошлое недоступно для изменения",
+        "время задаёт порядок следования событий"
+      ],
+      "fact_ids": [
+        "fact.time_irreversible",
+        "fact.time_irreversible.counterpoint"
+      ],
+      "object_lemma": "недоступное прошлое",
+      "parity_class": "semantic",
+      "predicate_id": "time_irreversible",
+      "reason": "approved surface adds the dash-linked clause 'прошлое недоступно для изменения'",
+      "relation_id": "neobratimo",
+      "statement_count": 2,
+      "subject_lemma": "время",
+      "surface_digests": [
+        "0865b4bd4699fa992673ad84a6ef425a8e410a9e9cef2e0c69cdab71ad6b33f4",
+        "9e915929a9279fd6b0b05bb70dddd0bb9fb16e03713a5827825367b022f7a8dc"
+      ],
+      "topic": "время"
+    },
+    {
+      "approved_surfaces": [
+        "разум отличается от интуиции потребностью в доказательстве",
+        "разум способен к обобщению и абстракции"
+      ],
+      "fact_ids": [
+        "fact.reason_proof",
+        "fact.reason_proof.counterpoint"
+      ],
+      "object_lemma": "от интуиции",
+      "parity_class": "semantic",
+      "predicate_id": "reason_proof",
+      "reason": "approved surface adds 'потребностью в доказательстве'",
+      "relation_id": "otlichaetsya",
+      "statement_count": 2,
+      "subject_lemma": "разум",
+      "surface_digests": [
+        "ac26431b0d006cb1e7cb69543ecef11dd84b8e31682007cfd7b0335f839fd18c",
+        "f86589e2e0cdb7221fa798f6ac90feed5c426c104836dca8911d5e22ad307e8f"
+      ],
+      "topic": "разум"
+    },
+    {
+      "approved_surfaces": [
+        "бытие обозначает сам факт существования",
+        "бытие рассматривается как условие возможности любого суждения"
+      ],
+      "fact_ids": [
+        "fact.being_existence",
+        "fact.being_existence.counterpoint"
+      ],
+      "object_lemma": "факт существования",
+      "parity_class": "semantic",
+      "predicate_id": "being_existence",
+      "reason": "approved surface adds the attribute 'сам'",
+      "relation_id": "oboznachaet",
+      "statement_count": 2,
+      "subject_lemma": "бытие",
+      "surface_digests": [
+        "26a4a654767f4af4e6dc43da5ef699feff4217036ce43ca44cdfab666ab8004a",
+        "d5e7836f4b30a69eb379daeb0f435f19fdc90d1fc3ef282db46349b9ad5f5ab2"
+      ],
+      "topic": "бытие"
+    },
+    {
+      "approved_surfaces": [
+        "история зависит от точки зрения рассказчика",
+        "история связывает прошлое с настоящим через интерпретацию"
+      ],
+      "fact_ids": [
+        "fact.history_viewpoint",
+        "fact.history_viewpoint.counterpoint"
+      ],
+      "object_lemma": "от точки зрения",
+      "parity_class": "semantic",
+      "predicate_id": "history_viewpoint",
+      "reason": "approved surface adds the attribute 'рассказчика'",
+      "relation_id": "zavisit",
+      "statement_count": 2,
+      "subject_lemma": "история",
+      "surface_digests": [
+        "9382b670ed106b6f4ebf512c50a437db6d1217eed7000ac5ead17771ab5de298",
+        "fe8e42da275a9a36c401c82fda78e184f7ae931815a8f30b49b96ece79ef24c1"
+      ],
+      "topic": "история"
+    },
+    {
+      "approved_surfaces": [
+        "язык связан с мышлением — он не только выражает, но и формирует мысль",
+        "язык структурирует опыт через различение и именование"
+      ],
+      "fact_ids": [
+        "fact.language_thought",
+        "fact.language_thought.counterpoint"
+      ],
+      "object_lemma": "с мышлением",
+      "parity_class": "semantic",
+      "predicate_id": "language_thought",
+      "reason": "approved surface adds the dash-linked clause 'он не только выражает, но и формирует мысль'",
+      "relation_id": "svyazan",
+      "statement_count": 2,
+      "subject_lemma": "язык",
+      "surface_digests": [
+        "7401695ae259273cb7d3b5b953ed0ce30f7cca32336e6c404ebf93c4cf130a05",
+        "73cd37927323f40d3e5f8c8600a308e9108b367d72fc09b290e447959228cc76"
+      ],
+      "topic": "язык"
+    },
+    {
+      "approved_surfaces": [
+        "воля направляет действие к выбранной цели",
+        "сила воли не бесконечна — она истощается, как мышца, и требует восстановления",
+        "воля — не характер, а практика: она тренируется через повторение, а не даётся от рождения"
+      ],
+      "fact_ids": [
+        "fact.will_goal",
+        "fact.will_goal.counterpoint",
+        "fact.will_goal.consequence"
+      ],
+      "object_lemma": "действие к цели",
+      "parity_class": "semantic",
+      "predicate_id": "will_goal",
+      "reason": "approved surface adds the attribute 'выбранной'",
+      "relation_id": "napravlyaet",
+      "statement_count": 3,
+      "subject_lemma": "воля",
+      "surface_digests": [
+        "fbe888e30a81fe7a961eb867f9fa136747c9a06af8b49386d1617fbf02a114ac",
+        "db7724066b43aa043a24c90dfad0ae95c3dd5c2febef2bd3aa46843074e5b134",
+        "0099041e07dc09b5e4a9199b1270086ccc8c9bc480ae8f74b7e7d5f0ecbacf25"
+      ],
+      "topic": "воля"
+    },
+    {
+      "approved_surfaces": [
+        "смерть обозначает необратимое прекращение существования",
+        "смерть задаёт границу, через которую жизнь обретает конечную форму"
+      ],
+      "fact_ids": [
+        "fact.death_cessation",
+        "fact.death_cessation.counterpoint"
+      ],
+      "object_lemma": "прекращение существования",
+      "parity_class": "semantic",
+      "predicate_id": "death_cessation",
+      "reason": "approved surface adds the attribute 'необратимое'",
+      "relation_id": "oboznachaet",
+      "statement_count": 2,
+      "subject_lemma": "смерть",
+      "surface_digests": [
+        "a569b504f04165a4143b45ef22e3d44d69d52906c0d352d1360381c225676396",
+        "363425fab0ad82c50c3178c2779301b59f982c42dcc2f2c547b6671fc2d392ef"
+      ],
+      "topic": "смерть"
+    },
+    {
+      "approved_surfaces": [
+        "одиночество выражает отсутствие значимого другого",
+        "одиночество может быть избрано или навязано обстоятельствами"
+      ],
+      "fact_ids": [
+        "fact.loneliness_absence",
+        "fact.loneliness_absence.counterpoint"
+      ],
+      "object_lemma": "отсутствие другого",
+      "parity_class": "semantic",
+      "predicate_id": "loneliness_absence",
+      "reason": "approved surface adds the attribute 'значимого'",
+      "relation_id": "vyrazhaet",
+      "statement_count": 2,
+      "subject_lemma": "одиночество",
+      "surface_digests": [
+        "3faf054fa64bc0c14f94bbfd5a4e9c6991b1db4cdb5909c42e6b9c046ef77d08",
+        "9c81ffb13a0797474bc7c966586ef4d25709f8ae32f4857c83280b0e945db42a"
+      ],
+      "topic": "одиночество"
+    },
+    {
+      "approved_surfaces": [
+        "любовь направлена на конкретного другого как на безусловно ценного",
+        "любовь предполагает уязвимость и риск потери"
+      ],
+      "fact_ids": [
+        "fact.love_other",
+        "fact.love_other.counterpoint"
+      ],
+      "object_lemma": "на другого",
+      "parity_class": "semantic",
+      "predicate_id": "love_other",
+      "reason": "approved surface adds 'конкретного другого как на безусловно ценного'",
+      "relation_id": "napravlena",
+      "statement_count": 2,
+      "subject_lemma": "любовь",
+      "surface_digests": [
+        "0fc8d1d80fafb4062ccbb28491c6093e029eb8de70b4e06fdb1f96e6c6842290",
+        "7703141aeb93d99fa91f75b2dc70a3cd243757dca09a1b3ce1b3cd96cdfd44b8"
+      ],
+      "topic": "любовь"
+    },
+    {
+      "approved_surfaces": [
+        "труд связан с потребностью и распределением ресурсов",
+        "труд преобразует материал через целенаправленное усилие"
+      ],
+      "fact_ids": [
+        "fact.labor_resources",
+        "fact.labor_resources.counterpoint"
+      ],
+      "object_lemma": "с потребностью",
+      "parity_class": "semantic",
+      "predicate_id": "labor_resources",
+      "reason": "approved surface adds the coordinated object 'и распределением ресурсов'",
+      "relation_id": "svyazan",
+      "statement_count": 2,
+      "subject_lemma": "труд",
+      "surface_digests": [
+        "c23f8d9bca582e0a98d3072633a241c9ae54c5b35e861a7bee77654f35356917",
+        "8c51786de191dbd3a7c59763db5edfa4f8e4c2ebdb14af56d859dc0027bca3b5"
+      ],
+      "topic": "труд"
+    },
+    {
+      "approved_surfaces": [
+        "покой обозначает отсутствие движения и напряжения",
+        "покой необходим для восстановления и интеграции опыта"
+      ],
+      "fact_ids": [
+        "fact.rest_absence",
+        "fact.rest_absence.counterpoint"
+      ],
+      "object_lemma": "отсутствие движения",
+      "parity_class": "semantic",
+      "predicate_id": "rest_absence",
+      "reason": "approved surface adds the coordinated object 'и напряжения'",
+      "relation_id": "oboznachaet",
+      "statement_count": 2,
+      "subject_lemma": "покой",
+      "surface_digests": [
+        "b91dcd096febba75a2c48f64d210355e5d04f630197e6bcd66bf5e731581b25a",
+        "066b81efd10e031110897a1f73f0b512049be9acacf833647c192b80a4ce4470"
+      ],
+      "topic": "покой"
+    },
+    {
+      "approved_surfaces": [
+        "власть означает способность влиять на действия других",
+        "власть определяет, чья воля становится законом"
+      ],
+      "fact_ids": [
+        "fact.power_influence",
+        "fact.power_influence.counterpoint"
+      ],
+      "object_lemma": "влиять на других",
+      "parity_class": "semantic",
+      "predicate_id": "power_influence",
+      "reason": "approved surface adds 'способность ... на действия' to the object phrase",
+      "relation_id": "oznachaet",
+      "statement_count": 2,
+      "subject_lemma": "власть",
+      "surface_digests": [
+        "e5d5d4882f45dbcc6b31b762cc33db5281f7d3c48aa9c8a1ba832838cc7ff11d",
+        "3451f2df5d34348fdc496a1d487c4ce7fa210d3c4d8ed6fba2b5ee8ffa4321e1"
+      ],
+      "topic": "власть"
+    },
+    {
+      "approved_surfaces": [
+        "правда претендует на соответствие фактам",
+        "правда отличается от истины личной вовлечённостью рассказчика"
+      ],
+      "fact_ids": [
+        "fact.truthfulness_facts",
+        "fact.truthfulness_facts.counterpoint"
+      ],
+      "object_lemma": "на соответствие фактам",
+      "parity_class": "byte",
+      "predicate_id": "truthfulness_facts",
+      "reason": "the audited thesis is a single clause the V2 realization reproduces byte-for-byte",
+      "relation_id": "pretenduet",
+      "statement_count": 2,
+      "subject_lemma": "правда",
+      "surface_digests": [
+        "4085f0ca4f2ae3039dbea2fb5a429418b7b3dabdacdfd0abba18541219a3feb9",
+        "738f02e9dbeb42d743bf77fac6ed0d6cc102dbcd8bfebcd6d830a3400211081f"
+      ],
+      "topic": "правда"
+    },
+    {
+      "approved_surfaces": [
+        "молчание контрастирует с речью, но не тождественно пустоте",
+        "молчание может быть актом отказа или знаком присутствия"
+      ],
+      "fact_ids": [
+        "fact.silence_speech",
+        "fact.silence_speech.counterpoint"
+      ],
+      "object_lemma": "с речью",
+      "parity_class": "semantic",
+      "predicate_id": "silence_speech",
+      "reason": "approved surface adds the contrast clause 'но не тождественно пустоте'",
+      "relation_id": "kontrastiruet",
+      "statement_count": 2,
+      "subject_lemma": "молчание",
+      "surface_digests": [
+        "cbe950e10ba2a3d6f5879ef7614f092deec61ee6eda0d34f9da1c36847c3db76",
+        "dd5fad87ab2597f95ee23d816da5acf1d4f74532a2453781489219747af726e0"
+      ],
+      "topic": "молчание"
+    }
+  ],
+  "schema_version": 1,
+  "source_files": {
+    "argued_topics.tsv": "85d9d77275bd0680668e0a6dcac89e7895065577ead03c38775f192ed97c63a0",
+    "concepts.json": "70e35764c92b7e948fdd0a53ef877575410303ad4d291ab80936f6919d3d6b1f",
+    "facts.json": "3b12492e0462efda35f67fb3bc8541f3ae3ffd872c3cfcbaef02d5654b1955bd",
+    "manifest.json": "742bc65882172528a0760ca6a53bc53699c8e1d5b2f342b06133bb6bd4698f2f",
+    "relations.json": "21d25e498259051f911e11d8e09a750dbdf9dbdb3398b9ed396f74c8a74dba22",
+    "valency_frames.tsv": "ee2737d82c84ba7030cf370659dc3a3bae1b4c10d8d0d92e2b243b4aa4589d37"
+  }
+}
