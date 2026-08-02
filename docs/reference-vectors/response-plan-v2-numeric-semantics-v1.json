@@ -1,0 +1,21 @@
+{
+  "schema": "qxfx0.response-plan-v2.numeric-semantics.v1",
+  "numeric_semantics_version": "basis-points-half-away-v1",
+  "input_encoding": "IEEE-754 binary64 bits, hexadecimal, big-endian display",
+  "rounding": "multiply by 10000, round ties away from zero, clamp to i32; non-finite maps to zero",
+  "vector_digest": "82a651e49472c17ee515abc85b22e3fbd19e6850782c73653c017ccdb730b1c4",
+  "vectors": [
+    { "name": "positive-zero", "input_bits_hex": "0000000000000000", "expected_raw": 0 },
+    { "name": "negative-zero", "input_bits_hex": "8000000000000000", "expected_raw": 0 },
+    { "name": "one", "input_bits_hex": "3ff0000000000000", "expected_raw": 10000 },
+    { "name": "minus-one", "input_bits_hex": "bff0000000000000", "expected_raw": -10000 },
+    { "name": "one-eighth", "input_bits_hex": "3fc0000000000000", "expected_raw": 1250 },
+    { "name": "minus-one-eighth", "input_bits_hex": "bfc0000000000000", "expected_raw": -1250 },
+    { "name": "smallest-positive-subnormal", "input_bits_hex": "0000000000000001", "expected_raw": 0 },
+    { "name": "positive-infinity", "input_bits_hex": "7ff0000000000000", "expected_raw": 0 },
+    { "name": "negative-infinity", "input_bits_hex": "fff0000000000000", "expected_raw": 0 },
+    { "name": "quiet-nan", "input_bits_hex": "7ff8000000000000", "expected_raw": 0 },
+    { "name": "positive-clamp", "input_bits_hex": "7fefffffffffffff", "expected_raw": 2147483647 },
+    { "name": "negative-clamp", "input_bits_hex": "ffefffffffffffff", "expected_raw": -2147483648 }
+  ]
+}

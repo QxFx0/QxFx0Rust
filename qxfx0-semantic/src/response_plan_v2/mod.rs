@@ -23,7 +23,10 @@ pub mod candidate;
 pub mod derivation;
 pub mod discourse;
 pub mod evidence;
+pub mod morphology_depth;
 pub mod proposition;
+pub mod selection;
+pub mod snapshot;
 pub mod syn_tree;
 pub mod valency;
 
@@ -51,17 +54,31 @@ pub use evidence::{
     certify_claim, EvidenceAuthorityCertificate, EvidenceCertifiedPlan, EvidenceError,
     EvidenceEvaluationContext, EVIDENCE_DOMAIN,
 };
+pub use morphology_depth::{
+    preposition_allomorphs, verify_round_trip, MorphologyRoundTripError,
+    MorphologyRoundTripWitness, PrepositionAllomorphLexicon, RoundTripClass,
+};
 pub use proposition::{
     PropositionDag, PropositionDagBuilder, PropositionId, PropositionInvariantError,
     PropositionNode, QualifierId, PROPOSITION_DOMAIN,
+};
+pub use selection::{
+    select_candidate, BasisPoints, CandidateSelectionSignals, SelectedCandidate,
+    SelectionCandidate, SelectionError, SelectionPolicy, SelectionReceipt, SelfSelectionContext,
+    NUMERIC_SEMANTICS_VERSION, RANKING_VERSION,
+};
+pub use snapshot::{
+    inference_rule_set_digest, verify_replay, AuthoritySnapshot, PlanningPolicySnapshot,
+    RealizationSnapshot, ReplayLevel, ReplayMaterials, ReplayVerification, SelectionPolicySnapshot,
+    SnapshotError, TurnContractSnapshot, TurnRecord,
 };
 pub use syn_tree::{
     by_occurrence, resolve, Clause, NounPhrase, RealizationCompletenessCertificate,
     RealizationError, ResolvedClause, ResolvedSynTree, SynTree, VerbPhrase,
 };
 pub use valency::{
-    valency_lexicon, AgreementFeatures, Complement, HeadKind, ValencyError, ValencyFrame,
-    ValencyLexicon,
+    starts_with_word, valency_lexicon, AgreementFeatures, Complement, HeadKind, ValencyError,
+    ValencyFrame, ValencyLexicon,
 };
 
 /// Turn-level failure envelope (ADR-0034 §1).

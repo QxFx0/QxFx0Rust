@@ -67,6 +67,15 @@ impl Complement {
     }
 }
 
+/// Does `text` begin with `word` as a complete whitespace-delimited token?
+///
+/// Kept at the valency boundary so gates and realization use exactly the same
+/// interpretation of an embedded governed preposition.
+pub fn starts_with_word(text: &str, word: &str) -> bool {
+    text.strip_prefix(word)
+        .is_some_and(|rest| rest.chars().next().is_some_and(char::is_whitespace))
+}
+
 /// How the head realizes itself.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

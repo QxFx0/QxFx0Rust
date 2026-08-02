@@ -30,7 +30,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use super::discourse::DiscourseOccurrenceId;
-use super::valency::{AgreementFeatures, Complement, ValencyError, ValencyLexicon};
+use super::morphology_depth::{preposition_allomorphs, verify_round_trip, RoundTripClass};
+use super::valency::{
+    starts_with_word, AgreementFeatures, Complement, ValencyError, ValencyLexicon,
+};
 use qxfx0_morphology::{Case, Gender, MorphologyRuntime, Number};
 
 /// A nominal, either inflectable or admitted verbatim.
@@ -213,8 +216,10 @@ pub struct RealizationCompletenessCertificate {
     pub agreeing_heads: usize,
     pub fixed_phrases: usize,
     pub prepositions_embedded: usize,
+    pub preposition_allomorphs_applied: usize,
     pub valency_fingerprint: String,
     pub morphology_sha256: String,
+    pub morphology_depth_fingerprint: String,
 }
 
 /// Syntax with no unresolved slots. Linearization of this type is total.
@@ -265,6 +270,7 @@ pub fn resolve(
     let mut agreeing_heads = 0usize;
     let mut fixed_phrases = 0usize;
     let mut prepositions_embedded = 0usize;
+    let mut preposition_allomorphs_applied = 0usize;
 
     for (occurrence, clause) in tree.iter() {
         let frame = lexicon.get(clause.predicate().relation_id())?;
@@ -328,6 +334,10 @@ pub fn resolve(
                     } => *preposition_included,
                     NounPhrase::Lexical { .. } => false,
                 };
+                let lexical_lemma = match phrase {
+                    NounPhrase::Lexical { lemma } => Some(lemma.as_str()),
+                    NounPhrase::FixedPhrase { .. } => None,
+                };
                 let surface = match phrase {
                     NounPhrase::Lexical { lemma } => inflect(morphology, lemma, required)?,
                     NounPhrase::FixedPhrase {
@@ -376,7 +386,15 @@ pub fn resolve(
                 let preposition = if phrase_preposition_included {
                     None
                 } else {
-                    governing.preposition().map(str::to_string)
+                    governing.preposition().map(|base| {
+                        let realized = preposition_allomorphs()
+                            .realize(base, lexical_lemma, &surface)
+                            .to_string();
+                        if realized != base {
+                            preposition_allomorphs_applied += 1;
+                        }
+                        realized
+                    })
                 };
                 (preposition, Some(surface), Some(required))
             }
@@ -400,21 +418,13 @@ pub fn resolve(
             agreeing_heads,
             fixed_phrases,
             prepositions_embedded,
+            preposition_allomorphs_applied,
             valency_fingerprint: lexicon.fingerprint().to_string(),
             morphology_sha256: morphology.lexemes_sha256().to_string(),
+            morphology_depth_fingerprint: preposition_allomorphs().fingerprint().to_string(),
         },
         clauses,
     })
-}
-
-/// Does `text` begin with `preposition` as a whole word?
-///
-/// A bare prefix test is not enough: the single-letter prepositions `с`, `в`
-/// and `к` would match `сознании`, `времени` and `красоте`, so a phrase in the
-/// wrong government would pass as if it carried the right preposition.
-fn starts_with_word(text: &str, preposition: &str) -> bool {
-    text.strip_prefix(preposition)
-        .is_some_and(|rest| rest.starts_with(' '))
 }
 
 fn inflect(
@@ -427,12 +437,25 @@ fn inflect(
             lemma: lemma.to_string(),
         });
     }
-    morphology
+    let surface = morphology
         .inflect(lemma, case, Number::Singular)
         .ok_or_else(|| RealizationError::IncompleteForm {
             lemma: lemma.to_string(),
             case,
-        })
+        })?;
+    verify_round_trip(
+        morphology,
+        lemma,
+        case,
+        Number::Singular,
+        &surface,
+        RoundTripClass::Bijective,
+    )
+    .map_err(|_| RealizationError::IncompleteForm {
+        lemma: lemma.to_string(),
+        case,
+    })?;
+    Ok(surface)
 }
 
 /// Read agreement features from the curated bundle.
@@ -515,6 +538,25 @@ mod tests {
         assert_eq!(clause.preposition.as_deref(), Some("от"));
         assert_eq!(clause.governed_case, Some(Case::Genitive));
         assert_eq!(clause.complement_surface.as_deref(), Some("разума"));
+    }
+
+    #[test]
+    fn s_allomorph_is_selected_from_the_lexical_inventory() {
+        let clause = resolve_one("разум", "svyazan", Some(NounPhrase::lexical("время")));
+        assert_eq!(clause.preposition.as_deref(), Some("со"));
+        assert_eq!(clause.complement_surface.as_deref(), Some("временем"));
+
+        let mut tree = SynTree::new();
+        tree.push(
+            occurrence(),
+            Clause::new(
+                NounPhrase::lexical("разум"),
+                VerbPhrase::new("svyazan", Some(NounPhrase::lexical("время"))),
+            ),
+        );
+        let resolved = resolve(&tree, valency_lexicon(), morphology()).expect("resolution");
+        assert_eq!(resolved.linearize(), vec!["разум связан со временем"]);
+        assert_eq!(resolved.certificate().preposition_allomorphs_applied, 1);
     }
 
     /// The same relation with a different governed case produces a different

@@ -27,7 +27,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use qxfx0_semantic::response_plan_v2::valency::{valency_lexicon, Complement};
+use qxfx0_semantic::response_plan_v2::valency::{starts_with_word, valency_lexicon, Complement};
 use qxfx0_semantic::response_plan_v2::{
     build_audited_topic, Clause, NounPhrase, SynTree, VerbPhrase,
 };
@@ -581,7 +581,7 @@ fn run_phase_c() -> GateReport {
                     // preposition must not be emitted again.
                     let embedded = governing
                         .preposition()
-                        .is_some_and(|p| row.object_lemma.starts_with(p));
+                        .is_some_and(|p| starts_with_word(&row.object_lemma, p));
                     if embedded {
                         Some(NounPhrase::fixed_with_preposition(
                             row.object_lemma.clone(),
