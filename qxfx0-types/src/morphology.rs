@@ -544,6 +544,24 @@ pub struct MorphologyBundleManifest {
     pub license: String,
     pub created_at: String,
     pub files: BTreeMap<String, String>,
+    /// Lexemes added to the bundle after it was converted from `source_commit`.
+    ///
+    /// The bundle is a derived asset, so `source_commit` must keep pointing at
+    /// the upstream revision it was converted from. Overwriting it to record a
+    /// local edit would claim the whole 12 MB came from a commit that never
+    /// contained it, and this project's guarantee is that content is traceable
+    /// to its origin. Amendments are recorded here instead, additively.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub local_amendments: Vec<MorphologyAmendment>,
+}
+
+/// One lexeme added locally, with the reason it was needed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MorphologyAmendment {
+    pub lemma: String,
+    pub reason: String,
+    /// Revision of *this* repository that introduced the amendment.
+    pub added_in: String,
 }
 
 impl MorphologyBundleManifest {
@@ -555,6 +573,7 @@ impl MorphologyBundleManifest {
             license: "MIT".to_string(),
             created_at: String::new(),
             files: BTreeMap::new(),
+            local_amendments: Vec::new(),
         }
     }
 }

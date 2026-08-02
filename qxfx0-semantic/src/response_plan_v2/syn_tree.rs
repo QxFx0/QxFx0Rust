@@ -19,6 +19,12 @@
 //! such a phrase together with the case it is already in, and resolution checks
 //! that the declared case is the one the head governs. That check is what turns
 //! the corpus gap into a detectable mismatch instead of a silent wrong ending.
+//!
+//! The corpus stores prepositional objects in their realized form, preposition
+//! included (`с мышлением`, `от интуиции`). [`NounPhrase::fixed_with_preposition`]
+//! marks such a phrase so the linearizer does not emit the frame preposition a
+//! second time, and the completeness certificate counts them as
+//! `prepositions_embedded`.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -39,6 +45,10 @@ pub enum NounPhrase {
     FixedPhrase {
         text: String,
         declared_case: Option<Case>,
+        /// The phrase already carries the preposition the head governs (the
+        /// corpus stores such objects in their realized form), so the
+        /// linearizer must not emit the frame preposition a second time.
+        preposition_included: bool,
     },
 }
 
@@ -53,6 +63,18 @@ impl NounPhrase {
         Self::FixedPhrase {
             text: text.into(),
             declared_case,
+            preposition_included: false,
+        }
+    }
+
+    /// An admitted phrase that already stands in the governed case *with* the
+    /// governed preposition. The linearizer emits the frame's other material
+    /// but skips the preposition.
+    pub fn fixed_with_preposition(text: impl Into<String>, case: Case) -> Self {
+        Self::FixedPhrase {
+            text: text.into(),
+            declared_case: Some(case),
+            preposition_included: true,
         }
     }
 }
@@ -154,6 +176,19 @@ pub enum RealizationError {
     MissingComplement { relation: String, required: Case },
     #[error("relation '{relation}' takes no complement but one was supplied")]
     UnexpectedComplement { relation: String },
+    #[error(
+        "relation '{relation}' governs the preposition '{required}' but the phrase '{phrase}' \
+         embeds a different one"
+    )]
+    PrepositionMismatch {
+        relation: String,
+        phrase: String,
+        required: String,
+    },
+    #[error(
+        "phrase '{phrase}' claims an embedded preposition but relation '{relation}' governs none"
+    )]
+    UnexpectedEmbeddedPreposition { relation: String, phrase: String },
     #[error("the subject must be an inflectable lemma, not a verbatim phrase")]
     UninflectableSubject,
 }
@@ -177,6 +212,7 @@ pub struct RealizationCompletenessCertificate {
     pub resolved_slots: usize,
     pub agreeing_heads: usize,
     pub fixed_phrases: usize,
+    pub prepositions_embedded: usize,
     pub valency_fingerprint: String,
     pub morphology_sha256: String,
 }
@@ -228,6 +264,7 @@ pub fn resolve(
     let mut resolved_slots = 0usize;
     let mut agreeing_heads = 0usize;
     let mut fixed_phrases = 0usize;
+    let mut prepositions_embedded = 0usize;
 
     for (occurrence, clause) in tree.iter() {
         let frame = lexicon.get(clause.predicate().relation_id())?;
@@ -284,11 +321,19 @@ pub fn resolve(
                         required,
                     });
                 };
+                let phrase_preposition_included = match phrase {
+                    NounPhrase::FixedPhrase {
+                        preposition_included,
+                        ..
+                    } => *preposition_included,
+                    NounPhrase::Lexical { .. } => false,
+                };
                 let surface = match phrase {
                     NounPhrase::Lexical { lemma } => inflect(morphology, lemma, required)?,
                     NounPhrase::FixedPhrase {
                         text,
                         declared_case,
+                        preposition_included,
                     } => {
                         // The corpus cannot inflect this phrase, so the only
                         // available check is that it already stands in the case
@@ -302,15 +347,38 @@ pub fn resolve(
                             });
                         }
                         fixed_phrases += 1;
+                        if *preposition_included {
+                            // `preposition_included` suppresses the frame's
+                            // preposition, so it must be verified rather than
+                            // taken on the caller's word: an unchecked flag
+                            // would let `zavisit` (which governs `от`) emit
+                            // "истина зависит на интуиции". The certificate
+                            // chain confirms, it does not trust.
+                            let Some(required_preposition) = governing.preposition() else {
+                                return Err(RealizationError::UnexpectedEmbeddedPreposition {
+                                    relation: frame.relation_id().to_string(),
+                                    phrase: text.clone(),
+                                });
+                            };
+                            if !starts_with_word(text, required_preposition) {
+                                return Err(RealizationError::PrepositionMismatch {
+                                    relation: frame.relation_id().to_string(),
+                                    phrase: text.clone(),
+                                    required: required_preposition.to_string(),
+                                });
+                            }
+                            prepositions_embedded += 1;
+                        }
                         text.clone()
                     }
                 };
                 resolved_slots += 1;
-                (
-                    governing.preposition().map(str::to_string),
-                    Some(surface),
-                    Some(required),
-                )
+                let preposition = if phrase_preposition_included {
+                    None
+                } else {
+                    governing.preposition().map(str::to_string)
+                };
+                (preposition, Some(surface), Some(required))
             }
         };
 
@@ -331,11 +399,22 @@ pub fn resolve(
             resolved_slots,
             agreeing_heads,
             fixed_phrases,
+            prepositions_embedded,
             valency_fingerprint: lexicon.fingerprint().to_string(),
             morphology_sha256: morphology.lexemes_sha256().to_string(),
         },
         clauses,
     })
+}
+
+/// Does `text` begin with `preposition` as a whole word?
+///
+/// A bare prefix test is not enough: the single-letter prepositions `с`, `в`
+/// and `к` would match `сознании`, `времени` and `красоте`, so a phrase in the
+/// wrong government would pass as if it carried the right preposition.
+fn starts_with_word(text: &str, preposition: &str) -> bool {
+    text.strip_prefix(preposition)
+        .is_some_and(|rest| rest.starts_with(' '))
 }
 
 fn inflect(
@@ -540,6 +619,85 @@ mod tests {
                 required: Case::Genitive,
                 ..
             })
+        ));
+    }
+
+    /// The corpus stores prepositional objects with the preposition already in
+    /// the lemma (`с мышлением`). The frame's own preposition must not then be
+    /// emitted a second time.
+    #[test]
+    fn an_embedded_preposition_phrase_is_not_doubled() {
+        let mut tree = SynTree::new();
+        tree.push(
+            occurrence(),
+            Clause::new(
+                NounPhrase::lexical("язык"),
+                VerbPhrase::new(
+                    "svyazan",
+                    Some(NounPhrase::fixed_with_preposition(
+                        "с мышлением",
+                        Case::Instrumental,
+                    )),
+                ),
+            ),
+        );
+        let resolved = resolve(&tree, valency_lexicon(), morphology()).expect("resolution");
+        let clause = &resolved.clauses()[0];
+        assert_eq!(clause.preposition, None);
+        assert_eq!(clause.complement_surface.as_deref(), Some("с мышлением"));
+        assert_eq!(resolved.certificate().prepositions_embedded, 1);
+    }
+
+    fn embedded(
+        relation: &str,
+        phrase: &str,
+        case: Case,
+    ) -> Result<ResolvedSynTree, RealizationError> {
+        let mut tree = SynTree::new();
+        tree.push(
+            occurrence(),
+            Clause::new(
+                NounPhrase::lexical("истина"),
+                VerbPhrase::new(
+                    relation,
+                    Some(NounPhrase::fixed_with_preposition(phrase, case)),
+                ),
+            ),
+        );
+        resolve(&tree, valency_lexicon(), morphology())
+    }
+
+    /// `preposition_included` suppresses the frame's preposition, so it has to
+    /// be confirmed rather than believed. Before this check, `zavisit` — which
+    /// governs `от` — accepted `на интуиции` and emitted
+    /// "истина зависит на интуиции".
+    #[test]
+    fn an_embedded_preposition_must_be_the_governed_one() {
+        assert!(embedded("zavisit", "от интуиции", Case::Genitive).is_ok());
+        assert!(matches!(
+            embedded("zavisit", "на интуиции", Case::Genitive),
+            Err(RealizationError::PrepositionMismatch { required, .. }) if required == "от"
+        ));
+    }
+
+    /// A whole-word test, not a prefix test: the single-letter prepositions
+    /// would otherwise match any word that happens to begin with that letter.
+    #[test]
+    fn a_single_letter_preposition_does_not_match_a_longer_word() {
+        assert!(matches!(
+            embedded("svyazan", "сознанием", Case::Instrumental),
+            Err(RealizationError::PrepositionMismatch { .. })
+        ));
+        assert!(embedded("svyazan", "с сознанием", Case::Instrumental).is_ok());
+    }
+
+    /// Claiming an embedded preposition against bare case government would
+    /// silently drop a word that was never there.
+    #[test]
+    fn an_embedded_preposition_against_bare_government_is_rejected() {
+        assert!(matches!(
+            embedded("trebuet", "от выбора", Case::Genitive),
+            Err(RealizationError::UnexpectedEmbeddedPreposition { .. })
         ));
     }
 

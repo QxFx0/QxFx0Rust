@@ -10,19 +10,43 @@
 //! approved golden surfaces instead, because a principled generator may
 //! legitimately produce a different — and correct — string.
 //!
-//! `response-plan-v2-audited-corpus` is a separate gate over the 30 audited
-//! topics and is never merged with this matrix.
+//! `response-plan-v2-phase-b` reads the `audited-corpus` manifest and runs the
+//! whole certificate chain — admission, evidence, assertion — over all 30
+//! audited topics: every stated claim of every topic must land on a
+//! `ClaimAuthority` (semantic + authority parity). The manifest's source
+//! digests lock the gates to the exact asset bytes a release binary carries.
+//!
+//! `response-plan-v2-phase-c` verifies realization parity over the approved
+//! V2 surfaces: a `byte` row must be reproduced byte-for-byte by the V2 clause
+//! realization, a `semantic` row records that the audited surface is a
+//! multi-clause rhetorical sentence approved by digest instead.
+//!
+//! The audited-corpus manifest and the template-agreement matrix are two
+//! separate gates and are never merged.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+use qxfx0_semantic::response_plan_v2::valency::{valency_lexicon, Complement};
+use qxfx0_semantic::response_plan_v2::{
+    build_audited_topic, Clause, NounPhrase, SynTree, VerbPhrase,
+};
 
 const MATRIX_PATH: &str = "data/gates/response-plan-v2/template-agreement-matrix.json";
 const MATRIX_SCHEMA_VERSION: u32 = 1;
 const MATRIX_ID: &str = "template-agreement-matrix-v1";
 
+const AUDITED_CORPUS_PATH: &str = "data/gates/response-plan-v2/audited-corpus-manifest.json";
+const AUDITED_CORPUS_SCHEMA_VERSION: u32 = 1;
+const AUDITED_CORPUS_ID: &str = "response-plan-v2-audited-corpus-v1";
+
 /// Embedded so a release binary can run the gate without a working tree.
 const EMBEDDED_MATRIX: &str =
     include_str!("../../data/gates/response-plan-v2/template-agreement-matrix.json");
+
+/// Embedded so a release binary can run the gate without a working tree.
+const EMBEDDED_AUDITED_CORPUS: &str =
+    include_str!("../../data/gates/response-plan-v2/audited-corpus-manifest.json");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum GatePhase {
@@ -103,17 +127,8 @@ impl GateReport {
 pub fn run_gate(gate: GatePhase) -> GateReport {
     match gate {
         GatePhase::A => run_phase_a(),
-        // Phases B and C are declared by ADR-0034 but not yet implemented.
-        // They fail closed rather than reporting a vacuous pass, so a release
-        // can never claim a phase it has not reached.
-        GatePhase::B | GatePhase::C => GateReport::failed(
-            gate,
-            vec![format!(
-                "{} is declared by ADR-0034 but not implemented; \
-                 V1 audited renderer remains authoritative",
-                gate.as_str()
-            )],
-        ),
+        GatePhase::B => run_phase_b(),
+        GatePhase::C => run_phase_c(),
     }
 }
 
@@ -282,6 +297,385 @@ pub const fn matrix_path() -> &'static str {
     MATRIX_PATH
 }
 
+/// Path of the on-disk census artifact, for operator messages.
+pub const fn audited_corpus_path() -> &'static str {
+    AUDITED_CORPUS_PATH
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct AuditedCorpusDiagnostics {
+    topics_total: usize,
+    statements_total: usize,
+    parity_byte: usize,
+    parity_semantic: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct AuditedCorpusRow {
+    topic: String,
+    predicate_id: String,
+    relation_id: String,
+    subject_lemma: String,
+    object_lemma: String,
+    statement_count: usize,
+    fact_ids: Vec<String>,
+    approved_surfaces: Vec<String>,
+    surface_digests: Vec<String>,
+    parity_class: String,
+    /// Census note for operators; the gate does not enforce it.
+    #[allow(dead_code)]
+    reason: String,
+}
+#[derive(Debug, Clone, Deserialize)]
+struct AuditedCorpusManifest {
+    schema_version: u32,
+    manifest_id: String,
+    #[allow(dead_code)]
+    manifest_digest: String,
+    source_files: BTreeMap<String, String>,
+    diagnostics: AuditedCorpusDiagnostics,
+    rows: Vec<AuditedCorpusRow>,
+}
+
+/// Phase B: the audited corpus — semantic + authority parity over all 30
+/// topics. Every stated claim of every topic must traverse the whole chain
+/// (admission → evidence → assertion) and land on a `ClaimAuthority`; the
+/// manifest must lock the exact asset bytes the release binary carries.
+fn run_phase_b() -> GateReport {
+    let manifest: AuditedCorpusManifest = match serde_json::from_str(EMBEDDED_AUDITED_CORPUS) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            return GateReport::failed(
+                GatePhase::B,
+                vec![format!("audited-corpus manifest parse failed: {error}")],
+            )
+        }
+    };
+
+    let mut violations = Vec::new();
+    if manifest.schema_version != AUDITED_CORPUS_SCHEMA_VERSION {
+        violations.push(format!(
+            "audited-corpus schema_version {} != {AUDITED_CORPUS_SCHEMA_VERSION}",
+            manifest.schema_version
+        ));
+    }
+    if manifest.manifest_id != AUDITED_CORPUS_ID {
+        violations.push(format!(
+            "audited-corpus manifest_id {} != {AUDITED_CORPUS_ID}",
+            manifest.manifest_id
+        ));
+    }
+
+    // The manifest is only authority over the assets it was generated from.
+    // A drifted asset must fail the gate, not silently change what the census
+    // approved.
+    let mut asset_digests = BTreeMap::new();
+    asset_digests.insert(
+        "argued_topics.tsv".to_string(),
+        qxfx0_semantic::argued_topics_source_digest(),
+    );
+    asset_digests.insert(
+        "valency_frames.tsv".to_string(),
+        valency_lexicon().fingerprint().to_string(),
+    );
+    for (name, digest) in qxfx0_semantic::active_pack_asset_digests() {
+        asset_digests.insert(name.to_string(), digest);
+    }
+    for (name, recorded) in &manifest.source_files {
+        match asset_digests.get(name) {
+            Some(actual) if actual == recorded => {}
+            Some(actual) => violations.push(format!(
+                "{name} drifted from the census: manifest={recorded}, actual={actual}"
+            )),
+            None => violations.push(format!("manifest records an unknown asset {name}")),
+        }
+    }
+
+    if manifest.diagnostics.topics_total != 30 {
+        violations.push(format!(
+            "audited-corpus must cover exactly 30 topics, manifest says {}",
+            manifest.diagnostics.topics_total
+        ));
+    }
+    if manifest.diagnostics.statements_total != 69 {
+        violations.push(format!(
+            "audited-corpus must cover exactly 69 statements, manifest says {}",
+            manifest.diagnostics.statements_total
+        ));
+    }
+    if manifest.diagnostics.parity_byte + manifest.diagnostics.parity_semantic
+        != manifest.diagnostics.topics_total
+    {
+        violations.push("parity diagnostics must partition the topics".into());
+    }
+
+    let argued = qxfx0_semantic::argued_topic_registry().map_err(|error| error.to_string());
+    let mut byte_rows = 0usize;
+    let mut semantic_rows = 0usize;
+    let mut claims_authorized = 0usize;
+
+    for row in &manifest.rows {
+        let argued = match &argued {
+            Ok(registry) => registry,
+            Err(error) => {
+                violations.push(format!("argued registry unavailable: {error}"));
+                break;
+            }
+        };
+        let Some(topic) = argued.get(&row.topic) else {
+            violations.push(format!("manifest topic '{}' is not audited", row.topic));
+            continue;
+        };
+        if topic.primary_predicate_ref().as_str() != row.predicate_id {
+            violations.push(format!(
+                "{}: primary predicate drifted from the registry: manifest={}, registry={}",
+                row.topic,
+                row.predicate_id,
+                topic.primary_predicate_ref().as_str()
+            ));
+        }
+        if topic.statement_count() != row.statement_count {
+            violations.push(format!(
+                "{}: registry states {} statements, manifest records {}",
+                row.topic,
+                topic.statement_count(),
+                row.statement_count
+            ));
+        }
+        let registry_fact_ids: Vec<String> = topic
+            .statements()
+            .map(|statement| statement.fact_id().as_str().to_string())
+            .collect();
+        if registry_fact_ids != row.fact_ids {
+            violations.push(format!(
+                "{}: fact ids drifted from the registry: manifest={:?}, registry={:?}",
+                row.topic, row.fact_ids, registry_fact_ids
+            ));
+        }
+        let registry_surfaces: Vec<String> = topic
+            .statements()
+            .map(|statement| statement.surface().to_string())
+            .collect();
+        if registry_surfaces != row.approved_surfaces {
+            violations.push(format!(
+                "{}: approved surfaces drifted from the registry",
+                row.topic
+            ));
+        }
+        for (surface, recorded) in row.approved_surfaces.iter().zip(&row.surface_digests) {
+            let actual = sha256_hex(surface.as_bytes());
+            if actual != *recorded {
+                violations.push(format!(
+                    "{}: surface digest drifted: manifest={recorded}, actual={actual}",
+                    row.topic
+                ));
+            }
+        }
+
+        // Semantic + authority parity: the whole certificate chain must
+        // authorize every stated claim of the topic.
+        match build_audited_topic(&row.topic) {
+            Ok(plan) => {
+                let claims = plan.claims();
+                if claims.len() != row.statement_count {
+                    violations.push(format!(
+                        "{}: chain authorized {} claims for {} statements",
+                        row.topic,
+                        claims.len(),
+                        row.statement_count
+                    ));
+                }
+                claims_authorized += claims.len();
+            }
+            Err(error) => violations.push(format!("{}: {}", row.topic, error)),
+        }
+
+        match row.parity_class.as_str() {
+            "byte" => byte_rows += 1,
+            "semantic" => semantic_rows += 1,
+            other => violations.push(format!("{}: unknown parity_class '{other}'", row.topic)),
+        }
+    }
+
+    if violations.is_empty() {
+        GateReport {
+            gate: GatePhase::B.as_str(),
+            passed: true,
+            details: format!(
+                "manifest={}, topics={}, statements={}, claims_authorized={}, \
+                 parity byte/semantic={}/{}",
+                &manifest.manifest_digest[..16],
+                manifest.diagnostics.topics_total,
+                manifest.diagnostics.statements_total,
+                claims_authorized,
+                byte_rows,
+                semantic_rows,
+            ),
+            violations,
+        }
+    } else {
+        GateReport::failed(GatePhase::B, violations)
+    }
+}
+
+/// Phase C: realization parity over the approved V2 surfaces. A `byte` row
+/// must be reproduced byte-for-byte by the V2 clause realization; a
+/// `semantic` row records that the audited surface is a multi-clause
+/// rhetorical sentence approved by digest, and the gate verifies the clause
+/// still realizes with the lexicon-governed case.
+fn run_phase_c() -> GateReport {
+    let manifest: AuditedCorpusManifest = match serde_json::from_str(EMBEDDED_AUDITED_CORPUS) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            return GateReport::failed(
+                GatePhase::C,
+                vec![format!("audited-corpus manifest parse failed: {error}")],
+            )
+        }
+    };
+
+    let mut violations = Vec::new();
+    let mut byte_rows = 0usize;
+    let mut byte_matches = 0usize;
+    let mut semantic_rows = 0usize;
+
+    for row in &manifest.rows {
+        let plan = match build_audited_topic(&row.topic) {
+            Ok(plan) => plan,
+            Err(error) => {
+                violations.push(format!(
+                    "{}: chain failed before realization: {error}",
+                    row.topic
+                ));
+                continue;
+            }
+        };
+        let thesis_claim = plan
+            .authorized()
+            .certified()
+            .candidate()
+            .projected_claims()
+            .remove(0);
+
+        let frame = match valency_lexicon().get(&row.relation_id) {
+            Ok(frame) => frame,
+            Err(error) => {
+                violations.push(format!(
+                    "{}: no valency frame for relation '{}': {error}",
+                    row.topic, row.relation_id
+                ));
+                continue;
+            }
+        };
+        let complement = match frame.complement() {
+            Complement::None => None,
+            // An uninflected complement is carried verbatim: no case is
+            // demanded of it.
+            Complement::Uninflected => Some(NounPhrase::fixed(row.object_lemma.clone(), None)),
+            governing => {
+                let required = governing.required_case().expect("governing names a case");
+                if row.object_lemma.contains(' ') {
+                    // The corpus cannot inflect this phrase; it must already
+                    // stand in the governed case. When the phrase already
+                    // begins with the governed preposition, the frame's own
+                    // preposition must not be emitted again.
+                    let embedded = governing
+                        .preposition()
+                        .is_some_and(|p| row.object_lemma.starts_with(p));
+                    if embedded {
+                        Some(NounPhrase::fixed_with_preposition(
+                            row.object_lemma.clone(),
+                            required,
+                        ))
+                    } else {
+                        Some(NounPhrase::fixed(row.object_lemma.clone(), Some(required)))
+                    }
+                } else {
+                    Some(NounPhrase::lexical(row.object_lemma.clone()))
+                }
+            }
+        };
+
+        let mut tree = SynTree::new();
+        tree.push(
+            thesis_claim.occurrence,
+            Clause::new(
+                NounPhrase::lexical(row.subject_lemma.clone()),
+                VerbPhrase::new(row.relation_id.clone(), complement),
+            ),
+        );
+        let resolved = match qxfx0_semantic::response_plan_v2::resolve(
+            &tree,
+            valency_lexicon(),
+            qxfx0_morphology::get_runtime(),
+        ) {
+            Ok(resolved) => resolved,
+            Err(error) => {
+                violations.push(format!("{}: realization failed: {error}", row.topic));
+                continue;
+            }
+        };
+        let surfaces = resolved.linearize();
+        let Some(surface) = surfaces.first() else {
+            violations.push(format!("{}: realization produced no surface", row.topic));
+            continue;
+        };
+
+        match row.parity_class.as_str() {
+            "byte" => {
+                byte_rows += 1;
+                if *surface == row.approved_surfaces[0] {
+                    byte_matches += 1;
+                } else {
+                    violations.push(format!(
+                        "{}: byte parity violated: realized '{surface}', approved '{}'",
+                        row.topic, row.approved_surfaces[0]
+                    ));
+                }
+            }
+            "semantic" => {
+                semantic_rows += 1;
+                let actual = sha256_hex(row.approved_surfaces[0].as_bytes());
+                if actual != row.surface_digests[0] {
+                    violations.push(format!(
+                        "{}: approved surface digest drifted: recorded={}, actual={actual}",
+                        row.topic, row.surface_digests[0]
+                    ));
+                }
+                let governed = resolved
+                    .clauses()
+                    .first()
+                    .expect("realization produced a clause")
+                    .governed_case;
+                let required = frame.complement().required_case();
+                if required.is_some() && governed != required {
+                    violations.push(format!(
+                        "{}: realized case {governed:?} does not match lexicon {required:?}",
+                        row.topic
+                    ));
+                }
+            }
+            other => violations.push(format!("{}: unknown parity_class '{other}'", row.topic)),
+        }
+    }
+
+    if violations.is_empty() {
+        GateReport {
+            gate: GatePhase::C.as_str(),
+            passed: true,
+            details: format!(
+                "manifest={}, byte parity {byte_matches}/{byte_rows}, \
+                 semantic approved {semantic_rows}/{}",
+                &manifest.manifest_digest[..16],
+                manifest.diagnostics.topics_total,
+            ),
+            violations,
+        }
+    } else {
+        GateReport::failed(GatePhase::C, violations)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -318,11 +712,30 @@ mod tests {
         );
     }
 
+    /// Every declared phase must reach a verdict from real evidence.
+    ///
+    /// This replaces an earlier guard that asserted B and C *fail* closed while
+    /// they were unimplemented. That guard existed so a release could not claim
+    /// an unreached phase; now that both are implemented it would have to be
+    /// deleted or inverted, and deleting it would leave nothing checking that a
+    /// phase actually evaluates rather than returning a vacuous pass. So it is
+    /// inverted here: each phase must pass *and* report the manifest it read.
     #[test]
-    fn unimplemented_phases_fail_closed() {
-        for phase in [GatePhase::B, GatePhase::C] {
+    fn every_declared_phase_reaches_a_verdict_from_evidence() {
+        for phase in [GatePhase::A, GatePhase::B, GatePhase::C] {
             let report = run_gate(phase);
-            assert!(!report.passed, "{} must fail closed", phase.as_str());
+            assert!(
+                report.passed,
+                "{} failed: {:?}",
+                phase.as_str(),
+                report.violations
+            );
+            assert!(
+                report.details.contains("manifest") || report.details.contains("matrix"),
+                "{} passed without naming the evidence it read: {}",
+                phase.as_str(),
+                report.details
+            );
         }
     }
 
