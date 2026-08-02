@@ -11,22 +11,30 @@
 //! → RealizedSurface           execution receipt
 //! ```
 //!
-//! This module currently implements the first stratum only: the recursive
-//! proposition algebra with Merkle identity, and the typed entailment layer
-//! over it. Nothing here is wired into the runtime — the V1 audited renderer
+//! This module implements the candidate stratum only: the recursive
+//! proposition algebra with Merkle identity, the typed entailment layer over
+//! it, the rhetorical structure, and the structural certificate that joins the
+//! three. Nothing here is wired into the runtime — the V1 audited renderer
 //! remains authoritative until `doctor --gate response-plan-v2-phase-b` is
 //! implemented and flipped.
 //!
-//! The discourse tree, the role projection, and the four certificates are
+//! The four admission/evidence/assertion/realization certificates are
 //! deliberately absent rather than stubbed, so the type system does not
 //! suggest a boundary that has not been designed in code yet.
 
+pub mod candidate;
 pub mod derivation;
+pub mod discourse;
 pub mod proposition;
 
+pub use candidate::{CandidateInvariantError, CandidateResponsePlan};
 pub use derivation::{
     DerivationDag, DerivationDagBuilder, DerivationId, DerivationInvariantError, DerivationNode,
     EvidenceRef, InferenceRuleId, DERIVATION_DOMAIN,
+};
+pub use discourse::{
+    projected_roles, ClaimId, DiscourseInvariantError, DiscourseOccurrenceId, DiscoursePlan,
+    DiscourseTree, ProjectedClaim, CLAIM_DOMAIN, DISCOURSE_DOMAIN,
 };
 pub use proposition::{
     PropositionDag, PropositionDagBuilder, PropositionId, PropositionInvariantError,
@@ -41,8 +49,6 @@ pub use proposition::{
 /// rejection.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum V2Failure {
-    #[error("candidate proposition invariant: {0}")]
-    Proposition(#[from] PropositionInvariantError),
-    #[error("candidate derivation invariant: {0}")]
-    Derivation(#[from] DerivationInvariantError),
+    #[error("candidate invariant: {0}")]
+    Candidate(#[from] CandidateInvariantError),
 }
