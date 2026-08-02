@@ -1,5 +1,4 @@
 use qxfx0_types::system_state::SystemState;
-use qxfx0_types::BeliefPolarity;
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -11,49 +10,24 @@ mod db;
 fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
     let mut violations = Vec::new();
     let active_pack = qxfx0_semantic::active_pack_set();
+    let perspective_is_empty = state.semantic.perspective.opinions.is_empty()
+        && state.semantic.perspective.episodes.is_empty();
+    if state.semantic.pack_set_fingerprint.is_empty() && !perspective_is_empty {
+        violations.push("non-empty Perspective has no knowledge-pack fingerprint".into());
+        return violations;
+    }
     if !state.semantic.pack_set_fingerprint.is_empty()
         && state.semantic.pack_set_fingerprint != active_pack.fingerprint()
     {
         violations.push("active knowledge-pack fingerprint mismatch".into());
         return violations;
     }
-
-    for (topic, opinion) in &state.semantic.perspective.opinions {
-        if opinion.polarity == BeliefPolarity::Opposed {
-            violations.push(format!(
-                "perspective opinion '{}' uses unsupported opposed polarity",
-                topic.0
-            ));
-        }
-        for fact_id in &opinion.grounding_facts {
-            match active_pack.facts().select(fact_id) {
-                Ok(fact) if &fact.subject == topic => {}
-                Ok(fact) => violations.push(format!(
-                    "perspective fact '{}' belongs to '{}' instead of '{}'",
-                    fact_id, fact.subject.0, topic.0
-                )),
-                Err(error) => violations.push(format!(
-                    "perspective opinion '{}' has invalid authority: {}",
-                    topic.0, error
-                )),
-            }
-        }
-    }
-    for episode in &state.semantic.perspective.episodes {
-        for fact_id in &episode.cited_facts {
-            match active_pack.facts().select(fact_id) {
-                Ok(fact) if fact.subject == episode.topic => {}
-                Ok(fact) => violations.push(format!(
-                    "perspective episode {} cites fact '{}' for another topic '{}'",
-                    episode.id.0, fact_id, fact.subject.0
-                )),
-                Err(error) => violations.push(format!(
-                    "perspective episode {} has invalid authority: {}",
-                    episode.id.0, error
-                )),
-            }
-        }
-    }
+    violations.extend(
+        qxfx0_self::fact_perspective::validate_perspective_against_pack(
+            &state.semantic.perspective,
+            active_pack,
+        ),
+    );
     violations
 }
 
@@ -500,7 +474,8 @@ impl Persistence {
                 state.semantic.runtime_graph.rebuild_indices();
                 state.semantic.cached_edge_count = 0;
                 state.semantic.cached_network = None;
-                let violations = state.validate();
+                let mut violations = state.validate();
+                violations.extend(perspective_authority_violations(&state));
                 if !violations.is_empty() {
                     return Err(PersistenceError::InvalidState(violations.join("; ")));
                 }
@@ -608,6 +583,34 @@ mod tests {
     use qxfx0_types::system_state::*;
     use qxfx0_types::{BeliefPolarity, ConceptId, FactId, OpinionCore};
     use std::collections::BTreeSet;
+
+    fn qualified_without_counterpoint_state(session_id: &str) -> SystemState {
+        let packs = qxfx0_semantic::active_pack_set();
+        let topic = ConceptId("concept.свобода".into());
+        let thesis = FactId::try_new("fact.freedom_choice").unwrap();
+        let (mut perspective, _) = integrate_curated_claims(
+            &Default::default(),
+            1,
+            &[(ClaimRole::Thesis, thesis)],
+            packs.facts(),
+        )
+        .unwrap();
+        perspective.opinions.get_mut(&topic).unwrap().polarity = BeliefPolarity::Qualified;
+        assert!(perspective.validate().is_empty());
+        SystemState {
+            session_id: session_id.into(),
+            dialogue: DialogueState {
+                turn_count: 1,
+                ..Default::default()
+            },
+            semantic: SemanticState {
+                pack_set_fingerprint: packs.fingerprint().into(),
+                perspective,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
 
     #[test]
     fn test_open_memory() {
@@ -737,6 +740,82 @@ mod tests {
         let loaded = db.load_state(&state.session_id).unwrap().unwrap();
         assert_eq!(loaded.semantic.pack_set_fingerprint, packs.fingerprint());
         assert_eq!(loaded.semantic.perspective, state.semantic.perspective);
+    }
+
+    #[test]
+    fn non_empty_perspective_without_fingerprint_is_rejected_on_save() {
+        let db = Persistence::open_memory().unwrap();
+        let mut state = qualified_without_counterpoint_state("missing-pack-identity");
+        state
+            .semantic
+            .perspective
+            .opinions
+            .get_mut(&ConceptId("concept.свобода".into()))
+            .unwrap()
+            .polarity = BeliefPolarity::Affirmed;
+        state.semantic.pack_set_fingerprint.clear();
+        let error = db
+            .save_state(&state.session_id, &state)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("non-empty Perspective has no knowledge-pack fingerprint"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn well_formed_but_semantically_corrupt_normalized_and_legacy_json_fail_closed() {
+        let db = Persistence::open_memory().unwrap();
+
+        let normalized_id = "corrupt-normalized-perspective";
+        let clean = SystemState {
+            session_id: normalized_id.into(),
+            ..Default::default()
+        };
+        db.save_state(normalized_id, &clean).unwrap();
+        let corrupt_normalized = qualified_without_counterpoint_state(normalized_id);
+        db.conn
+            .execute(
+                "UPDATE runtime_sessions SET state_json = ?1 WHERE id = ?2",
+                params![
+                    serde_json::to_string(&corrupt_normalized).unwrap(),
+                    normalized_id
+                ],
+            )
+            .unwrap();
+        db.conn
+            .execute(
+                "UPDATE session_semantic SET perspective_json = ?1 WHERE session_id = ?2",
+                params![
+                    serde_json::to_string(&corrupt_normalized.semantic.perspective).unwrap(),
+                    normalized_id
+                ],
+            )
+            .unwrap();
+        let error = db.load_state(normalized_id).unwrap_err().to_string();
+        assert!(
+            error.contains("qualified without a curated counterpoint"),
+            "{error}"
+        );
+
+        let legacy_id = "corrupt-legacy-perspective";
+        let corrupt_legacy = qualified_without_counterpoint_state(legacy_id);
+        db.conn
+            .execute(
+                "INSERT INTO runtime_sessions (id, state_json, turn_count) VALUES (?1, ?2, ?3)",
+                params![
+                    legacy_id,
+                    serde_json::to_string(&corrupt_legacy).unwrap(),
+                    corrupt_legacy.dialogue.turn_count
+                ],
+            )
+            .unwrap();
+        let error = db.load_state(legacy_id).unwrap_err().to_string();
+        assert!(
+            error.contains("qualified without a curated counterpoint"),
+            "{error}"
+        );
     }
 
     #[test]

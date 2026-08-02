@@ -1,5 +1,7 @@
 use crate::fresh_state;
-use qxfx0_pipeline::{process_turn, process_turn_with_trace, TurnInput};
+use qxfx0_pipeline::{
+    process_turn, process_turn_with_trace_and_renderer, RendererAuthority, TurnInput,
+};
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
@@ -166,7 +168,11 @@ pub fn run_renderer_diversity_audit(
             session_id: session_id.clone(),
         };
         let mut state = fresh_state(&session_id);
-        let (output, trace) = process_turn_with_trace(&input, &mut state);
+        let (output, trace) = process_turn_with_trace_and_renderer(
+            &input,
+            &mut state,
+            RendererAuthority::AuditedPlan,
+        );
         let ready = trace.steps.iter().any(|step| {
             step.stage == "plan_shadow"
                 && step.metadata.get("plan_outcome").map(String::as_str) == Some("ready")
