@@ -39,6 +39,8 @@ const MATRIX_ID: &str = "template-agreement-matrix-v1";
 const AUDITED_CORPUS_PATH: &str = "data/gates/response-plan-v2/audited-corpus-manifest.json";
 const AUDITED_CORPUS_SCHEMA_VERSION: u32 = 1;
 const AUDITED_CORPUS_ID: &str = "response-plan-v2-audited-corpus-v1";
+const REPLAY_MANIFEST_PATH: &str = "data/gates/response-plan-v2/replay-manifest.json";
+const REPLAY_MANIFEST_ID: &str = "response-plan-v2-replay-v1";
 
 /// Embedded so a release binary can run the gate without a working tree.
 const EMBEDDED_MATRIX: &str =
@@ -47,12 +49,19 @@ const EMBEDDED_MATRIX: &str =
 /// Embedded so a release binary can run the gate without a working tree.
 const EMBEDDED_AUDITED_CORPUS: &str =
     include_str!("../../data/gates/response-plan-v2/audited-corpus-manifest.json");
+const EMBEDDED_REPLAY_MANIFEST: &str =
+    include_str!("../../data/gates/response-plan-v2/replay-manifest.json");
+const EMBEDDED_SELECTION_VECTORS: &[u8] =
+    include_bytes!("../../docs/reference-vectors/response-plan-v2-selection-v1.json");
+const EMBEDDED_REALIZATION_VECTORS: &[u8] =
+    include_bytes!("../../docs/reference-vectors/response-plan-v2-realization-v1.json");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum GatePhase {
     A,
     B,
     C,
+    D,
 }
 
 impl GatePhase {
@@ -61,6 +70,7 @@ impl GatePhase {
             "response-plan-v2-phase-a" => Some(Self::A),
             "response-plan-v2-phase-b" => Some(Self::B),
             "response-plan-v2-phase-c" => Some(Self::C),
+            "response-plan-v2-replay" => Some(Self::D),
             _ => None,
         }
     }
@@ -70,6 +80,7 @@ impl GatePhase {
             Self::A => "response-plan-v2-phase-a",
             Self::B => "response-plan-v2-phase-b",
             Self::C => "response-plan-v2-phase-c",
+            Self::D => "response-plan-v2-replay",
         }
     }
 }
@@ -129,6 +140,7 @@ pub fn run_gate(gate: GatePhase) -> GateReport {
         GatePhase::A => run_phase_a(),
         GatePhase::B => run_phase_b(),
         GatePhase::C => run_phase_c(),
+        GatePhase::D => run_replay_gate(),
     }
 }
 
@@ -302,6 +314,10 @@ pub const fn audited_corpus_path() -> &'static str {
     AUDITED_CORPUS_PATH
 }
 
+pub const fn replay_manifest_path() -> &'static str {
+    REPLAY_MANIFEST_PATH
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct AuditedCorpusDiagnostics {
     topics_total: usize,
@@ -335,6 +351,114 @@ struct AuditedCorpusManifest {
     source_files: BTreeMap<String, String>,
     diagnostics: AuditedCorpusDiagnostics,
     rows: Vec<AuditedCorpusRow>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct ReplayManifest {
+    schema_version: u32,
+    manifest_id: String,
+    manifest_digest: String,
+    corpus_manifest_id: String,
+    corpus_manifest_digest: String,
+    matrix_id: String,
+    matrix_digest: String,
+    topics_total: usize,
+    claims_total: usize,
+    selection_vectors_digest: String,
+    realization_vectors_digest: String,
+    legacy_graph_declarative_fallback: bool,
+}
+
+fn run_replay_gate() -> GateReport {
+    let manifest: ReplayManifest = match serde_json::from_str(EMBEDDED_REPLAY_MANIFEST) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            return GateReport::failed(
+                GatePhase::D,
+                vec![format!("replay manifest parse failed: {error}")],
+            )
+        }
+    };
+    let corpus: AuditedCorpusManifest = match serde_json::from_str(EMBEDDED_AUDITED_CORPUS) {
+        Ok(manifest) => manifest,
+        Err(error) => return GateReport::failed(GatePhase::D, vec![error.to_string()]),
+    };
+    let matrix: AgreementMatrix = match serde_json::from_str(EMBEDDED_MATRIX) {
+        Ok(matrix) => matrix,
+        Err(error) => return GateReport::failed(GatePhase::D, vec![error.to_string()]),
+    };
+    let mut violations = Vec::new();
+    if manifest.schema_version != 1 {
+        violations.push("replay manifest schema_version must be 1".into());
+    }
+    if manifest.manifest_id != REPLAY_MANIFEST_ID {
+        violations.push("replay manifest id drifted".into());
+    }
+    if manifest.manifest_digest.len() != 64 {
+        violations.push("replay manifest must carry a SHA-256 digest".into());
+    }
+    let mut canonical = serde_json::to_value(&manifest).expect("replay manifest serializes");
+    canonical
+        .as_object_mut()
+        .expect("manifest is an object")
+        .remove("manifest_digest");
+    let actual_manifest_digest = sha256_hex(
+        serde_json::to_string(&canonical)
+            .expect("canonical replay manifest serializes")
+            .as_bytes(),
+    );
+    if actual_manifest_digest != manifest.manifest_digest {
+        violations.push(format!(
+            "replay manifest digest mismatch: recorded={}, actual={actual_manifest_digest}",
+            manifest.manifest_digest
+        ));
+    }
+    if manifest.corpus_manifest_id != corpus.manifest_id
+        || manifest.corpus_manifest_digest != corpus.manifest_digest
+    {
+        violations.push("replay manifest is not bound to the audited corpus manifest".into());
+    }
+    if manifest.matrix_id != matrix.matrix_id || manifest.matrix_digest != matrix.matrix_digest {
+        violations.push("replay manifest is not bound to the agreement matrix".into());
+    }
+    if manifest.topics_total != 30 || manifest.claims_total != 69 {
+        violations.push("replay manifest must bind 30 topics and 69 claims".into());
+    }
+    if manifest.selection_vectors_digest.len() != 64
+        || manifest.realization_vectors_digest.len() != 64
+        || manifest
+            .selection_vectors_digest
+            .chars()
+            .all(|value| value == '0')
+        || manifest
+            .realization_vectors_digest
+            .chars()
+            .all(|value| value == '0')
+    {
+        violations.push("selection and realization vector digests must be SHA-256 values".into());
+    }
+    if manifest.selection_vectors_digest != sha256_hex(EMBEDDED_SELECTION_VECTORS) {
+        violations.push("selection reference vectors drifted".into());
+    }
+    if manifest.realization_vectors_digest != sha256_hex(EMBEDDED_REALIZATION_VECTORS) {
+        violations.push("realization reference vectors drifted".into());
+    }
+    if manifest.legacy_graph_declarative_fallback {
+        violations.push("legacy_graph is forbidden as a declarative fallback".into());
+    }
+    if violations.is_empty() {
+        GateReport {
+            gate: GatePhase::D.as_str(),
+            passed: true,
+            details: format!(
+                "manifest={}, corpus=30 topics/69 claims, legacy_graph=false",
+                &manifest.manifest_digest[..16]
+            ),
+            violations,
+        }
+    } else {
+        GateReport::failed(GatePhase::D, violations)
+    }
 }
 
 /// Phase B: the audited corpus — semantic + authority parity over all 30
@@ -408,6 +532,16 @@ fn run_phase_b() -> GateReport {
     {
         violations.push("parity diagnostics must partition the topics".into());
     }
+    if manifest.rows.len() != 30 {
+        violations.push(format!(
+            "audited-corpus must contain exactly 30 rows, found {}",
+            manifest.rows.len()
+        ));
+    }
+    let mut topics = std::collections::BTreeSet::new();
+    let mut manifest_statements = 0usize;
+    let mut actual_byte = 0usize;
+    let mut actual_semantic = 0usize;
 
     let argued = qxfx0_semantic::argued_topic_registry().map_err(|error| error.to_string());
     let mut byte_rows = 0usize;
@@ -415,6 +549,27 @@ fn run_phase_b() -> GateReport {
     let mut claims_authorized = 0usize;
 
     for row in &manifest.rows {
+        if !topics.insert(row.topic.clone()) {
+            violations.push(format!(
+                "duplicate audited-corpus topic '{}', manifest is not a set",
+                row.topic
+            ));
+        }
+        manifest_statements += row.statement_count;
+        match row.parity_class.as_str() {
+            "byte" => actual_byte += 1,
+            "semantic" => actual_semantic += 1,
+            _ => {}
+        }
+        if row.approved_surfaces.len() != row.surface_digests.len()
+            || row.approved_surfaces.len() != row.statement_count
+            || row.approved_surfaces.is_empty()
+        {
+            violations.push(format!(
+                "{}: approved surfaces/digests must be non-empty and match statement_count",
+                row.topic
+            ));
+        }
         let argued = match &argued {
             Ok(registry) => registry,
             Err(error) => {
@@ -495,6 +650,17 @@ fn run_phase_b() -> GateReport {
             "semantic" => semantic_rows += 1,
             other => violations.push(format!("{}: unknown parity_class '{other}'", row.topic)),
         }
+    }
+
+    if manifest_statements != 69 {
+        violations.push(format!(
+            "audited-corpus rows contain {manifest_statements} statements, expected 69"
+        ));
+    }
+    if actual_byte != manifest.diagnostics.parity_byte
+        || actual_semantic != manifest.diagnostics.parity_semantic
+    {
+        violations.push("audited-corpus parity diagnostics do not match row classes".into());
     }
 
     if violations.is_empty() {
@@ -621,6 +787,13 @@ fn run_phase_c() -> GateReport {
             continue;
         };
 
+        if row.approved_surfaces.is_empty() || row.surface_digests.is_empty() {
+            violations.push(format!(
+                "{}: approved golden surface vector is empty",
+                row.topic
+            ));
+            continue;
+        }
         match row.parity_class.as_str() {
             "byte" => {
                 byte_rows += 1;
@@ -722,7 +895,7 @@ mod tests {
     /// inverted here: each phase must pass *and* report the manifest it read.
     #[test]
     fn every_declared_phase_reaches_a_verdict_from_evidence() {
-        for phase in [GatePhase::A, GatePhase::B, GatePhase::C] {
+        for phase in [GatePhase::A, GatePhase::B, GatePhase::C, GatePhase::D] {
             let report = run_gate(phase);
             assert!(
                 report.passed,
@@ -741,7 +914,7 @@ mod tests {
 
     #[test]
     fn gate_names_round_trip() {
-        for phase in [GatePhase::A, GatePhase::B, GatePhase::C] {
+        for phase in [GatePhase::A, GatePhase::B, GatePhase::C, GatePhase::D] {
             assert_eq!(GatePhase::parse(phase.as_str()), Some(phase));
         }
         assert_eq!(GatePhase::parse("response-plan-v2-phase-z"), None);

@@ -259,6 +259,32 @@ mod tests {
         expected_raw: i32,
     }
 
+    #[derive(Deserialize)]
+    struct SelectionVectors {
+        schema: String,
+        ranking_version: String,
+        numeric_semantics_version: String,
+        vectors: Vec<SelectionVector>,
+    }
+    #[derive(Deserialize)]
+    struct SelectionVector {
+        name: String,
+        context: SelectionVectorContext,
+        candidates: Vec<SelectionVectorCandidate>,
+        expected_topic: String,
+    }
+    #[derive(Deserialize)]
+    struct SelectionVectorContext {
+        conatus: i32,
+        salience: i32,
+        doubt: i32,
+    }
+    #[derive(Deserialize)]
+    struct SelectionVectorCandidate {
+        topic: String,
+        base_utility: i32,
+    }
+
     fn candidate(topic: &str, signals: CandidateSelectionSignals) -> SelectionCandidate {
         let plan = build_audited_topic(topic).expect("audited plan");
         SelectionCandidate::new(plan.authorized().certified().candidate().clone(), signals)
@@ -307,6 +333,48 @@ mod tests {
             domain_digest(b"qxfx0:numeric-semantics-vectors:v1", &encoded),
             vectors.vector_digest
         );
+    }
+
+    #[test]
+    fn selection_reference_vectors_are_executable() {
+        let vectors: SelectionVectors = serde_json::from_str(include_str!(
+            "../../../docs/reference-vectors/response-plan-v2-selection-v1.json"
+        ))
+        .expect("selection vectors parse");
+        assert_eq!(vectors.schema, "qxfx0.response-plan-v2.selection.v1");
+        assert_eq!(vectors.ranking_version, RANKING_VERSION);
+        assert_eq!(vectors.numeric_semantics_version, NUMERIC_SEMANTICS_VERSION);
+        for vector in vectors.vectors {
+            let context = SelfSelectionContext {
+                conatus: BasisPoints::from_raw(vector.context.conatus),
+                salience: BasisPoints::from_raw(vector.context.salience),
+                doubt: BasisPoints::from_raw(vector.context.doubt),
+            };
+            let candidates = vector
+                .candidates
+                .iter()
+                .map(|value| {
+                    candidate(
+                        &value.topic,
+                        CandidateSelectionSignals {
+                            base_utility: BasisPoints::from_raw(value.base_utility),
+                            preferred_conatus: context.conatus,
+                            preferred_salience: context.salience,
+                            doubt_sensitivity: BasisPoints::ZERO,
+                        },
+                    )
+                })
+                .collect();
+            let selected = select_candidate(candidates, context, SelectionPolicy::default())
+                .unwrap_or_else(|error| panic!("{}: {error}", vector.name));
+            let expected = candidate(&vector.expected_topic, CandidateSelectionSignals::neutral());
+            assert_eq!(
+                selected.plan().candidate_digest(),
+                expected.plan.candidate_digest(),
+                "{}",
+                vector.name
+            );
+        }
     }
 
     #[test]

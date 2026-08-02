@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "manifest_id": "response-plan-v2-replay-v1",
+  "manifest_digest": "df784234efd62d7b29ba5afc5c2f5773830b34579ecf80d964ed8dd437252716",
+  "corpus_manifest_id": "response-plan-v2-audited-corpus-v1",
+  "corpus_manifest_digest": "63e191970089a12209e9450cef0686d326ed71e15073edc8420230e1c2235b9a",
+  "matrix_id": "template-agreement-matrix-v1",
+  "matrix_digest": "ecd946c710010fb5c31b42bfb0d81a72ffd47bd296b300d518c703b07451e2c1",
+  "topics_total": 30,
+  "claims_total": 69,
+  "selection_vectors_digest": "f4756f5d2dbb70e98d4d2949c7116f61b908ace0cde9eff26de9072e484727a9",
+  "realization_vectors_digest": "142479e8089b58cdfce446f27e89f9555d0aa15c9f4ef03db2bcaaf70d51a86a",
+  "legacy_graph_declarative_fallback": false
+}
