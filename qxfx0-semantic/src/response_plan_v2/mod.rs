@@ -26,6 +26,8 @@ pub mod candidate;
 pub mod derivation;
 pub mod discourse;
 pub mod proposition;
+pub mod syn_tree;
+pub mod valency;
 
 pub use candidate::{CandidateInvariantError, CandidateResponsePlan};
 pub use derivation::{
@@ -39,6 +41,14 @@ pub use discourse::{
 pub use proposition::{
     PropositionDag, PropositionDagBuilder, PropositionId, PropositionInvariantError,
     PropositionNode, QualifierId, PROPOSITION_DOMAIN,
+};
+pub use syn_tree::{
+    by_occurrence, resolve, Clause, NounPhrase, RealizationCompletenessCertificate,
+    RealizationError, ResolvedClause, ResolvedSynTree, SynTree, VerbPhrase,
+};
+pub use valency::{
+    valency_lexicon, AgreementFeatures, Complement, HeadKind, ValencyError, ValencyFrame,
+    ValencyLexicon,
 };
 
 /// Turn-level failure envelope (ADR-0034 §1).
