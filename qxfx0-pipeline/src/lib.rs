@@ -9,6 +9,7 @@ pub mod conversation_fsm;
 #[path = "tracing.rs"]
 pub mod execution_trace;
 pub mod fact_grounded;
+pub mod replay;
 pub mod shadow_plan;
 mod stages;
 pub mod stance_request;
@@ -26,7 +27,10 @@ use qxfx0_types::atom::AtomId;
 use qxfx0_types::system_state::*;
 use qxfx0_types::*;
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::Read;
 use std::time::{Duration, Instant};
 use turn_context::{StageTraceContext, TurnInputContext};
 
@@ -882,9 +886,24 @@ struct ResponsePlanV2ShadowArtifact {
     schema: &'static str,
     contract: qxfx0_semantic::response_plan_v2::TurnContractSnapshot,
     record: Option<qxfx0_semantic::response_plan_v2::TurnRecord>,
-    attempt: qxfx0_semantic::response_plan_v2::V2Attempt,
+    result: qxfx0_semantic::response_plan_v2::V2ExecutionResult,
     realized: Option<qxfx0_semantic::response_plan_v2::RealizedSurface>,
     fallback: qxfx0_semantic::response_plan_v2::FallbackAction,
+}
+
+pub fn current_binary_digest() -> Result<String, String> {
+    let path = std::env::current_exe().map_err(|error| error.to_string())?;
+    let mut file = File::open(path).map_err(|error| error.to_string())?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer).map_err(|error| error.to_string())?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 fn record_response_plan_v2_shadow(
@@ -893,19 +912,19 @@ fn record_response_plan_v2_shadow(
     logical_turn: u64,
 ) {
     use qxfx0_semantic::response_plan_v2::{
-        build_audited_topic_at, linearize, select_candidate, AssertionPolicy, AuthoritySnapshot,
-        CandidateSelectionSignals, PlanningPolicySnapshot, RealizationSnapshot, SelectionPolicy,
-        SelectionPolicySnapshot, SelfSelectionContext, TurnContractSnapshot, TurnRecord, V2Attempt,
-        V2Route,
+        execute_audited_topic_at, AssertionPolicy, AuthoritySnapshot, PlanningPolicySnapshot,
+        RealizationSnapshot, SelectionPolicy, SelectionPolicySnapshot, SelfSelectionContext,
+        TurnContractSnapshot, TurnRecord, V2BudgetPolicy,
     };
 
     let policy = SelectionPolicy::default();
+    let budgets = V2BudgetPolicy::default();
     let contract = TurnContractSnapshot::new(
         AuthoritySnapshot::new(
             qxfx0_semantic::active_pack_set().fingerprint(),
             AssertionPolicy::v1().digest(),
         ),
-        PlanningPolicySnapshot::new("response-plan-v2-budget-v1", "proposition-canon-v1"),
+        PlanningPolicySnapshot::new(budgets.digest(), "proposition-canon-v1"),
         RealizationSnapshot::new(
             qxfx0_semantic::response_plan_v2::valency_lexicon().fingerprint(),
             "clause-grammar-v1",
@@ -933,87 +952,37 @@ fn record_response_plan_v2_shadow(
         routed.prepared().salience(),
         0.0,
     );
-    let result = build_audited_topic_at(
+    let execution = execute_audited_topic_at(
         routed.prepared().input().subject(),
         qxfx0_semantic::response_plan_v2::EvidenceEvaluationContext::new(logical_turn, None),
+        &budgets,
+        &contract,
+        context,
+        policy,
+        qxfx0_semantic::response_plan_v2::valency_lexicon(),
+        qxfx0_morphology::get_runtime(),
     );
-    let (attempt, record, realized_surface) = match result {
-        Err(_) => (
-            V2Attempt::NotApplicable {
-                route: V2Route::UnsupportedInput,
-            },
-            None,
-            None,
-        ),
-        Ok(plan) => match plan.thesis_syn_tree(qxfx0_semantic::response_plan_v2::valency_lexicon())
-        {
-            Err(_) => (
-                V2Attempt::NotApplicable {
-                    route: V2Route::V1Only,
-                },
-                None,
-                None,
-            ),
-            Ok(tree) => {
-                let authorized = plan.into_authorized();
-                let candidate = qxfx0_semantic::response_plan_v2::SelectionCandidate::new(
-                    authorized.certified().candidate().clone(),
-                    CandidateSelectionSignals::neutral(),
-                );
-                let selected = match select_candidate(vec![candidate], context, policy) {
-                    Ok(selected) => selected,
-                    Err(_) => unreachable!("one certified candidate is non-empty"),
-                };
-                let selection = selected.receipt().clone();
-                let realized = qxfx0_semantic::response_plan_v2::try_realize(
-                    authorized,
-                    &tree,
-                    &contract.realization,
-                    qxfx0_semantic::response_plan_v2::valency_lexicon(),
-                    qxfx0_morphology::get_runtime(),
-                );
-                match realized {
-                    Ok(realizable) => match linearize(&realizable, &contract.realization) {
-                        Ok(surface) => {
-                            let record = TurnRecord::new(
-                                contract.clone(),
-                                selection,
-                                "runtime-binary-unbound",
-                            );
-                            (
-                                V2Attempt::Realizable(realizable),
-                                Some(record),
-                                Some(surface),
-                            )
-                        }
-                        Err(error) => {
-                            let _ = error;
-                            (
-                                V2Attempt::NotApplicable {
-                                    route: V2Route::V1Only,
-                                },
-                                None,
-                                None,
-                            )
-                        }
-                    },
-                    Err(_) => (
-                        V2Attempt::NotApplicable {
-                            route: V2Route::V1Only,
-                        },
-                        None,
-                        None,
-                    ),
-                }
-            }
-        },
-    };
-    let fallback = qxfx0_semantic::response_plan_v2::fallback_action(None);
+    let record =
+        execution
+            .selection
+            .zip(execution.exact_replay)
+            .and_then(|(selection, exact_replay)| {
+                let binary_digest = current_binary_digest().ok()?;
+                Some(TurnRecord::new(
+                    contract.clone(),
+                    selection,
+                    binary_digest,
+                    exact_replay,
+                ))
+            });
+    let result = execution.result;
+    let realized_surface = execution.realized;
+    let fallback = qxfx0_semantic::response_plan_v2::fallback_action_for_result(&result);
     let artifact = ResponsePlanV2ShadowArtifact {
         schema: "qxfx0.response-plan-v2.shadow.v1",
         contract,
         record,
-        attempt,
+        result,
         realized: realized_surface,
         fallback,
     };
@@ -1025,7 +994,19 @@ fn record_response_plan_v2_shadow(
     .unwrap_or_else(|error| format!("digest-error:{error}"));
     let output_digest = execution_trace::calculate_stable_digest(&artifact)
         .unwrap_or_else(|error| format!("digest-error:{error}"));
-    let authority_parity = artifact.record.is_some();
+    let authority_parity = artifact.record.is_some()
+        || matches!(
+            &artifact.result,
+            qxfx0_semantic::response_plan_v2::V2ExecutionResult::Attempt(
+                qxfx0_semantic::response_plan_v2::V2Attempt::Rejected {
+                artifact: rejected,
+                ..
+            }) if matches!(
+                rejected.prefix(),
+                qxfx0_semantic::response_plan_v2::CertifiedPrefix::AssertionAuthorized(_)
+                    | qxfx0_semantic::response_plan_v2::CertifiedPrefix::Realizable(_)
+            )
+        );
     let realization_parity = artifact.realized.as_ref().is_some_and(|surface| {
         qxfx0_semantic::argued_topic_registry()
             .ok()
@@ -1050,6 +1031,10 @@ fn record_response_plan_v2_shadow(
             ("authority_parity".into(), authority_parity.to_string()),
             ("realization_parity".into(), realization_parity.to_string()),
             ("v1_authoritative".into(), "true".into()),
+            (
+                "legacy_graph_v2_declarative_fallback".into(),
+                "false".into(),
+            ),
         ]),
     );
 }
@@ -2031,6 +2016,67 @@ mod tests {
             .find(|step| step.stage == "response_plan_v2_shadow")
             .expect("V2 shadow trace step");
         assert_eq!(step.metadata.get("v1_authoritative"), Some(&"true".into()));
+    }
+
+    #[test]
+    fn response_plan_v2_shadow_covers_30_topics_and_69_claims() {
+        let registry = qxfx0_semantic::argued_topic_registry().expect("audited registry");
+        let mut topics = 0usize;
+        let mut claims = 0usize;
+        for topic in registry.topics() {
+            topics += 1;
+            claims += topic.statement_count();
+            let session = format!("v2-corpus-{topics}");
+            let input = TurnInput {
+                session_id: session.clone(),
+                raw_text: format!("что такое {}?", topic.topic().as_str()),
+            };
+            let mut baseline = test_state(&session);
+            let baseline_output =
+                process_turn_with_options(&input, &mut baseline, TurnOptions::new());
+            let mut shadow = test_state(&session);
+            let (shadow_output, trace) = process_turn_with_options_and_trace(
+                &input,
+                &mut shadow,
+                TurnOptions::new()
+                    .with_response_plan_v2_shadow(ResponsePlanV2ShadowMode::TraceOnly),
+            );
+            assert_eq!(
+                baseline_output.response,
+                shadow_output.response,
+                "{}",
+                topic.topic().as_str()
+            );
+            assert_eq!(
+                execution_trace::calculate_stable_digest(&baseline).unwrap(),
+                execution_trace::calculate_stable_digest(&shadow).unwrap(),
+                "{}",
+                topic.topic().as_str()
+            );
+            let step = trace
+                .steps
+                .iter()
+                .find(|step| step.stage == "response_plan_v2_shadow")
+                .expect("V2 corpus trace step");
+            assert_eq!(
+                step.metadata.get("semantic_parity"),
+                Some(&"true".into()),
+                "{}",
+                topic.topic().as_str()
+            );
+            assert_eq!(
+                step.metadata.get("authority_parity"),
+                Some(&"true".into()),
+                "{}",
+                topic.topic().as_str()
+            );
+            assert_eq!(
+                step.metadata.get("legacy_graph_v2_declarative_fallback"),
+                Some(&"false".into())
+            );
+        }
+        assert_eq!(topics, 30);
+        assert_eq!(claims, 69);
     }
 
     fn parity_input(session_id: &str) -> TurnInput {

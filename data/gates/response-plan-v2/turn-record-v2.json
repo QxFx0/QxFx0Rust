@@ -1,0 +1,91 @@
+{
+  "schema_version": 2,
+  "contract": {
+    "authority": {
+      "pack_set_digest": "deb023728e10a0ba2b3a475df7e303e3e7f0a617a97189d12104d64b2796166b",
+      "inference_rules_digest": "cedee6c4f2f7361b66dba26123caadc48469316734d47f36be4cf5eb6f839abd",
+      "assertion_policy_digest": "086b452699c9d11e3e6fc240d570f0ade732fd2a6fc1f1d898e115061d7d247e",
+      "fingerprint": "f51529cfbb11217330d1f537bbdf426d8bf744c92eeb1d629366480c87aab72e"
+    },
+    "planning": {
+      "budgets_digest": "6f0582a5b0d7a9101383e0524967e8c414281850903e383279ae08a27c9ae62d",
+      "canonicalization_version": "proposition-canon-v1",
+      "fingerprint": "278513c9f0c6fb435d3b26d0f508e69eeef2321c00c55641cdc79eb559b50700"
+    },
+    "realization": {
+      "valency_digest": "ee2737d82c84ba7030cf370659dc3a3bae1b4c10d8d0d92e2b243b4aa4589d37",
+      "grammar_digest": "clause-grammar-v1",
+      "morphology_digest": "d7bc20571369d0e178c3866bff53e3cd4ceb67d27ca7830fa91213d656835ddf",
+      "morphology_depth_digest": "19b3ba9c7f40112f160426947ca83adda42ac3aba854075c6cea56459b82c1d2",
+      "fingerprint": "4b2cb1a1ef7b6415423598588b856363f01b1a45fba91ccf39e1ba5ccbbb87bc"
+    },
+    "selection": {
+      "self_policy_digest": "e85b7520a255cbecb77fe08d750a37322df6b9ca28fec113112324233c995ae2",
+      "ranking_version": "score-desc-merkle-asc-v1",
+      "numeric_semantics_version": "basis-points-half-away-v1",
+      "fingerprint": "8263b406bea14d942dd38768044e3bd8e2540ad808b60156928d489fccb43460"
+    },
+    "digest": "d3e4630d288916c9bb9d3a59b96032a11762adc6864ba01c9e35a5621a52c577"
+  },
+  "selection": {
+    "candidate_merkle_root": "2010bd3209b75e07b3b5530f4ca09402f94d13e77f63506f7df8ea7e09367807",
+    "score": 0,
+    "context": {
+      "conatus": 0,
+      "salience": 0,
+      "doubt": 0
+    },
+    "policy_digest": "e85b7520a255cbecb77fe08d750a37322df6b9ca28fec113112324233c995ae2",
+    "ranking_version": "score-desc-merkle-asc-v1",
+    "numeric_semantics_version": "basis-points-half-away-v1"
+  },
+  "binary_digest": "546e3956cf49783a0736c97727f36aea4b670456eaff4889dd35a5d7c394c887",
+  "exact_replay": {
+    "schema_version": 2,
+    "input": {
+      "topic": "свобода",
+      "logical_turn": 42,
+      "authority_as_of": null
+    },
+    "contract_digest": "d3e4630d288916c9bb9d3a59b96032a11762adc6864ba01c9e35a5621a52c577",
+    "candidate_merkle_root": "2010bd3209b75e07b3b5530f4ca09402f94d13e77f63506f7df8ea7e09367807",
+    "nodes": [
+      {
+        "clause": {
+          "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
+          "canonical_path": "0.thesis",
+          "subject_surface": "свобода",
+          "head_surface": "предполагает",
+          "preposition": null,
+          "complement_surface": "возможность выбора"
+        }
+      },
+      {
+        "fixed_phrase": {
+          "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
+          "canonical_path": "1.counterpoint",
+          "surface": "не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным"
+        }
+      },
+      {
+        "fixed_phrase": {
+          "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
+          "canonical_path": "2.consequence",
+          "surface": "свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу"
+        }
+      }
+    ],
+    "expected_surface": {
+      "clauses": [
+        "свобода предполагает возможность выбора",
+        "не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным",
+        "свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу"
+      ],
+      "surface_digest": "baa775c8fb58883cc220900798e4e241c4bc54cc1094aacb07523e5e26506777",
+      "realization_snapshot_digest": "4b2cb1a1ef7b6415423598588b856363f01b1a45fba91ccf39e1ba5ccbbb87bc",
+      "completeness_digest": "e3ad82a143bc1945e17403f9b60ae40bff96828f05d71977e2b57e345f79f049"
+    },
+    "bundle_digest": "54be525e016b6d4d35f5909307e04aa8020b24d75edf35aee477638099f72e61"
+  },
+  "stage_digest": "796da1148cda33d610d857b7d6ca8751c14840b9ef146b880fa4d35af8eba016"
+}

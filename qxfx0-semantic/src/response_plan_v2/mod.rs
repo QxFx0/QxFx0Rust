@@ -40,13 +40,15 @@ pub use assertion::{
     ClaimAuthority, QualifierAdmission, ASSERTION_POLICY_DOMAIN,
 };
 pub use attempt::{
-    enforce_budget, fallback_action, fallback_action_for_attempt, BoundedRejectedArtifact,
-    BudgetExceeded, BudgetPhase, BudgetResource, CertifiedPrefix, FallbackAction,
-    TruncationWitness, V2Attempt, V2Route,
+    attempt_input_digest, enforce_authorized_budget, enforce_budget, enforce_work_budget,
+    fallback_action, fallback_action_for_attempt, fallback_action_for_result,
+    BoundedRejectedArtifact, BudgetExceeded, BudgetPhase, BudgetRejection, BudgetResource,
+    BudgetWorkItem, CertifiedPrefix, FallbackAction, TruncationWitness, V2Attempt, V2BudgetPolicy,
+    V2ExecutionResult, V2PreCandidateOutcome, V2Route,
 };
 pub use audited_corpus::{
-    audit_audited_corpus, build_audited_topic, build_audited_topic_at, AuditedCorpusError,
-    AuditedCorpusReport, AuditedTopicPlan,
+    audit_audited_corpus, build_audited_topic, build_audited_topic_at, execute_audited_topic_at,
+    AuditedCorpusError, AuditedCorpusReport, AuditedTopicPlan, AuditedV2Execution,
 };
 pub use candidate::{CandidateInvariantError, CandidateResponsePlan};
 pub use derivation::{
@@ -76,13 +78,15 @@ pub use selection::{
     NUMERIC_SEMANTICS_VERSION, RANKING_VERSION,
 };
 pub use snapshot::{
-    inference_rule_set_digest, verify_replay, AuthoritySnapshot, PlanningPolicySnapshot,
-    RealizationSnapshot, ReplayLevel, ReplayMaterials, ReplayVerification, SelectionPolicySnapshot,
-    SnapshotError, TurnContractSnapshot, TurnRecord,
+    inference_rule_set_digest, verify_replay, AuthoritySnapshot, CapturedRealizationNode,
+    ExactReplayBundle, PlanningPolicySnapshot, RealizationSnapshot, ReplayInputEnvelope,
+    ReplayLevel, ReplayMaterials, ReplayVerification, SelectionPolicySnapshot, SnapshotError,
+    TurnContractSnapshot, TurnRecord,
 };
 pub use syn_tree::{
     by_occurrence, resolve, Clause, NounPhrase, RealizationCompletenessCertificate,
-    RealizationError, ResolvedClause, ResolvedSynTree, SynTree, VerbPhrase,
+    RealizationError, ResolvedClause, ResolvedSynNode, ResolvedSynTree, SynNode, SynTree,
+    VerbPhrase,
 };
 pub use valency::{
     starts_with_word, valency_lexicon, AgreementFeatures, Complement, HeadKind, ValencyError,
