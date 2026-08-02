@@ -1,0 +1,10 @@
+{
+  "schema": "qxfx0.response-plan-v2.realization.v1",
+  "contract": "valency-governed-case-and-lexical-morphology",
+  "vectors": [
+    { "name": "directed-at", "relation": "napravlena", "required_case": "accusative", "preposition": "на" },
+    { "name": "depends-on", "relation": "zavisit", "required_case": "genitive", "preposition": "от" },
+    { "name": "with", "relation": "svyazan", "required_case": "instrumental", "preposition": "с" },
+    { "name": "no-complement", "relation": "neobratimo", "required_case": null, "preposition": null }
+  ]
+}

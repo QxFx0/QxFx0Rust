@@ -98,6 +98,15 @@ pub enum AnomalyShadowMode {
     TraceOnly,
 }
 
+/// Builds the ADR-0034 V2 chain only for deterministic trace observation.
+/// V1 remains the renderer and the V2 result never enters turn state.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum ResponsePlanV2ShadowMode {
+    #[default]
+    Disabled,
+    TraceOnly,
+}
+
 /// Explicit, default-off durable provenance recorder. It never feeds routing,
 /// plans, rendering, temporal recovery, or user-visible output.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
@@ -367,6 +376,7 @@ pub struct TurnOptions {
     pub clarification: ClarificationMode,
     pub suppression: SameTopicSuppressionMode,
     pub fact_grounded: fact_grounded::FactGroundedRollout,
+    pub response_plan_v2_shadow: ResponsePlanV2ShadowMode,
 }
 
 impl TurnOptions {
@@ -402,6 +412,11 @@ impl TurnOptions {
 
     pub fn with_fact_grounded(mut self, fact_grounded: fact_grounded::FactGroundedRollout) -> Self {
         self.fact_grounded = fact_grounded;
+        self
+    }
+
+    pub fn with_response_plan_v2_shadow(mut self, mode: ResponsePlanV2ShadowMode) -> Self {
+        self.response_plan_v2_shadow = mode;
         self
     }
 }
@@ -862,6 +877,183 @@ fn finish_pipeline_trace(
     trace.set_total_duration(started.elapsed());
 }
 
+#[derive(Debug, Serialize)]
+struct ResponsePlanV2ShadowArtifact {
+    schema: &'static str,
+    contract: qxfx0_semantic::response_plan_v2::TurnContractSnapshot,
+    record: Option<qxfx0_semantic::response_plan_v2::TurnRecord>,
+    attempt: qxfx0_semantic::response_plan_v2::V2Attempt,
+    realized: Option<qxfx0_semantic::response_plan_v2::RealizedSurface>,
+    fallback: qxfx0_semantic::response_plan_v2::FallbackAction,
+}
+
+fn record_response_plan_v2_shadow(
+    trace: &mut execution_trace::PipelineTrace,
+    routed: &turn_context::RoutedTurnContext,
+    logical_turn: u64,
+) {
+    use qxfx0_semantic::response_plan_v2::{
+        build_audited_topic_at, linearize, select_candidate, AssertionPolicy, AuthoritySnapshot,
+        CandidateSelectionSignals, PlanningPolicySnapshot, RealizationSnapshot, SelectionPolicy,
+        SelectionPolicySnapshot, SelfSelectionContext, TurnContractSnapshot, TurnRecord, V2Attempt,
+        V2Route,
+    };
+
+    let policy = SelectionPolicy::default();
+    let contract = TurnContractSnapshot::new(
+        AuthoritySnapshot::new(
+            qxfx0_semantic::active_pack_set().fingerprint(),
+            AssertionPolicy::v1().digest(),
+        ),
+        PlanningPolicySnapshot::new("response-plan-v2-budget-v1", "proposition-canon-v1"),
+        RealizationSnapshot::new(
+            qxfx0_semantic::response_plan_v2::valency_lexicon().fingerprint(),
+            "clause-grammar-v1",
+            qxfx0_morphology::get_runtime().lexemes_sha256(),
+            qxfx0_semantic::response_plan_v2::preposition_allomorphs().fingerprint(),
+        ),
+        SelectionPolicySnapshot::new(policy),
+    );
+    if contract.verify_integrity().is_err() {
+        trace.record_step(
+            "response_plan_v2_shadow",
+            "snapshot-unavailable".into(),
+            "snapshot-unavailable".into(),
+            Duration::ZERO,
+            BTreeMap::from([
+                ("failure".into(), "snapshot_unavailable".into()),
+                ("v1_authoritative".into(), "true".into()),
+            ]),
+        );
+        return;
+    }
+
+    let context = SelfSelectionContext::quantize(
+        routed.prepared().conatus_energy(),
+        routed.prepared().salience(),
+        0.0,
+    );
+    let result = build_audited_topic_at(
+        routed.prepared().input().subject(),
+        qxfx0_semantic::response_plan_v2::EvidenceEvaluationContext::new(logical_turn, None),
+    );
+    let (attempt, record, realized_surface) = match result {
+        Err(_) => (
+            V2Attempt::NotApplicable {
+                route: V2Route::UnsupportedInput,
+            },
+            None,
+            None,
+        ),
+        Ok(plan) => match plan.thesis_syn_tree(qxfx0_semantic::response_plan_v2::valency_lexicon())
+        {
+            Err(_) => (
+                V2Attempt::NotApplicable {
+                    route: V2Route::V1Only,
+                },
+                None,
+                None,
+            ),
+            Ok(tree) => {
+                let authorized = plan.into_authorized();
+                let candidate = qxfx0_semantic::response_plan_v2::SelectionCandidate::new(
+                    authorized.certified().candidate().clone(),
+                    CandidateSelectionSignals::neutral(),
+                );
+                let selected = match select_candidate(vec![candidate], context, policy) {
+                    Ok(selected) => selected,
+                    Err(_) => unreachable!("one certified candidate is non-empty"),
+                };
+                let selection = selected.receipt().clone();
+                let realized = qxfx0_semantic::response_plan_v2::try_realize(
+                    authorized,
+                    &tree,
+                    &contract.realization,
+                    qxfx0_semantic::response_plan_v2::valency_lexicon(),
+                    qxfx0_morphology::get_runtime(),
+                );
+                match realized {
+                    Ok(realizable) => match linearize(&realizable, &contract.realization) {
+                        Ok(surface) => {
+                            let record = TurnRecord::new(
+                                contract.clone(),
+                                selection,
+                                "runtime-binary-unbound",
+                            );
+                            (
+                                V2Attempt::Realizable(realizable),
+                                Some(record),
+                                Some(surface),
+                            )
+                        }
+                        Err(error) => {
+                            let _ = error;
+                            (
+                                V2Attempt::NotApplicable {
+                                    route: V2Route::V1Only,
+                                },
+                                None,
+                                None,
+                            )
+                        }
+                    },
+                    Err(_) => (
+                        V2Attempt::NotApplicable {
+                            route: V2Route::V1Only,
+                        },
+                        None,
+                        None,
+                    ),
+                }
+            }
+        },
+    };
+    let fallback = qxfx0_semantic::response_plan_v2::fallback_action(None);
+    let artifact = ResponsePlanV2ShadowArtifact {
+        schema: "qxfx0.response-plan-v2.shadow.v1",
+        contract,
+        record,
+        attempt,
+        realized: realized_surface,
+        fallback,
+    };
+    let input_digest = execution_trace::calculate_stable_digest(&(
+        routed.prepared().input().subject(),
+        logical_turn,
+        artifact.contract.digest.as_str(),
+    ))
+    .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let output_digest = execution_trace::calculate_stable_digest(&artifact)
+        .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let authority_parity = artifact.record.is_some();
+    let realization_parity = artifact.realized.as_ref().is_some_and(|surface| {
+        qxfx0_semantic::argued_topic_registry()
+            .ok()
+            .and_then(|registry| registry.get(routed.prepared().input().subject()))
+            .and_then(|topic| {
+                surface
+                    .clauses
+                    .first()
+                    .map(|value| value == topic.thesis().surface())
+            })
+            .unwrap_or(false)
+    });
+    trace.record_step(
+        "response_plan_v2_shadow",
+        input_digest,
+        output_digest,
+        Duration::ZERO,
+        BTreeMap::from([
+            ("contract_digest".into(), artifact.contract.digest.clone()),
+            ("replay_integrity".into(), "verified-by-construction".into()),
+            ("semantic_parity".into(), authority_parity.to_string()),
+            ("authority_parity".into(), authority_parity.to_string()),
+            ("realization_parity".into(), realization_parity.to_string()),
+            ("v1_authoritative".into(), "true".into()),
+        ]),
+    );
+}
+
 #[allow(clippy::too_many_arguments)] // explicit staged feature flags meet at this private boundary
 fn process_turn_internal(
     input: &TurnInput,
@@ -877,6 +1069,7 @@ fn process_turn_internal(
         clarification,
         suppression,
         fact_grounded: fact_grounded_rollout,
+        response_plan_v2_shadow,
     } = options;
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -966,6 +1159,12 @@ fn process_turn_internal(
     };
     recovery.family = Some(routed.family());
     recovery.conversation_state = Some(routed.conversation_state());
+
+    if matches!(response_plan_v2_shadow, ResponsePlanV2ShadowMode::TraceOnly) {
+        if let Some(trace) = trace.as_deref_mut() {
+            record_response_plan_v2_shadow(trace, &routed, state.dialogue.turn_count as u64);
+        }
+    }
 
     // Stage 3: Shadow plan (observational; renderer authority is unchanged)
     let planned = match execute_stage(
@@ -1807,6 +2006,31 @@ mod tests {
         };
         let output = process_turn(&input, &mut state);
         assert!(!output.response.is_empty());
+    }
+
+    #[test]
+    fn response_plan_v2_shadow_is_observational_and_replay_stable() {
+        let input = parity_input("v2-shadow");
+        let mut baseline = test_state("v2-shadow");
+        let baseline_output = process_turn_with_options(&input, &mut baseline, TurnOptions::new());
+        let mut shadow = test_state("v2-shadow");
+        let (shadow_output, trace) = process_turn_with_options_and_trace(
+            &input,
+            &mut shadow,
+            TurnOptions::new().with_response_plan_v2_shadow(ResponsePlanV2ShadowMode::TraceOnly),
+        );
+        assert_eq!(baseline_output.response, shadow_output.response);
+        assert_eq!(baseline_output.blocked, shadow_output.blocked);
+        assert_eq!(
+            execution_trace::calculate_stable_digest(&baseline).unwrap(),
+            execution_trace::calculate_stable_digest(&shadow).unwrap()
+        );
+        let step = trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2_shadow")
+            .expect("V2 shadow trace step");
+        assert_eq!(step.metadata.get("v1_authoritative"), Some(&"true".into()));
     }
 
     fn parity_input(session_id: &str) -> TurnInput {

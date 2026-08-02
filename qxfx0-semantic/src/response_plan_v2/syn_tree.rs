@@ -194,6 +194,8 @@ pub enum RealizationError {
     UnexpectedEmbeddedPreposition { relation: String, phrase: String },
     #[error("the subject must be an inflectable lemma, not a verbatim phrase")]
     UninflectableSubject,
+    #[error("realization snapshot mismatch: expected {expected}, actual {actual}")]
+    SnapshotMismatch { expected: String, actual: String },
 }
 
 /// A clause whose every slot is filled.

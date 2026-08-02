@@ -18,6 +18,7 @@
 
 pub mod admission;
 pub mod assertion;
+pub mod attempt;
 pub mod audited_corpus;
 pub mod candidate;
 pub mod derivation;
@@ -25,6 +26,7 @@ pub mod discourse;
 pub mod evidence;
 pub mod morphology_depth;
 pub mod proposition;
+pub mod realization;
 pub mod selection;
 pub mod snapshot;
 pub mod syn_tree;
@@ -37,9 +39,14 @@ pub use assertion::{
     AssertionAuthorizedPlan, AssertionError, AssertionFailureReason, AssertionPolicy,
     ClaimAuthority, QualifierAdmission, ASSERTION_POLICY_DOMAIN,
 };
+pub use attempt::{
+    enforce_budget, fallback_action, fallback_action_for_attempt, BoundedRejectedArtifact,
+    BudgetExceeded, BudgetPhase, BudgetResource, CertifiedPrefix, FallbackAction,
+    TruncationWitness, V2Attempt, V2Route,
+};
 pub use audited_corpus::{
-    audit_audited_corpus, build_audited_topic, AuditedCorpusError, AuditedCorpusReport,
-    AuditedTopicPlan,
+    audit_audited_corpus, build_audited_topic, build_audited_topic_at, AuditedCorpusError,
+    AuditedCorpusReport, AuditedTopicPlan,
 };
 pub use candidate::{CandidateInvariantError, CandidateResponsePlan};
 pub use derivation::{
@@ -62,6 +69,7 @@ pub use proposition::{
     PropositionDag, PropositionDagBuilder, PropositionId, PropositionInvariantError,
     PropositionNode, QualifierId, PROPOSITION_DOMAIN,
 };
+pub use realization::{linearize, try_realize, RealizablePlan, RealizedSurface};
 pub use selection::{
     select_candidate, BasisPoints, CandidateSelectionSignals, SelectedCandidate,
     SelectionCandidate, SelectionError, SelectionPolicy, SelectionReceipt, SelfSelectionContext,
@@ -91,4 +99,16 @@ pub use valency::{
 pub enum V2Failure {
     #[error("candidate invariant: {0}")]
     Candidate(#[from] CandidateInvariantError),
+    #[error("admission: {0}")]
+    Admission(#[from] AdmissionError),
+    #[error("evidence: {0}")]
+    Evidence(#[from] EvidenceError),
+    #[error("assertion: {0}")]
+    Assertion(#[from] AssertionError),
+    #[error("realization: {0}")]
+    Realization(#[from] RealizationError),
+    #[error("budget: {0}")]
+    Budget(#[from] BudgetExceeded),
+    #[error("snapshot: {0}")]
+    Snapshot(#[from] SnapshotError),
 }

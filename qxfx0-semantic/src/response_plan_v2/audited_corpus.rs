@@ -29,6 +29,10 @@ use crate::response_plan_v2::evidence::{
     EvidenceCertifiedPlan, EvidenceError, EvidenceEvaluationContext,
 };
 use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
+use crate::response_plan_v2::syn_tree::{Clause, NounPhrase, SynTree, VerbPhrase};
+use crate::response_plan_v2::valency::{
+    starts_with_word, Complement, ValencyError, ValencyLexicon,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum AuditedCorpusError {
@@ -42,6 +46,12 @@ pub enum AuditedCorpusError {
     Assertion(#[from] AssertionError),
     #[error("topic '{0}' is not in the audited profile")]
     UnknownTopic(String),
+}
+
+impl AuditedCorpusError {
+    pub fn is_unknown_topic(&self) -> bool {
+        matches!(self, Self::UnknownTopic(_))
+    }
 }
 
 /// One topic's full chain: every stated claim admitted, certified and
@@ -94,6 +104,15 @@ impl AuditedTopicPlan {
 /// own statement facts, admitted under the active pack set, certified under
 /// the V1 temporal context, authorized under the V1 assertion policy.
 pub fn build_audited_topic(topic: &str) -> Result<AuditedTopicPlan, AuditedCorpusError> {
+    build_audited_topic_at(topic, EvidenceEvaluationContext::new(0, None))
+}
+
+/// Runtime form of the corpus adapter. The logical turn is supplied by the
+/// persisted input envelope rather than hard-coded by the gate fixture.
+pub fn build_audited_topic_at(
+    topic: &str,
+    evidence_context: EvidenceEvaluationContext,
+) -> Result<AuditedTopicPlan, AuditedCorpusError> {
     let argued = argued_topic_registry().map_err(|error| {
         AuditedCorpusError::UnknownTopic(format!("registry unavailable: {error}"))
     })?;
@@ -154,7 +173,7 @@ pub fn build_audited_topic(topic: &str) -> Result<AuditedTopicPlan, AuditedCorpu
     let admitted = LeafAdmittedPlan::try_admit(candidate, bindings, pack, argued)?;
     let certified = EvidenceCertifiedPlan::try_certify(
         admitted,
-        &EvidenceEvaluationContext::new(0, None),
+        &evidence_context,
         pack.facts(),
         pack.fingerprint(),
     )?;
@@ -165,6 +184,62 @@ pub fn build_audited_topic(topic: &str) -> Result<AuditedTopicPlan, AuditedCorpu
         topic: topic.to_string(),
         authorized,
     })
+}
+
+impl AuditedTopicPlan {
+    pub fn into_authorized(self) -> AssertionAuthorizedPlan {
+        self.authorized
+    }
+
+    /// Build the thesis syntax adapter without making syntax part of the
+    /// semantic certificate. The lexicon and morphology remain late-bound.
+    pub fn thesis_syn_tree(&self, lexicon: &ValencyLexicon) -> Result<SynTree, ValencyError> {
+        let claim = self
+            .authorized
+            .certified()
+            .candidate()
+            .projected_claims()
+            .into_iter()
+            .next()
+            .expect("audited topic has a thesis");
+        let fact_id = self
+            .authorized
+            .certified()
+            .bindings()
+            .get(&claim.claim_id)
+            .expect("thesis is bound");
+        let record = active_pack_set()
+            .facts()
+            .get(fact_id)
+            .expect("audited fact exists");
+        let frame = lexicon.get(record.relation.as_str())?;
+        let object = record.object.0.clone();
+        let complement = match frame.complement() {
+            Complement::None => None,
+            Complement::Uninflected => Some(NounPhrase::fixed(object, None)),
+            governing if object.contains(' ') => {
+                let required = governing.required_case().expect("government names a case");
+                if governing
+                    .preposition()
+                    .is_some_and(|preposition| starts_with_word(&object, preposition))
+                {
+                    Some(NounPhrase::fixed_with_preposition(object, required))
+                } else {
+                    Some(NounPhrase::fixed(object, Some(required)))
+                }
+            }
+            _ => Some(NounPhrase::lexical(object)),
+        };
+        let mut tree = SynTree::new();
+        tree.push(
+            claim.occurrence,
+            Clause::new(
+                NounPhrase::lexical(record.subject.0.clone()),
+                VerbPhrase::new(record.relation.as_str(), complement),
+            ),
+        );
+        Ok(tree)
+    }
 }
 
 /// Aggregate over the whole audited corpus.

@@ -337,6 +337,52 @@ pub fn valency_lexicon() -> &'static ValencyLexicon {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Deserialize;
+
+    #[derive(Deserialize)]
+    struct RealizationVectors {
+        schema: String,
+        vectors: Vec<RealizationVector>,
+    }
+    #[derive(Deserialize)]
+    struct RealizationVector {
+        name: String,
+        relation: String,
+        required_case: Option<String>,
+        preposition: Option<String>,
+    }
+
+    #[test]
+    fn realization_reference_vectors_are_executable() {
+        let vectors: RealizationVectors = serde_json::from_str(include_str!(
+            "../../../docs/reference-vectors/response-plan-v2-realization-v1.json"
+        ))
+        .expect("realization vectors parse");
+        assert_eq!(vectors.schema, "qxfx0.response-plan-v2.realization.v1");
+        for vector in vectors.vectors {
+            let frame = valency_lexicon()
+                .get(&vector.relation)
+                .unwrap_or_else(|error| panic!("{}: {error}", vector.name));
+            let actual_case = frame.complement().required_case().map(|case| {
+                match case {
+                    Case::Nominative => "nominative",
+                    Case::Genitive => "genitive",
+                    Case::Dative => "dative",
+                    Case::Accusative => "accusative",
+                    Case::Instrumental => "instrumental",
+                    Case::Prepositional => "prepositional",
+                }
+                .to_string()
+            });
+            assert_eq!(actual_case, vector.required_case, "{}", vector.name);
+            assert_eq!(
+                frame.complement().preposition().map(str::to_string),
+                vector.preposition,
+                "{}",
+                vector.name
+            );
+        }
+    }
 
     #[test]
     fn embedded_lexicon_parses_and_covers_the_audited_relations() {

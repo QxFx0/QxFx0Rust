@@ -232,6 +232,8 @@ pub enum SnapshotError {
     ContractSnapshotMismatch,
     #[error("reproduction binary mismatch")]
     BinaryMismatch,
+    #[error("realization snapshot mismatch")]
+    RealizationSnapshotMismatch,
 }
 
 pub fn verify_replay(
