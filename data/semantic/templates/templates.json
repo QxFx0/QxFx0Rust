@@ -8,11 +8,11 @@
     {"pattern": "когда мы осмысляем {FROM|acc}, мы приходим к {OBJ|dat}", "register": "dialogical", "complexity": 3, "weight": 0.1}
   ],
   "RelLimitedBy": [
-    {"pattern": "{FROM} ограничена {TO|inst}", "register": "philosophical", "complexity": 1, "weight": 0.3},
+    {"pattern": "{FROM} {FROM_G:ограничен,ограничена,ограничено,ограничены} {TO|inst}", "register": "philosophical", "complexity": 1, "weight": 0.3},
     {"pattern": "предел {FROM|gen} задаётся {TO|inst}", "register": "philosophical", "complexity": 2, "weight": 0.25},
     {"pattern": "{TO|nom} кладёт границу {FROM|dat}", "register": "explanatory", "complexity": 2, "weight": 0.2},
     {"pattern": "{FROM} имеет свой предел в {TO|prep}", "register": "conversational", "complexity": 2, "weight": 0.15},
-    {"pattern": "именно {TO|nom} не даёт {FROM|dat} стать абсолютной", "register": "philosophical", "complexity": 3, "weight": 0.1}
+    {"pattern": "именно {TO|nom} не даёт {FROM|dat} стать {FROM_G:абсолютным,абсолютной,абсолютным,абсолютными}", "register": "philosophical", "complexity": 3, "weight": 0.1}
   ],
   "RelDetermines": [
     {"pattern": "{FROM} определяет {OBJ}", "register": "philosophical", "complexity": 1, "weight": 0.3},
@@ -42,7 +42,7 @@
     {"pattern": "{FROM} зависит от {TO|gen}", "register": "philosophical", "complexity": 1, "weight": 0.3},
     {"pattern": "без {TO|gen} нет и {FROM|gen}", "register": "explanatory", "complexity": 2, "weight": 0.3},
     {"pattern": "{FROM|nom} стоит на фундаменте {TO|gen}", "register": "philosophical", "complexity": 2, "weight": 0.2},
-    {"pattern": "{TO|nom} — это условие, без которого {FROM|nom} невозможна", "register": "philosophical", "complexity": 3, "weight": 0.2}
+    {"pattern": "{TO|nom} — это условие, без которого {FROM|nom} {FROM_G:невозможен,невозможна,невозможно,невозможны}", "register": "philosophical", "complexity": 3, "weight": 0.2}
   ],
   "RelMeans": [
     {"pattern": "{FROM} означает {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.35},
@@ -64,7 +64,7 @@
   "RelVerifiedBy": [
     {"pattern": "{FROM} проверяется через {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.3},
     {"pattern": "критерием {FROM|gen} служит {TO|nom}", "register": "explanatory", "complexity": 2, "weight": 0.35},
-    {"pattern": "именно {TO|nom} позволяет отличить подлинную {FROM|acc} от мнимой", "register": "philosophical", "complexity": 3, "weight": 0.35}
+    {"pattern": "именно {TO|nom} позволяет отличить {FROM_G:подлинный,подлинную,подлинное,подлинные} {FROM|acc} от {FROM_G:мнимого,мнимой,мнимого,мнимых}", "register": "philosophical", "complexity": 3, "weight": 0.35}
   ],
   "RelSignals": [
     {"pattern": "{FROM} сигнализирует о {TO|prep}", "register": "philosophical", "complexity": 2, "weight": 0.3},
@@ -82,7 +82,7 @@
     {"pattern": "грань между {FROM|inst} и {TO|inst} проницаема", "register": "philosophical", "complexity": 3, "weight": 0.35}
   ],
   "RelDirectedAt": [
-    {"pattern": "{FROM} направлена на {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.35},
+    {"pattern": "{FROM} {FROM_G:направлен,направлена,направлено,направлены} на {TO|acc}", "register": "philosophical", "complexity": 1, "weight": 0.35},
     {"pattern": "{FROM|nom} всегда имеет своим предметом {TO|acc}", "register": "philosophical", "complexity": 3, "weight": 0.35},
     {"pattern": "вектор {FROM|gen} указывает в сторону {TO|gen}", "register": "explanatory", "complexity": 2, "weight": 0.3}
   ],
@@ -102,7 +102,7 @@
   ],
   "RelRequires": [
     {"pattern": "{FROM} требует {OBJ|gen}", "register": "philosophical", "complexity": 1, "weight": 0.3},
-    {"pattern": "без {OBJ|gen} невозможно {FROM|nom}", "register": "explanatory", "complexity": 2, "weight": 0.2},
+    {"pattern": "без {OBJ|gen} {FROM_G:невозможен,невозможна,невозможно,невозможны} {FROM|nom}", "register": "explanatory", "complexity": 2, "weight": 0.2},
     {"pattern": "{FROM|nom} {FROM_G:нуждается,нуждается,нуждается,нуждаются} в {OBJ|prep}", "register": "conversational", "complexity": 1, "weight": 0.2},
     {"pattern": "{OBJ|nom} выступает необходимым основанием для {FROM|gen}", "register": "philosophical", "complexity": 3, "weight": 0.15},
     {"pattern": "{FROM} опирается на {OBJ|acc}", "register": "explanatory", "complexity": 1, "weight": 0.15},
@@ -173,7 +173,7 @@
     {"pattern": "вектор {FROM|gen} — в направлении {OBJ|gen}", "register": "philosophical", "complexity": 2, "weight": 0.25}
   ],
   "RelCapableOf": [
-    {"pattern": "{FROM} способна на {OBJ|acc}", "register": "philosophical", "complexity": 1, "weight": 0.4},
+    {"pattern": "{FROM} {FROM_G:способен,способна,способно,способны} на {OBJ|acc}", "register": "philosophical", "complexity": 1, "weight": 0.4},
     {"pattern": "{FROM|nom} обладает способностью к {OBJ|dat}", "register": "explanatory", "complexity": 2, "weight": 0.35},
     {"pattern": "в природе {FROM|gen} заложена возможность {OBJ|gen}", "register": "philosophical", "complexity": 2, "weight": 0.25}
   ],
