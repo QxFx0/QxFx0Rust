@@ -2,7 +2,7 @@
   "schema_version": 2,
   "manifest_id": "response-plan-v2-replay-v2",
   "corpus_manifest_id": "response-plan-v2-audited-corpus-v2",
-  "corpus_manifest_digest": "9f44646c3f3b6bfe55b7d43f019794bf4b30f11d86a1472e0ae5c7e35b92143e",
+  "corpus_manifest_digest": "9e982cda565c435d7a273393e9934e3d5e030babac3e74e1b8cd1d2e8c070d6c",
   "matrix_id": "template-agreement-matrix-v1",
   "matrix_digest": "ecd946c710010fb5c31b42bfb0d81a72ffd47bd296b300d518c703b07451e2c1",
   "topics_total": 30,
@@ -10,9 +10,9 @@
   "selection_vectors_digest": "f4756f5d2dbb70e98d4d2949c7116f61b908ace0cde9eff26de9072e484727a9",
   "realization_vectors_digest": "142479e8089b58cdfce446f27e89f9555d0aa15c9f4ef03db2bcaaf70d51a86a",
   "legacy_graph_declarative_fallback": false,
-  "turn_record_fixture_sha256": "d5dacd48ec072641c9b9d6bffb9839dd2efb839c706210d414e08c00b58f0910",
-  "turn_record_stage_digest": "796da1148cda33d610d857b7d6ca8751c14840b9ef146b880fa4d35af8eba016",
-  "turn_record_bundle_digest": "54be525e016b6d4d35f5909307e04aa8020b24d75edf35aee477638099f72e61",
+  "turn_record_fixture_sha256": "08e8be1c94cf62535bc0926c2b4a7fce3be0f046482dca5ed605992d440c9489",
+  "turn_record_stage_digest": "09385995edb8a40904ba93887a6a2f72d761000032e5418699b2cca94c22568b",
+  "turn_record_bundle_digest": "8f07c2b4a2fca4dd8eb318e0bea7ce8a7f6f1b67f9f75caa77c439c6d01e9d98",
   "reference_binary_digest": "546e3956cf49783a0736c97727f36aea4b670456eaff4889dd35a5d7c394c887",
-  "manifest_digest": "7833a16f70557825417412c542c53f4704567cd6035c005c3e2340d746acbfe9"
+  "manifest_digest": "7bdeff420dad411cd92b5bdf34db280b92684fbbb3b2cbfbd24b425346727a97"
 }

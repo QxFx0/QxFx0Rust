@@ -8,7 +8,10 @@ fn main() {
         binary_digest.len() == 64 && binary_digest.chars().all(|value| value.is_ascii_hexdigit()),
         "expected a 64-character target binary SHA-256 argument"
     );
-    let policy = SelectionPolicy::default();
+    let policy = SelectionPolicy {
+        response_plan_v2_mode: ResponsePlanV2Mode::Shadow,
+        ..SelectionPolicy::default()
+    };
     let budgets = V2BudgetPolicy::default();
     let contract = TurnContractSnapshot::new(
         AuthoritySnapshot::new(

@@ -5,10 +5,11 @@ use sha2::{Digest, Sha256};
 
 use super::derivation::InferenceRuleId;
 use super::selection::{
-    SelectionPolicy, SelectionReceipt, NUMERIC_SEMANTICS_VERSION, RANKING_VERSION,
+    ResponsePlanV2Mode, SelectionPolicy, SelectionReceipt, NUMERIC_SEMANTICS_VERSION,
+    RANKING_VERSION,
 };
 use super::syn_tree::ResolvedSynNode;
-use super::{RealizablePlan, RealizedSurface};
+use super::{RealizablePlan, RealizedSurface, REALIZATION_JOINER_VERSION};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuthoritySnapshot {
@@ -62,6 +63,7 @@ pub struct RealizationSnapshot {
     pub grammar_digest: String,
     pub morphology_digest: String,
     pub morphology_depth_digest: String,
+    pub joiner_version: String,
     pub fingerprint: String,
 }
 
@@ -72,11 +74,16 @@ impl RealizationSnapshot {
         morphology_digest: impl Into<String>,
         morphology_depth_digest: impl Into<String>,
     ) -> Self {
+        let grammar_digest = domain_digest(
+            b"qxfx0:realization-grammar:v2",
+            &(grammar_digest.into(), REALIZATION_JOINER_VERSION),
+        );
         let mut value = Self {
             valency_digest: valency_digest.into(),
-            grammar_digest: grammar_digest.into(),
+            grammar_digest,
             morphology_digest: morphology_digest.into(),
             morphology_depth_digest: morphology_depth_digest.into(),
+            joiner_version: REALIZATION_JOINER_VERSION.to_string(),
             fingerprint: String::new(),
         };
         value.fingerprint = fingerprint(b"qxfx0:realization-snapshot:v1", &value);
@@ -87,6 +94,7 @@ impl RealizationSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SelectionPolicySnapshot {
     pub self_policy_digest: String,
+    pub response_plan_v2_mode: ResponsePlanV2Mode,
     pub ranking_version: String,
     pub numeric_semantics_version: String,
     pub fingerprint: String,
@@ -96,6 +104,7 @@ impl SelectionPolicySnapshot {
     pub fn new(policy: SelectionPolicy) -> Self {
         let mut value = Self {
             self_policy_digest: policy.digest(),
+            response_plan_v2_mode: policy.response_plan_v2_mode,
             ranking_version: RANKING_VERSION.to_string(),
             numeric_semantics_version: NUMERIC_SEMANTICS_VERSION.to_string(),
             fingerprint: String::new(),
@@ -613,6 +622,20 @@ mod tests {
         assert_eq!(first.authority.fingerprint, changed.authority.fingerprint);
         assert_ne!(first.planning.fingerprint, changed.planning.fingerprint);
         assert_ne!(first.digest, changed.digest);
+    }
+
+    #[test]
+    fn snapshots_bind_v2_mode_and_joiner_version() {
+        let policy = SelectionPolicy {
+            response_plan_v2_mode: ResponsePlanV2Mode::Canary,
+            ..SelectionPolicy::default()
+        };
+        let selection = SelectionPolicySnapshot::new(policy);
+        assert_eq!(selection.response_plan_v2_mode, ResponsePlanV2Mode::Canary);
+
+        let realization = RealizationSnapshot::new("valency", "grammar", "morph", "depth");
+        assert_eq!(realization.joiner_version, REALIZATION_JOINER_VERSION);
+        assert_ne!(realization.grammar_digest, "grammar");
     }
 
     #[test]

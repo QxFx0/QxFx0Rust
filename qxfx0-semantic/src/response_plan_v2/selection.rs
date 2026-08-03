@@ -8,6 +8,27 @@ use super::candidate::CandidateResponsePlan;
 pub const NUMERIC_SEMANTICS_VERSION: &str = "basis-points-half-away-v1";
 pub const RANKING_VERSION: &str = "score-desc-merkle-asc-v1";
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResponsePlanV2Mode {
+    #[default]
+    Off,
+    Shadow,
+    Canary,
+    AuditedAuthority,
+}
+
+impl ResponsePlanV2Mode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::Shadow => "shadow",
+            Self::Canary => "canary",
+            Self::AuditedAuthority => "audited_authority",
+        }
+    }
+}
+
 /// Fixed-point scalar with four decimal places. The representation, rounding
 /// and invalid-input rule are bound by [`NUMERIC_SEMANTICS_VERSION`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -84,6 +105,7 @@ impl CandidateSelectionSignals {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SelectionPolicy {
+    pub response_plan_v2_mode: ResponsePlanV2Mode,
     pub base_weight: i32,
     pub conatus_distance_weight: i32,
     pub salience_distance_weight: i32,
@@ -93,6 +115,7 @@ pub struct SelectionPolicy {
 impl Default for SelectionPolicy {
     fn default() -> Self {
         Self {
+            response_plan_v2_mode: ResponsePlanV2Mode::Off,
             base_weight: 4,
             conatus_distance_weight: 1,
             salience_distance_weight: 1,
@@ -306,6 +329,27 @@ mod tests {
     }
 
     #[test]
+    fn response_plan_v2_mode_has_stable_names_and_is_digest_bound() {
+        assert_eq!(ResponsePlanV2Mode::Off.as_str(), "off");
+        assert_eq!(ResponsePlanV2Mode::Shadow.as_str(), "shadow");
+        assert_eq!(ResponsePlanV2Mode::Canary.as_str(), "canary");
+        assert_eq!(
+            ResponsePlanV2Mode::AuditedAuthority.as_str(),
+            "audited_authority"
+        );
+        let default = SelectionPolicy::default();
+        assert_eq!(default.response_plan_v2_mode, ResponsePlanV2Mode::Off);
+        assert_ne!(
+            default.digest(),
+            SelectionPolicy {
+                response_plan_v2_mode: ResponsePlanV2Mode::Shadow,
+                ..default
+            }
+            .digest()
+        );
+    }
+
+    #[test]
     fn numeric_semantics_reference_vectors_are_cross_platform_stable() {
         let source = include_str!(
             "../../../docs/reference-vectors/response-plan-v2-numeric-semantics-v1.json"
@@ -384,6 +428,7 @@ mod tests {
             conatus_distance_weight: i32::MIN,
             salience_distance_weight: i32::MIN,
             doubt_weight: i32::MIN,
+            ..SelectionPolicy::default()
         };
         let score = policy.score(
             SelfSelectionContext {
@@ -405,6 +450,7 @@ mod tests {
             conatus_distance_weight: i32::MAX,
             salience_distance_weight: i32::MAX,
             doubt_weight: i32::MAX,
+            ..SelectionPolicy::default()
         }
         .score(
             SelfSelectionContext {

@@ -102,13 +102,51 @@ pub enum AnomalyShadowMode {
     TraceOnly,
 }
 
-/// Builds the ADR-0034 V2 chain only for deterministic trace observation.
-/// V1 remains the renderer and the V2 result never enters turn state.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
-pub enum ResponsePlanV2ShadowMode {
-    #[default]
-    Disabled,
-    TraceOnly,
+/// Selects the ADR-0034 V2 rollout population. V1 remains the renderer and
+/// the V2 result never enters turn state in any mode.
+pub use qxfx0_semantic::response_plan_v2::ResponsePlanV2Mode;
+
+const RESPONSE_PLAN_V2_CANARY_ALLOWLIST: [&str; 3] = ["правда", "произвол", "свобода"];
+
+pub fn response_plan_v2_canary_allowlist() -> &'static [&'static str; 3] {
+    &RESPONSE_PLAN_V2_CANARY_ALLOWLIST
+}
+
+pub fn response_plan_v2_canary_digest() -> String {
+    execution_trace::calculate_stable_digest(&RESPONSE_PLAN_V2_CANARY_ALLOWLIST)
+        .expect("static canary allowlist must serialize")
+}
+
+/// Compares persisted state attributes without considering trace-only evidence.
+/// This is intentionally explicit so rollout tests cannot hide a state change
+/// behind an aggregate digest.
+pub fn response_plan_v2_state_parity(left: &SystemState, right: &SystemState) -> bool {
+    fn equal<T: Serialize>(left: &T, right: &T) -> bool {
+        serde_json::to_vec(left).ok() == serde_json::to_vec(right).ok()
+    }
+
+    left.session_id == right.session_id
+        && left.dialogue.turn_count == right.dialogue.turn_count
+        && left.dialogue.history == right.dialogue.history
+        && left.dialogue.last_family == right.dialogue.last_family
+        && left.dialogue.last_topic == right.dialogue.last_topic
+        && left.dialogue.conversation_state == right.dialogue.conversation_state
+        && equal(&left.semantic.field, &right.semantic.field)
+        && equal(&left.semantic.runtime_graph, &right.semantic.runtime_graph)
+        && left.semantic.pack_set_fingerprint == right.semantic.pack_set_fingerprint
+        && equal(
+            &left.semantic.semantic_commitments,
+            &right.semantic.semantic_commitments,
+        )
+        && equal(&left.semantic.essence, &right.semantic.essence)
+        && equal(&left.semantic.adjunction, &right.semantic.adjunction)
+        && equal(&left.semantic.perspective, &right.semantic.perspective)
+        && equal(
+            &left.semantic.stance_provenance,
+            &right.semantic.stance_provenance,
+        )
+        && equal(&left.last_turn_decision, &right.last_turn_decision)
+        && equal(&left.governance_log, &right.governance_log)
 }
 
 /// Explicit, default-off durable provenance recorder. It never feeds routing,
@@ -380,7 +418,7 @@ pub struct TurnOptions {
     pub clarification: ClarificationMode,
     pub suppression: SameTopicSuppressionMode,
     pub fact_grounded: fact_grounded::FactGroundedRollout,
-    pub response_plan_v2_shadow: ResponsePlanV2ShadowMode,
+    pub response_plan_v2: ResponsePlanV2Mode,
 }
 
 impl TurnOptions {
@@ -419,8 +457,8 @@ impl TurnOptions {
         self
     }
 
-    pub fn with_response_plan_v2_shadow(mut self, mode: ResponsePlanV2ShadowMode) -> Self {
-        self.response_plan_v2_shadow = mode;
+    pub fn with_response_plan_v2(mut self, mode: ResponsePlanV2Mode) -> Self {
+        self.response_plan_v2 = mode;
         self
     }
 }
@@ -882,7 +920,7 @@ fn finish_pipeline_trace(
 }
 
 #[derive(Debug, Serialize)]
-struct ResponsePlanV2ShadowArtifact {
+struct ResponsePlanV2Artifact {
     schema: &'static str,
     contract: qxfx0_semantic::response_plan_v2::TurnContractSnapshot,
     record: Option<qxfx0_semantic::response_plan_v2::TurnRecord>,
@@ -906,10 +944,22 @@ pub fn current_binary_digest() -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-fn record_response_plan_v2_shadow(
+fn response_plan_v2_is_eligible(mode: ResponsePlanV2Mode, topic: &str) -> bool {
+    match mode {
+        ResponsePlanV2Mode::Off => false,
+        ResponsePlanV2Mode::Shadow => true,
+        ResponsePlanV2Mode::Canary => RESPONSE_PLAN_V2_CANARY_ALLOWLIST.contains(&topic),
+        ResponsePlanV2Mode::AuditedAuthority => qxfx0_semantic::argued_topic_registry()
+            .ok()
+            .is_some_and(|registry| registry.get(topic).is_some()),
+    }
+}
+
+fn record_response_plan_v2(
     trace: &mut execution_trace::PipelineTrace,
     routed: &turn_context::RoutedTurnContext,
     logical_turn: u64,
+    requested_mode: ResponsePlanV2Mode,
 ) {
     use qxfx0_semantic::response_plan_v2::{
         execute_audited_topic_at, AssertionPolicy, AuthoritySnapshot, PlanningPolicySnapshot,
@@ -917,7 +967,52 @@ fn record_response_plan_v2_shadow(
         TurnContractSnapshot, TurnRecord, V2BudgetPolicy,
     };
 
-    let policy = SelectionPolicy::default();
+    let topic = routed.prepared().input().subject();
+    let canary_eligible = RESPONSE_PLAN_V2_CANARY_ALLOWLIST.contains(&topic);
+    let eligible = response_plan_v2_is_eligible(requested_mode, topic);
+    let effective_mode = if eligible {
+        requested_mode
+    } else {
+        ResponsePlanV2Mode::Off
+    };
+    let scope_downgrade_count = usize::from(requested_mode != effective_mode);
+    let downgrade_reason = if scope_downgrade_count == 1 {
+        "topic_outside_rollout_scope"
+    } else {
+        "none"
+    };
+    let canary_digest = response_plan_v2_canary_digest();
+    if effective_mode == ResponsePlanV2Mode::Off {
+        let metadata = BTreeMap::from([
+            ("requested_mode".into(), format!("{requested_mode:?}")),
+            ("effective_mode".into(), "Off".into()),
+            ("canary_eligible".into(), canary_eligible.to_string()),
+            ("canary_digest".into(), canary_digest),
+            ("attempted".into(), "false".into()),
+            ("completed".into(), "false".into()),
+            ("downgrade_count".into(), scope_downgrade_count.to_string()),
+            ("downgrade_reason".into(), downgrade_reason.into()),
+            ("semantic_parity".into(), "false".into()),
+            ("authority_parity".into(), "false".into()),
+            ("realization_parity".into(), "false".into()),
+            ("v1_authoritative".into(), "true".into()),
+        ]);
+        let digest = execution_trace::calculate_stable_digest(&metadata)
+            .unwrap_or_else(|error| format!("digest-error:{error}"));
+        trace.record_step(
+            "response_plan_v2",
+            digest.clone(),
+            digest,
+            Duration::ZERO,
+            metadata,
+        );
+        return;
+    }
+
+    let policy = SelectionPolicy {
+        response_plan_v2_mode: requested_mode,
+        ..SelectionPolicy::default()
+    };
     let budgets = V2BudgetPolicy::default();
     let contract = TurnContractSnapshot::new(
         AuthoritySnapshot::new(
@@ -934,15 +1029,31 @@ fn record_response_plan_v2_shadow(
         SelectionPolicySnapshot::new(policy),
     );
     if contract.verify_integrity().is_err() {
+        let metadata = BTreeMap::from([
+            ("requested_mode".into(), format!("{requested_mode:?}")),
+            ("effective_mode".into(), "Off".into()),
+            ("canary_eligible".into(), canary_eligible.to_string()),
+            ("canary_digest".into(), canary_digest),
+            ("attempted".into(), "true".into()),
+            ("completed".into(), "false".into()),
+            (
+                "downgrade_count".into(),
+                (scope_downgrade_count + 1).to_string(),
+            ),
+            ("downgrade_reason".into(), "snapshot_unavailable".into()),
+            ("semantic_parity".into(), "false".into()),
+            ("authority_parity".into(), "false".into()),
+            ("realization_parity".into(), "false".into()),
+            ("v1_authoritative".into(), "true".into()),
+        ]);
+        let digest = execution_trace::calculate_stable_digest(&metadata)
+            .unwrap_or_else(|error| format!("digest-error:{error}"));
         trace.record_step(
-            "response_plan_v2_shadow",
-            "snapshot-unavailable".into(),
-            "snapshot-unavailable".into(),
+            "response_plan_v2",
+            digest.clone(),
+            digest,
             Duration::ZERO,
-            BTreeMap::from([
-                ("failure".into(), "snapshot_unavailable".into()),
-                ("v1_authoritative".into(), "true".into()),
-            ]),
+            metadata,
         );
         return;
     }
@@ -978,7 +1089,7 @@ fn record_response_plan_v2_shadow(
     let result = execution.result;
     let realized_surface = execution.realized;
     let fallback = qxfx0_semantic::response_plan_v2::fallback_action_for_result(&result);
-    let artifact = ResponsePlanV2ShadowArtifact {
+    let artifact = ResponsePlanV2Artifact {
         schema: "qxfx0.response-plan-v2.shadow.v1",
         contract,
         record,
@@ -994,6 +1105,19 @@ fn record_response_plan_v2_shadow(
     .unwrap_or_else(|error| format!("digest-error:{error}"));
     let output_digest = execution_trace::calculate_stable_digest(&artifact)
         .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let execution_downgrade = !matches!(
+        &artifact.result,
+        qxfx0_semantic::response_plan_v2::V2ExecutionResult::Attempt(
+            qxfx0_semantic::response_plan_v2::V2Attempt::Realizable(_)
+        )
+    );
+    let downgrade_count = scope_downgrade_count + usize::from(execution_downgrade);
+    let downgrade_reason = if execution_downgrade {
+        "v2_execution_failure"
+    } else {
+        downgrade_reason
+    };
+    let semantic_parity = !execution_downgrade;
     let authority_parity = artifact.record.is_some()
         || matches!(
             &artifact.result,
@@ -1019,23 +1143,34 @@ fn record_response_plan_v2_shadow(
             })
             .unwrap_or(false)
     });
+    let mut metadata = BTreeMap::from([
+        ("requested_mode".into(), format!("{requested_mode:?}")),
+        ("effective_mode".into(), format!("{effective_mode:?}")),
+        ("canary_eligible".into(), canary_eligible.to_string()),
+        ("canary_digest".into(), canary_digest),
+        ("attempted".into(), "true".into()),
+        ("completed".into(), "true".into()),
+        ("downgrade_count".into(), downgrade_count.to_string()),
+        ("downgrade_reason".into(), downgrade_reason.into()),
+        ("v1_authoritative".into(), "true".into()),
+    ]);
+    metadata.extend([
+        ("contract_digest".into(), artifact.contract.digest.clone()),
+        ("replay_integrity".into(), "verified-by-construction".into()),
+        ("semantic_parity".into(), semantic_parity.to_string()),
+        ("authority_parity".into(), authority_parity.to_string()),
+        ("realization_parity".into(), realization_parity.to_string()),
+        (
+            "legacy_graph_v2_declarative_fallback".into(),
+            "false".into(),
+        ),
+    ]);
     trace.record_step(
-        "response_plan_v2_shadow",
+        "response_plan_v2",
         input_digest,
         output_digest,
         Duration::ZERO,
-        BTreeMap::from([
-            ("contract_digest".into(), artifact.contract.digest.clone()),
-            ("replay_integrity".into(), "verified-by-construction".into()),
-            ("semantic_parity".into(), authority_parity.to_string()),
-            ("authority_parity".into(), authority_parity.to_string()),
-            ("realization_parity".into(), realization_parity.to_string()),
-            ("v1_authoritative".into(), "true".into()),
-            (
-                "legacy_graph_v2_declarative_fallback".into(),
-                "false".into(),
-            ),
-        ]),
+        metadata,
     );
 }
 
@@ -1054,7 +1189,7 @@ fn process_turn_internal(
         clarification,
         suppression,
         fact_grounded: fact_grounded_rollout,
-        response_plan_v2_shadow,
+        response_plan_v2,
     } = options;
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -1145,10 +1280,13 @@ fn process_turn_internal(
     recovery.family = Some(routed.family());
     recovery.conversation_state = Some(routed.conversation_state());
 
-    if matches!(response_plan_v2_shadow, ResponsePlanV2ShadowMode::TraceOnly) {
-        if let Some(trace) = trace.as_deref_mut() {
-            record_response_plan_v2_shadow(trace, &routed, state.dialogue.turn_count as u64);
-        }
+    if let Some(trace) = trace.as_deref_mut() {
+        record_response_plan_v2(
+            trace,
+            &routed,
+            state.dialogue.turn_count as u64,
+            response_plan_v2,
+        );
     }
 
     // Stage 3: Shadow plan (observational; renderer authority is unchanged)
@@ -2002,7 +2140,7 @@ mod tests {
         let (shadow_output, trace) = process_turn_with_options_and_trace(
             &input,
             &mut shadow,
-            TurnOptions::new().with_response_plan_v2_shadow(ResponsePlanV2ShadowMode::TraceOnly),
+            TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Shadow),
         );
         assert_eq!(baseline_output.response, shadow_output.response);
         assert_eq!(baseline_output.blocked, shadow_output.blocked);
@@ -2013,7 +2151,7 @@ mod tests {
         let step = trace
             .steps
             .iter()
-            .find(|step| step.stage == "response_plan_v2_shadow")
+            .find(|step| step.stage == "response_plan_v2")
             .expect("V2 shadow trace step");
         assert_eq!(step.metadata.get("v1_authoritative"), Some(&"true".into()));
     }
@@ -2038,8 +2176,7 @@ mod tests {
             let (shadow_output, trace) = process_turn_with_options_and_trace(
                 &input,
                 &mut shadow,
-                TurnOptions::new()
-                    .with_response_plan_v2_shadow(ResponsePlanV2ShadowMode::TraceOnly),
+                TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Shadow),
             );
             assert_eq!(
                 baseline_output.response,
@@ -2056,7 +2193,7 @@ mod tests {
             let step = trace
                 .steps
                 .iter()
-                .find(|step| step.stage == "response_plan_v2_shadow")
+                .find(|step| step.stage == "response_plan_v2")
                 .expect("V2 corpus trace step");
             assert_eq!(
                 step.metadata.get("semantic_parity"),
