@@ -1,0 +1,71 @@
+{
+  "schema": "qxfx0.response-plan-v2.observation-completion.v1",
+  "window_id": "response-plan-v2-canary-2026-08",
+  "decision": "observation_complete",
+  "build_sha": "24b31d3bf4ab27d2a761cb5cf56345bd32b06e9d",
+  "binary_version": "QxFx0 Rust v0.1.1",
+  "workflow_run": 30852143100,
+  "workflow_url": "https://github.com/QxFx0/QxFx0Rust/actions/runs/30852143100",
+  "artifact_id": 8871073007,
+  "artifact_name": "response-plan-v2-observation-response-plan-v2-canary-2026-08-30852143100",
+  "artifact_sha256": "3b0b2184858a3b4260a2c556de3c30ca2d556f81560f1df1ecf5ec74feae4a69",
+  "artifact_expiry": "2026-11-01T20:51:59Z",
+  "manifest_digest": "3c459e921515bec269ea1728d02be22a52d0b991430296e61380bd60512252ea",
+  "allowlist_digest": "4412d9b5008b60fd3936358e3fcc8f37e7d3e015d746c275fb54062374bebca6",
+  "checkpoint_order": {
+    "topics": ["правда", "произвол", "свобода"],
+    "repetitions": "1..10",
+    "input_classes": ["definition", "definition_paraphrase", "definition_clarification", "same_session_repeat"]
+  },
+  "checkpoints": [
+    {
+      "turns": 30,
+      "compositional": 30,
+      "coverage_by_topic": {"правда": 30},
+      "coverage_by_input_class": {"definition": 8, "definition_paraphrase": 8, "definition_clarification": 7, "same_session_repeat": 7},
+      "failure_budgets": "all_zero"
+    },
+    {
+      "turns": 60,
+      "compositional": 60,
+      "coverage_by_topic": {"правда": 40, "произвол": 20},
+      "coverage_by_input_class": {"definition": 15, "definition_paraphrase": 15, "definition_clarification": 15, "same_session_repeat": 15},
+      "failure_budgets": "all_zero"
+    },
+    {
+      "turns": 90,
+      "compositional": 90,
+      "coverage_by_topic": {"правда": 40, "произвол": 40, "свобода": 10},
+      "coverage_by_input_class": {"definition": 23, "definition_paraphrase": 23, "definition_clarification": 22, "same_session_repeat": 22},
+      "failure_budgets": "all_zero"
+    },
+    {
+      "turns": 120,
+      "compositional": 120,
+      "coverage_by_topic": {"правда": 40, "произвол": 40, "свобода": 40},
+      "coverage_by_input_class": {"definition": 30, "definition_paraphrase": 30, "definition_clarification": 30, "same_session_repeat": 30},
+      "failure_budgets": "all_zero"
+    }
+  ],
+  "failure_budget_totals": {
+    "realization_downgrades": 0,
+    "replay_failures": 0,
+    "expectation_failures": 0,
+    "unauthorized_v1_fallbacks": 0,
+    "guard_blocks": 0,
+    "unexpected_denials": 0,
+    "unexpected_rollbacks": 0
+  },
+  "negative_controls": {
+    "observation_expected_denials": 4,
+    "observation_unexpected_denials": 0,
+    "observation_expected_rollbacks": 4,
+    "observation_unexpected_rollbacks": 0,
+    "pre_merge_behavioral_expected_denials": 7,
+    "default_v1_and_explicit_rollback_smokes": "passed_separately"
+  },
+  "owner_signoff": "QxFx0",
+  "production_default": "V1",
+  "allowlist_expansion_authorized": false,
+  "global_v2_promotion_authorized": false
+}
