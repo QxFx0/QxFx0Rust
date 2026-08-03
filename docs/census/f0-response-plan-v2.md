@@ -173,6 +173,17 @@ remains enforced in the pipeline; `V2AuthorityOutcome` is serialized only in
 the observational trace artifact. Authority promotion requires a separate
 reviewed release change.
 
+The explicit canary authority switch is also default-off:
+
+```text
+ResponsePlanV2Authority::Disabled -> V1 LegacyShadow
+ResponsePlanV2Authority::Canary   -> V2 authority for the 3-topic allowlist
+```
+
+The canary switch is covered by end-to-end render, replay, and rollback tests.
+Selecting `Disabled` restores V1 authority; no production default is changed
+by the authority implementation.
+
 ## 10. Historical F0 boundary
 
 F0 itself covered only the census. The recursive proposition DAG, derivation

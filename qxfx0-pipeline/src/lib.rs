@@ -79,6 +79,16 @@ pub enum RendererAuthority {
     #[default]
     LegacyShadow,
     AuditedPlan,
+    V2Canary,
+}
+
+/// Explicit authority switch for the V2 canary. This is separate from the V2
+/// observation mode so measuring V2 can never accidentally change output.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum ResponsePlanV2Authority {
+    #[default]
+    Disabled,
+    Canary,
 }
 
 /// Enables observation-only doubt evidence in an explicit execution trace.
@@ -105,6 +115,39 @@ pub enum AnomalyShadowMode {
 /// Selects the ADR-0034 V2 rollout population. V1 remains the renderer and
 /// the V2 result never enters turn state in any mode.
 pub use qxfx0_semantic::response_plan_v2::ResponsePlanV2Mode;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AuthorityDecisionReceipt {
+    pub topic: String,
+    pub requested_mode: ResponsePlanV2Mode,
+    pub effective_mode: ResponsePlanV2Mode,
+    pub authority: ResponsePlanV2Authority,
+    pub outcome: qxfx0_semantic::response_plan_v2::V2AuthorityOutcome,
+    pub output_digest: Option<String>,
+    pub artifact_digest: String,
+    pub contract_digest: String,
+    pub replay_bundle_digest: Option<String>,
+}
+
+impl AuthorityDecisionReceipt {
+    pub fn output(&self) -> Option<String> {
+        self.outcome.output().map(|surface| surface.joined())
+    }
+
+    pub fn can_emit_v2(&self) -> bool {
+        self.authority == ResponsePlanV2Authority::Canary
+            && self.topic_is_canary()
+            && matches!(
+                self.outcome,
+                qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::Compositional { .. }
+                    | qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::AuditedVerbatim { .. }
+            )
+    }
+
+    fn topic_is_canary(&self) -> bool {
+        RESPONSE_PLAN_V2_CANARY_ALLOWLIST.contains(&self.topic.as_str())
+    }
+}
 
 const RESPONSE_PLAN_V2_CANARY_ALLOWLIST: [&str; 3] = ["правда", "произвол", "свобода"];
 
@@ -230,6 +273,7 @@ impl RendererAuthority {
         match self {
             Self::LegacyShadow => "legacy_shadow",
             Self::AuditedPlan => "audited_plan",
+            Self::V2Canary => "v2_canary",
         }
     }
 }
@@ -419,6 +463,7 @@ pub struct TurnOptions {
     pub suppression: SameTopicSuppressionMode,
     pub fact_grounded: fact_grounded::FactGroundedRollout,
     pub response_plan_v2: ResponsePlanV2Mode,
+    pub response_plan_v2_authority: ResponsePlanV2Authority,
 }
 
 impl TurnOptions {
@@ -459,6 +504,14 @@ impl TurnOptions {
 
     pub fn with_response_plan_v2(mut self, mode: ResponsePlanV2Mode) -> Self {
         self.response_plan_v2 = mode;
+        self
+    }
+
+    pub fn with_response_plan_v2_authority(mut self, authority: ResponsePlanV2Authority) -> Self {
+        self.response_plan_v2_authority = authority;
+        if authority == ResponsePlanV2Authority::Canary {
+            self.response_plan_v2 = ResponsePlanV2Mode::Canary;
+        }
         self
     }
 }
@@ -957,11 +1010,12 @@ fn response_plan_v2_is_eligible(mode: ResponsePlanV2Mode, topic: &str) -> bool {
 }
 
 fn record_response_plan_v2(
-    trace: &mut execution_trace::PipelineTrace,
+    mut trace: Option<&mut execution_trace::PipelineTrace>,
     routed: &turn_context::RoutedTurnContext,
     logical_turn: u64,
     requested_mode: ResponsePlanV2Mode,
-) {
+    authority: ResponsePlanV2Authority,
+) -> Option<AuthorityDecisionReceipt> {
     use qxfx0_semantic::response_plan_v2::{
         execute_audited_topic_at, AssertionPolicy, AuthoritySnapshot, PlanningPolicySnapshot,
         RealizationSnapshot, SelectionPolicy, SelectionPolicySnapshot, SelfSelectionContext,
@@ -1008,14 +1062,16 @@ fn record_response_plan_v2(
         ]);
         let digest = execution_trace::calculate_stable_digest(&metadata)
             .unwrap_or_else(|error| format!("digest-error:{error}"));
-        trace.record_step(
-            "response_plan_v2",
-            digest.clone(),
-            digest,
-            Duration::ZERO,
-            metadata,
-        );
-        return;
+        if let Some(trace) = trace.as_deref_mut() {
+            trace.record_step(
+                "response_plan_v2",
+                digest.clone(),
+                digest,
+                Duration::ZERO,
+                metadata,
+            );
+        }
+        return None;
     }
 
     let policy = SelectionPolicy {
@@ -1065,14 +1121,16 @@ fn record_response_plan_v2(
         ]);
         let digest = execution_trace::calculate_stable_digest(&metadata)
             .unwrap_or_else(|error| format!("digest-error:{error}"));
-        trace.record_step(
-            "response_plan_v2",
-            digest.clone(),
-            digest,
-            Duration::ZERO,
-            metadata,
-        );
-        return;
+        if let Some(trace) = trace.as_deref_mut() {
+            trace.record_step(
+                "response_plan_v2",
+                digest.clone(),
+                digest,
+                Duration::ZERO,
+                metadata,
+            );
+        }
+        return None;
     }
 
     let context = SelfSelectionContext::quantize(
@@ -1180,6 +1238,9 @@ fn record_response_plan_v2(
         }
         _ => ("none".into(), "none".into(), "none".into(), false, false),
     };
+    let replay_bundle_digest = record
+        .as_ref()
+        .map(|record| record.exact_replay.bundle_digest.clone());
     let artifact = ResponsePlanV2Artifact {
         schema: "qxfx0.response-plan-v2.shadow.v1",
         contract,
@@ -1197,6 +1258,20 @@ fn record_response_plan_v2(
     .unwrap_or_else(|error| format!("digest-error:{error}"));
     let output_digest = execution_trace::calculate_stable_digest(&artifact)
         .unwrap_or_else(|error| format!("digest-error:{error}"));
+    let receipt = AuthorityDecisionReceipt {
+        topic: topic.to_string(),
+        requested_mode,
+        effective_mode,
+        authority,
+        outcome: artifact.authority_outcome.clone(),
+        output_digest: artifact
+            .authority_outcome
+            .output()
+            .map(|output| output.surface_digest.clone()),
+        artifact_digest: output_digest.clone(),
+        contract_digest: artifact.contract.digest.clone(),
+        replay_bundle_digest,
+    };
     let execution_downgrade = !matches!(
         &artifact.result,
         qxfx0_semantic::response_plan_v2::V2ExecutionResult::Attempt(
@@ -1234,7 +1309,10 @@ fn record_response_plan_v2(
         ("completed".into(), "true".into()),
         ("downgrade_count".into(), downgrade_count.to_string()),
         ("downgrade_reason".into(), downgrade_reason.into()),
-        ("v1_authoritative".into(), "true".into()),
+        (
+            "v1_authoritative".into(),
+            (!receipt.can_emit_v2()).to_string(),
+        ),
         ("v1_fallback_used".into(), "false".into()),
     ]);
     metadata.extend([
@@ -1278,13 +1356,16 @@ fn record_response_plan_v2(
             "false".into(),
         ),
     ]);
-    trace.record_step(
-        "response_plan_v2",
-        input_digest,
-        output_digest,
-        Duration::ZERO,
-        metadata,
-    );
+    if let Some(trace) = trace {
+        trace.record_step(
+            "response_plan_v2",
+            input_digest,
+            output_digest,
+            Duration::ZERO,
+            metadata,
+        );
+    }
+    Some(receipt)
 }
 
 #[allow(clippy::too_many_arguments)] // explicit staged feature flags meet at this private boundary
@@ -1303,6 +1384,7 @@ fn process_turn_internal(
         suppression,
         fact_grounded: fact_grounded_rollout,
         response_plan_v2,
+        response_plan_v2_authority,
     } = options;
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -1393,14 +1475,21 @@ fn process_turn_internal(
     recovery.family = Some(routed.family());
     recovery.conversation_state = Some(routed.conversation_state());
 
-    if let Some(trace) = trace.as_deref_mut() {
-        record_response_plan_v2(
-            trace,
-            &routed,
-            state.dialogue.turn_count as u64,
-            response_plan_v2,
-        );
-    }
+    let authority_receipt = record_response_plan_v2(
+        trace.as_deref_mut(),
+        &routed,
+        state.dialogue.turn_count as u64,
+        response_plan_v2,
+        response_plan_v2_authority,
+    );
+    let effective_renderer_authority = if authority_receipt
+        .as_ref()
+        .is_some_and(AuthorityDecisionReceipt::can_emit_v2)
+    {
+        RendererAuthority::V2Canary
+    } else {
+        renderer_authority
+    };
 
     // Stage 3: Shadow plan (observational; renderer authority is unchanged)
     let planned = match execute_stage(
@@ -1411,7 +1500,7 @@ fn process_turn_internal(
         routed,
         stages::plan_shadow_stage,
     ) {
-        Ok(context) => context,
+        Ok(context) => context.with_authority_decision(authority_receipt),
         Err(error) => {
             tracing::error!("plan_shadow_stage failed: {error}");
             *state = snapshot;
@@ -1426,7 +1515,7 @@ fn process_turn_internal(
         "render",
         state,
         planned,
-        |state, planned| stages::render_stage(state, planned, renderer_authority),
+        |state, planned| stages::render_stage(state, planned, effective_renderer_authority),
     ) {
         Ok(context) => context,
         Err(error) => {

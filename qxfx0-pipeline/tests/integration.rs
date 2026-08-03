@@ -8,7 +8,8 @@ use qxfx0_pipeline::{
     process_turn_with_trace_and_renderer_and_features_and_suppression,
     response_plan_v2_canary_allowlist, response_plan_v2_canary_digest,
     response_plan_v2_state_parity, AnomalyShadowMode, ClarificationMode, DoubtShadowMode,
-    RendererAuthority, ResponsePlanV2Mode, SameTopicSuppressionMode, TurnInput, TurnOptions,
+    RendererAuthority, ResponsePlanV2Authority, ResponsePlanV2Mode, SameTopicSuppressionMode,
+    TurnInput, TurnOptions,
 };
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
@@ -724,6 +725,82 @@ fn response_plan_v2_rollout_scopes_downgrade_without_affecting_stance_payload() 
             "{key}"
         );
     }
+}
+
+#[test]
+fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
+    let topic = "свобода";
+    let input = TurnInput {
+        session_id: "v2-authority-canary".into(),
+        raw_text: format!("что такое {topic}?"),
+    };
+    let mut canary_state = test_state(&input.session_id);
+    let (canary_output, canary_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut canary_state,
+        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+    );
+    let render = canary_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "render")
+        .expect("render trace");
+    assert_eq!(
+        render.metadata.get("renderer_source").map(String::as_str),
+        Some("response_plan_v2")
+    );
+    assert_eq!(
+        canary_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2")
+            .and_then(|step| step.metadata.get("v1_authoritative"))
+            .map(String::as_str),
+        Some("false")
+    );
+    assert!(!canary_output.response.is_empty());
+
+    let mut replay_state = test_state(&input.session_id);
+    let (replay_output, replay_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut replay_state,
+        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+    );
+    assert_eq!(canary_output.response, replay_output.response);
+    assert_eq!(
+        canary_trace.replay_signature(),
+        replay_trace.replay_signature()
+    );
+    assert!(response_plan_v2_state_parity(&canary_state, &replay_state));
+
+    let mut rollback_state = test_state(&input.session_id);
+    let (rollback_output, rollback_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut rollback_state,
+        TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Canary),
+    );
+    let rollback_render = rollback_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "render")
+        .expect("rollback render trace");
+    assert_ne!(canary_output.response, rollback_output.response);
+    assert_eq!(
+        rollback_render
+            .metadata
+            .get("renderer_source")
+            .map(String::as_str),
+        Some("legacy_graph")
+    );
+    assert_eq!(
+        rollback_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2")
+            .and_then(|step| step.metadata.get("v1_authoritative"))
+            .map(String::as_str),
+        Some("true")
+    );
 }
 
 #[test]

@@ -49,3 +49,17 @@ jobs:
 
       - name: Run production health check
         run: target/release/qxfx0 --db "$RUNNER_TEMP/qxfx0-doctor.db" doctor
+
+      - name: Run ResponsePlan V2 contract gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          for gate in \
+            response-plan-v2-phase-a \
+            response-plan-v2-phase-b \
+            response-plan-v2-phase-c \
+            response-plan-v2-replay \
+            response-plan-v2-zero-downgrade \
+            response-plan-v2-canary-report; do
+            target/release/qxfx0 doctor --gate "$gate"
+          done
