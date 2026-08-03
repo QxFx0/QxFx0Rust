@@ -212,6 +212,10 @@ pub struct AuthorityReport {
     pub positive_turns: usize,
     pub negative_turns: usize,
     pub expectation_failures: usize,
+    pub expected_denials: usize,
+    pub unexpected_denials: usize,
+    pub expected_rollbacks: usize,
+    pub unexpected_rollbacks: usize,
     pub case_ids: Vec<String>,
     pub input_classes: std::collections::BTreeMap<String, usize>,
 }
@@ -330,7 +334,12 @@ where
             else {
                 report.turns += 1;
                 if guard == "authority_denied_before_render" {
-                    if expected_result.is_some_and(|expected| expected != "authority_denied") {
+                    if expected_result == Some("authority_denied") {
+                        report.expected_denials += 1;
+                        report.expected_rollbacks += 1;
+                    } else {
+                        report.unexpected_denials += 1;
+                        report.unexpected_rollbacks += 1;
                         report.expectation_failures += 1;
                     }
                     report.rollback_activations += 1;
@@ -400,6 +409,11 @@ where
                 || guard == "authority_denied_before_render"
             {
                 report.rollback_activations += 1;
+                if expected_result == Some("authority_denied") {
+                    report.expected_rollbacks += 1;
+                } else {
+                    report.unexpected_rollbacks += 1;
+                }
             }
             let replay_ok = record.trace.steps.iter().any(|step| {
                 step.stage == "response_plan_v2"

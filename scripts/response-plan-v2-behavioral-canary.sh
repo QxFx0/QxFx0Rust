@@ -61,5 +61,7 @@ jq -e '
 jq -e '
   .turns == 7 and .negative_turns == 7 and .expectation_failures == 0 and
   .compositional == 0 and .audited_verbatim == 0 and .guard_blocks == 0 and
-  .rollback_activations == 7
+  .rollback_activations == 7 and .expected_denials == 7 and
+  .unexpected_denials == 0 and .expected_rollbacks == 7 and
+  .unexpected_rollbacks == 0
 ' "$output_dir/negative-report.json" >/dev/null
