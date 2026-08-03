@@ -582,7 +582,14 @@ fn test_stage_trace_is_replay_deterministic() {
 fn response_plan_v2_canary_is_sorted_stable_and_attribute_preserving() {
     assert_eq!(
         response_plan_v2_canary_allowlist(),
-        &["правда", "произвол", "свобода"]
+        &[
+            "правда",
+            "произвол",
+            "свобода",
+            "время",
+            "справедливость",
+            "ответственность",
+        ]
     );
     assert_eq!(
         response_plan_v2_canary_digest(),
@@ -814,7 +821,14 @@ fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
 
 #[test]
 fn response_plan_v2_behavioral_canary_respects_the_define_only_boundary() {
-    let topics = ["правда", "произвол", "свобода"];
+    let topics = [
+        "правда",
+        "произвол",
+        "свобода",
+        "время",
+        "справедливость",
+        "ответственность",
+    ];
     for topic in topics {
         let session_id = format!("v2-behavioral-{topic}");
         let mut state = test_state(&session_id);

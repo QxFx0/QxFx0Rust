@@ -1395,7 +1395,7 @@ mod tests {
         let traced = run_turn_with_v2_authority_trace(
             &db,
             "authority-denial",
-            "что такое время?",
+            "что такое истина?",
             qxfx0_pipeline::ResponsePlanV2Authority::Canary,
         )
         .expect("denied authority turn");

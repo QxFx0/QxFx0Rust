@@ -150,9 +150,16 @@ impl AuthorityDecisionReceipt {
     }
 }
 
-const RESPONSE_PLAN_V2_CANARY_ALLOWLIST: [&str; 3] = ["правда", "произвол", "свобода"];
+const RESPONSE_PLAN_V2_CANARY_ALLOWLIST: [&str; 6] = [
+    "правда",
+    "произвол",
+    "свобода",
+    "время",
+    "справедливость",
+    "ответственность",
+];
 
-pub fn response_plan_v2_canary_allowlist() -> &'static [&'static str; 3] {
+pub fn response_plan_v2_canary_allowlist() -> &'static [&'static str; 6] {
     &RESPONSE_PLAN_V2_CANARY_ALLOWLIST
 }
 

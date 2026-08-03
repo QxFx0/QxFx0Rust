@@ -1,0 +1,17 @@
+{
+  "schema": "qxfx0.response-plan-v2.cohort-proposal-baseline.v1",
+  "proposal_pr": 31,
+  "merge_sha": "1617ca06188f0aa22fb68cd35e9594de91c780ea",
+  "merge_ci_run": 30859274633,
+  "merge_ci_url": "https://github.com/QxFx0/QxFx0Rust/actions/runs/30859274633",
+  "merge_ci_result": "success",
+  "cohort_manifest_sha256": "cfb1bc1f3d023e9cd9d632e52d550bd1a7b776bec7ff58784ebf2a5e623e0eb6",
+  "shadow_artifact_sha256": "a6322e6e4b046ad5acfc9f7a752b540f7e0e9fc4084440e8f2b21b249a748167",
+  "shadow_topics": 3,
+  "shadow_claims": 7,
+  "shadow_downgrades": 0,
+  "shadow_parity_failures": 0,
+  "production_allowlist": ["правда", "произвол", "свобода"],
+  "production_default": "V1",
+  "authority_boundary": "CMDefine"
+}

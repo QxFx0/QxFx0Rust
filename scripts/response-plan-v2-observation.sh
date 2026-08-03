@@ -3,7 +3,7 @@ set -euo pipefail
 
 binary="${1:-target/release/qxfx0}"
 repetitions="${2:-10}"
-window_id="${3:-response-plan-v2-canary-2026-08}"
+window_id="${3:-response-plan-v2-cohort-2026-08}"
 output_dir="${4:-target/response-plan-v2-observation/$window_id}"
 expected_sha="${5:-}"
 [[ "$repetitions" =~ ^[1-9][0-9]*$ ]] || { printf 'repetitions must be positive\n' >&2; exit 2; }
@@ -12,7 +12,7 @@ rm -rf "$output_dir"
 mkdir -p "$output_dir/positive" "$output_dir/negative"
 
 manifest_digest="$(sha256sum data/gates/response-plan-v2/behavioral-canary-manifest.json | cut -d' ' -f1)"
-allowlist_digest="$(printf '%s\n' правда произвол свобода | sha256sum | cut -d' ' -f1)"
+allowlist_digest="$(printf '%s\n' правда произвол свобода время справедливость ответственность | sha256sum | cut -d' ' -f1)"
 build_sha="$(git rev-parse HEAD)"
 version="$($binary version)"
 if [[ -n "$expected_sha" && "$build_sha" != "$expected_sha" ]]; then
@@ -41,7 +41,13 @@ run_case() {
     --authority-expected-guard "$expected_guard" >/dev/null
 }
 
-for topic_entry in "truth|правда" "arbitrariness|произвол" "freedom|свобода"; do
+for topic_entry in \
+  "truth|правда" \
+  "arbitrariness|произвол" \
+  "freedom|свобода" \
+  "time|время" \
+  "justice|справедливость" \
+  "responsibility|ответственность"; do
   IFS='|' read -r topic_id topic <<<"$topic_entry"
   for repeat in $(seq 1 "$repetitions"); do
     session="observation-$topic_id-$repeat"
@@ -80,7 +86,7 @@ jq -n \
   --argjson repetitions "$repetitions" \
   '{schema:$schema,window_id:$window,build_sha:$build,binary_version:$version,manifest_digest:$manifest,allowlist_digest:$allowlist,repetitions:$repetitions,generated_at:$generated_at}' \
   > "$output_dir/observation-metadata.json"
-jq -e --argjson expected "$((repetitions * 12))" '
+jq -e --argjson expected "$((repetitions * 24))" '
   .turns == $expected and .expectation_failures == 0 and
   .realization_downgrade == 0 and .replay_failures == 0 and
   .guard_blocks == 0 and .rollback_activations == 0 and

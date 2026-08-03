@@ -10,11 +10,11 @@ on:
       window_id:
         description: Immutable observation window identifier
         required: true
-        default: response-plan-v2-canary-2026-08
+        default: response-plan-v2-cohort-2026-08
       expected_sha:
         description: Exact release SHA to observe
         required: true
-        default: 92e4c68b907c0bbef7353c159cf4bdb3c93bce92
+        default: ""
 
 permissions:
   contents: read
@@ -25,10 +25,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Validate exact observation SHA
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || {
+            echo "expected_sha must be exactly 40 hexadecimal characters" >&2
+            exit 1
+          }
+
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.expected_sha }}
+
+      - name: Verify checked out SHA
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.93.1
