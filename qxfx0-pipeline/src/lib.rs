@@ -127,6 +127,7 @@ pub struct AuthorityDecisionReceipt {
     pub artifact_digest: String,
     pub contract_digest: String,
     pub replay_bundle_digest: Option<String>,
+    pub guard_classification: String,
 }
 
 impl AuthorityDecisionReceipt {
@@ -1271,6 +1272,7 @@ fn record_response_plan_v2(
         artifact_digest: output_digest.clone(),
         contract_digest: artifact.contract.digest.clone(),
         replay_bundle_digest,
+        guard_classification: "pending".into(),
     };
     let execution_downgrade = !matches!(
         &artifact.result,
@@ -1350,6 +1352,13 @@ fn record_response_plan_v2(
                 .source_digest()
                 .unwrap_or("none")
                 .into(),
+        ),
+        (
+            "replay_bundle_digest".into(),
+            receipt
+                .replay_bundle_digest
+                .clone()
+                .unwrap_or_else(|| "none".into()),
         ),
         (
             "legacy_graph_v2_declarative_fallback".into(),
@@ -1574,6 +1583,24 @@ fn process_turn_internal(
             return recovery_output(state, &recovery);
         }
     };
+    if response_plan_v2_authority == ResponsePlanV2Authority::Canary {
+        let v2_authorized = guarded
+            .finalized()
+            .rendered()
+            .planned()
+            .authority_decision()
+            .is_some_and(AuthorityDecisionReceipt::can_emit_v2);
+        let classification = if !v2_authorized {
+            "authority_denied_before_render"
+        } else if guarded.blocked() {
+            "v2_rendered_guard_blocked"
+        } else {
+            "v2_successfully_emitted"
+        };
+        if let Some(trace) = trace.as_deref_mut() {
+            trace.set_authority_guard_classification(classification);
+        }
+    }
     if let Some(rejection) = guarded.rejection() {
         // A guard rejection is an expected turn outcome, not a pipeline fault.
         tracing::warn!("guard rejected turn: {rejection}");
