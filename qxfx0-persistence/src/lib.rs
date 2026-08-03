@@ -7,6 +7,30 @@ use thiserror::Error;
 
 mod db;
 
+fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
+    let mut violations = Vec::new();
+    let active_pack = qxfx0_semantic::active_pack_set();
+    let perspective_is_empty = state.semantic.perspective.opinions.is_empty()
+        && state.semantic.perspective.episodes.is_empty();
+    if state.semantic.pack_set_fingerprint.is_empty() && !perspective_is_empty {
+        violations.push("non-empty Perspective has no knowledge-pack fingerprint".into());
+        return violations;
+    }
+    if !state.semantic.pack_set_fingerprint.is_empty()
+        && state.semantic.pack_set_fingerprint != active_pack.fingerprint()
+    {
+        violations.push("active knowledge-pack fingerprint mismatch".into());
+        return violations;
+    }
+    violations.extend(
+        qxfx0_self::fact_perspective::validate_perspective_against_pack(
+            &state.semantic.perspective,
+            active_pack,
+        ),
+    );
+    violations
+}
+
 #[derive(Error, Debug)]
 pub enum PersistenceError {
     #[error("SQLite error: {0}")]
@@ -212,7 +236,8 @@ impl Persistence {
                 session_id, state.session_id
             )));
         }
-        let violations = state.validate();
+        let mut violations = state.validate();
+        violations.extend(perspective_authority_violations(state));
         if !violations.is_empty() {
             return Err(PersistenceError::InvalidState(violations.join("; ")));
         }
@@ -231,6 +256,8 @@ impl Persistence {
         let commitments_json = serde_json::to_string(&state.semantic.semantic_commitments)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
         let stance_provenance_json = serde_json::to_string(&state.semantic.stance_provenance)
+            .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
+        let perspective_json = serde_json::to_string(&state.semantic.perspective)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
 
         let state_json = serde_json::to_string(state)
@@ -265,15 +292,16 @@ impl Persistence {
         )?;
 
         tx.execute(
-            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT(session_id) DO UPDATE SET
                 field_json=excluded.field_json,
                 essence_json=excluded.essence_json,
                 adjunction_json=excluded.adjunction_json,
                 commitments_json=excluded.commitments_json,
-                stance_provenance_json=excluded.stance_provenance_json",
-            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json],
+                stance_provenance_json=excluded.stance_provenance_json,
+                perspective_json=excluded.perspective_json",
+            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json],
         )?;
         let sqlite_remaining_writes_ms = SaveStateTimings::elapsed_ms(remaining_writes_started);
 
@@ -310,7 +338,7 @@ impl Persistence {
         let semantic = self
             .conn
             .query_row(
-                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json
+                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json
                  FROM session_semantic WHERE session_id = ?1",
                 params![session_id],
                 |row| {
@@ -320,6 +348,7 @@ impl Persistence {
                         row.get::<_, String>(2)?,
                         row.get::<_, Option<String>>(3)?,
                         row.get::<_, Option<String>>(4)?,
+                        row.get::<_, Option<String>>(5)?,
                     ))
                 },
             )
@@ -333,6 +362,7 @@ impl Persistence {
                 adjunction_json,
                 commitments_json,
                 stance_provenance_json,
+                perspective_json,
             )),
         ) = (graph, semantic)
         {
@@ -345,12 +375,14 @@ impl Persistence {
                 )
                 .optional()?;
 
-            let (dialogue, last_turn_decision, governance_log) = match session {
+            let (dialogue, pack_set_fingerprint, last_turn_decision, governance_log) = match session
+            {
                 Some(state_json) => {
                     let legacy: SystemState = serde_json::from_str(&state_json)
                         .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
                     (
                         legacy.dialogue,
+                        legacy.semantic.pack_set_fingerprint,
                         legacy.last_turn_decision,
                         legacy.governance_log,
                     )
@@ -381,6 +413,11 @@ impl Persistence {
                 Some(json) => serde_json::from_str(json)
                     .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
             };
+            let perspective = match perspective_json.as_deref() {
+                Some("null") | Some("") | None => Default::default(),
+                Some(json) => serde_json::from_str(json)
+                    .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
+            };
 
             let state = SystemState {
                 session_id: session_id.into(),
@@ -396,10 +433,12 @@ impl Persistence {
                     qxfx0_types::system_state::SemanticState {
                         field,
                         runtime_graph,
+                        pack_set_fingerprint,
                         semantic_commitments,
                         essence,
                         adjunction,
                         stance_provenance,
+                        perspective,
                         cached_edge_count: 0,
                         cached_network: None,
                     }
@@ -407,7 +446,8 @@ impl Persistence {
                 last_turn_decision,
                 governance_log,
             };
-            let violations = state.validate();
+            let mut violations = state.validate();
+            violations.extend(perspective_authority_violations(&state));
             if !violations.is_empty() {
                 return Err(PersistenceError::InvalidState(violations.join("; ")));
             }
@@ -434,7 +474,8 @@ impl Persistence {
                 state.semantic.runtime_graph.rebuild_indices();
                 state.semantic.cached_edge_count = 0;
                 state.semantic.cached_network = None;
-                let violations = state.validate();
+                let mut violations = state.validate();
+                violations.extend(perspective_authority_violations(&state));
                 if !violations.is_empty() {
                     return Err(PersistenceError::InvalidState(violations.join("; ")));
                 }
@@ -535,9 +576,41 @@ impl Persistence {
 mod tests {
     use super::*;
     use qxfx0_self::collapse_essence;
+    use qxfx0_self::fact_perspective::integrate_curated_claims;
+    use qxfx0_semantic::ClaimRole;
     use qxfx0_types::governance::{GovernanceEvent, GovernanceEventType};
     use qxfx0_types::system_state::DialogueState;
     use qxfx0_types::system_state::*;
+    use qxfx0_types::{BeliefPolarity, ConceptId, FactId, OpinionCore};
+    use std::collections::BTreeSet;
+
+    fn qualified_without_counterpoint_state(session_id: &str) -> SystemState {
+        let packs = qxfx0_semantic::active_pack_set();
+        let topic = ConceptId("concept.свобода".into());
+        let thesis = FactId::try_new("fact.freedom_choice").unwrap();
+        let (mut perspective, _) = integrate_curated_claims(
+            &Default::default(),
+            1,
+            &[(ClaimRole::Thesis, thesis)],
+            packs.facts(),
+        )
+        .unwrap();
+        perspective.opinions.get_mut(&topic).unwrap().polarity = BeliefPolarity::Qualified;
+        assert!(perspective.validate().is_empty());
+        SystemState {
+            session_id: session_id.into(),
+            dialogue: DialogueState {
+                turn_count: 1,
+                ..Default::default()
+            },
+            semantic: SemanticState {
+                pack_set_fingerprint: packs.fingerprint().into(),
+                perspective,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
 
     #[test]
     fn test_open_memory() {
@@ -641,6 +714,151 @@ mod tests {
             state.semantic.stance_provenance
         );
         assert_eq!(replayed.semantic.stance_provenance.version(), 1);
+    }
+
+    #[test]
+    fn fact_grounded_perspective_round_trips_and_replay_is_idempotent() {
+        let db = Persistence::open_memory().unwrap();
+        let packs = qxfx0_semantic::active_pack_set();
+        let thesis = FactId::try_new("fact.freedom_choice").unwrap();
+        let claims = vec![(ClaimRole::Thesis, thesis)];
+        let (perspective, first_update) =
+            integrate_curated_claims(&Default::default(), 1, &claims, packs.facts()).unwrap();
+        assert_eq!(first_update.episodes_added, 1);
+        let (replayed, second_update) =
+            integrate_curated_claims(&perspective, 2, &claims, packs.facts()).unwrap();
+        assert_eq!(replayed, perspective);
+        assert_eq!(second_update.episodes_added, 0);
+
+        let mut state = SystemState {
+            session_id: "fact-grounded-roundtrip".into(),
+            ..Default::default()
+        };
+        state.semantic.pack_set_fingerprint = packs.fingerprint().into();
+        state.semantic.perspective = perspective;
+        db.save_state(&state.session_id, &state).unwrap();
+        let loaded = db.load_state(&state.session_id).unwrap().unwrap();
+        assert_eq!(loaded.semantic.pack_set_fingerprint, packs.fingerprint());
+        assert_eq!(loaded.semantic.perspective, state.semantic.perspective);
+    }
+
+    #[test]
+    fn non_empty_perspective_without_fingerprint_is_rejected_on_save() {
+        let db = Persistence::open_memory().unwrap();
+        let mut state = qualified_without_counterpoint_state("missing-pack-identity");
+        state
+            .semantic
+            .perspective
+            .opinions
+            .get_mut(&ConceptId("concept.свобода".into()))
+            .unwrap()
+            .polarity = BeliefPolarity::Affirmed;
+        state.semantic.pack_set_fingerprint.clear();
+        let error = db
+            .save_state(&state.session_id, &state)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("non-empty Perspective has no knowledge-pack fingerprint"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn well_formed_but_semantically_corrupt_normalized_and_legacy_json_fail_closed() {
+        let db = Persistence::open_memory().unwrap();
+
+        let normalized_id = "corrupt-normalized-perspective";
+        let clean = SystemState {
+            session_id: normalized_id.into(),
+            ..Default::default()
+        };
+        db.save_state(normalized_id, &clean).unwrap();
+        let corrupt_normalized = qualified_without_counterpoint_state(normalized_id);
+        db.conn
+            .execute(
+                "UPDATE runtime_sessions SET state_json = ?1 WHERE id = ?2",
+                params![
+                    serde_json::to_string(&corrupt_normalized).unwrap(),
+                    normalized_id
+                ],
+            )
+            .unwrap();
+        db.conn
+            .execute(
+                "UPDATE session_semantic SET perspective_json = ?1 WHERE session_id = ?2",
+                params![
+                    serde_json::to_string(&corrupt_normalized.semantic.perspective).unwrap(),
+                    normalized_id
+                ],
+            )
+            .unwrap();
+        let error = db.load_state(normalized_id).unwrap_err().to_string();
+        assert!(
+            error.contains("qualified without a curated counterpoint"),
+            "{error}"
+        );
+
+        let legacy_id = "corrupt-legacy-perspective";
+        let corrupt_legacy = qualified_without_counterpoint_state(legacy_id);
+        db.conn
+            .execute(
+                "INSERT INTO runtime_sessions (id, state_json, turn_count) VALUES (?1, ?2, ?3)",
+                params![
+                    legacy_id,
+                    serde_json::to_string(&corrupt_legacy).unwrap(),
+                    corrupt_legacy.dialogue.turn_count
+                ],
+            )
+            .unwrap();
+        let error = db.load_state(legacy_id).unwrap_err().to_string();
+        assert!(
+            error.contains("qualified without a curated counterpoint"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn forged_fact_and_corrupt_perspective_json_fail_closed() {
+        let db = Persistence::open_memory().unwrap();
+        let topic = ConceptId("concept.свобода".into());
+        let forged = FactId::try_new("fact.user-forged").unwrap();
+        let mut state = SystemState {
+            session_id: "forged-perspective".into(),
+            ..Default::default()
+        };
+        state.semantic.pack_set_fingerprint =
+            qxfx0_semantic::active_pack_set().fingerprint().into();
+        state.semantic.perspective.opinions.insert(
+            topic.clone(),
+            OpinionCore {
+                topic,
+                primary_fact: forged.clone(),
+                polarity: BeliefPolarity::Affirmed,
+                grounding_facts: BTreeSet::from([forged]),
+                confidence_basis_points: 1_000,
+                revision_seq: 1,
+            },
+        );
+        let error = db
+            .save_state(&state.session_id, &state)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("invalid authority"), "{error}");
+
+        let clean = SystemState {
+            session_id: "corrupt-perspective".into(),
+            ..Default::default()
+        };
+        db.save_state(&clean.session_id, &clean).unwrap();
+        db.conn
+            .execute(
+                "UPDATE session_semantic SET perspective_json = ?1 WHERE session_id = ?2",
+                params!["{not-json}", clean.session_id],
+            )
+            .unwrap();
+        let error = db.load_state(&clean.session_id).unwrap_err().to_string();
+        assert!(error.contains("Serialization error"), "{error}");
     }
 
     #[test]
@@ -869,7 +1087,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 8);
+        assert_eq!(db.schema_version().unwrap(), 9);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -924,7 +1142,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 8);
+            assert_eq!(db.schema_version().unwrap(), 9);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db

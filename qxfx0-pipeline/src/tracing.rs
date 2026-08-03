@@ -23,6 +23,20 @@ pub struct TraceStep {
 pub struct PipelineTrace {
     pub request_id: String,
     pub steps: Vec<TraceStep>,
+    /// Optional authority evidence kept outside persisted session state.
+    pub authority_receipt: Option<serde_json::Value>,
+    /// Final authority/guard boundary result, including turns denied before a
+    /// receipt could be created.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_guard_classification: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_case_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_input_class: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_expected_result: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_expected_guard: Option<String>,
     /// Local diagnostic only; intentionally absent from serialized replay
     /// evidence so JSONL traces do not contain wall-clock data.
     #[serde(skip_serializing)]
@@ -34,6 +48,12 @@ impl PipelineTrace {
         Self {
             request_id: request_id.to_string(),
             steps: Vec::new(),
+            authority_receipt: None,
+            authority_guard_classification: None,
+            authority_case_id: None,
+            authority_input_class: None,
+            authority_expected_result: None,
+            authority_expected_guard: None,
             total_duration: std::time::Duration::ZERO,
         }
     }
@@ -58,6 +78,37 @@ impl PipelineTrace {
 
     pub fn set_total_duration(&mut self, duration: std::time::Duration) {
         self.total_duration = duration;
+    }
+
+    pub fn set_authority_receipt<T: Serialize>(&mut self, receipt: &T) -> Result<(), String> {
+        self.authority_receipt =
+            Some(serde_json::to_value(receipt).map_err(|error| error.to_string())?);
+        Ok(())
+    }
+
+    pub fn set_authority_guard_classification(&mut self, classification: &str) {
+        self.authority_guard_classification = Some(classification.into());
+        if let Some(receipt) = self.authority_receipt.as_mut() {
+            if let Some(object) = receipt.as_object_mut() {
+                object.insert(
+                    "guard_classification".into(),
+                    serde_json::Value::String(classification.into()),
+                );
+            }
+        }
+    }
+
+    pub fn set_authority_case_metadata(
+        &mut self,
+        case_id: Option<&str>,
+        input_class: Option<&str>,
+        expected_result: Option<&str>,
+        expected_guard: Option<&str>,
+    ) {
+        self.authority_case_id = case_id.map(str::to_owned);
+        self.authority_input_class = input_class.map(str::to_owned);
+        self.authority_expected_result = expected_result.map(str::to_owned);
+        self.authority_expected_guard = expected_guard.map(str::to_owned);
     }
 
     /// Formats the trace for human-readable output or log files.
@@ -179,5 +230,36 @@ mod tests {
             BTreeMap::new(),
         );
         assert_eq!(a.replay_signature(), b.replay_signature());
+    }
+
+    #[test]
+    fn authority_evidence_does_not_change_replay_signature() {
+        let mut trace = PipelineTrace::new("authority");
+        trace.record_step(
+            "render",
+            "in".into(),
+            "out".into(),
+            std::time::Duration::ZERO,
+            BTreeMap::new(),
+        );
+        let expected = trace
+            .replay_signature()
+            .into_iter()
+            .map(|(stage, input, output)| (stage.to_owned(), input.to_owned(), output.to_owned()))
+            .collect::<Vec<_>>();
+        trace.authority_receipt = Some(serde_json::json!({"authority": "Canary"}));
+        trace.set_authority_guard_classification("v2_successfully_emitted");
+        assert_eq!(
+            trace
+                .replay_signature()
+                .into_iter()
+                .map(|(stage, input, output)| (
+                    stage.to_owned(),
+                    input.to_owned(),
+                    output.to_owned()
+                ))
+                .collect::<Vec<_>>(),
+            expected
+        );
     }
 }

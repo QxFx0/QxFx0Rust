@@ -1,0 +1,47 @@
+# Valency frames for admitted relations (ADR-0034 §7).
+#
+# The plan says *which relation* is asserted. This lexicon says *which case the
+# head governs*. The linearizer computes the forms. Before this file the
+# government lived inside 127 template strings, so `{OBJ|acc}` had to be
+# rewritten per template and could disagree with itself.
+#
+# head_kind:
+#   finite    a finite verb; Russian present tense agrees in person and number
+#             but not in gender, so one surface serves every subject.
+#   agreeing  a short participle or short adjective; it agrees with the subject
+#             in gender and number, so four forms are required.
+#             `head_forms` is masc,fem,neut,plur in that fixed order.
+#
+# complement:
+#   none          the head takes no complement          (время необратимо)
+#   direct:CASE   bare case government                  (требует + gen)
+#   prep:P:CASE   preposition plus case                 (зависит от + gen)
+#   uninflected   an infinitive phrase or predicate      (может + inf)
+#                 nominal, carried verbatim
+#
+# Three legacy relation ids — napravlena, svyazan, neobratimo — encode a
+# subject gender in the identifier itself, which is why the same relation could
+# not be reused for a subject of another gender. The lemma and its four forms
+# live here instead; the identifiers are kept for corpus compatibility.
+relation_id	head_kind	head_forms	complement
+eto	finite	это	direct:nom
+eto_neobhodimost	finite	— это необходимость	uninflected
+kontrastiruet	finite	контрастирует	prep:с:ins
+mozhet	finite	может	uninflected
+napravlena	agreeing	направлен,направлена,направлено,направлены	prep:на:acc
+napravlyaet	finite	направляет	direct:acc
+neobratimo	agreeing	необратим,необратима,необратимо,необратимы	none
+oboznachaet	finite	обозначает	direct:acc
+otlichaetsya	finite	отличается	prep:от:gen
+oznachaet	finite	означает	direct:acc
+podderzhivaet	finite	поддерживает	direct:acc
+predpisyvaet	finite	предписывает	direct:acc
+predpolagaet	finite	предполагает	direct:acc
+pretenduet	finite	претендует	prep:на:acc
+stroitsya	finite	строится	prep:через:acc
+svyazan	agreeing	связан,связана,связано,связаны	prep:с:ins
+trebuet	finite	требует	direct:gen
+vosstanavlivaet	finite	восстанавливает	direct:acc
+vyrazhaet	finite	выражает	direct:acc
+vyzyvaet	finite	вызывает	direct:acc
+zavisit	finite	зависит	prep:от:gen

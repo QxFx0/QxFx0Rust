@@ -1,0 +1,16 @@
+{
+  "schema": "qxfx0.response-plan-v2.selection.v1",
+  "ranking_version": "score-desc-merkle-asc-v1",
+  "numeric_semantics_version": "basis-points-half-away-v1",
+  "vectors": [
+    {
+      "name": "higher-base-utility-wins",
+      "context": { "conatus": 10000, "salience": 5000, "doubt": 1000 },
+      "candidates": [
+        { "topic": "свобода", "base_utility": 1000 },
+        { "topic": "истина", "base_utility": 2000 }
+      ],
+      "expected_topic": "истина"
+    }
+  ]
+}

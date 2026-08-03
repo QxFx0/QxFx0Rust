@@ -1,0 +1,17 @@
+{
+  "bundle_version": 1,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "license": "MIT",
+  "created_at": "2026-07-29T16:55:56.251430+00:00",
+  "files": {
+    "lexemes.json": "d7bc20571369d0e178c3866bff53e3cd4ceb67d27ca7830fa91213d656835ddf"
+  },
+  "local_amendments": [
+    {
+      "lemma": "соразмерность",
+      "reason": "required by the audited thesis for 'справедливость'; absent from the converted bundle, so V2 realization hard-failed",
+      "added_in": "codex/fix-fact-grounded-authority"
+    }
+  ]
+}

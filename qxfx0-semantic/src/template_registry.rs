@@ -27,13 +27,26 @@ pub struct TemplateRegistry {
     templates: BTreeMap<RelationType, Vec<SurfaceTemplate>>,
 }
 
+/// The embedded template source, verbatim.
+///
+/// Exposed so a gate can hash exactly the bytes the binary was built with and
+/// detect drift between `templates.json` and a census manifest generated from
+/// it (ADR-0034 §10). Reading the file from disk would defeat that check.
+pub const EMBEDDED_TEMPLATES_JSON: &str =
+    include_str!("../../data/semantic/templates/templates.json");
+
 impl TemplateRegistry {
+    /// The embedded template source the registry is built from.
+    pub const fn embedded_source() -> &'static str {
+        EMBEDDED_TEMPLATES_JSON
+    }
+
     /// Load from the embedded templates.json data.
     ///
     /// If the embedded JSON is malformed (e.g. after manual edits), falls back
     /// to an empty registry and logs a warning instead of panicking.
     pub fn load() -> Self {
-        let json = include_str!("../../data/semantic/templates/templates.json");
+        let json = EMBEDDED_TEMPLATES_JSON;
         let raw: BTreeMap<String, Vec<SurfaceTemplate>> = match serde_json::from_str(json) {
             Ok(r) => r,
             Err(e) => {

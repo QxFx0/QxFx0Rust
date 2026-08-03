@@ -1,0 +1,3848 @@
+{
+  "diagnostics": {
+    "relation_types": 33,
+    "rows_by_parity_class": {
+      "byte": 345,
+      "semantic": 36
+    },
+    "rows_total": 381,
+    "templates_parity_byte": 115,
+    "templates_parity_semantic": 12,
+    "templates_total": 127
+  },
+  "fixtures": [
+    {
+      "fixture_id": "fixture.masc",
+      "gender": "m",
+      "lemma": "разум"
+    },
+    {
+      "fixture_id": "fixture.fem",
+      "gender": "f",
+      "lemma": "свобода"
+    },
+    {
+      "fixture_id": "fixture.neut",
+      "gender": "n",
+      "lemma": "бытие"
+    }
+  ],
+  "matrix_digest": "ecd946c710010fb5c31b42bfb0d81a72ffd47bd296b300d518c703b07451e2c1",
+  "matrix_id": "template-agreement-matrix-v1",
+  "rows": [
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelCapableOf",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelCapableOf",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelCapableOf",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCapableOf",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCapableOf",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCapableOf",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCapableOf",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCapableOf",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCapableOf",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelClaims",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelConnects",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[3]",
+      "relation_type": "RelContrastsWith",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[3]",
+      "relation_type": "RelContrastsWith",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[3]",
+      "relation_type": "RelContrastsWith",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelContrastsWith",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelCreatedFrom",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDenotes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDependsOn",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelDependsOn",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelDependsOn",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelDependsOn",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDetermines",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDiffersFrom",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelDirectedAt",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelDirectedAt",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelDirectedAt",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDirectedAt",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDirectedAt",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDirectedAt",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDirectedAt",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDirectedAt",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelDirectedAt",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelEvokes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelExpresses",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[3]",
+      "relation_type": "RelIncludes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[3]",
+      "relation_type": "RelIncludes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[3]",
+      "relation_type": "RelIncludes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIncludes",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelIsA",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelLimitedBy",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelLimitedBy",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelLimitedBy",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelLimitedBy",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelLimitedBy",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelLimitedBy",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelLimitedBy",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelMeans",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNecessaryFor",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNegates",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelNotReducibleTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelOrientsToward",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPointsTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPreserves",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelPresupposes",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReconstructs",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRelatedTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRelatedTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRelatedTo",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 6
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 6
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 6
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 7
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 7
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRelatedTo",
+      "template_index": 7
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelReliesOn",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRequires",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRequires",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRequires",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRequires",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRequires",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelRequires",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 4
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 5
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 6
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 6
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelRequires",
+      "template_index": 6
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSignals",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelStructures",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelStructures",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelStructures",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelStructures",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelSupports",
+      "template_index": 3
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelTransformsInto",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelUnifies",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 0
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "byte",
+      "reason": "no agreement feature in surface",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 1
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "m",
+      "fixture_id": "fixture.masc",
+      "fixture_lemma": "разум",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "f",
+      "fixture_id": "fixture.fem",
+      "fixture_lemma": "свобода",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 2
+    },
+    {
+      "expected_surface_digest": null,
+      "fixture_gender": "n",
+      "fixture_id": "fixture.neut",
+      "fixture_lemma": "бытие",
+      "parity_class": "semantic",
+      "reason": "explicit agreement slot; arities=[4]",
+      "relation_type": "RelVerifiedBy",
+      "template_index": 2
+    }
+  ],
+  "schema_version": 1,
+  "source_files": {
+    "templates.json": "e15b566a9480360b7c1d3b92419287d35798ac43bb44a97dca1905c5d886a804"
+  }
+}

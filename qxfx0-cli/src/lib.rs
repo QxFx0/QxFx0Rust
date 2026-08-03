@@ -3,8 +3,12 @@
 //! Exposes the same entry point used by `main.rs` so integration tests can
 //! drive the turn / chat flow without spawning a subprocess.
 
+pub mod measurement;
+pub mod response_plan_v2_gate;
+
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_persistence::SaveStateTimings;
+use qxfx0_pipeline::fact_grounded::FactGroundedRollout;
 use qxfx0_pipeline::{
     process_turn, process_turn_with_renderer, process_turn_with_renderer_and_stance_provenance,
     process_turn_with_timing_and_renderer,
@@ -19,7 +23,7 @@ use qxfx0_pipeline::{
 };
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -119,10 +123,345 @@ pub struct DoubtShadowTracedTurn {
     pub trace: qxfx0_pipeline::execution_trace::PipelineTrace,
 }
 
+#[derive(Debug, Clone)]
+pub struct AuthorityTracedTurn {
+    pub response: String,
+    pub trace: qxfx0_pipeline::execution_trace::PipelineTrace,
+}
+
+pub fn run_turn_with_v2_authority_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    authority: qxfx0_pipeline::ResponsePlanV2Authority,
+) -> anyhow::Result<AuthorityTracedTurn> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = qxfx0_pipeline::TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, trace) = qxfx0_pipeline::process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        qxfx0_pipeline::TurnOptions::new().with_response_plan_v2_authority(authority),
+    );
+    db.save_state(session_id, &state)?;
+    Ok(AuthorityTracedTurn {
+        response: output.response,
+        trace,
+    })
+}
+
+pub fn create_authority_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    create_trace_sink(path, "authority")
+}
+
+pub fn write_authority_trace_jsonl(
+    sink: &mut File,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    write_trace_jsonl(sink, "qxfx0.authority-trace.v1", trace)
+}
+
 #[derive(Debug, Serialize)]
 struct TraceRecord<'a> {
     schema: &'a str,
     trace: &'a qxfx0_pipeline::execution_trace::PipelineTrace,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedAuthorityTraceRecord {
+    schema: String,
+    trace: OwnedAuthorityTrace,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedAuthorityTrace {
+    #[serde(rename = "request_id")]
+    _request_id: String,
+    steps: Vec<OwnedTraceStep>,
+    authority_receipt: Option<serde_json::Value>,
+    authority_guard_classification: Option<String>,
+    authority_case_id: Option<String>,
+    authority_input_class: Option<String>,
+    authority_expected_result: Option<String>,
+    authority_expected_guard: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedTraceStep {
+    stage: String,
+    input_digest: String,
+    output_digest: String,
+    metadata: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct AuthorityReport {
+    pub turns: usize,
+    pub compositional: usize,
+    pub audited_verbatim: usize,
+    pub typed_non_declarative: usize,
+    pub realization_downgrade: usize,
+    pub replay_failures: usize,
+    pub guard_blocks: usize,
+    pub rollback_activations: usize,
+    pub positive_turns: usize,
+    pub negative_turns: usize,
+    pub expectation_failures: usize,
+    pub case_ids: Vec<String>,
+    pub input_classes: std::collections::BTreeMap<String, usize>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthorityReportScope {
+    All,
+    Positive,
+    Negative,
+}
+
+pub fn verify_authority_trace(path: impl AsRef<Path>) -> anyhow::Result<AuthorityReport> {
+    authority_report([path.as_ref()], true, AuthorityReportScope::All)
+}
+
+pub fn authority_report<I, P>(
+    paths: I,
+    fail_closed: bool,
+    scope: AuthorityReportScope,
+) -> anyhow::Result<AuthorityReport>
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
+{
+    let mut report = AuthorityReport::default();
+    let mut artifact_count = 0;
+    let mut case_ids = std::collections::BTreeSet::new();
+    for path in paths {
+        artifact_count += 1;
+        let source = std::fs::read_to_string(path.as_ref())?;
+        for (index, line) in source.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let record: OwnedAuthorityTraceRecord = serde_json::from_str(line)
+                .map_err(|error| anyhow::anyhow!("authority trace line {}: {error}", index + 1))?;
+            for step in &record.trace.steps {
+                if !valid_digest(&step.input_digest) || !valid_digest(&step.output_digest) {
+                    anyhow::bail!(
+                        "authority trace line {} has an invalid stage digest",
+                        index + 1
+                    );
+                }
+            }
+            if record.trace.authority_guard_classification.is_none()
+                && record.trace.authority_receipt.is_none()
+            {
+                anyhow::bail!(
+                    "authority trace line {} has no authority evidence",
+                    index + 1
+                );
+            }
+            if record.schema != "qxfx0.authority-trace.v1" {
+                anyhow::bail!(
+                    "authority trace line {} has schema '{}'",
+                    index + 1,
+                    record.schema
+                );
+            }
+            let guard = record
+                .trace
+                .authority_guard_classification
+                .as_deref()
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "authority trace line {} has no guard classification",
+                        index + 1
+                    )
+                })?;
+            let expected_result = record.trace.authority_expected_result.as_deref();
+            let positive = matches!(expected_result, Some("compositional" | "audited_verbatim"));
+            let negative = expected_result.is_some() && !positive;
+            if (scope == AuthorityReportScope::Positive && !positive)
+                || (scope == AuthorityReportScope::Negative && !negative)
+            {
+                continue;
+            }
+            if expected_result.is_some() || record.trace.authority_expected_guard.is_some() {
+                let case_id = record.trace.authority_case_id.as_deref().ok_or_else(|| {
+                    anyhow::anyhow!("authority trace line {} has no case_id", index + 1)
+                })?;
+                let input_class =
+                    record
+                        .trace
+                        .authority_input_class
+                        .as_deref()
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("authority trace line {} has no input_class", index + 1)
+                        })?;
+                if !case_ids.insert(case_id.to_owned()) {
+                    anyhow::bail!("authority trace has duplicate case_id '{case_id}'");
+                }
+                *report
+                    .input_classes
+                    .entry(input_class.to_owned())
+                    .or_default() += 1;
+            }
+            if positive {
+                report.positive_turns += 1;
+            } else if negative {
+                report.negative_turns += 1;
+            }
+            if record
+                .trace
+                .authority_expected_guard
+                .as_deref()
+                .is_some_and(|expected| expected != guard)
+            {
+                report.expectation_failures += 1;
+            }
+            let Some(receipt) = record
+                .trace
+                .authority_receipt
+                .as_ref()
+                .and_then(serde_json::Value::as_object)
+            else {
+                report.turns += 1;
+                if guard == "authority_denied_before_render" {
+                    if expected_result.is_some_and(|expected| expected != "authority_denied") {
+                        report.expectation_failures += 1;
+                    }
+                    report.rollback_activations += 1;
+                    if fail_closed {
+                        anyhow::bail!("authority trace line {} is not release-eligible", index + 1);
+                    }
+                    continue;
+                }
+                anyhow::bail!("authority trace line {} has no receipt", index + 1);
+            };
+            let string = |field: &str| {
+                receipt
+                    .get(field)
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("authority trace line {} missing {field}", index + 1)
+                    })
+            };
+            for digest in [
+                "artifact_digest",
+                "contract_digest",
+                "output_digest",
+                "replay_bundle_digest",
+            ] {
+                let value = string(digest)?;
+                if !valid_digest(value) {
+                    anyhow::bail!("authority trace line {} has invalid {digest}", index + 1);
+                }
+            }
+            let topic = string("topic")?;
+            let requested_mode = string("requested_mode")?;
+            let effective_mode = string("effective_mode")?;
+            let authority = string("authority")?;
+            let receipt_guard = string("guard_classification")?;
+            if receipt_guard != guard {
+                anyhow::bail!(
+                    "authority trace line {} has conflicting guard classifications",
+                    index + 1
+                );
+            }
+            let outcome = receipt
+                .get("outcome")
+                .and_then(serde_json::Value::as_object)
+                .and_then(|outcome| outcome.keys().next())
+                .map(String::as_str)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("authority trace line {} has invalid outcome", index + 1)
+                })?;
+            if expected_result.is_some_and(|expected| expected != outcome) {
+                report.expectation_failures += 1;
+            }
+            report.turns += 1;
+            match outcome {
+                "compositional" => report.compositional += 1,
+                "audited_verbatim" => report.audited_verbatim += 1,
+                "typed_non_declarative" => report.typed_non_declarative += 1,
+                "realization_downgrade" => report.realization_downgrade += 1,
+                other => anyhow::bail!(
+                    "authority trace line {} has unknown outcome '{other}'",
+                    index + 1
+                ),
+            }
+            if guard == "v2_rendered_guard_blocked" {
+                report.guard_blocks += 1;
+            }
+            if authority.eq_ignore_ascii_case("disabled")
+                || guard == "authority_denied_before_render"
+            {
+                report.rollback_activations += 1;
+            }
+            let replay_ok = record.trace.steps.iter().any(|step| {
+                step.stage == "response_plan_v2"
+                    && step.metadata.get("replay_parity").map(String::as_str) == Some("true")
+            });
+            if !replay_ok {
+                report.replay_failures += 1;
+            }
+            let v2_step = record
+                .trace
+                .steps
+                .iter()
+                .find(|step| step.stage == "response_plan_v2")
+                .ok_or_else(|| {
+                    anyhow::anyhow!("authority trace line {} has no V2 step", index + 1)
+                })?;
+            let metadata_equals = |field: &str, expected: &str| {
+                v2_step.metadata.get(field).map(String::as_str) == Some(expected)
+            };
+            let output = receipt
+                .get("outcome")
+                .and_then(|value| value.get(outcome))
+                .and_then(|value| value.get("output"));
+            let output_digest_matches = output
+                .and_then(|value| value.get("surface_digest"))
+                .and_then(serde_json::Value::as_str)
+                == Some(string("output_digest")?);
+            let digests_match = v2_step.output_digest == string("artifact_digest")?
+                && metadata_equals("contract_digest", string("contract_digest")?)
+                && metadata_equals("authority_surface_digest", string("output_digest")?)
+                && metadata_equals("replay_bundle_digest", string("replay_bundle_digest")?)
+                && output_digest_matches;
+            let eligible = qxfx0_pipeline::response_plan_v2_canary_allowlist().contains(&topic);
+            if fail_closed
+                && (!authority.eq_ignore_ascii_case("canary")
+                    || !eligible
+                    || requested_mode != "canary"
+                    || effective_mode != "canary"
+                    || !matches!(outcome, "compositional" | "audited_verbatim")
+                    || guard != "v2_successfully_emitted"
+                    || !replay_ok
+                    || !digests_match
+                    || v2_step.metadata.get("downgrade_count").map(String::as_str) != Some("0")
+                    || v2_step.metadata.get("v1_fallback_used").map(String::as_str)
+                        != Some("false"))
+            {
+                anyhow::bail!("authority trace line {} is not release-eligible", index + 1);
+            }
+        }
+    }
+    if artifact_count == 0 || report.turns == 0 {
+        anyhow::bail!("authority trace contains no records");
+    }
+    report.case_ids = case_ids.into_iter().collect();
+    Ok(report)
+}
+
+fn valid_digest(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn diagnostic_host_metadata() -> DiagnosticHostMetadata {
@@ -494,6 +833,67 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
+    let packs = qxfx0_semantic::active_pack_set();
+    let pack_valid = packs.fingerprint().len() == 64;
+    report.checks.push(DoctorCheck {
+        name: "Knowledge pack",
+        passed: pack_valid,
+        details: if pack_valid {
+            format!(
+                "active immutable pack fingerprint sha256:{}, {} facts",
+                packs.fingerprint(),
+                packs.facts().len()
+            )
+        } else {
+            "active pack fingerprint is not a SHA-256 identifier".into()
+        },
+    });
+
+    let fact_registry_valid = packs
+        .facts()
+        .records()
+        .all(|record| packs.facts().select(&record.id).is_ok());
+    report.checks.push(DoctorCheck {
+        name: "Curated FactRegistry",
+        passed: fact_registry_valid,
+        details: if fact_registry_valid {
+            format!(
+                "{} curated FactId records re-resolve successfully",
+                packs.facts().len()
+            )
+        } else {
+            "active FactRegistry contains a non-selectable record".into()
+        },
+    });
+
+    let perspective_valid = qxfx0_types::PerspectiveState::default()
+        .validate()
+        .is_empty()
+        && FactGroundedRollout::default() == FactGroundedRollout::Disabled;
+    report.checks.push(DoctorCheck {
+        name: "Perspective boundary",
+        passed: perspective_valid,
+        details: if perspective_valid {
+            "bounded PerspectiveState valid; fact-grounded rollout default is Disabled".into()
+        } else {
+            "PerspectiveState or default-off rollout contract failed".into()
+        },
+    });
+
+    let stance_contract_valid = qxfx0_types::STANCE_ATTESTATION_VERSION == 1
+        && qxfx0_types::STANCE_PROVENANCE_VERSION == 1
+        && qxfx0_types::StanceTopic::new("doctor").is_ok()
+        && qxfx0_types::BoundedStanceProvenance::default().capacity() > 0;
+    report.checks.push(DoctorCheck {
+        name: "Stance authority",
+        passed: stance_contract_valid,
+        details: if stance_contract_valid {
+            "signed attestation, bounded provenance, and temporal contract versions valid".into()
+        } else {
+            "stance authority contract probe failed".into()
+        },
+    });
+
     report
 }
 
@@ -549,7 +949,6 @@ impl DialogueSession {
             raw_text: text.to_string(),
             session_id: self.state.session_id.clone(),
         };
-
         // 1. Try the standard semantic pipeline
         let output = process_turn(&input, &mut self.state);
 
@@ -893,7 +1292,81 @@ fn build_diagnosed_turn(
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::path::PathBuf;
     use std::process::Stdio;
+
+    fn authority_trace_path(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "qxfx0-authority-{label}-{}.jsonl",
+            std::process::id()
+        ))
+    }
+
+    #[test]
+    fn authority_trace_verification_and_report_are_fail_closed() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open memory db");
+        let traced = run_turn_with_v2_authority_trace(
+            &db,
+            "authority-verification",
+            "что такое свобода?",
+            qxfx0_pipeline::ResponsePlanV2Authority::Canary,
+        )
+        .expect("authority turn");
+        assert_eq!(
+            traced.trace.authority_guard_classification.as_deref(),
+            Some("v2_successfully_emitted")
+        );
+
+        let path = authority_trace_path("valid");
+        let _ = std::fs::remove_file(&path);
+        let mut sink = create_authority_trace_sink(&path).expect("new authority sink");
+        write_authority_trace_jsonl(&mut sink, &traced.trace).expect("write authority trace");
+        drop(sink);
+        let report = verify_authority_trace(&path).expect("valid trace verifies");
+        assert_eq!(report.turns, 1);
+        assert_eq!(report.compositional + report.audited_verbatim, 1);
+        assert_eq!(report.replay_failures, 0);
+
+        let mut tampered: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        tampered["trace"]["authority_receipt"]["output_digest"] =
+            serde_json::Value::String("0".repeat(64));
+        std::fs::write(
+            &path,
+            format!("{}\n", serde_json::to_string(&tampered).unwrap()),
+        )
+        .unwrap();
+        assert!(verify_authority_trace(&path).is_err());
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn authority_report_counts_denial_before_render() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open memory db");
+        let traced = run_turn_with_v2_authority_trace(
+            &db,
+            "authority-denial",
+            "что такое время?",
+            qxfx0_pipeline::ResponsePlanV2Authority::Canary,
+        )
+        .expect("denied authority turn");
+        assert_eq!(
+            traced.trace.authority_guard_classification.as_deref(),
+            Some("authority_denied_before_render")
+        );
+
+        let path = authority_trace_path("denied");
+        let _ = std::fs::remove_file(&path);
+        let mut sink = create_authority_trace_sink(&path).expect("new authority sink");
+        write_authority_trace_jsonl(&mut sink, &traced.trace).expect("write authority trace");
+        drop(sink);
+        let report = authority_report([&path], false, AuthorityReportScope::All)
+            .expect("denial remains reportable");
+        assert_eq!(report.turns, 1);
+        assert_eq!(report.rollback_activations, 1);
+        assert!(verify_authority_trace(&path).is_err());
+        let _ = std::fs::remove_file(path);
+    }
 
     /// M7.1 — smoke test: run a `Turn` against an in-memory DB and assert the
     /// pipeline returns a non-empty response. Mirrors the `Turn` CLI branch.
@@ -1153,7 +1626,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 7);
+        assert_eq!(report.checks.len(), 11);
         assert!(report
             .checks
             .iter()
