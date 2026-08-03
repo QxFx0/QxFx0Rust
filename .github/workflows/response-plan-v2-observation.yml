@@ -10,11 +10,11 @@ on:
       window_id:
         description: Immutable observation window identifier
         required: true
-        default: response-plan-v2-canary-2026-08
+        default: response-plan-v2-cohort-2026-08
       expected_sha:
         description: Exact release SHA to observe
         required: true
-        default: 92e4c68b907c0bbef7353c159cf4bdb3c93bce92
+        default: ""
 
 permissions:
   contents: read

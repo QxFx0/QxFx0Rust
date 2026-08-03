@@ -1,0 +1,29 @@
+{
+  "schema": "qxfx0.response-plan-v2.cohort-expansion-proposal.v1",
+  "window_id": "response-plan-v2-cohort-2026-08",
+  "status": "awaiting_merge_and_observation",
+  "proposal_pr": 32,
+  "base_allowlist": ["правда", "произвол", "свобода"],
+  "proposed_allowlist": [
+    "правда",
+    "произвол",
+    "свобода",
+    "время",
+    "справедливость",
+    "ответственность"
+  ],
+  "authority_boundary": "CMDefine",
+  "production_default": "V1",
+  "human_language_approval": "docs/operations/response-plan-v2-cohort-language-review.md",
+  "shadow_evidence": "docs/evidence/response-plan-v2-cohort-shadow-2026-08.json",
+  "positive_turns_required": 240,
+  "negative_controls_required": 4,
+  "negative_controls": [
+    "outside_allowlist",
+    "unknown_topic",
+    "unsupported_intent",
+    "guard_rejected_empty_input"
+  ],
+  "exact_sha_required": true,
+  "global_v2_promotion": false
+}

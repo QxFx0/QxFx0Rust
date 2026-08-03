@@ -17,7 +17,22 @@
     { "case_id": "freedom-paraphrase", "topic": "свобода", "input_class": "definition_paraphrase", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
     { "case_id": "freedom-challenge", "topic": "свобода", "input_class": "challenge", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
     { "case_id": "freedom-clarify", "topic": "свобода", "input_class": "definition_clarification", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
-    { "case_id": "freedom-repeat", "topic": "свобода", "input_class": "same_session_repeat", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" }
+    { "case_id": "freedom-repeat", "topic": "свобода", "input_class": "same_session_repeat", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "time-define", "topic": "время", "input_class": "definition", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "time-paraphrase", "topic": "время", "input_class": "definition_paraphrase", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "time-challenge", "topic": "время", "input_class": "challenge", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "time-clarify", "topic": "время", "input_class": "definition_clarification", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "time-repeat", "topic": "время", "input_class": "same_session_repeat", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "justice-define", "topic": "справедливость", "input_class": "definition", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "justice-paraphrase", "topic": "справедливость", "input_class": "definition_paraphrase", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "justice-challenge", "topic": "справедливость", "input_class": "challenge", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "justice-clarify", "topic": "справедливость", "input_class": "definition_clarification", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "justice-repeat", "topic": "справедливость", "input_class": "same_session_repeat", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "responsibility-define", "topic": "ответственность", "input_class": "definition", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "responsibility-paraphrase", "topic": "ответственность", "input_class": "definition_paraphrase", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "responsibility-challenge", "topic": "ответственность", "input_class": "challenge", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "responsibility-clarify", "topic": "ответственность", "input_class": "definition_clarification", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "responsibility-repeat", "topic": "ответственность", "input_class": "same_session_repeat", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" }
   ],
   "negative_controls": [
     { "case_id": "outside-allowlist", "topic": "истина", "input_class": "known_outside_allowlist", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },

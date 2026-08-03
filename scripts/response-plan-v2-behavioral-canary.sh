@@ -21,7 +21,10 @@ run_case() {
 for entry in \
   "truth|правда" \
   "arbitrariness|произвол" \
-  "freedom|свобода"; do
+  "freedom|свобода" \
+  "time|время" \
+  "justice|справедливость" \
+  "responsibility|ответственность"; do
   IFS='|' read -r id topic <<<"$entry"
   session="behavioral-$id"
   run_case positive "$id-define" definition compositional v2_successfully_emitted "$session" "что такое $topic?"
@@ -54,14 +57,14 @@ done
 "$binary" authority-report --scope positive "${positive[@]}" > "$output_dir/positive-report.json"
 "$binary" authority-report --scope negative "${negative[@]}" > "$output_dir/negative-report.json"
 jq -e '
-  .turns == 12 and .positive_turns == 12 and .expectation_failures == 0 and
+  .turns == 24 and .positive_turns == 24 and .expectation_failures == 0 and
   .typed_non_declarative == 0 and .realization_downgrade == 0 and
   .replay_failures == 0 and .guard_blocks == 0 and .rollback_activations == 0
 ' "$output_dir/positive-report.json" >/dev/null
 jq -e '
-  .turns == 7 and .negative_turns == 7 and .expectation_failures == 0 and
+  .turns == 10 and .negative_turns == 10 and .expectation_failures == 0 and
   .compositional == 0 and .audited_verbatim == 0 and .guard_blocks == 0 and
-  .rollback_activations == 7 and .expected_denials == 7 and
-  .unexpected_denials == 0 and .expected_rollbacks == 7 and
+  .rollback_activations == 10 and .expected_denials == 10 and
+  .unexpected_denials == 0 and .expected_rollbacks == 10 and
   .unexpected_rollbacks == 0
 ' "$output_dir/negative-report.json" >/dev/null
