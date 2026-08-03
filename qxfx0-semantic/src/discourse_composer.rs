@@ -126,9 +126,9 @@ fn apply_topic_pronouns(text: &str, topic: &str) -> String {
 ///
 /// This is a surface orthography rule and belongs with punctuation
 /// normalization until the realization layer of ADR-0034 owns linearization.
-/// The related `с`/`со` allomorph is deliberately not handled here: its
-/// condition is lexically irregular and is recorded as an F0 census finding
-/// for the morphology-depth phase.
+/// The audited `с`/`со` choice is deliberately narrow here: the V1 renderer
+/// owns only the reviewed lexical entry, while the full V2 lexicon remains in
+/// `morphology_depth.rs`.
 fn normalize_preposition_allomorphy(text: &str) -> String {
     fn is_consonant(ch: char) -> bool {
         !matches!(
@@ -158,6 +158,18 @@ fn normalize_preposition_allomorphy(text: &str) -> String {
                 });
                 continue;
             }
+        }
+        if (*word == "с" || *word == "С")
+            && words
+                .get(index + 1)
+                .is_some_and(|next| next.eq_ignore_ascii_case("временем"))
+        {
+            out.push(if *word == "С" {
+                "Со".into()
+            } else {
+                "со".into()
+            });
+            continue;
         }
         out.push((*word).to_string());
     }
@@ -716,6 +728,18 @@ mod tests {
 
         // A trailing preposition has no successor and must not panic.
         assert_eq!(normalize_punctuation("предел в"), "предел в");
+    }
+
+    #[test]
+    fn preposition_s_becomes_so_before_audited_vremya_surface() {
+        assert_eq!(
+            normalize_punctuation("разум связан с временем"),
+            "разум связан со временем"
+        );
+        assert_eq!(
+            normalize_punctuation("Разум связан С временем"),
+            "Разум связан Со временем"
+        );
     }
 
     #[test]

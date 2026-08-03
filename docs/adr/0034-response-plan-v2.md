@@ -456,6 +456,13 @@ The following debate outcomes are fixed:
   proposition DAG.
 - Realization has a pre-render completeness certificate and a post-render
   receipt; no realized surface digest appears before linearization.
+- The versioned V2 joiner (`capitalized-punctuated-space-v2`) capitalizes the
+  first alphabetic character of every emitted sentence and applies terminal
+  punctuation deterministically. The audited corpus remains semantic source
+  data; orthographic normalization belongs to realization.
+- V1 retains the reviewed lexical `с` → `со` rule for `временем`; V2 uses the
+  fingerprinted morphology-depth allomorph lexicon. This keeps the default V1
+  renderer and V2 realization orthographically aligned for the audited case.
 - `derived` faces untouched in V1: no `DerivedNovelConclusion` reaches the
   surface.
 
