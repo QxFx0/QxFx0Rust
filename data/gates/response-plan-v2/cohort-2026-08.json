@@ -1,0 +1,45 @@
+{
+  "schema": "qxfx0.response-plan-v2.cohort-proposal.v1",
+  "cohort_id": "response-plan-v2-cohort-2026-08",
+  "status": "proposal_only",
+  "authority_change": "none",
+  "production_default": "V1",
+  "authority_boundary": "CMDefine",
+  "current_allowlist": ["правда", "произвол", "свобода"],
+  "candidates": [
+    {
+      "topic": "время",
+      "selection_reason": "governed clause plus fixed counterpoint; exercises lexical temporal wording and the reviewed Cyrillic s/so boundary",
+      "claims_total": 2,
+      "realization_strategies": {"clause": 1, "fixed_phrase": 1},
+      "surface_validation": {"governed_clause": 1, "audited_verbatim": 1},
+      "language_review_status": "approved",
+      "shadow_status": "passed_local"
+    },
+    {
+      "topic": "справедливость",
+      "selection_reason": "three-claim mixed cohort with governed thesis and two fixed counterpoint/consequence surfaces",
+      "claims_total": 3,
+      "realization_strategies": {"clause": 1, "fixed_phrase": 2},
+      "surface_validation": {"governed_clause": 1, "audited_verbatim": 2},
+      "language_review_status": "approved",
+      "shadow_status": "passed_local"
+    },
+    {
+      "topic": "ответственность",
+      "selection_reason": "exact governed thesis with a fixed counterpoint; exercises infinitival government and accountable-agent wording",
+      "claims_total": 2,
+      "realization_strategies": {"clause": 1, "fixed_phrase": 1},
+      "surface_validation": {"exact_clause": 1, "audited_verbatim": 1},
+      "language_review_status": "approved",
+      "shadow_status": "passed_local"
+    }
+  ],
+  "promotion_prerequisites": [
+    "human language approval of every approved surface",
+    "shadow evidence for all three candidates",
+    "negative controls for outside-allowlist and unsupported intent",
+    "separate reviewed allowlist expansion PR",
+    "new observation window after expansion"
+  ]
+}
