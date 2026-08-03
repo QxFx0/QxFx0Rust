@@ -813,6 +813,104 @@ fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
 }
 
 #[test]
+fn response_plan_v2_behavioral_canary_respects_the_define_only_boundary() {
+    let topics = ["правда", "произвол", "свобода"];
+    for topic in topics {
+        let session_id = format!("v2-behavioral-{topic}");
+        let mut state = test_state(&session_id);
+        for input_text in [
+            format!("что такое {topic}?"),
+            format!("что есть {topic}?"),
+            format!("уточни, что такое {topic}?"),
+            format!("что такое {topic}?"),
+        ] {
+            let input = TurnInput {
+                session_id: session_id.clone(),
+                raw_text: input_text,
+            };
+            let (output, trace) = process_turn_with_options_and_trace(
+                &input,
+                &mut state,
+                TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+            );
+            assert!(!output.blocked, "eligible definition blocked for {topic}");
+            assert_eq!(
+                trace.authority_guard_classification.as_deref(),
+                Some("v2_successfully_emitted")
+            );
+            assert!(trace.authority_receipt.is_some());
+        }
+
+        let challenge = TurnInput {
+            session_id: session_id.clone(),
+            raw_text: format!("{topic} это просто мнение"),
+        };
+        let (_, trace) = process_turn_with_options_and_trace(
+            &challenge,
+            &mut state,
+            TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+        );
+        assert_eq!(
+            trace.authority_guard_classification.as_deref(),
+            Some("authority_denied_before_render")
+        );
+        assert!(trace.authority_receipt.is_none());
+    }
+}
+
+#[test]
+fn response_plan_v2_negative_controls_preserve_default_and_rollback_boundaries() {
+    for (case_id, raw_text) in [
+        ("outside-allowlist", "что такое истина?"),
+        ("unknown-topic", "что такое кванточайник?"),
+        ("unsupported-intent", "свобода существует"),
+        ("guard-rejected", ""),
+    ] {
+        let session_id = format!("v2-negative-{case_id}");
+        let mut state = test_state(&session_id);
+        let input = TurnInput {
+            session_id,
+            raw_text: raw_text.into(),
+        };
+        let (_, trace) = process_turn_with_options_and_trace(
+            &input,
+            &mut state,
+            TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+        );
+        assert_eq!(
+            trace.authority_guard_classification.as_deref(),
+            Some("authority_denied_before_render"),
+            "negative control {case_id}"
+        );
+        assert!(trace.authority_receipt.is_none());
+        assert!(trace.steps.iter().all(|step| {
+            step.metadata.get("renderer_source").map(String::as_str) != Some("response_plan_v2")
+        }));
+    }
+
+    let input = TurnInput {
+        session_id: "v2-negative-rollback".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let mut authority_state = test_state(&input.session_id);
+    let (_, authority_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut authority_state,
+        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+    );
+    assert_eq!(
+        authority_trace.authority_guard_classification.as_deref(),
+        Some("v2_successfully_emitted")
+    );
+    let (_, rollback_trace) =
+        process_turn_with_options_and_trace(&input, &mut authority_state, TurnOptions::new());
+    assert_eq!(rollback_trace.authority_guard_classification, None);
+    assert!(rollback_trace.steps.iter().any(|step| {
+        step.metadata.get("renderer_source").map(String::as_str) == Some("legacy_graph")
+    }));
+}
+
+#[test]
 fn same_topic_suppression_is_bounded_shadowed_and_limited() {
     let session_id = "same-topic-suppression";
     let input = TurnInput {

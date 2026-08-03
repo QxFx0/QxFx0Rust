@@ -184,6 +184,10 @@ struct OwnedAuthorityTrace {
     steps: Vec<OwnedTraceStep>,
     authority_receipt: Option<serde_json::Value>,
     authority_guard_classification: Option<String>,
+    authority_case_id: Option<String>,
+    authority_input_class: Option<String>,
+    authority_expected_result: Option<String>,
+    authority_expected_guard: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -205,19 +209,36 @@ pub struct AuthorityReport {
     pub replay_failures: usize,
     pub guard_blocks: usize,
     pub rollback_activations: usize,
+    pub positive_turns: usize,
+    pub negative_turns: usize,
+    pub expectation_failures: usize,
+    pub case_ids: Vec<String>,
+    pub input_classes: std::collections::BTreeMap<String, usize>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthorityReportScope {
+    All,
+    Positive,
+    Negative,
 }
 
 pub fn verify_authority_trace(path: impl AsRef<Path>) -> anyhow::Result<AuthorityReport> {
-    authority_report([path.as_ref()], true)
+    authority_report([path.as_ref()], true, AuthorityReportScope::All)
 }
 
-pub fn authority_report<I, P>(paths: I, fail_closed: bool) -> anyhow::Result<AuthorityReport>
+pub fn authority_report<I, P>(
+    paths: I,
+    fail_closed: bool,
+    scope: AuthorityReportScope,
+) -> anyhow::Result<AuthorityReport>
 where
     I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
     let mut report = AuthorityReport::default();
     let mut artifact_count = 0;
+    let mut case_ids = std::collections::BTreeSet::new();
     for path in paths {
         artifact_count += 1;
         let source = std::fs::read_to_string(path.as_ref())?;
@@ -260,6 +281,47 @@ where
                         index + 1
                     )
                 })?;
+            let expected_result = record.trace.authority_expected_result.as_deref();
+            let positive = matches!(expected_result, Some("compositional" | "audited_verbatim"));
+            let negative = expected_result.is_some() && !positive;
+            if (scope == AuthorityReportScope::Positive && !positive)
+                || (scope == AuthorityReportScope::Negative && !negative)
+            {
+                continue;
+            }
+            if expected_result.is_some() || record.trace.authority_expected_guard.is_some() {
+                let case_id = record.trace.authority_case_id.as_deref().ok_or_else(|| {
+                    anyhow::anyhow!("authority trace line {} has no case_id", index + 1)
+                })?;
+                let input_class =
+                    record
+                        .trace
+                        .authority_input_class
+                        .as_deref()
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("authority trace line {} has no input_class", index + 1)
+                        })?;
+                if !case_ids.insert(case_id.to_owned()) {
+                    anyhow::bail!("authority trace has duplicate case_id '{case_id}'");
+                }
+                *report
+                    .input_classes
+                    .entry(input_class.to_owned())
+                    .or_default() += 1;
+            }
+            if positive {
+                report.positive_turns += 1;
+            } else if negative {
+                report.negative_turns += 1;
+            }
+            if record
+                .trace
+                .authority_expected_guard
+                .as_deref()
+                .is_some_and(|expected| expected != guard)
+            {
+                report.expectation_failures += 1;
+            }
             let Some(receipt) = record
                 .trace
                 .authority_receipt
@@ -268,6 +330,9 @@ where
             else {
                 report.turns += 1;
                 if guard == "authority_denied_before_render" {
+                    if expected_result.is_some_and(|expected| expected != "authority_denied") {
+                        report.expectation_failures += 1;
+                    }
                     report.rollback_activations += 1;
                     if fail_closed {
                         anyhow::bail!("authority trace line {} is not release-eligible", index + 1);
@@ -314,6 +379,9 @@ where
                 .ok_or_else(|| {
                     anyhow::anyhow!("authority trace line {} has invalid outcome", index + 1)
                 })?;
+            if expected_result.is_some_and(|expected| expected != outcome) {
+                report.expectation_failures += 1;
+            }
             report.turns += 1;
             match outcome {
                 "compositional" => report.compositional += 1,
@@ -385,6 +453,7 @@ where
     if artifact_count == 0 || report.turns == 0 {
         anyhow::bail!("authority trace contains no records");
     }
+    report.case_ids = case_ids.into_iter().collect();
     Ok(report)
 }
 
@@ -880,7 +949,6 @@ impl DialogueSession {
             raw_text: text.to_string(),
             session_id: self.state.session_id.clone(),
         };
-
         // 1. Try the standard semantic pipeline
         let output = process_turn(&input, &mut self.state);
 
@@ -1292,7 +1360,8 @@ mod tests {
         let mut sink = create_authority_trace_sink(&path).expect("new authority sink");
         write_authority_trace_jsonl(&mut sink, &traced.trace).expect("write authority trace");
         drop(sink);
-        let report = authority_report([&path], false).expect("denial remains reportable");
+        let report = authority_report([&path], false, AuthorityReportScope::All)
+            .expect("denial remains reportable");
         assert_eq!(report.turns, 1);
         assert_eq!(report.rollback_activations, 1);
         assert!(verify_authority_trace(&path).is_err());
