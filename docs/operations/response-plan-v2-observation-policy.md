@@ -20,7 +20,8 @@
   artifact digest are committed under `docs/evidence` for permanent retention.
 - Owner: repository maintainers.
 - Rollback authority: repository maintainers and the current release operator.
-- Completion approver: a maintainer other than the observation batch operator.
+- Completion approver: the repository owner. Independent approval is required
+  when another maintainer with write access exists.
 
 These values do not change within this window. A policy change starts a new
 window and schema-bound report instead of rewriting completed evidence.
@@ -54,3 +55,13 @@ Review occurs after each 30 positive turns and at completion. Completion must
 confirm threshold and coverage, zero failure budgets, classification of every
 denial, rollback verification, available artifacts, and owner/approver signoff.
 Allowlist expansion and global promotion remain separate reviewed releases.
+
+## Solo-maintainer governance
+
+While the repository has one maintainer, merges require a pull request, strict
+up-to-date CI, and resolved review conversations, but no impossible self-review
+approval. Main-branch deletion and non-fast-forward updates remain prohibited.
+Canary completion requires exact-SHA CI evidence, zero failure budgets, a
+retained artifact digest, and explicit owner signoff in a separate PR or issue.
+If another write-access maintainer joins, independent approval becomes required
+without changing the observation window's technical criteria.
