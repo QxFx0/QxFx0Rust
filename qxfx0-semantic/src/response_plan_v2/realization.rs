@@ -12,7 +12,21 @@ use super::syn_tree::{
 use super::valency::ValencyLexicon;
 use qxfx0_morphology::MorphologyRuntime;
 
-pub const REALIZATION_JOINER_VERSION: &str = "punctuated-space-v1";
+pub const REALIZATION_JOINER_VERSION: &str = "capitalized-punctuated-space-v2";
+
+fn capitalize_sentence_start(text: &str) -> String {
+    let Some((index, character)) = text
+        .char_indices()
+        .find(|(_, character)| character.is_alphabetic())
+    else {
+        return text.to_string();
+    };
+    let mut result = String::with_capacity(text.len());
+    result.push_str(&text[..index]);
+    result.extend(character.to_uppercase());
+    result.push_str(&text[index + character.len_utf8()..]);
+    result
+}
 
 /// Joins arbitrary clause surfaces without relying on a renderer or locale.
 /// Empty clauses are omitted; existing terminal punctuation is preserved.
@@ -23,7 +37,7 @@ where
 {
     clauses
         .into_iter()
-        .map(|clause| clause.as_ref().trim().to_string())
+        .map(|clause| capitalize_sentence_start(clause.as_ref().trim()))
         .filter(|clause| !clause.is_empty())
         .map(|mut clause| {
             if !clause.ends_with(['.', '!', '?']) {
@@ -232,7 +246,30 @@ mod tests {
         assert_eq!(join_realized_clauses(Vec::<String>::new()), "");
         assert_eq!(
             join_realized_clauses([" first ", "", "second!", "third?"]),
-            "first. second! third?"
+            "First. Second! Third?"
         );
+    }
+
+    #[test]
+    fn joiner_capitalizes_every_audited_topic_surface() {
+        let registry = crate::argued_topic_registry().expect("audited registry");
+        for topic in registry.topics() {
+            let joined =
+                join_realized_clauses(topic.statements().map(|statement| statement.surface()));
+            for sentence in joined
+                .split(['.', '!', '?'])
+                .filter(|sentence| !sentence.trim().is_empty())
+            {
+                assert!(
+                    sentence
+                        .trim_start()
+                        .chars()
+                        .next()
+                        .is_some_and(char::is_uppercase),
+                    "topic '{:?}' has an uncapitalized sentence: {joined}",
+                    topic.topic()
+                );
+            }
+        }
     }
 }

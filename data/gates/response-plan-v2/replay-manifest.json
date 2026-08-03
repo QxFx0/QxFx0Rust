@@ -10,9 +10,9 @@
   "selection_vectors_digest": "f4756f5d2dbb70e98d4d2949c7116f61b908ace0cde9eff26de9072e484727a9",
   "realization_vectors_digest": "142479e8089b58cdfce446f27e89f9555d0aa15c9f4ef03db2bcaaf70d51a86a",
   "legacy_graph_declarative_fallback": false,
-  "turn_record_fixture_sha256": "08e8be1c94cf62535bc0926c2b4a7fce3be0f046482dca5ed605992d440c9489",
-  "turn_record_stage_digest": "09385995edb8a40904ba93887a6a2f72d761000032e5418699b2cca94c22568b",
-  "turn_record_bundle_digest": "8f07c2b4a2fca4dd8eb318e0bea7ce8a7f6f1b67f9f75caa77c439c6d01e9d98",
+  "turn_record_fixture_sha256": "3cd2199cde1450e009abfa413d4787ba17f8f8437d2656f7f9ac3648febca4e9",
+  "turn_record_stage_digest": "515508c462e68a20052d75faab8d382b724a5a9e03bb9044d060b5216d3f3a50",
+  "turn_record_bundle_digest": "232c3d4c3ac11a85c50d5877efc2151518505b0629c38f32bb9d6188086e6e2b",
   "reference_binary_digest": "546e3956cf49783a0736c97727f36aea4b670456eaff4889dd35a5d7c394c887",
-  "manifest_digest": "7bdeff420dad411cd92b5bdf34db280b92684fbbb3b2cbfbd24b425346727a97"
+  "manifest_digest": "4f065176a06bc35107e823949e928f169bcbb7453a04cf2535c2cb200aa1b76a"
 }

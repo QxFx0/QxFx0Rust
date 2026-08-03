@@ -14,11 +14,11 @@
     },
     "realization": {
       "valency_digest": "ee2737d82c84ba7030cf370659dc3a3bae1b4c10d8d0d92e2b243b4aa4589d37",
-      "grammar_digest": "37947350f9b4d481af22fa97d2a342ee20a0bdd16768d9326e5edda6a3caf911",
+      "grammar_digest": "f04a2a9ea6f4a598b3663b3082b8791eea38eef4d7b142bf18846aa89c540cdf",
       "morphology_digest": "d7bc20571369d0e178c3866bff53e3cd4ceb67d27ca7830fa91213d656835ddf",
       "morphology_depth_digest": "19b3ba9c7f40112f160426947ca83adda42ac3aba854075c6cea56459b82c1d2",
-      "joiner_version": "punctuated-space-v1",
-      "fingerprint": "37100acfe8083027d950a52b388b910c7374ac140ef1277ea723e1eb33a76484"
+      "joiner_version": "capitalized-punctuated-space-v2",
+      "fingerprint": "27127e73419f3cc0a6c2b49c8f4eb494221c18a8f007230a0278e72b956603e4"
     },
     "selection": {
       "self_policy_digest": "d574455ead2c8f1a6bc88a683766ecaa375a0f1155cd3d890e1e651dcb262906",
@@ -27,7 +27,7 @@
       "numeric_semantics_version": "basis-points-half-away-v1",
       "fingerprint": "a1dc9de36f76b558a7299103454889f6d2f975c574ba15c04383e2bb1a4caf29"
     },
-    "digest": "de1e71fb3fd92ec543d9b4ae57a0e348f49aab5af21a93f672de00285dd751f1"
+    "digest": "7dc723ab2ef4f781698f07a7b29668268ee54fb8d41d4a0804d5663cd9af4bee"
   },
   "selection": {
     "candidate_merkle_root": "2010bd3209b75e07b3b5530f4ca09402f94d13e77f63506f7df8ea7e09367807",
@@ -49,7 +49,7 @@
       "logical_turn": 42,
       "authority_as_of": null
     },
-    "contract_digest": "de1e71fb3fd92ec543d9b4ae57a0e348f49aab5af21a93f672de00285dd751f1",
+    "contract_digest": "7dc723ab2ef4f781698f07a7b29668268ee54fb8d41d4a0804d5663cd9af4bee",
     "candidate_merkle_root": "2010bd3209b75e07b3b5530f4ca09402f94d13e77f63506f7df8ea7e09367807",
     "nodes": [
       {
@@ -84,10 +84,10 @@
         "свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу"
       ],
       "surface_digest": "baa775c8fb58883cc220900798e4e241c4bc54cc1094aacb07523e5e26506777",
-      "realization_snapshot_digest": "37100acfe8083027d950a52b388b910c7374ac140ef1277ea723e1eb33a76484",
+      "realization_snapshot_digest": "27127e73419f3cc0a6c2b49c8f4eb494221c18a8f007230a0278e72b956603e4",
       "completeness_digest": "e3ad82a143bc1945e17403f9b60ae40bff96828f05d71977e2b57e345f79f049"
     },
-    "bundle_digest": "8f07c2b4a2fca4dd8eb318e0bea7ce8a7f6f1b67f9f75caa77c439c6d01e9d98"
+    "bundle_digest": "232c3d4c3ac11a85c50d5877efc2151518505b0629c38f32bb9d6188086e6e2b"
   },
-  "stage_digest": "09385995edb8a40904ba93887a6a2f72d761000032e5418699b2cca94c22568b"
+  "stage_digest": "515508c462e68a20052d75faab8d382b724a5a9e03bb9044d060b5216d3f3a50"
 }

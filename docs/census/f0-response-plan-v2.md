@@ -86,12 +86,17 @@ before a word starting with `в`/`ф` followed by a consonant, so `в воле` 
 `в вере` keep the short form. This is surface orthography and belongs here
 only until the ADR-0034 realization layer owns linearization.
 
-## 5. Deferred finding — the `с`/`со` allomorph
+## 5. Resolved finding — the `с`/`со` allomorph
 
-The same class of defect exists for `с` (`с временем` → `со временем`) and is
-deliberately **not** fixed here. Its condition is lexically irregular rather
-than phonologically decidable, so a heuristic would introduce errors of its own.
-Recorded for the morphology-depth phase (L4).
+The same class of defect exists for `с` (`с временем` → `со временем`). The
+reviewed V2 morphology-depth lexicon already contains this lexical choice, and
+the V1 normalization path now applies only that audited entry. No broad
+phonological heuristic was added.
+
+V2 realization also owns the versioned joiner
+`capitalized-punctuated-space-v2`, which capitalizes every sentence start and
+adds terminal punctuation deterministically. This prevents the authoritative
+canary from emitting the corpus's lowercase semantic surfaces verbatim.
 
 ## 6. Emitted manifest
 
