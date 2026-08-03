@@ -123,6 +123,46 @@ pub struct DoubtShadowTracedTurn {
     pub trace: qxfx0_pipeline::execution_trace::PipelineTrace,
 }
 
+#[derive(Debug, Clone)]
+pub struct AuthorityTracedTurn {
+    pub response: String,
+    pub trace: qxfx0_pipeline::execution_trace::PipelineTrace,
+}
+
+pub fn run_turn_with_v2_authority_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    authority: qxfx0_pipeline::ResponsePlanV2Authority,
+) -> anyhow::Result<AuthorityTracedTurn> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = qxfx0_pipeline::TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, trace) = qxfx0_pipeline::process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        qxfx0_pipeline::TurnOptions::new().with_response_plan_v2_authority(authority),
+    );
+    db.save_state(session_id, &state)?;
+    Ok(AuthorityTracedTurn {
+        response: output.response,
+        trace,
+    })
+}
+
+pub fn create_authority_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    create_trace_sink(path, "authority")
+}
+
+pub fn write_authority_trace_jsonl(
+    sink: &mut File,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    write_trace_jsonl(sink, "qxfx0.authority-trace.v1", trace)
+}
+
 #[derive(Debug, Serialize)]
 struct TraceRecord<'a> {
     schema: &'a str,

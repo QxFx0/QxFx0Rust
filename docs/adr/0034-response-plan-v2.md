@@ -397,6 +397,14 @@ TurnContractSnapshot {
   contract digest, artifact digest, emitted surface digest, and replay bundle
   digest. The receipt is passed to rendering but is not persisted in semantic
   state. Disabling the authority switch is the explicit rollback to V1.
+- Operators enable the canary only on `turn` with
+  `--response-plan-v2-authority`; omission is the rollback control and keeps
+  the production default on V1. `--response-plan-v2-trace-jsonl PATH` writes a
+  create-new external `qxfx0.authority-trace.v1` record containing the full
+  receipt and deterministic pipeline trace, never session state.
+- `RealizationDowngrade` and `TypedNonDeclarative` receipts are never eligible
+  for authoritative emission. Canary authority fails closed instead of calling
+  any V1 renderer; only `Compositional` and `AuditedVerbatim` may emit.
 
 ### 11. F0 data placement
 
