@@ -1,0 +1,50 @@
+name: ResponsePlan V2 Observation
+
+on:
+  workflow_dispatch:
+    inputs:
+      repetitions:
+        description: Positive repetitions per topic/input class
+        required: true
+        default: "10"
+      window_id:
+        description: Immutable observation window identifier
+        required: true
+        default: response-plan-v2-canary-2026-08
+      expected_sha:
+        description: Exact release SHA to observe
+        required: true
+        default: 92e4c68b907c0bbef7353c159cf4bdb3c93bce92
+
+permissions:
+  contents: read
+
+jobs:
+  observation:
+    name: ResponsePlan V2 observation batch
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.93.1
+
+      - name: Build release binary
+        run: cargo build --workspace --release
+
+      - name: Run observation batch
+        env:
+          REPETITIONS: ${{ inputs.repetitions }}
+          WINDOW_ID: ${{ inputs.window_id }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: bash scripts/response-plan-v2-observation.sh target/release/qxfx0 "$REPETITIONS" "$WINDOW_ID" "$RUNNER_TEMP/qxfx0-observation" "$EXPECTED_SHA"
+
+      - name: Upload observation evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: response-plan-v2-observation-${{ inputs.window_id }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/qxfx0-observation
+          if-no-files-found: error
+          retention-days: 90

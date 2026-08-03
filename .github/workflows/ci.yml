@@ -122,3 +122,4 @@ jobs:
             ${{ runner.temp }}/qxfx0-v2-behavioral/**/*.jsonl
             ${{ runner.temp }}/qxfx0-v2-behavioral/*-report.json
           if-no-files-found: error
+          retention-days: 90
