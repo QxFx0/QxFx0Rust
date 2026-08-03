@@ -1442,6 +1442,7 @@ mod tests {
         );
         assert_eq!(step.metadata.get("replay_parity"), Some(&"true".into()));
         assert_eq!(step.metadata.get("v1_authoritative"), Some(&"true".into()));
+        assert_eq!(step.metadata.get("v1_fallback_used"), Some(&"false".into()));
         assert!(traced.trace.authority_receipt.is_some());
         assert!(
             db.load_state("cohort-shadow")
