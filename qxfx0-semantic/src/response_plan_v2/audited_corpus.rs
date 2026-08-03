@@ -115,6 +115,34 @@ pub enum V2AuthorityOutcome {
     },
 }
 
+impl V2AuthorityOutcome {
+    pub const fn kind(&self) -> &'static str {
+        match self {
+            Self::Compositional { .. } => "compositional",
+            Self::AuditedVerbatim { .. } => "audited_verbatim",
+            Self::RealizationDowngrade { .. } => "realization_downgrade",
+            Self::TypedNonDeclarative { .. } => "typed_non_declarative",
+        }
+    }
+
+    pub const fn output(&self) -> Option<&RealizedSurface> {
+        match self {
+            Self::Compositional { output }
+            | Self::AuditedVerbatim { output, .. }
+            | Self::RealizationDowngrade { output, .. } => Some(output),
+            Self::TypedNonDeclarative { .. } => None,
+        }
+    }
+
+    pub fn source_digest(&self) -> Option<&str> {
+        match self {
+            Self::AuditedVerbatim { source_digest, .. }
+            | Self::RealizationDowngrade { source_digest, .. } => Some(source_digest),
+            Self::Compositional { .. } | Self::TypedNonDeclarative { .. } => None,
+        }
+    }
+}
+
 /// Select an authority surface after compositional realization. The fallback
 /// is deliberately assembled from the audited registry, not from a renderer.
 pub fn authority_outcome(
@@ -175,6 +203,21 @@ pub fn audited_verbatim_surface(
         completeness_digest: source_digest.clone(),
     };
     Ok((output, source_digest))
+}
+
+/// Digest the exact joined bytes approved by the audited topic registry.
+/// Runtime observers use this value to bind authority outcomes to the same
+/// surface that `audited_verbatim_surface` would emit.
+pub fn audited_surface_source_digest(topic: &str) -> Result<String, String> {
+    let registry = argued_topic_registry().map_err(|error| error.to_string())?;
+    let entry = registry
+        .get(topic)
+        .ok_or_else(|| format!("topic '{topic}' is not audited"))?;
+    let clauses = entry
+        .statements()
+        .map(|statement| statement.surface().to_string())
+        .collect::<Vec<_>>();
+    Ok(sha256_hex(join_realized_clauses(&clauses).as_bytes()))
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {

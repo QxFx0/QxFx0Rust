@@ -142,10 +142,40 @@ doctor --gate response-plan-v2-phase-a  OK
 renderer-audit                          30/30 ready, 30 unique responses, 30 unique openings
 ```
 
-## 9. What F0 does not cover
+## 9. Current V2 rollout status
 
-The remaining ADR-0034 phases are untouched by this census: the recursive
-proposition DAG with Merkle identity, the derivation whitelist, the
-discourse projection, `SynTree`/valency frames, the linearizer, and the
-`response-plan-v2-audited-corpus` gate over the 30 topics. None of them is
-started, and no part of the runtime uses a V2 boundary yet.
+The V2 certificate chain, exact replay fixture, policy-bound rollout modes,
+typed authority outcome observation, and cumulative canary report are now
+implemented. The report is executed with:
+
+```
+cargo run -q -p qxfx0-cli --bin qxfx0 -- doctor \
+  --gate response-plan-v2-canary-report
+```
+
+It runs 30 isolated audited turns and requires:
+
+```
+completed_turns=30
+downgrades=0
+state_parity_violations=0
+output_parity_violations=0
+semantic_parity_violations=0
+authority_parity_violations=0
+realization_parity_violations=0
+replay_violations=0
+attestation_parity_violations=0
+unauthorized_v1_fallbacks=0
+```
+
+The report passing does not promote V2 authority. `v1_authoritative=true`
+remains enforced in the pipeline; `V2AuthorityOutcome` is serialized only in
+the observational trace artifact. Authority promotion requires a separate
+reviewed release change.
+
+## 10. Historical F0 boundary
+
+F0 itself covered only the census. The recursive proposition DAG, derivation
+whitelist, discourse projection, `SynTree`/valency frames, linearizer, and
+audited-corpus gates were implemented in later blocks. Global V2 authority
+promotion remains intentionally deferred.

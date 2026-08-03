@@ -84,7 +84,8 @@ enum Commands {
         json: bool,
         /// Run a named version-contract gate instead of the health check
         /// (response-plan-v2-phase-a | -b | -c | response-plan-v2-replay |
-        /// response-plan-v2-zero-downgrade), see ADR-0034
+        /// response-plan-v2-zero-downgrade | response-plan-v2-canary-report),
+        /// see ADR-0034
         #[arg(long)]
         gate: Option<String>,
     },
@@ -520,7 +521,7 @@ fn main() -> anyhow::Result<()> {
                 // never opens the database and never mixes with health output.
                 let Some(phase) = qxfx0_cli::response_plan_v2_gate::GatePhase::parse(&name) else {
                     return Err(anyhow::anyhow!(
-                        "unknown gate '{name}'; expected response-plan-v2-phase-{{a,b,c}}, response-plan-v2-replay, or response-plan-v2-zero-downgrade"
+                        "unknown gate '{name}'; expected response-plan-v2-phase-{{a,b,c}}, response-plan-v2-replay, response-plan-v2-zero-downgrade, or response-plan-v2-canary-report"
                     ));
                 };
                 info!(gate = %name, "Running version-contract gate");

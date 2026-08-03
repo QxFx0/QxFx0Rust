@@ -23,6 +23,10 @@
 //!
 //! The audited-corpus manifest and the template-agreement matrix are two
 //! separate gates and are never merged.
+//!
+//! `response-plan-v2-canary-report` runs one isolated observational pipeline
+//! turn for each audited topic and aggregates the release exit criteria. V1
+//! remains the emitted authority throughout this report.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -67,6 +71,7 @@ pub enum GatePhase {
     C,
     D,
     ZeroDowngrade,
+    CanaryReport,
 }
 
 impl GatePhase {
@@ -77,6 +82,7 @@ impl GatePhase {
             "response-plan-v2-phase-c" => Some(Self::C),
             "response-plan-v2-replay" => Some(Self::D),
             "response-plan-v2-zero-downgrade" => Some(Self::ZeroDowngrade),
+            "response-plan-v2-canary-report" => Some(Self::CanaryReport),
             _ => None,
         }
     }
@@ -88,6 +94,7 @@ impl GatePhase {
             Self::C => "response-plan-v2-phase-c",
             Self::D => "response-plan-v2-replay",
             Self::ZeroDowngrade => "response-plan-v2-zero-downgrade",
+            Self::CanaryReport => "response-plan-v2-canary-report",
         }
     }
 }
@@ -149,6 +156,141 @@ pub fn run_gate(gate: GatePhase) -> GateReport {
         GatePhase::C => run_phase_c(),
         GatePhase::D => run_replay_gate(),
         GatePhase::ZeroDowngrade => run_zero_downgrade_gate(),
+        GatePhase::CanaryReport => run_canary_report_gate(),
+    }
+}
+
+fn run_canary_report_gate() -> GateReport {
+    let registry = match qxfx0_semantic::argued_topic_registry() {
+        Ok(registry) => registry,
+        Err(error) => return GateReport::failed(GatePhase::CanaryReport, vec![error.to_string()]),
+    };
+    let mut violations = Vec::new();
+    let mut topics = registry
+        .topics()
+        .map(|topic| topic.topic().as_str().to_string())
+        .collect::<Vec<_>>();
+    topics.sort();
+    let mut completed = 0usize;
+    let mut downgrades = 0usize;
+    let mut state_parity_violations = 0usize;
+    let mut output_parity_violations = 0usize;
+    let mut semantic_parity_violations = 0usize;
+    let mut authority_parity_violations = 0usize;
+    let mut realization_parity_violations = 0usize;
+    let mut replay_violations = 0usize;
+    let mut attestation_parity_violations = 0usize;
+    let mut unauthorized_v1_fallbacks = 0usize;
+
+    for (turn, topic) in topics.iter().enumerate() {
+        let session_id = format!("v2-canary-report-{turn:02}-{topic}");
+        let input = qxfx0_pipeline::TurnInput {
+            session_id: session_id.clone(),
+            raw_text: format!("что такое {topic}?"),
+        };
+        let attestation = qxfx0_types::StanceDecisionAttestation {
+            version: qxfx0_types::STANCE_ATTESTATION_VERSION,
+            issuer_id: "response-plan-v2-canary-report".into(),
+            key_id: "observational".into(),
+            audience: "release-gate".into(),
+            session_id: session_id.clone(),
+            expected_pre_turn: 0,
+            topic: qxfx0_types::StanceTopic::new(topic).expect("audited topic is valid"),
+            polarity: qxfx0_types::StancePolarity::Affirmed,
+            request_digest: qxfx0_types::calculate_stance_request_digest(
+                &session_id,
+                &input.raw_text,
+            ),
+            decision_id: [turn as u8; 16],
+            issued_at_unix_seconds: 100,
+            expires_at_unix_seconds: 200,
+        };
+        let attestation_payload = attestation
+            .canonical_bytes()
+            .expect("canary attestation serializes");
+        let mut baseline_state = crate::fresh_state(&session_id);
+        let baseline_output = qxfx0_pipeline::process_turn_with_options(
+            &input,
+            &mut baseline_state,
+            qxfx0_pipeline::TurnOptions::new(),
+        );
+        let mut observed_state = crate::fresh_state(&session_id);
+        let (observed_output, trace) = qxfx0_pipeline::process_turn_with_options_and_trace(
+            &input,
+            &mut observed_state,
+            qxfx0_pipeline::TurnOptions::new()
+                .with_response_plan_v2(qxfx0_pipeline::ResponsePlanV2Mode::AuditedAuthority),
+        );
+        let Some(step) = trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2")
+        else {
+            violations.push(format!("{topic}: missing response_plan_v2 trace step"));
+            continue;
+        };
+        let field = |name: &str| step.metadata.get(name).map(String::as_str);
+
+        if attestation.canonical_bytes().ok().as_deref() != Some(attestation_payload.as_slice()) {
+            attestation_parity_violations += 1;
+            violations.push(format!("{topic}: attestation payload parity violation"));
+        }
+
+        let output_parity =
+            qxfx0_pipeline::execution_trace::calculate_stable_digest(&baseline_output)
+                == qxfx0_pipeline::execution_trace::calculate_stable_digest(&observed_output);
+        if !output_parity {
+            output_parity_violations += 1;
+            violations.push(format!("{topic}: output parity violation"));
+        }
+        if !qxfx0_pipeline::response_plan_v2_state_parity(&baseline_state, &observed_state) {
+            state_parity_violations += 1;
+            violations.push(format!("{topic}: state parity violation"));
+        }
+        for (name, counter) in [
+            ("semantic_parity", &mut semantic_parity_violations),
+            ("authority_parity", &mut authority_parity_violations),
+            ("realization_parity", &mut realization_parity_violations),
+            ("replay_parity", &mut replay_violations),
+        ] {
+            if field(name) != Some("true") {
+                *counter += 1;
+                violations.push(format!("{topic}: {name} violation"));
+            }
+        }
+        if field("authority_outcome") != Some("compositional") {
+            downgrades += 1;
+            violations.push(format!(
+                "{topic}: authority outcome {:?}",
+                field("authority_outcome")
+            ));
+        }
+        if field("v1_fallback_used") != Some("false") {
+            unauthorized_v1_fallbacks += 1;
+            violations.push(format!("{topic}: unauthorized V1 fallback"));
+        }
+        if field("completed") == Some("true") {
+            completed += 1;
+        } else {
+            violations.push(format!("{topic}: V2 observation did not complete"));
+        }
+    }
+
+    let details = format!(
+        "audited_turns={}, completed_turns={completed}, downgrades={downgrades}, state_parity_violations={state_parity_violations}, output_parity_violations={output_parity_violations}, semantic_parity_violations={semantic_parity_violations}, authority_parity_violations={authority_parity_violations}, realization_parity_violations={realization_parity_violations}, replay_violations={replay_violations}, attestation_parity_violations={attestation_parity_violations}, unauthorized_v1_fallbacks={unauthorized_v1_fallbacks}",
+        topics.len()
+    );
+    if !violations.is_empty() || completed != topics.len() {
+        let mut report = GateReport::failed(GatePhase::CanaryReport, violations);
+        report.details = details;
+        report
+    } else {
+        GateReport {
+            gate: GatePhase::CanaryReport.as_str(),
+            passed: true,
+            details,
+            violations,
+        }
     }
 }
 
@@ -1167,6 +1309,19 @@ mod tests {
     }
 
     #[test]
+    fn cumulative_canary_report_passes_all_audited_topics() {
+        let report = run_gate(GatePhase::CanaryReport);
+        assert!(
+            report.passed,
+            "canary report failed: {:?}",
+            report.violations
+        );
+        assert!(report.details.contains("audited_turns=30"));
+        assert!(report.details.contains("attestation_parity_violations=0"));
+        assert!(report.details.contains("unauthorized_v1_fallbacks=0"));
+    }
+
+    #[test]
     fn gate_names_round_trip() {
         for phase in [
             GatePhase::A,
@@ -1174,6 +1329,7 @@ mod tests {
             GatePhase::C,
             GatePhase::D,
             GatePhase::ZeroDowngrade,
+            GatePhase::CanaryReport,
         ] {
             assert_eq!(GatePhase::parse(phase.as_str()), Some(phase));
         }
