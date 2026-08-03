@@ -3,16 +3,17 @@ use qxfx0_cli::measurement::{run_renderer_diversity_audit, run_runtime_benchmark
 use qxfx0_cli::{
     append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
     create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
-    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_renderer,
-    run_turn_with_renderer_and_stance_provenance, run_turn_with_renderer_anomaly_shadow_trace,
-    run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
+    create_response_plan_v2_shadow_trace_sink, load_or_create_state, run_doctor,
+    run_operational_metrics, run_turn_with_renderer, run_turn_with_renderer_and_stance_provenance,
+    run_turn_with_renderer_anomaly_shadow_trace, run_turn_with_renderer_cognitive_pilot,
+    run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
     run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
-    run_turn_with_renderer_doubt_shadow_trace, verify_authority_trace,
-    write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
-    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl, AuthorityReportScope,
-    DiagnosedTurn,
+    run_turn_with_renderer_doubt_shadow_trace, run_turn_with_v2_shadow_trace,
+    verify_authority_trace, write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
+    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl,
+    write_response_plan_v2_shadow_trace_jsonl, AuthorityReportScope, DiagnosedTurn,
 };
 use qxfx0_pipeline::{
     process_turn_with_renderer, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
@@ -85,6 +86,13 @@ enum Commands {
         authority_expected_result: Option<String>,
         #[arg(long, requires = "response_plan_v2_authority")]
         authority_expected_guard: Option<String>,
+        /// Write observation-only V2 shadow evidence; V1 remains authoritative.
+        #[arg(
+            long,
+            conflicts_with = "response_plan_v2_authority",
+            value_name = "PATH"
+        )]
+        response_plan_v2_shadow_trace_jsonl: Option<PathBuf>,
         /// Default-off typed provenance recording; it never enables recovery.
         #[arg(long)]
         record_stance_provenance: bool,
@@ -218,11 +226,28 @@ fn main() -> anyhow::Result<()> {
             authority_input_class,
             authority_expected_result,
             authority_expected_guard,
+            response_plan_v2_shadow_trace_jsonl,
             record_stance_provenance,
             enable_clarification,
             enable_same_topic_suppression,
         } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
+            if let Some(path) = response_plan_v2_shadow_trace_jsonl {
+                if diagnostics_jsonl.is_some()
+                    || doubt_shadow_trace_jsonl.is_some()
+                    || anomaly_shadow_trace_jsonl.is_some()
+                    || cognitive_pilot_trace_jsonl.is_some()
+                    || record_stance_provenance
+                {
+                    anyhow::bail!("response plan V2 shadow evidence requires a standalone turn");
+                }
+                let mut sink = create_response_plan_v2_shadow_trace_sink(&path)?;
+                let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+                let traced = run_turn_with_v2_shadow_trace(&db, &cli.session_id, &text)?;
+                write_response_plan_v2_shadow_trace_jsonl(&mut sink, &traced.trace)?;
+                println!("{}", traced.response);
+                return Ok(());
+            }
             if record_stance_provenance
                 && (diagnostics_jsonl.is_some()
                     || doubt_shadow_trace_jsonl.is_some()

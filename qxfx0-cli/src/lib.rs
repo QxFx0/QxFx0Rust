@@ -129,6 +129,30 @@ pub struct AuthorityTracedTurn {
     pub trace: qxfx0_pipeline::execution_trace::PipelineTrace,
 }
 
+/// Run ResponsePlan V2 as an observation-only shadow without persisting the
+/// in-memory turn. V1 remains authoritative for the returned response.
+pub fn run_turn_with_v2_shadow_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+) -> anyhow::Result<AuthorityTracedTurn> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = qxfx0_pipeline::TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, trace) = qxfx0_pipeline::process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        qxfx0_pipeline::TurnOptions::new()
+            .with_response_plan_v2(qxfx0_pipeline::ResponsePlanV2Mode::Shadow),
+    );
+    Ok(AuthorityTracedTurn {
+        response: output.response,
+        trace,
+    })
+}
+
 pub fn run_turn_with_v2_authority_trace(
     db: &qxfx0_persistence::Persistence,
     session_id: &str,
@@ -161,6 +185,17 @@ pub fn write_authority_trace_jsonl(
     trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
 ) -> anyhow::Result<()> {
     write_trace_jsonl(sink, "qxfx0.authority-trace.v1", trace)
+}
+
+pub fn create_response_plan_v2_shadow_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    create_trace_sink(path, "response plan V2 shadow")
+}
+
+pub fn write_response_plan_v2_shadow_trace_jsonl(
+    sink: &mut File,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    write_trace_jsonl(sink, "qxfx0.response-plan-v2-shadow-trace.v1", trace)
 }
 
 #[derive(Debug, Serialize)]
@@ -1380,6 +1415,40 @@ mod tests {
         assert_eq!(report.rollback_activations, 1);
         assert!(verify_authority_trace(&path).is_err());
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn response_plan_v2_shadow_trace_is_observational() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open memory db");
+        let traced =
+            run_turn_with_v2_shadow_trace(&db, "cohort-shadow", "что такое ответственность?")
+                .expect("shadow turn");
+        let step = traced
+            .trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2")
+            .expect("V2 shadow step");
+        assert_eq!(step.metadata.get("requested_mode"), Some(&"Shadow".into()));
+        assert_eq!(step.metadata.get("effective_mode"), Some(&"Shadow".into()));
+        assert_eq!(step.metadata.get("attempted"), Some(&"true".into()));
+        assert_eq!(step.metadata.get("completed"), Some(&"true".into()));
+        assert_eq!(step.metadata.get("downgrade_count"), Some(&"0".into()));
+        assert_eq!(step.metadata.get("semantic_parity"), Some(&"true".into()));
+        assert_eq!(step.metadata.get("authority_parity"), Some(&"true".into()));
+        assert_eq!(
+            step.metadata.get("realization_parity"),
+            Some(&"true".into())
+        );
+        assert_eq!(step.metadata.get("replay_parity"), Some(&"true".into()));
+        assert_eq!(step.metadata.get("v1_authoritative"), Some(&"true".into()));
+        assert!(traced.trace.authority_receipt.is_some());
+        assert!(
+            db.load_state("cohort-shadow")
+                .expect("load state")
+                .is_none(),
+            "shadow evidence must not persist its in-memory turn"
+        );
     }
 
     /// M7.1 — smoke test: run a `Turn` against an in-memory DB and assert the
