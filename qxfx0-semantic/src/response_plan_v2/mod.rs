@@ -47,9 +47,10 @@ pub use attempt::{
     V2ExecutionResult, V2PreCandidateOutcome, V2Route,
 };
 pub use audited_corpus::{
-    audit_audited_corpus, audited_verbatim_surface, authority_outcome, build_audited_topic,
-    build_audited_topic_at, execute_audited_topic_at, AuditedCorpusError, AuditedCorpusReport,
-    AuditedTopicPlan, AuditedV2Execution, AuthoritySurfaceStrategy, V2AuthorityOutcome,
+    audit_audited_corpus, audited_surface_source_digest, audited_verbatim_surface,
+    authority_outcome, build_audited_topic, build_audited_topic_at, execute_audited_topic_at,
+    AuditedCorpusError, AuditedCorpusReport, AuditedTopicPlan, AuditedV2Execution,
+    AuthoritySurfaceStrategy, V2AuthorityOutcome,
 };
 pub use candidate::{CandidateInvariantError, CandidateResponsePlan};
 pub use derivation::{

@@ -354,8 +354,10 @@ TurnContractSnapshot {
 
 ### 10. CLI and gates
 
-- `qxfx0 doctor` gains a version-contract gate, named by
-  `--gate response-plan-v2-phase-{a,b,c}`.
+- `qxfx0 doctor` gains version-contract gates named by
+  `--gate response-plan-v2-phase-{a,b,c}`, `--gate response-plan-v2-replay`,
+  `--gate response-plan-v2-zero-downgrade`, and
+  `--gate response-plan-v2-canary-report`.
 - Phase A gate: byte-parity is required only on the fingerprinted
   `template-agreement-matrix` rows whose `parity_class` is `byte`, restricted
   to instances without hard-coded agreement features; on the remaining rows
@@ -377,6 +379,15 @@ TurnContractSnapshot {
 - F0 census emits this manifest; a human approves it; gates read it. Counts
   like "120/127" are diagnostics, not contract rules.
 - Approved golden diffs are themselves fingerprinted release artifacts.
+- The canary report runs all 30 audited topics through the observational
+  pipeline with `AuditedAuthority` eligibility, while V1 remains the emitted
+  renderer. It must report zero `RealizationDowngrade`, state/output parity
+  violations, semantic/authority/realization/replay/attestation parity
+  violations, and unauthorized V1 fallback.
+- The pipeline trace records the typed `V2AuthorityOutcome`, its digest, the
+  emitted surface digest, the audited source digest when applicable, claim
+  identity/fact-binding/claim-authority digests, and explicit parity fields.
+  These are observational evidence only and do not enter persisted turn state.
 
 ### 11. F0 data placement
 
@@ -402,9 +413,10 @@ reviewed admission.
   (e.g. `TruncationWitness`, `rejected_artifact`) live in the trace digest but
   not in the proposition closure digest, so infrastructure failures do not
   enter the semantic meaning.
-- The V1 audited renderer (ADR-0028) remains authoritative until and unless
-  the V2 gates pass and `doctor --gate` flips to the V2 authority; V1 stays as
-  the rollback oracle in the CI culture.
+- The V1 audited renderer (ADR-0028) remains authoritative while the V2 gates
+  and cumulative canary report are observed. Passing those gates does not
+  itself promote V2: authority promotion is a separate reviewed release
+  action. V1 stays as the rollback oracle in the CI culture.
 - The final semantics are asserted as one invariant, restated:
   `Derivable ≠ Assertable`, and `Assertable(declarative) requires a curated
   FactId in V1`. The derived stratum is compositional and explanatory even in
@@ -440,8 +452,8 @@ The following debate outcomes are fixed:
   audited V1 renderer as authority.
 - Contract version: ResponsePlan V2 boundaries v1.
 - Reference vectors: candidate archetypes, PropositionId Merkle vectors,
-  `template-agreement-matrix` (7 gender-hardcoded rows), truncated
-  measurement vectors under F0. Reference executable
-  endpoints are the release binary `render-forward` traces comparing V1 audit
-  surfaces with V2 realizations via unchanged `structural_corpus.rs` and the
-  new `--gate response-plan-v2-phase-{a,b,c}` suite.
+  `template-agreement-matrix` (7 gender-hardcoded rows), and truncated
+  measurement vectors under F0. Reference executable endpoints are release
+  binary traces comparing V1 output with V2 realizations via unchanged
+  `structural_corpus.rs`, the phase/replay gates, and the cumulative
+  `--gate response-plan-v2-canary-report` report.

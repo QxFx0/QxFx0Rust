@@ -927,6 +927,7 @@ struct ResponsePlanV2Artifact {
     result: qxfx0_semantic::response_plan_v2::V2ExecutionResult,
     realized: Option<qxfx0_semantic::response_plan_v2::RealizedSurface>,
     fallback: qxfx0_semantic::response_plan_v2::FallbackAction,
+    authority_outcome: qxfx0_semantic::response_plan_v2::V2AuthorityOutcome,
 }
 
 pub fn current_binary_digest() -> Result<String, String> {
@@ -995,7 +996,15 @@ fn record_response_plan_v2(
             ("semantic_parity".into(), "false".into()),
             ("authority_parity".into(), "false".into()),
             ("realization_parity".into(), "false".into()),
+            ("replay_parity".into(), "false".into()),
+            ("authority_outcome".into(), "not_attempted".into()),
+            ("authority_outcome_digest".into(), "none".into()),
+            ("authority_surface_digest".into(), "none".into()),
+            ("claim_identity_digest".into(), "none".into()),
+            ("fact_binding_digest".into(), "none".into()),
+            ("claim_authority_digest".into(), "none".into()),
             ("v1_authoritative".into(), "true".into()),
+            ("v1_fallback_used".into(), "false".into()),
         ]);
         let digest = execution_trace::calculate_stable_digest(&metadata)
             .unwrap_or_else(|error| format!("digest-error:{error}"));
@@ -1044,7 +1053,15 @@ fn record_response_plan_v2(
             ("semantic_parity".into(), "false".into()),
             ("authority_parity".into(), "false".into()),
             ("realization_parity".into(), "false".into()),
+            ("replay_parity".into(), "false".into()),
+            ("authority_outcome".into(), "typed_non_declarative".into()),
+            ("authority_outcome_digest".into(), "none".into()),
+            ("authority_surface_digest".into(), "none".into()),
+            ("claim_identity_digest".into(), "none".into()),
+            ("fact_binding_digest".into(), "none".into()),
+            ("claim_authority_digest".into(), "none".into()),
             ("v1_authoritative".into(), "true".into()),
+            ("v1_fallback_used".into(), "false".into()),
         ]);
         let digest = execution_trace::calculate_stable_digest(&metadata)
             .unwrap_or_else(|error| format!("digest-error:{error}"));
@@ -1089,6 +1106,80 @@ fn record_response_plan_v2(
     let result = execution.result;
     let realized_surface = execution.realized;
     let fallback = qxfx0_semantic::response_plan_v2::fallback_action_for_result(&result);
+    let expected_source_digest =
+        qxfx0_semantic::response_plan_v2::audited_surface_source_digest(topic).unwrap_or_default();
+    let authority_outcome = match realized_surface.clone() {
+        Some(surface) => qxfx0_semantic::response_plan_v2::authority_outcome(
+            topic,
+            qxfx0_semantic::response_plan_v2::AuthoritySurfaceStrategy::Compositional,
+            Ok(surface),
+            &expected_source_digest,
+        ),
+        None if fallback == qxfx0_semantic::response_plan_v2::FallbackAction::AuditedV1Renderer => {
+            qxfx0_semantic::response_plan_v2::authority_outcome(
+                topic,
+                qxfx0_semantic::response_plan_v2::AuthoritySurfaceStrategy::Compositional,
+                Err(format!("V2 realization failed: {result:?}")),
+                &expected_source_digest,
+            )
+        }
+        None => qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::TypedNonDeclarative {
+            reason: format!("no V2 realized surface: {result:?}"),
+        },
+    };
+    let (
+        claim_identity_digest,
+        fact_binding_digest,
+        claim_authority_digest,
+        semantic_parity,
+        authority_parity,
+    ) = match &result {
+        qxfx0_semantic::response_plan_v2::V2ExecutionResult::Attempt(
+            qxfx0_semantic::response_plan_v2::V2Attempt::Realizable(plan),
+        ) => {
+            let authorized = plan.authorized();
+            let projected = authorized.certified().candidate().projected_claims();
+            let claim_identity_digest = execution_trace::calculate_stable_digest(&projected)
+                .unwrap_or_else(|error| format!("digest-error:{error}"));
+            let fact_binding_digest =
+                execution_trace::calculate_stable_digest(authorized.certified().bindings())
+                    .unwrap_or_else(|error| format!("digest-error:{error}"));
+            let claim_authority_digest =
+                execution_trace::calculate_stable_digest(authorized.authorities())
+                    .unwrap_or_else(|error| format!("digest-error:{error}"));
+            let expected_facts = qxfx0_semantic::argued_topic_registry()
+                .ok()
+                .and_then(|registry| registry.get(topic))
+                .map(|entry| {
+                    entry
+                        .statements()
+                        .map(|statement| statement.fact_id())
+                        .collect::<Vec<_>>()
+                });
+            let semantic_parity = expected_facts.as_ref().is_some_and(|expected| {
+                projected.len() == expected.len()
+                    && projected
+                        .iter()
+                        .zip(expected)
+                        .all(|(claim, expected_fact)| {
+                            authorized.certified().bindings().get(&claim.claim_id)
+                                == Some(*expected_fact)
+                        })
+            });
+            let authority_parity = semantic_parity
+                && projected
+                    .iter()
+                    .all(|claim| authorized.authority_for(&claim.claim_id).is_some());
+            (
+                claim_identity_digest,
+                fact_binding_digest,
+                claim_authority_digest,
+                semantic_parity,
+                authority_parity,
+            )
+        }
+        _ => ("none".into(), "none".into(), "none".into(), false, false),
+    };
     let artifact = ResponsePlanV2Artifact {
         schema: "qxfx0.response-plan-v2.shadow.v1",
         contract,
@@ -1096,6 +1187,7 @@ fn record_response_plan_v2(
         result,
         realized: realized_surface,
         fallback,
+        authority_outcome,
     };
     let input_digest = execution_trace::calculate_stable_digest(&(
         routed.prepared().input().subject(),
@@ -1111,38 +1203,28 @@ fn record_response_plan_v2(
             qxfx0_semantic::response_plan_v2::V2Attempt::Realizable(_)
         )
     );
-    let downgrade_count = scope_downgrade_count + usize::from(execution_downgrade);
+    let authority_kind = artifact.authority_outcome.kind();
+    let authority_downgrade = matches!(
+        &artifact.authority_outcome,
+        qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::RealizationDowngrade { .. }
+    );
+    let downgrade_count =
+        scope_downgrade_count + usize::from(execution_downgrade) + usize::from(authority_downgrade);
     let downgrade_reason = if execution_downgrade {
-        "v2_execution_failure"
+        if authority_downgrade {
+            "realization_downgrade"
+        } else {
+            "v2_execution_failure"
+        }
     } else {
         downgrade_reason
     };
-    let semantic_parity = !execution_downgrade;
-    let authority_parity = artifact.record.is_some()
-        || matches!(
-            &artifact.result,
-            qxfx0_semantic::response_plan_v2::V2ExecutionResult::Attempt(
-                qxfx0_semantic::response_plan_v2::V2Attempt::Rejected {
-                artifact: rejected,
-                ..
-            }) if matches!(
-                rejected.prefix(),
-                qxfx0_semantic::response_plan_v2::CertifiedPrefix::AssertionAuthorized(_)
-                    | qxfx0_semantic::response_plan_v2::CertifiedPrefix::Realizable(_)
-            )
-        );
-    let realization_parity = artifact.realized.as_ref().is_some_and(|surface| {
-        qxfx0_semantic::argued_topic_registry()
-            .ok()
-            .and_then(|registry| registry.get(routed.prepared().input().subject()))
-            .and_then(|topic| {
-                surface
-                    .clauses
-                    .first()
-                    .map(|value| value == topic.thesis().surface())
-            })
-            .unwrap_or(false)
-    });
+    let realization_parity = matches!(
+        &artifact.authority_outcome,
+        qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::Compositional { output }
+            if !output.clauses.is_empty()
+    );
+    let replay_parity = artifact.record.is_some();
     let mut metadata = BTreeMap::from([
         ("requested_mode".into(), format!("{requested_mode:?}")),
         ("effective_mode".into(), format!("{effective_mode:?}")),
@@ -1153,6 +1235,7 @@ fn record_response_plan_v2(
         ("downgrade_count".into(), downgrade_count.to_string()),
         ("downgrade_reason".into(), downgrade_reason.into()),
         ("v1_authoritative".into(), "true".into()),
+        ("v1_fallback_used".into(), "false".into()),
     ]);
     metadata.extend([
         ("contract_digest".into(), artifact.contract.digest.clone()),
@@ -1160,6 +1243,36 @@ fn record_response_plan_v2(
         ("semantic_parity".into(), semantic_parity.to_string()),
         ("authority_parity".into(), authority_parity.to_string()),
         ("realization_parity".into(), realization_parity.to_string()),
+        ("replay_parity".into(), replay_parity.to_string()),
+        (
+            "attestation_presentation_surface_signed".into(),
+            "false".into(),
+        ),
+        ("claim_identity_digest".into(), claim_identity_digest),
+        ("fact_binding_digest".into(), fact_binding_digest),
+        ("claim_authority_digest".into(), claim_authority_digest),
+        ("authority_outcome".into(), authority_kind.into()),
+        (
+            "authority_outcome_digest".into(),
+            execution_trace::calculate_stable_digest(&artifact.authority_outcome)
+                .unwrap_or_else(|error| format!("digest-error:{error}")),
+        ),
+        (
+            "authority_surface_digest".into(),
+            artifact
+                .authority_outcome
+                .output()
+                .map(|output| output.surface_digest.clone())
+                .unwrap_or_else(|| "none".into()),
+        ),
+        (
+            "authority_source_digest".into(),
+            artifact
+                .authority_outcome
+                .source_digest()
+                .unwrap_or("none")
+                .into(),
+        ),
         (
             "legacy_graph_v2_declarative_fallback".into(),
             "false".into(),
