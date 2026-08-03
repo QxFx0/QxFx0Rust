@@ -162,7 +162,7 @@ fn normalize_preposition_allomorphy(text: &str) -> String {
         if (*word == "с" || *word == "С")
             && words
                 .get(index + 1)
-                .is_some_and(|next| next.eq_ignore_ascii_case("временем"))
+                .is_some_and(|next| next.to_lowercase() == "временем")
         {
             out.push(if *word == "С" {
                 "Со".into()
@@ -739,6 +739,14 @@ mod tests {
         assert_eq!(
             normalize_punctuation("Разум связан С временем"),
             "Разум связан Со временем"
+        );
+        assert_eq!(
+            normalize_punctuation("Разум связан С Временем"),
+            "Разум связан Со Временем"
+        );
+        assert_eq!(
+            normalize_punctuation("Разум связан с истиной"),
+            "Разум связан с истиной"
         );
     }
 
