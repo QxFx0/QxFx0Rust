@@ -22,6 +22,10 @@
 - Rollback authority: repository maintainers and the current release operator.
 - Completion approver: the repository owner. Independent approval is required
   when another maintainer with write access exists.
+- Governance deviation: the active `Protect main` ruleset intentionally sets
+  required approving reviews to zero while `QxFx0` is the only write-access
+  maintainer. This avoids impossible self-approval; adding another write-access
+  maintainer requires updating the ruleset to require independent approval.
 
 These values do not change within this window. A policy change starts a new
 window and schema-bound report instead of rewriting completed evidence.
