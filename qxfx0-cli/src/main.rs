@@ -1,17 +1,17 @@
 use clap::{Parser, Subcommand};
 use qxfx0_cli::measurement::{run_renderer_diversity_audit, run_runtime_benchmark};
 use qxfx0_cli::{
-    append_turn_diagnostics, create_anomaly_shadow_trace_sink, create_authority_trace_sink,
-    create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink, load_or_create_state,
-    run_doctor, run_operational_metrics, run_turn_with_renderer,
+    append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
+    create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
+    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_renderer,
     run_turn_with_renderer_and_stance_provenance, run_turn_with_renderer_anomaly_shadow_trace,
     run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
     run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
-    run_turn_with_renderer_doubt_shadow_trace, write_anomaly_shadow_trace_jsonl,
-    write_authority_trace_jsonl, write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl,
-    DiagnosedTurn,
+    run_turn_with_renderer_doubt_shadow_trace, verify_authority_trace,
+    write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
+    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl, DiagnosedTurn,
 };
 use qxfx0_pipeline::{
     process_turn_with_renderer, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
@@ -141,6 +141,13 @@ enum Commands {
     },
     /// Code orchestration — show registry statistics
     CodeStats,
+    /// Verify one external authority trace JSONL artifact
+    VerifyAuthorityTrace { path: PathBuf },
+    /// Aggregate external authority trace JSONL artifacts
+    AuthorityReport {
+        #[arg(required = true, num_args = 1..)]
+        paths: Vec<PathBuf>,
+    },
 }
 
 fn finish_diagnostics(
@@ -736,6 +743,20 @@ fn main() -> anyhow::Result<()> {
             for (kind, count) in &by_kind {
                 println!("    {}: {}", kind, count);
             }
+            Ok(())
+        }
+        Commands::VerifyAuthorityTrace { path } => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&verify_authority_trace(path)?)?
+            );
+            Ok(())
+        }
+        Commands::AuthorityReport { paths } => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&authority_report(paths, false)?)?
+            );
             Ok(())
         }
     }

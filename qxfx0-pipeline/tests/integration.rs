@@ -776,6 +776,10 @@ fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
         canary_trace.authority_receipt,
         replay_trace.authority_receipt
     );
+    assert_eq!(
+        canary_trace.authority_guard_classification.as_deref(),
+        Some("v2_successfully_emitted")
+    );
 
     let mut rollback_state = test_state(&input.session_id);
     let (rollback_output, rollback_trace) = process_turn_with_options_and_trace(
@@ -805,6 +809,7 @@ fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
             .map(String::as_str),
         Some("true")
     );
+    assert_eq!(rollback_trace.authority_guard_classification, None);
 }
 
 #[test]

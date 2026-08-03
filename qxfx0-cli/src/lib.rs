@@ -23,7 +23,7 @@ use qxfx0_pipeline::{
 };
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -167,6 +167,232 @@ pub fn write_authority_trace_jsonl(
 struct TraceRecord<'a> {
     schema: &'a str,
     trace: &'a qxfx0_pipeline::execution_trace::PipelineTrace,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedAuthorityTraceRecord {
+    schema: String,
+    trace: OwnedAuthorityTrace,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedAuthorityTrace {
+    #[serde(rename = "request_id")]
+    _request_id: String,
+    steps: Vec<OwnedTraceStep>,
+    authority_receipt: Option<serde_json::Value>,
+    authority_guard_classification: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedTraceStep {
+    stage: String,
+    input_digest: String,
+    output_digest: String,
+    metadata: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct AuthorityReport {
+    pub turns: usize,
+    pub compositional: usize,
+    pub audited_verbatim: usize,
+    pub typed_non_declarative: usize,
+    pub realization_downgrade: usize,
+    pub replay_failures: usize,
+    pub guard_blocks: usize,
+    pub rollback_activations: usize,
+}
+
+pub fn verify_authority_trace(path: impl AsRef<Path>) -> anyhow::Result<AuthorityReport> {
+    authority_report([path.as_ref()], true)
+}
+
+pub fn authority_report<I, P>(paths: I, fail_closed: bool) -> anyhow::Result<AuthorityReport>
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
+{
+    let mut report = AuthorityReport::default();
+    let mut artifact_count = 0;
+    for path in paths {
+        artifact_count += 1;
+        let source = std::fs::read_to_string(path.as_ref())?;
+        for (index, line) in source.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let record: OwnedAuthorityTraceRecord = serde_json::from_str(line)
+                .map_err(|error| anyhow::anyhow!("authority trace line {}: {error}", index + 1))?;
+            for step in &record.trace.steps {
+                if !valid_digest(&step.input_digest) || !valid_digest(&step.output_digest) {
+                    anyhow::bail!(
+                        "authority trace line {} has an invalid stage digest",
+                        index + 1
+                    );
+                }
+            }
+            if record.trace.authority_guard_classification.is_none()
+                && record.trace.authority_receipt.is_none()
+            {
+                anyhow::bail!(
+                    "authority trace line {} has no authority evidence",
+                    index + 1
+                );
+            }
+            if record.schema != "qxfx0.authority-trace.v1" {
+                anyhow::bail!(
+                    "authority trace line {} has schema '{}'",
+                    index + 1,
+                    record.schema
+                );
+            }
+            let guard = record
+                .trace
+                .authority_guard_classification
+                .as_deref()
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "authority trace line {} has no guard classification",
+                        index + 1
+                    )
+                })?;
+            let Some(receipt) = record
+                .trace
+                .authority_receipt
+                .as_ref()
+                .and_then(serde_json::Value::as_object)
+            else {
+                report.turns += 1;
+                if guard == "authority_denied_before_render" {
+                    report.rollback_activations += 1;
+                    if fail_closed {
+                        anyhow::bail!("authority trace line {} is not release-eligible", index + 1);
+                    }
+                    continue;
+                }
+                anyhow::bail!("authority trace line {} has no receipt", index + 1);
+            };
+            let string = |field: &str| {
+                receipt
+                    .get(field)
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("authority trace line {} missing {field}", index + 1)
+                    })
+            };
+            for digest in [
+                "artifact_digest",
+                "contract_digest",
+                "output_digest",
+                "replay_bundle_digest",
+            ] {
+                let value = string(digest)?;
+                if !valid_digest(value) {
+                    anyhow::bail!("authority trace line {} has invalid {digest}", index + 1);
+                }
+            }
+            let topic = string("topic")?;
+            let requested_mode = string("requested_mode")?;
+            let effective_mode = string("effective_mode")?;
+            let authority = string("authority")?;
+            let receipt_guard = string("guard_classification")?;
+            if receipt_guard != guard {
+                anyhow::bail!(
+                    "authority trace line {} has conflicting guard classifications",
+                    index + 1
+                );
+            }
+            let outcome = receipt
+                .get("outcome")
+                .and_then(serde_json::Value::as_object)
+                .and_then(|outcome| outcome.keys().next())
+                .map(String::as_str)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("authority trace line {} has invalid outcome", index + 1)
+                })?;
+            report.turns += 1;
+            match outcome {
+                "compositional" => report.compositional += 1,
+                "audited_verbatim" => report.audited_verbatim += 1,
+                "typed_non_declarative" => report.typed_non_declarative += 1,
+                "realization_downgrade" => report.realization_downgrade += 1,
+                other => anyhow::bail!(
+                    "authority trace line {} has unknown outcome '{other}'",
+                    index + 1
+                ),
+            }
+            if guard == "v2_rendered_guard_blocked" {
+                report.guard_blocks += 1;
+            }
+            if authority.eq_ignore_ascii_case("disabled")
+                || guard == "authority_denied_before_render"
+            {
+                report.rollback_activations += 1;
+            }
+            let replay_ok = record.trace.steps.iter().any(|step| {
+                step.stage == "response_plan_v2"
+                    && step.metadata.get("replay_parity").map(String::as_str) == Some("true")
+            });
+            if !replay_ok {
+                report.replay_failures += 1;
+            }
+            let v2_step = record
+                .trace
+                .steps
+                .iter()
+                .find(|step| step.stage == "response_plan_v2")
+                .ok_or_else(|| {
+                    anyhow::anyhow!("authority trace line {} has no V2 step", index + 1)
+                })?;
+            let metadata_equals = |field: &str, expected: &str| {
+                v2_step.metadata.get(field).map(String::as_str) == Some(expected)
+            };
+            let output = receipt
+                .get("outcome")
+                .and_then(|value| value.get(outcome))
+                .and_then(|value| value.get("output"));
+            let output_digest_matches = output
+                .and_then(|value| value.get("surface_digest"))
+                .and_then(serde_json::Value::as_str)
+                == Some(string("output_digest")?);
+            let digests_match = v2_step.output_digest == string("artifact_digest")?
+                && metadata_equals("contract_digest", string("contract_digest")?)
+                && metadata_equals("authority_surface_digest", string("output_digest")?)
+                && metadata_equals("replay_bundle_digest", string("replay_bundle_digest")?)
+                && output_digest_matches;
+            let eligible = qxfx0_pipeline::response_plan_v2_canary_allowlist().contains(&topic);
+            if fail_closed
+                && (!authority.eq_ignore_ascii_case("canary")
+                    || !eligible
+                    || requested_mode != "canary"
+                    || effective_mode != "canary"
+                    || !matches!(outcome, "compositional" | "audited_verbatim")
+                    || guard != "v2_successfully_emitted"
+                    || !replay_ok
+                    || !digests_match
+                    || v2_step.metadata.get("downgrade_count").map(String::as_str) != Some("0")
+                    || v2_step.metadata.get("v1_fallback_used").map(String::as_str)
+                        != Some("false"))
+            {
+                anyhow::bail!("authority trace line {} is not release-eligible", index + 1);
+            }
+        }
+    }
+    if artifact_count == 0 || report.turns == 0 {
+        anyhow::bail!("authority trace contains no records");
+    }
+    Ok(report)
+}
+
+fn valid_digest(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn diagnostic_host_metadata() -> DiagnosticHostMetadata {
@@ -998,7 +1224,80 @@ fn build_diagnosed_turn(
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::path::PathBuf;
     use std::process::Stdio;
+
+    fn authority_trace_path(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "qxfx0-authority-{label}-{}.jsonl",
+            std::process::id()
+        ))
+    }
+
+    #[test]
+    fn authority_trace_verification_and_report_are_fail_closed() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open memory db");
+        let traced = run_turn_with_v2_authority_trace(
+            &db,
+            "authority-verification",
+            "что такое свобода?",
+            qxfx0_pipeline::ResponsePlanV2Authority::Canary,
+        )
+        .expect("authority turn");
+        assert_eq!(
+            traced.trace.authority_guard_classification.as_deref(),
+            Some("v2_successfully_emitted")
+        );
+
+        let path = authority_trace_path("valid");
+        let _ = std::fs::remove_file(&path);
+        let mut sink = create_authority_trace_sink(&path).expect("new authority sink");
+        write_authority_trace_jsonl(&mut sink, &traced.trace).expect("write authority trace");
+        drop(sink);
+        let report = verify_authority_trace(&path).expect("valid trace verifies");
+        assert_eq!(report.turns, 1);
+        assert_eq!(report.compositional + report.audited_verbatim, 1);
+        assert_eq!(report.replay_failures, 0);
+
+        let mut tampered: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        tampered["trace"]["authority_receipt"]["output_digest"] =
+            serde_json::Value::String("0".repeat(64));
+        std::fs::write(
+            &path,
+            format!("{}\n", serde_json::to_string(&tampered).unwrap()),
+        )
+        .unwrap();
+        assert!(verify_authority_trace(&path).is_err());
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn authority_report_counts_denial_before_render() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open memory db");
+        let traced = run_turn_with_v2_authority_trace(
+            &db,
+            "authority-denial",
+            "что такое время?",
+            qxfx0_pipeline::ResponsePlanV2Authority::Canary,
+        )
+        .expect("denied authority turn");
+        assert_eq!(
+            traced.trace.authority_guard_classification.as_deref(),
+            Some("authority_denied_before_render")
+        );
+
+        let path = authority_trace_path("denied");
+        let _ = std::fs::remove_file(&path);
+        let mut sink = create_authority_trace_sink(&path).expect("new authority sink");
+        write_authority_trace_jsonl(&mut sink, &traced.trace).expect("write authority trace");
+        drop(sink);
+        let report = authority_report([&path], false).expect("denial remains reportable");
+        assert_eq!(report.turns, 1);
+        assert_eq!(report.rollback_activations, 1);
+        assert!(verify_authority_trace(&path).is_err());
+        let _ = std::fs::remove_file(path);
+    }
 
     /// M7.1 — smoke test: run a `Turn` against an in-memory DB and assert the
     /// pipeline returns a non-empty response. Mirrors the `Turn` CLI branch.

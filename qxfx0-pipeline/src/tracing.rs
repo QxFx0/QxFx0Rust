@@ -25,6 +25,10 @@ pub struct PipelineTrace {
     pub steps: Vec<TraceStep>,
     /// Optional authority evidence kept outside persisted session state.
     pub authority_receipt: Option<serde_json::Value>,
+    /// Final authority/guard boundary result, including turns denied before a
+    /// receipt could be created.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_guard_classification: Option<String>,
     /// Local diagnostic only; intentionally absent from serialized replay
     /// evidence so JSONL traces do not contain wall-clock data.
     #[serde(skip_serializing)]
@@ -37,6 +41,7 @@ impl PipelineTrace {
             request_id: request_id.to_string(),
             steps: Vec::new(),
             authority_receipt: None,
+            authority_guard_classification: None,
             total_duration: std::time::Duration::ZERO,
         }
     }
@@ -67,6 +72,18 @@ impl PipelineTrace {
         self.authority_receipt =
             Some(serde_json::to_value(receipt).map_err(|error| error.to_string())?);
         Ok(())
+    }
+
+    pub fn set_authority_guard_classification(&mut self, classification: &str) {
+        self.authority_guard_classification = Some(classification.into());
+        if let Some(receipt) = self.authority_receipt.as_mut() {
+            if let Some(object) = receipt.as_object_mut() {
+                object.insert(
+                    "guard_classification".into(),
+                    serde_json::Value::String(classification.into()),
+                );
+            }
+        }
     }
 
     /// Formats the trace for human-readable output or log files.
@@ -188,5 +205,36 @@ mod tests {
             BTreeMap::new(),
         );
         assert_eq!(a.replay_signature(), b.replay_signature());
+    }
+
+    #[test]
+    fn authority_evidence_does_not_change_replay_signature() {
+        let mut trace = PipelineTrace::new("authority");
+        trace.record_step(
+            "render",
+            "in".into(),
+            "out".into(),
+            std::time::Duration::ZERO,
+            BTreeMap::new(),
+        );
+        let expected = trace
+            .replay_signature()
+            .into_iter()
+            .map(|(stage, input, output)| (stage.to_owned(), input.to_owned(), output.to_owned()))
+            .collect::<Vec<_>>();
+        trace.authority_receipt = Some(serde_json::json!({"authority": "Canary"}));
+        trace.set_authority_guard_classification("v2_successfully_emitted");
+        assert_eq!(
+            trace
+                .replay_signature()
+                .into_iter()
+                .map(|(stage, input, output)| (
+                    stage.to_owned(),
+                    input.to_owned(),
+                    output.to_owned()
+                ))
+                .collect::<Vec<_>>(),
+            expected
+        );
     }
 }

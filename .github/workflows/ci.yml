@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, master]
     tags: ["v*"]
@@ -75,3 +76,44 @@ jobs:
             --response-plan-v2-authority \
             --response-plan-v2-trace-jsonl "$trace"
           test -s "$trace"
+          target/release/qxfx0 verify-authority-trace "$trace" > "$RUNNER_TEMP/qxfx0-authority-verification.json"
+          target/release/qxfx0 authority-report "$trace" > "$RUNNER_TEMP/qxfx0-authority-report.json"
+
+      - name: Export ResponsePlan V2 gate reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/qxfx0-v2-gates"
+          for gate in \
+            response-plan-v2-phase-a \
+            response-plan-v2-phase-b \
+            response-plan-v2-phase-c \
+            response-plan-v2-replay \
+            response-plan-v2-zero-downgrade \
+            response-plan-v2-canary-report; do
+            target/release/qxfx0 doctor --gate "$gate" --json > "$RUNNER_TEMP/qxfx0-v2-gates/$gate.json"
+          done
+
+      - name: Export release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg commit "$GITHUB_SHA" \
+            --arg ref "$GITHUB_REF" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            --arg version "$(target/release/qxfx0 version)" \
+            '{schema:"qxfx0.release-metadata.v1",commit:$commit,ref:$ref,run_id:$run_id,version:$version}' \
+            > "$RUNNER_TEMP/qxfx0-release-metadata.json"
+
+      - name: Upload ResponsePlan V2 operational evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: response-plan-v2-operational-evidence-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/qxfx0-authority-trace.jsonl
+            ${{ runner.temp }}/qxfx0-authority-verification.json
+            ${{ runner.temp }}/qxfx0-authority-report.json
+            ${{ runner.temp }}/qxfx0-release-metadata.json
+            ${{ runner.temp }}/qxfx0-v2-gates/*.json
+          if-no-files-found: error
