@@ -4,9 +4,10 @@ use rusqlite::{Connection, Result};
 ///
 /// Versions 1-6 existed in two incompatible migration systems: early builds
 /// tracked versions in a `schema_version` table while later development builds
-/// used `PRAGMA user_version`. Version 8 adds typed stance provenance without
+/// used `PRAGMA user_version`. Version 8 adds typed stance provenance and
+/// version 9 adds bounded fact-grounded perspective state without
 /// rewriting session rows, so databases from either lineage upgrade safely.
-pub const CURRENT_SCHEMA_VERSION: i64 = 8;
+pub const CURRENT_SCHEMA_VERSION: i64 = 9;
 
 const SCHEMA_V8: &str = r#"
 CREATE TABLE IF NOT EXISTS runtime_sessions (
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS session_semantic (
     adjunction_json TEXT NOT NULL,
     commitments_json TEXT,
     stance_provenance_json TEXT,
+    perspective_json TEXT,
     FOREIGN KEY (session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE
 );
 
@@ -58,6 +60,16 @@ pub fn apply_migrations(conn: &mut Connection) -> Result<()> {
     };
     if !has_column {
         tx.execute_batch("ALTER TABLE session_semantic ADD COLUMN stance_provenance_json TEXT")?;
+    }
+    let has_perspective_column = {
+        let mut statement = tx.prepare("PRAGMA table_info(session_semantic)")?;
+        let names = statement
+            .query_map([], |row| row.get::<_, String>(1))?
+            .collect::<Result<Vec<_>>>()?;
+        names.iter().any(|name| name == "perspective_json")
+    };
+    if !has_perspective_column {
+        tx.execute_batch("ALTER TABLE session_semantic ADD COLUMN perspective_json TEXT")?;
     }
     tx.pragma_update(None, "user_version", CURRENT_SCHEMA_VERSION)?;
     tx.commit()?;

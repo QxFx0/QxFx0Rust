@@ -214,6 +214,27 @@ pub fn render_stage(
     );
     let path_depth = fp.path_depth();
 
+    if renderer_authority == RendererAuthority::V2Canary {
+        let response = planned
+            .authority_decision()
+            .filter(|receipt| receipt.can_emit_v2())
+            .and_then(crate::AuthorityDecisionReceipt::output)
+            .ok_or_else(|| "V2 canary authority has no authorized surface".to_string())?;
+        return Ok(RenderedTurnContext::new(
+            planned,
+            response,
+            path_depth,
+            false,
+            RenderEvidence {
+                renderer_authority,
+                renderer_source: RendererSource::ResponsePlanV2,
+                plan_surface_available: true,
+                plan_surface_matches_output: Some(true),
+                plan_render_error: None,
+            },
+        ));
+    }
+
     if routed.family() == CanonicalMoveFamily::CMClarify {
         let response = clarification_surface(&subject);
         return Ok(RenderedTurnContext::new(

@@ -1,0 +1,10 @@
+{
+  "pack_id": "core-concepts-v1",
+  "schema_version": 1,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "license": "MIT",
+  "files": {
+    "concepts-v1.json": "e63a252a3ea43675891ee530fa31678452dfac614ede5a843e287d56238e64c6"
+  }
+}

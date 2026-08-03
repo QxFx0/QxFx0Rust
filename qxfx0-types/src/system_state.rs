@@ -7,6 +7,7 @@ use crate::governance::GovernanceLog;
 use crate::illocutionary_force::IllocutionaryForce;
 use crate::move_family::CanonicalMoveFamily;
 use crate::network::SemanticNetwork;
+use crate::perspective::PerspectiveState;
 use crate::stance::BoundedStanceProvenance;
 
 /// Dialogue state — multi-turn context, history, last routing.
@@ -148,11 +149,19 @@ pub struct AdjunctionState {
 pub struct SemanticState {
     pub field: Field,
     pub runtime_graph: AtomGraph,
+    /// SHA-256 identity of the immutable pack set used by this session.
+    /// Empty is allowed for legacy/default-off sessions.
+    #[serde(default)]
+    pub pack_set_fingerprint: String,
     pub semantic_commitments: Option<SemanticCommitmentStore>,
     /// Essence trajectory — the system's commitment history.
     pub essence: EssenceState,
     /// Adjunction balance — Holistic ⊣ Formal categorical state.
     pub adjunction: AdjunctionState,
+    /// Per-session fact-grounded evidence. This is deliberately distinct from
+    /// the authoritative PerspectiveRegistry in qxfx0-self::perspective.
+    #[serde(default)]
+    pub perspective: PerspectiveState,
     #[serde(default)]
     pub stance_provenance: BoundedStanceProvenance,
     /// Cached edge count — when this differs from runtime_graph.edges.len(),
@@ -207,6 +216,16 @@ impl SystemState {
         {
             violations.push("runtime graph exceeds the 10000-atom/20000-edge bound".into());
         }
+        if !self.semantic.pack_set_fingerprint.is_empty()
+            && (self.semantic.pack_set_fingerprint.len() != 64
+                || !self
+                    .semantic
+                    .pack_set_fingerprint
+                    .chars()
+                    .all(|character| character.is_ascii_hexdigit()))
+        {
+            violations.push("pack_set_fingerprint is not a SHA-256 identifier".into());
+        }
         if let Some(store) = &self.semantic.semantic_commitments {
             if store.active.len() + store.quarantine.len() > 1_024 {
                 violations.push("semantic commitment store exceeds 1024 entries".into());
@@ -218,6 +237,13 @@ impl SystemState {
         if self.semantic.essence.witnesses.len() > self.semantic.essence.capacity.max(32) {
             violations.push("essence witness trajectory exceeds its capacity".into());
         }
+        violations.extend(
+            self.semantic
+                .perspective
+                .validate()
+                .into_iter()
+                .map(|violation| format!("semantic.perspective: {violation}")),
+        );
         if self.semantic.stance_provenance.len() > self.semantic.stance_provenance.capacity() {
             violations.push("stance provenance exceeds its capacity".into());
         }

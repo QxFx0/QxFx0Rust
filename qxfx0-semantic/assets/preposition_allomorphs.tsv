@@ -1,0 +1,4 @@
+# Lexically selected Russian preposition allomorphs (ADR-0034 L4).
+# base<TAB>lemma<TAB>surface
+base	lemma	surface
+с	время	со

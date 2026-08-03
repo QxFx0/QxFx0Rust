@@ -117,9 +117,69 @@ fn apply_topic_pronouns(text: &str, topic: &str) -> String {
     result.join(" ")
 }
 
+/// Rewrite the preposition `в` to its `во` allomorph where Russian requires it.
+///
+/// Templates carry the preposition as literal text, so `в {TO|prep}` produced
+/// `в времени` and `в власти`. The rule is narrow and decidable: `в` becomes
+/// `во` before a word starting with `в`/`ф` followed by a consonant. `в воле`
+/// and `в вере` keep the short form because a vowel follows.
+///
+/// This is a surface orthography rule and belongs with punctuation
+/// normalization until the realization layer of ADR-0034 owns linearization.
+/// The audited `с`/`со` choice is deliberately narrow here: the V1 renderer
+/// owns only the reviewed lexical entry, while the full V2 lexicon remains in
+/// `morphology_depth.rs`.
+fn normalize_preposition_allomorphy(text: &str) -> String {
+    fn is_consonant(ch: char) -> bool {
+        !matches!(
+            ch,
+            'а' | 'е' | 'ё' | 'и' | 'о' | 'у' | 'ы' | 'э' | 'ю' | 'я' | 'ь' | 'ъ'
+        )
+    }
+
+    let words: Vec<&str> = text.split(' ').collect();
+    let mut out: Vec<String> = Vec::with_capacity(words.len());
+    for (index, word) in words.iter().enumerate() {
+        if *word == "в" || *word == "В" {
+            let next = words.get(index + 1).copied().unwrap_or_default();
+            let mut chars = next.chars();
+            let requires_vo = match (chars.next(), chars.next()) {
+                (Some(first), Some(second)) => {
+                    matches!(first.to_lowercase().next(), Some('в') | Some('ф'))
+                        && is_consonant(second.to_lowercase().next().unwrap_or('а'))
+                }
+                _ => false,
+            };
+            if requires_vo {
+                out.push(if *word == "В" {
+                    "Во".into()
+                } else {
+                    "во".into()
+                });
+                continue;
+            }
+        }
+        if (*word == "с" || *word == "С")
+            && words
+                .get(index + 1)
+                .is_some_and(|next| next.to_lowercase() == "временем")
+        {
+            out.push(if *word == "С" {
+                "Со".into()
+            } else {
+                "со".into()
+            });
+            continue;
+        }
+        out.push((*word).to_string());
+    }
+    out.join(" ")
+}
+
 /// Normalize sentence punctuation in one place for every rendering path.
 /// Adjacent terminal marks collapse to one, and whitespace before punctuation
 /// is removed. Question/exclamation marks take precedence over a period.
+/// Preposition allomorphy is applied last, after spacing is canonical.
 pub fn normalize_punctuation(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for ch in text.trim().chars() {
@@ -159,7 +219,7 @@ pub fn normalize_punctuation(text: &str) -> String {
 
         out.push(ch);
     }
-    out.trim().to_string()
+    normalize_preposition_allomorphy(out.trim())
 }
 
 fn join_sentences(parts: &[String]) -> String {
@@ -632,6 +692,61 @@ mod tests {
         assert_eq!(
             normalize_punctuation("Фраза...  Вопрос.. ?  Ответ!!"),
             "Фраза. Вопрос? Ответ!"
+        );
+    }
+
+    /// The `в`/`во` allomorph is decided by the following word, not by the
+    /// template. Templates carry `в` literally, so `в времени` reached the
+    /// release surface before this rule existed.
+    #[test]
+    fn preposition_v_becomes_vo_before_consonant_cluster() {
+        // Consonant follows в/ф — the long form is required.
+        assert_eq!(
+            normalize_punctuation("смерть имеет свой предел в времени"),
+            "смерть имеет свой предел во времени"
+        );
+        assert_eq!(
+            normalize_punctuation("сомнение в власти"),
+            "сомнение во власти"
+        );
+        assert_eq!(normalize_punctuation("в всём"), "во всём");
+
+        // A vowel follows — the short form stays.
+        assert_eq!(normalize_punctuation("в воле"), "в воле");
+        assert_eq!(normalize_punctuation("в вере"), "в вере");
+        assert_eq!(normalize_punctuation("в вопросе"), "в вопросе");
+
+        // Unrelated initial letters are untouched.
+        assert_eq!(normalize_punctuation("в памяти"), "в памяти");
+        assert_eq!(normalize_punctuation("в сознании"), "в сознании");
+
+        // Sentence-initial capital keeps its case.
+        assert_eq!(
+            normalize_punctuation("В времени есть предел"),
+            "Во времени есть предел"
+        );
+
+        // A trailing preposition has no successor and must not panic.
+        assert_eq!(normalize_punctuation("предел в"), "предел в");
+    }
+
+    #[test]
+    fn preposition_s_becomes_so_before_audited_vremya_surface() {
+        assert_eq!(
+            normalize_punctuation("разум связан с временем"),
+            "разум связан со временем"
+        );
+        assert_eq!(
+            normalize_punctuation("Разум связан С временем"),
+            "Разум связан Со временем"
+        );
+        assert_eq!(
+            normalize_punctuation("Разум связан С Временем"),
+            "Разум связан Со Временем"
+        );
+        assert_eq!(
+            normalize_punctuation("Разум связан с истиной"),
+            "Разум связан с истиной"
         );
     }
 

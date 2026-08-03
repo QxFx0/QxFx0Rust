@@ -1,18 +1,22 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use qxfx0_cli::measurement::{run_renderer_diversity_audit, run_runtime_benchmark};
 use qxfx0_cli::{
-    append_turn_diagnostics, create_anomaly_shadow_trace_sink, create_cognitive_pilot_trace_sink,
-    create_doubt_shadow_trace_sink, load_or_create_state, run_doctor, run_operational_metrics,
-    run_turn_with_renderer, run_turn_with_renderer_and_stance_provenance,
-    run_turn_with_renderer_anomaly_shadow_trace, run_turn_with_renderer_cognitive_pilot,
-    run_turn_with_renderer_diagnostics,
+    append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
+    create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
+    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_renderer,
+    run_turn_with_renderer_and_stance_provenance, run_turn_with_renderer_anomaly_shadow_trace,
+    run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
     run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
-    run_turn_with_renderer_doubt_shadow_trace, write_anomaly_shadow_trace_jsonl,
-    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl, DiagnosedTurn,
+    run_turn_with_renderer_doubt_shadow_trace, verify_authority_trace,
+    write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
+    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl, AuthorityReportScope,
+    DiagnosedTurn,
 };
 use qxfx0_pipeline::{
-    process_turn_with_renderer, ClarificationMode, RendererAuthority, SameTopicSuppressionMode,
+    process_turn_with_renderer, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
+    SameTopicSuppressionMode,
 };
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -41,7 +45,15 @@ struct Cli {
     command: Commands,
 }
 
+#[derive(Clone, Copy, ValueEnum)]
+enum ReportScope {
+    All,
+    Positive,
+    Negative,
+}
+
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)] // clap owns the one-shot command payload
 enum Commands {
     /// Ask a single question
     Turn {
@@ -59,6 +71,20 @@ enum Commands {
         anomaly_shadow_trace_jsonl: Option<PathBuf>,
         #[arg(long, value_name = "PATH")]
         cognitive_pilot_trace_jsonl: Option<PathBuf>,
+        /// Explicit V2 authority canary for the three-topic allowlist.
+        #[arg(long, conflicts_with = "render_audited_plan")]
+        response_plan_v2_authority: bool,
+        /// Write the V2 authority receipt and pipeline trace to a new JSONL file.
+        #[arg(long, requires = "response_plan_v2_authority", value_name = "PATH")]
+        response_plan_v2_trace_jsonl: Option<PathBuf>,
+        #[arg(long, requires = "response_plan_v2_authority")]
+        authority_case_id: Option<String>,
+        #[arg(long, requires = "response_plan_v2_authority")]
+        authority_input_class: Option<String>,
+        #[arg(long, requires = "response_plan_v2_authority")]
+        authority_expected_result: Option<String>,
+        #[arg(long, requires = "response_plan_v2_authority")]
+        authority_expected_guard: Option<String>,
         /// Default-off typed provenance recording; it never enables recovery.
         #[arg(long)]
         record_stance_provenance: bool,
@@ -81,6 +107,12 @@ enum Commands {
         /// Emit a machine-readable JSON report
         #[arg(long)]
         json: bool,
+        /// Run a named version-contract gate instead of the health check
+        /// (response-plan-v2-phase-a | -b | -c | response-plan-v2-replay |
+        /// response-plan-v2-zero-downgrade | response-plan-v2-canary-report),
+        /// see ADR-0034
+        #[arg(long)]
+        gate: Option<String>,
     },
     /// Create a verified online SQLite backup
     Backup {
@@ -99,6 +131,22 @@ enum Commands {
         #[arg(long, default_value_t = 2_000)]
         max_response_ms: u64,
     },
+    /// Measure first-turn and steady-state in-memory runtime latency
+    Benchmark {
+        #[arg(long, default_value_t = 100)]
+        samples: usize,
+        #[arg(long, default_value_t = 10)]
+        warmup: usize,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Audit diversity of the authoritative audited-plan renderer
+    RendererAudit {
+        #[arg(long, default_value_t = 3)]
+        opening_words: usize,
+        #[arg(long)]
+        json: bool,
+    },
     /// List sessions
     Sessions,
     /// Show version
@@ -110,6 +158,15 @@ enum Commands {
     },
     /// Code orchestration — show registry statistics
     CodeStats,
+    /// Verify one external authority trace JSONL artifact
+    VerifyAuthorityTrace { path: PathBuf },
+    /// Aggregate external authority trace JSONL artifacts
+    AuthorityReport {
+        #[arg(required = true, num_args = 1..)]
+        paths: Vec<PathBuf>,
+        #[arg(long, value_enum, default_value_t = ReportScope::All)]
+        scope: ReportScope,
+    },
 }
 
 fn finish_diagnostics(
@@ -155,6 +212,12 @@ fn main() -> anyhow::Result<()> {
             doubt_shadow_trace_jsonl,
             anomaly_shadow_trace_jsonl,
             cognitive_pilot_trace_jsonl,
+            response_plan_v2_authority,
+            response_plan_v2_trace_jsonl,
+            authority_case_id,
+            authority_input_class,
+            authority_expected_result,
+            authority_expected_guard,
             record_stance_provenance,
             enable_clarification,
             enable_same_topic_suppression,
@@ -169,6 +232,31 @@ fn main() -> anyhow::Result<()> {
                 anyhow::bail!(
                     "stance provenance recording currently requires a standalone ordinary turn"
                 );
+            }
+            if response_plan_v2_authority {
+                let mut sink = response_plan_v2_trace_jsonl
+                    .as_ref()
+                    .map(create_authority_trace_sink)
+                    .transpose()?;
+                let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+                let traced = qxfx0_cli::run_turn_with_v2_authority_trace(
+                    &db,
+                    &cli.session_id,
+                    &text,
+                    ResponsePlanV2Authority::Canary,
+                )?;
+                let mut traced = traced;
+                traced.trace.set_authority_case_metadata(
+                    authority_case_id.as_deref(),
+                    authority_input_class.as_deref(),
+                    authority_expected_result.as_deref(),
+                    authority_expected_guard.as_deref(),
+                );
+                if let Some(sink) = sink.as_mut() {
+                    write_authority_trace_jsonl(sink, &traced.trace)?;
+                }
+                println!("{}", traced.response);
+                return Ok(());
             }
             if let Some(path) = cognitive_pilot_trace_jsonl {
                 if doubt_shadow_trace_jsonl.is_some() || anomaly_shadow_trace_jsonl.is_some() {
@@ -492,7 +580,36 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
-        Commands::Doctor { json } => {
+        Commands::Doctor { json, gate } => {
+            if let Some(name) = gate {
+                // A named gate is a version contract, not a health check, so it
+                // never opens the database and never mixes with health output.
+                let Some(phase) = qxfx0_cli::response_plan_v2_gate::GatePhase::parse(&name) else {
+                    return Err(anyhow::anyhow!(
+                        "unknown gate '{name}'; expected response-plan-v2-phase-{{a,b,c}}, response-plan-v2-replay, response-plan-v2-zero-downgrade, or response-plan-v2-canary-report"
+                    ));
+                };
+                info!(gate = %name, "Running version-contract gate");
+                let report = qxfx0_cli::response_plan_v2_gate::run_gate(phase);
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&report)?);
+                } else {
+                    println!(
+                        "[{}] {}: {}",
+                        if report.passed { "OK" } else { "FAIL" },
+                        report.gate,
+                        report.details
+                    );
+                    for violation in &report.violations {
+                        println!("  - {violation}");
+                    }
+                }
+                return if report.passed {
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!("gate {} failed", report.gate))
+                };
+            }
             info!("Performing system health check");
             let report = run_doctor(&cli.db);
             if json {
@@ -550,6 +667,44 @@ fn main() -> anyhow::Result<()> {
             } else {
                 Err(anyhow::anyhow!(violations.join("; ")))
             }
+        }
+        Commands::Benchmark {
+            samples,
+            warmup,
+            json,
+        } => {
+            let report = run_runtime_benchmark(samples, warmup).map_err(anyhow::Error::msg)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!(
+                    "first_turn={}us steady_p50={}us steady_p95={}us samples={}",
+                    report.first_turn_micros,
+                    report.steady_state_micros.p50,
+                    report.steady_state_micros.p95,
+                    report.steady_state_micros.samples
+                );
+            }
+            Ok(())
+        }
+        Commands::RendererAudit {
+            opening_words,
+            json,
+        } => {
+            let report = run_renderer_diversity_audit(opening_words).map_err(anyhow::Error::msg)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!(
+                    "topics={} ready={} blocked={} unique_responses={} unique_openings={}",
+                    report.audited_topics,
+                    report.ready_plans,
+                    report.blocked_topics.len(),
+                    report.unique_responses,
+                    report.unique_normalized_openings
+                );
+            }
+            Ok(())
         }
         Commands::Sessions => {
             debug!("Listing all sessions from database: {}", cli.db);
@@ -618,6 +773,25 @@ fn main() -> anyhow::Result<()> {
             for (kind, count) in &by_kind {
                 println!("    {}: {}", kind, count);
             }
+            Ok(())
+        }
+        Commands::VerifyAuthorityTrace { path } => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&verify_authority_trace(path)?)?
+            );
+            Ok(())
+        }
+        Commands::AuthorityReport { paths, scope } => {
+            let scope = match scope {
+                ReportScope::All => AuthorityReportScope::All,
+                ReportScope::Positive => AuthorityReportScope::Positive,
+                ReportScope::Negative => AuthorityReportScope::Negative,
+            };
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&authority_report(paths, false, scope)?)?
+            );
             Ok(())
         }
     }

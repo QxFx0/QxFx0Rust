@@ -120,9 +120,32 @@ fn fill_template(template: &SurfaceTemplate, rel: &Relation, morph: &MorphologyD
     strip_unreplaced(&result).trim().to_string()
 }
 
-/// Detect grammatical gender of a Russian word from its ending.
+/// Detect grammatical gender of a Russian word.
+///
+/// The curated morphology bundle is authoritative: it carries a reviewed
+/// `Gender` for 19,949 lexemes. Ending-based inference is only a fallback for
+/// lemmas outside the bundle, because endings are not decidable in Russian —
+/// `память`, `смерть`, `любовь` end in a soft sign yet are feminine, and
+/// `время` ends in `-я` yet is neuter. Inferring from the ending misclassified
+/// 5 of the 30 audited topics and produced `разум направлена на истину`.
+///
 /// Returns "f", "m", "n", or "pl" for plural forms.
 pub fn detect_gender(word: &str) -> &'static str {
+    if let Some(entry) = qxfx0_morphology::get_runtime().get_lexeme(word) {
+        return match entry.features.gender {
+            qxfx0_morphology::Gender::Feminine => "f",
+            qxfx0_morphology::Gender::Masculine => "m",
+            qxfx0_morphology::Gender::Neuter => "n",
+            // An unknown bundle gender is not authority; fall through to the
+            // ending heuristic rather than silently defaulting to masculine.
+            qxfx0_morphology::Gender::Unknown => return detect_gender_from_ending(word),
+        };
+    }
+    detect_gender_from_ending(word)
+}
+
+/// Ending-based fallback for lemmas absent from the curated bundle.
+fn detect_gender_from_ending(word: &str) -> &'static str {
     let chars: Vec<char> = word.chars().collect();
     if chars.is_empty() {
         return "m";

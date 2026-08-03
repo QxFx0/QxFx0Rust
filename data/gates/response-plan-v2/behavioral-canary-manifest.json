@@ -1,0 +1,30 @@
+{
+  "schema": "qxfx0.response-plan-v2.behavioral-canary.v1",
+  "authority_boundary": "cm_define",
+  "raw_input_in_evidence": false,
+  "cases": [
+    { "case_id": "truth-define", "topic": "правда", "input_class": "definition", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "truth-paraphrase", "topic": "правда", "input_class": "definition_paraphrase", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "truth-challenge", "topic": "правда", "input_class": "challenge", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "truth-clarify", "topic": "правда", "input_class": "definition_clarification", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "truth-repeat", "topic": "правда", "input_class": "same_session_repeat", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "arbitrariness-define", "topic": "произвол", "input_class": "definition", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "arbitrariness-paraphrase", "topic": "произвол", "input_class": "definition_paraphrase", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "arbitrariness-challenge", "topic": "произвол", "input_class": "challenge", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "arbitrariness-clarify", "topic": "произвол", "input_class": "definition_clarification", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "arbitrariness-repeat", "topic": "произвол", "input_class": "same_session_repeat", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "freedom-define", "topic": "свобода", "input_class": "definition", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "freedom-paraphrase", "topic": "свобода", "input_class": "definition_paraphrase", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "freedom-challenge", "topic": "свобода", "input_class": "challenge", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "freedom-clarify", "topic": "свобода", "input_class": "definition_clarification", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" },
+    { "case_id": "freedom-repeat", "topic": "свобода", "input_class": "same_session_repeat", "expected_authority_result": "compositional", "expected_guard_result": "v2_successfully_emitted" }
+  ],
+  "negative_controls": [
+    { "case_id": "outside-allowlist", "topic": "истина", "input_class": "known_outside_allowlist", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "unknown-topic", "topic": "кванточайник", "input_class": "unknown_topic", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "unsupported-intent", "topic": "свобода", "input_class": "assertion", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "guard-rejected", "topic": "unknown", "input_class": "empty_input", "expected_authority_result": "authority_denied", "expected_guard_result": "authority_denied_before_render" },
+    { "case_id": "default-v1", "topic": "свобода", "input_class": "authority_disabled", "expected_authority_result": "v1_default", "expected_guard_result": "not_recorded" },
+    { "case_id": "explicit-rollback", "topic": "свобода", "input_class": "authority_then_disabled", "expected_authority_result": "v1_default", "expected_guard_result": "not_recorded" }
+  ]
+}

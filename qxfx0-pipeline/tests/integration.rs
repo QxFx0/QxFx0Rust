@@ -1,11 +1,15 @@
 //! Integration tests — replay determinism, multi-turn persistence, end-to-end pipeline.
 
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_trace, process_turn_with_trace_and_renderer_and_anomaly_shadow,
+    process_turn, process_turn_with_options, process_turn_with_options_and_trace,
+    process_turn_with_trace, process_turn_with_trace_and_renderer_and_anomaly_shadow,
     process_turn_with_trace_and_renderer_and_doubt_shadow,
     process_turn_with_trace_and_renderer_and_features,
-    process_turn_with_trace_and_renderer_and_features_and_suppression, AnomalyShadowMode,
-    ClarificationMode, DoubtShadowMode, RendererAuthority, SameTopicSuppressionMode, TurnInput,
+    process_turn_with_trace_and_renderer_and_features_and_suppression,
+    response_plan_v2_canary_allowlist, response_plan_v2_canary_digest,
+    response_plan_v2_state_parity, AnomalyShadowMode, ClarificationMode, DoubtShadowMode,
+    RendererAuthority, ResponsePlanV2Authority, ResponsePlanV2Mode, SameTopicSuppressionMode,
+    TurnInput, TurnOptions,
 };
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
@@ -520,6 +524,7 @@ fn test_stage_trace_is_replay_deterministic() {
             "same_topic_suppression",
             "prepare",
             "route",
+            "response_plan_v2",
             "plan_shadow",
             "render",
             "finalize",
@@ -571,6 +576,338 @@ fn test_stage_trace_is_replay_deterministic() {
         .metadata
         .get("predicate_refs")
         .is_some_and(|refs| refs.contains("freedom_choice")));
+}
+
+#[test]
+fn response_plan_v2_canary_is_sorted_stable_and_attribute_preserving() {
+    assert_eq!(
+        response_plan_v2_canary_allowlist(),
+        &["правда", "произвол", "свобода"]
+    );
+    assert_eq!(
+        response_plan_v2_canary_digest(),
+        response_plan_v2_canary_digest()
+    );
+
+    for topic in response_plan_v2_canary_allowlist() {
+        let session_id = format!("v2-canary-{topic}");
+        let input = TurnInput {
+            session_id: session_id.clone(),
+            raw_text: format!("что такое {topic}?"),
+        };
+        let mut baseline_state = test_state(&session_id);
+        let baseline_output =
+            process_turn_with_options(&input, &mut baseline_state, TurnOptions::new());
+        let mut canary_state = test_state(&session_id);
+        let (canary_output, trace) = process_turn_with_options_and_trace(
+            &input,
+            &mut canary_state,
+            TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Canary),
+        );
+
+        assert_eq!(canary_output.response, baseline_output.response, "{topic}");
+        assert_eq!(canary_output.family, baseline_output.family, "{topic}");
+        assert_eq!(
+            canary_output.guard_status, baseline_output.guard_status,
+            "{topic}"
+        );
+        assert_eq!(canary_output.blocked, baseline_output.blocked, "{topic}");
+        assert_eq!(
+            canary_output.commitment_engaged, baseline_output.commitment_engaged,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.governance_events, baseline_output.governance_events,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.conatus_energy, baseline_output.conatus_energy,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.path_depth, baseline_output.path_depth,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.holistic_dominant, baseline_output.holistic_dominant,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.conversation_state, baseline_output.conversation_state,
+            "{topic}"
+        );
+        assert!(response_plan_v2_state_parity(
+            &baseline_state,
+            &canary_state
+        ));
+
+        let step = trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2")
+            .expect("canary trace step");
+        for (key, expected) in [
+            ("requested_mode", "Canary"),
+            ("effective_mode", "Canary"),
+            ("canary_eligible", "true"),
+            ("attempted", "true"),
+            ("completed", "true"),
+            ("downgrade_count", "0"),
+            ("downgrade_reason", "none"),
+            ("v1_authoritative", "true"),
+        ] {
+            assert_eq!(
+                step.metadata.get(key).map(String::as_str),
+                Some(expected),
+                "{topic}:{key}"
+            );
+        }
+        assert_eq!(
+            step.metadata.get("canary_digest"),
+            Some(&response_plan_v2_canary_digest())
+        );
+        for parity in ["semantic_parity", "authority_parity", "realization_parity"] {
+            assert!(step.metadata.contains_key(parity), "{topic}:{parity}");
+        }
+    }
+}
+
+#[test]
+fn response_plan_v2_rollout_scopes_downgrade_without_affecting_stance_payload() {
+    let input = TurnInput {
+        session_id: "v2-rollout-scope".into(),
+        raw_text: "что такое знание?".into(),
+    };
+    let attestation = qxfx0_types::StanceDecisionAttestation {
+        version: qxfx0_types::STANCE_ATTESTATION_VERSION,
+        issuer_id: "issuer".into(),
+        key_id: "key".into(),
+        audience: "audience".into(),
+        session_id: input.session_id.clone(),
+        expected_pre_turn: 0,
+        topic: qxfx0_types::StanceTopic::new("знание").unwrap(),
+        polarity: qxfx0_types::StancePolarity::Affirmed,
+        request_digest: qxfx0_types::calculate_stance_request_digest(
+            &input.session_id,
+            &input.raw_text,
+        ),
+        decision_id: [3; 16],
+        issued_at_unix_seconds: 100,
+        expires_at_unix_seconds: 200,
+    };
+    let signing_payload = attestation.canonical_bytes().unwrap();
+    let mut state = test_state(&input.session_id);
+    let (_, trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Canary),
+    );
+    assert_eq!(attestation.canonical_bytes().unwrap(), signing_payload);
+    assert!(state.semantic.stance_provenance.is_empty());
+
+    let step = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "response_plan_v2")
+        .expect("rollout trace step");
+    for (key, expected) in [
+        ("requested_mode", "Canary"),
+        ("effective_mode", "Off"),
+        ("canary_eligible", "false"),
+        ("attempted", "false"),
+        ("completed", "false"),
+        ("downgrade_count", "1"),
+        ("downgrade_reason", "topic_outside_rollout_scope"),
+    ] {
+        assert_eq!(
+            step.metadata.get(key).map(String::as_str),
+            Some(expected),
+            "{key}"
+        );
+    }
+}
+
+#[test]
+fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
+    let topic = "свобода";
+    let input = TurnInput {
+        session_id: "v2-authority-canary".into(),
+        raw_text: format!("что такое {topic}?"),
+    };
+    let mut canary_state = test_state(&input.session_id);
+    let (canary_output, canary_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut canary_state,
+        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+    );
+    let render = canary_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "render")
+        .expect("render trace");
+    assert_eq!(
+        render.metadata.get("renderer_source").map(String::as_str),
+        Some("response_plan_v2")
+    );
+    assert_eq!(
+        canary_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2")
+            .and_then(|step| step.metadata.get("v1_authoritative"))
+            .map(String::as_str),
+        Some("false")
+    );
+    assert!(!canary_output.response.is_empty());
+
+    let mut replay_state = test_state(&input.session_id);
+    let (replay_output, replay_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut replay_state,
+        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+    );
+    assert_eq!(canary_output.response, replay_output.response);
+    assert_eq!(
+        canary_trace.replay_signature(),
+        replay_trace.replay_signature()
+    );
+    assert!(response_plan_v2_state_parity(&canary_state, &replay_state));
+    assert_eq!(
+        canary_trace.authority_receipt,
+        replay_trace.authority_receipt
+    );
+    assert_eq!(
+        canary_trace.authority_guard_classification.as_deref(),
+        Some("v2_successfully_emitted")
+    );
+
+    let mut rollback_state = test_state(&input.session_id);
+    let (rollback_output, rollback_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut rollback_state,
+        TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Canary),
+    );
+    let rollback_render = rollback_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "render")
+        .expect("rollback render trace");
+    assert_ne!(canary_output.response, rollback_output.response);
+    assert_eq!(
+        rollback_render
+            .metadata
+            .get("renderer_source")
+            .map(String::as_str),
+        Some("legacy_graph")
+    );
+    assert_eq!(
+        rollback_trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2")
+            .and_then(|step| step.metadata.get("v1_authoritative"))
+            .map(String::as_str),
+        Some("true")
+    );
+    assert_eq!(rollback_trace.authority_guard_classification, None);
+}
+
+#[test]
+fn response_plan_v2_behavioral_canary_respects_the_define_only_boundary() {
+    let topics = ["правда", "произвол", "свобода"];
+    for topic in topics {
+        let session_id = format!("v2-behavioral-{topic}");
+        let mut state = test_state(&session_id);
+        for input_text in [
+            format!("что такое {topic}?"),
+            format!("что есть {topic}?"),
+            format!("уточни, что такое {topic}?"),
+            format!("что такое {topic}?"),
+        ] {
+            let input = TurnInput {
+                session_id: session_id.clone(),
+                raw_text: input_text,
+            };
+            let (output, trace) = process_turn_with_options_and_trace(
+                &input,
+                &mut state,
+                TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+            );
+            assert!(!output.blocked, "eligible definition blocked for {topic}");
+            assert_eq!(
+                trace.authority_guard_classification.as_deref(),
+                Some("v2_successfully_emitted")
+            );
+            assert!(trace.authority_receipt.is_some());
+        }
+
+        let challenge = TurnInput {
+            session_id: session_id.clone(),
+            raw_text: format!("{topic} это просто мнение"),
+        };
+        let (_, trace) = process_turn_with_options_and_trace(
+            &challenge,
+            &mut state,
+            TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+        );
+        assert_eq!(
+            trace.authority_guard_classification.as_deref(),
+            Some("authority_denied_before_render")
+        );
+        assert!(trace.authority_receipt.is_none());
+    }
+}
+
+#[test]
+fn response_plan_v2_negative_controls_preserve_default_and_rollback_boundaries() {
+    for (case_id, raw_text) in [
+        ("outside-allowlist", "что такое истина?"),
+        ("unknown-topic", "что такое кванточайник?"),
+        ("unsupported-intent", "свобода существует"),
+        ("guard-rejected", ""),
+    ] {
+        let session_id = format!("v2-negative-{case_id}");
+        let mut state = test_state(&session_id);
+        let input = TurnInput {
+            session_id,
+            raw_text: raw_text.into(),
+        };
+        let (_, trace) = process_turn_with_options_and_trace(
+            &input,
+            &mut state,
+            TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+        );
+        assert_eq!(
+            trace.authority_guard_classification.as_deref(),
+            Some("authority_denied_before_render"),
+            "negative control {case_id}"
+        );
+        assert!(trace.authority_receipt.is_none());
+        assert!(trace.steps.iter().all(|step| {
+            step.metadata.get("renderer_source").map(String::as_str) != Some("response_plan_v2")
+        }));
+    }
+
+    let input = TurnInput {
+        session_id: "v2-negative-rollback".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let mut authority_state = test_state(&input.session_id);
+    let (_, authority_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut authority_state,
+        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+    );
+    assert_eq!(
+        authority_trace.authority_guard_classification.as_deref(),
+        Some("v2_successfully_emitted")
+    );
+    let (_, rollback_trace) =
+        process_turn_with_options_and_trace(&input, &mut authority_state, TurnOptions::new());
+    assert_eq!(rollback_trace.authority_guard_classification, None);
+    assert!(rollback_trace.steps.iter().any(|step| {
+        step.metadata.get("renderer_source").map(String::as_str) == Some("legacy_graph")
+    }));
 }
 
 #[test]
