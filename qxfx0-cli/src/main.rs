@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use qxfx0_cli::measurement::{run_renderer_diversity_audit, run_runtime_benchmark};
 use qxfx0_cli::{
     append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
@@ -11,7 +11,8 @@ use qxfx0_cli::{
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
     run_turn_with_renderer_doubt_shadow_trace, verify_authority_trace,
     write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
-    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl, DiagnosedTurn,
+    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl, AuthorityReportScope,
+    DiagnosedTurn,
 };
 use qxfx0_pipeline::{
     process_turn_with_renderer, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
@@ -44,7 +45,15 @@ struct Cli {
     command: Commands,
 }
 
+#[derive(Clone, Copy, ValueEnum)]
+enum ReportScope {
+    All,
+    Positive,
+    Negative,
+}
+
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)] // clap owns the one-shot command payload
 enum Commands {
     /// Ask a single question
     Turn {
@@ -68,6 +77,14 @@ enum Commands {
         /// Write the V2 authority receipt and pipeline trace to a new JSONL file.
         #[arg(long, requires = "response_plan_v2_authority", value_name = "PATH")]
         response_plan_v2_trace_jsonl: Option<PathBuf>,
+        #[arg(long, requires = "response_plan_v2_authority")]
+        authority_case_id: Option<String>,
+        #[arg(long, requires = "response_plan_v2_authority")]
+        authority_input_class: Option<String>,
+        #[arg(long, requires = "response_plan_v2_authority")]
+        authority_expected_result: Option<String>,
+        #[arg(long, requires = "response_plan_v2_authority")]
+        authority_expected_guard: Option<String>,
         /// Default-off typed provenance recording; it never enables recovery.
         #[arg(long)]
         record_stance_provenance: bool,
@@ -147,6 +164,8 @@ enum Commands {
     AuthorityReport {
         #[arg(required = true, num_args = 1..)]
         paths: Vec<PathBuf>,
+        #[arg(long, value_enum, default_value_t = ReportScope::All)]
+        scope: ReportScope,
     },
 }
 
@@ -195,6 +214,10 @@ fn main() -> anyhow::Result<()> {
             cognitive_pilot_trace_jsonl,
             response_plan_v2_authority,
             response_plan_v2_trace_jsonl,
+            authority_case_id,
+            authority_input_class,
+            authority_expected_result,
+            authority_expected_guard,
             record_stance_provenance,
             enable_clarification,
             enable_same_topic_suppression,
@@ -222,6 +245,13 @@ fn main() -> anyhow::Result<()> {
                     &text,
                     ResponsePlanV2Authority::Canary,
                 )?;
+                let mut traced = traced;
+                traced.trace.set_authority_case_metadata(
+                    authority_case_id.as_deref(),
+                    authority_input_class.as_deref(),
+                    authority_expected_result.as_deref(),
+                    authority_expected_guard.as_deref(),
+                );
                 if let Some(sink) = sink.as_mut() {
                     write_authority_trace_jsonl(sink, &traced.trace)?;
                 }
@@ -752,10 +782,15 @@ fn main() -> anyhow::Result<()> {
             );
             Ok(())
         }
-        Commands::AuthorityReport { paths } => {
+        Commands::AuthorityReport { paths, scope } => {
+            let scope = match scope {
+                ReportScope::All => AuthorityReportScope::All,
+                ReportScope::Positive => AuthorityReportScope::Positive,
+                ReportScope::Negative => AuthorityReportScope::Negative,
+            };
             println!(
                 "{}",
-                serde_json::to_string_pretty(&authority_report(paths, false)?)?
+                serde_json::to_string_pretty(&authority_report(paths, false, scope)?)?
             );
             Ok(())
         }

@@ -405,6 +405,11 @@ TurnContractSnapshot {
 - `RealizationDowngrade` and `TypedNonDeclarative` receipts are never eligible
   for authoritative emission. Canary authority fails closed instead of calling
   any V1 renderer; only `Compositional` and `AuditedVerbatim` may emit.
+- Explicit canary authority is currently bounded to the `CMDefine` route.
+  Definition paraphrases, clarification phrased as a definition, and repeated
+  definition turns remain eligible; challenge, assertion, unknown-topic, and
+  outside-allowlist turns are classified as authority-denied before render.
+  The behavioral manifest records case IDs and expectations without raw input.
 
 ### 11. F0 data placement
 

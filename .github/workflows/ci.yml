@@ -94,6 +94,9 @@ jobs:
             target/release/qxfx0 doctor --gate "$gate" --json > "$RUNNER_TEMP/qxfx0-v2-gates/$gate.json"
           done
 
+      - name: Run behavioral authority matrix
+        run: bash scripts/response-plan-v2-behavioral-canary.sh target/release/qxfx0 "$RUNNER_TEMP/qxfx0-v2-behavioral"
+
       - name: Export release metadata
         shell: bash
         run: |
@@ -116,4 +119,6 @@ jobs:
             ${{ runner.temp }}/qxfx0-authority-report.json
             ${{ runner.temp }}/qxfx0-release-metadata.json
             ${{ runner.temp }}/qxfx0-v2-gates/*.json
+            ${{ runner.temp }}/qxfx0-v2-behavioral/**/*.jsonl
+            ${{ runner.temp }}/qxfx0-v2-behavioral/*-report.json
           if-no-files-found: error

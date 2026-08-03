@@ -29,6 +29,14 @@ pub struct PipelineTrace {
     /// receipt could be created.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authority_guard_classification: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_case_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_input_class: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_expected_result: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authority_expected_guard: Option<String>,
     /// Local diagnostic only; intentionally absent from serialized replay
     /// evidence so JSONL traces do not contain wall-clock data.
     #[serde(skip_serializing)]
@@ -42,6 +50,10 @@ impl PipelineTrace {
             steps: Vec::new(),
             authority_receipt: None,
             authority_guard_classification: None,
+            authority_case_id: None,
+            authority_input_class: None,
+            authority_expected_result: None,
+            authority_expected_guard: None,
             total_duration: std::time::Duration::ZERO,
         }
     }
@@ -84,6 +96,19 @@ impl PipelineTrace {
                 );
             }
         }
+    }
+
+    pub fn set_authority_case_metadata(
+        &mut self,
+        case_id: Option<&str>,
+        input_class: Option<&str>,
+        expected_result: Option<&str>,
+        expected_guard: Option<&str>,
+    ) {
+        self.authority_case_id = case_id.map(str::to_owned);
+        self.authority_input_class = input_class.map(str::to_owned);
+        self.authority_expected_result = expected_result.map(str::to_owned);
+        self.authority_expected_guard = expected_guard.map(str::to_owned);
     }
 
     /// Formats the trace for human-readable output or log files.

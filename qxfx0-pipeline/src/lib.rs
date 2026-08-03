@@ -1025,7 +1025,9 @@ fn record_response_plan_v2(
 
     let topic = routed.prepared().input().subject();
     let canary_eligible = RESPONSE_PLAN_V2_CANARY_ALLOWLIST.contains(&topic);
-    let eligible = response_plan_v2_is_eligible(requested_mode, topic);
+    let authority_intent_eligible = routed.family() == CanonicalMoveFamily::CMDefine;
+    let eligible = response_plan_v2_is_eligible(requested_mode, topic)
+        && (authority != ResponsePlanV2Authority::Canary || authority_intent_eligible);
     let effective_mode = if eligible {
         requested_mode
     } else {
@@ -1043,6 +1045,10 @@ fn record_response_plan_v2(
             ("requested_mode".into(), format!("{requested_mode:?}")),
             ("effective_mode".into(), "Off".into()),
             ("canary_eligible".into(), canary_eligible.to_string()),
+            (
+                "authority_intent_eligible".into(),
+                authority_intent_eligible.to_string(),
+            ),
             ("canary_digest".into(), canary_digest),
             ("attempted".into(), "false".into()),
             ("completed".into(), "false".into()),
@@ -1099,6 +1105,10 @@ fn record_response_plan_v2(
             ("requested_mode".into(), format!("{requested_mode:?}")),
             ("effective_mode".into(), "Off".into()),
             ("canary_eligible".into(), canary_eligible.to_string()),
+            (
+                "authority_intent_eligible".into(),
+                authority_intent_eligible.to_string(),
+            ),
             ("canary_digest".into(), canary_digest),
             ("attempted".into(), "true".into()),
             ("completed".into(), "false".into()),
@@ -1306,6 +1316,10 @@ fn record_response_plan_v2(
         ("requested_mode".into(), format!("{requested_mode:?}")),
         ("effective_mode".into(), format!("{effective_mode:?}")),
         ("canary_eligible".into(), canary_eligible.to_string()),
+        (
+            "authority_intent_eligible".into(),
+            authority_intent_eligible.to_string(),
+        ),
         ("canary_digest".into(), canary_digest),
         ("attempted".into(), "true".into()),
         ("completed".into(), "true".into()),
