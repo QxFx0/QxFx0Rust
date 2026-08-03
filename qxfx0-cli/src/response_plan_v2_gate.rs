@@ -27,7 +27,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use qxfx0_semantic::response_plan_v2::valency::valency_lexicon;
+use qxfx0_semantic::response_plan_v2::valency::{valency_lexicon, HeadKind};
 use qxfx0_semantic::response_plan_v2::{
     build_audited_topic, execute_audited_topic_at, AssertionPolicy, AuthoritySnapshot,
     PlanningPolicySnapshot, RealizationSnapshot, SelectionPolicy, SelectionPolicySnapshot,
@@ -66,6 +66,7 @@ pub enum GatePhase {
     B,
     C,
     D,
+    ZeroDowngrade,
 }
 
 impl GatePhase {
@@ -75,6 +76,7 @@ impl GatePhase {
             "response-plan-v2-phase-b" => Some(Self::B),
             "response-plan-v2-phase-c" => Some(Self::C),
             "response-plan-v2-replay" => Some(Self::D),
+            "response-plan-v2-zero-downgrade" => Some(Self::ZeroDowngrade),
             _ => None,
         }
     }
@@ -85,6 +87,7 @@ impl GatePhase {
             Self::B => "response-plan-v2-phase-b",
             Self::C => "response-plan-v2-phase-c",
             Self::D => "response-plan-v2-replay",
+            Self::ZeroDowngrade => "response-plan-v2-zero-downgrade",
         }
     }
 }
@@ -145,6 +148,78 @@ pub fn run_gate(gate: GatePhase) -> GateReport {
         GatePhase::B => run_phase_b(),
         GatePhase::C => run_phase_c(),
         GatePhase::D => run_replay_gate(),
+        GatePhase::ZeroDowngrade => run_zero_downgrade_gate(),
+    }
+}
+
+fn run_zero_downgrade_gate() -> GateReport {
+    let topics = ["свобода", "произвол", "правда"];
+    let mut violations = Vec::new();
+    let mut completed = 0usize;
+    let mut downgrades = 0usize;
+    for topic in topics {
+        let policy = SelectionPolicy {
+            response_plan_v2_mode: qxfx0_semantic::response_plan_v2::ResponsePlanV2Mode::Canary,
+            ..SelectionPolicy::default()
+        };
+        let budgets = V2BudgetPolicy::default();
+        let contract = TurnContractSnapshot::new(
+            AuthoritySnapshot::new(
+                qxfx0_semantic::active_pack_set().fingerprint(),
+                AssertionPolicy::v1().digest(),
+            ),
+            PlanningPolicySnapshot::new(budgets.digest(), "proposition-canon-v1"),
+            RealizationSnapshot::new(
+                valency_lexicon().fingerprint(),
+                "clause-grammar-v1",
+                qxfx0_morphology::get_runtime().lexemes_sha256(),
+                qxfx0_semantic::response_plan_v2::preposition_allomorphs().fingerprint(),
+            ),
+            SelectionPolicySnapshot::new(policy),
+        );
+        let execution = execute_audited_topic_at(
+            topic,
+            qxfx0_semantic::response_plan_v2::EvidenceEvaluationContext::new(0, None),
+            &budgets,
+            &contract,
+            SelfSelectionContext::quantize(0.0, 0.0, 0.0),
+            policy,
+            valency_lexicon(),
+            qxfx0_morphology::get_runtime(),
+        );
+        let Some(realized) = execution.realized else {
+            violations.push(format!("{topic}: no realized V2 surface"));
+            continue;
+        };
+        if execution.exact_replay.is_none() {
+            violations.push(format!("{topic}: replay material missing"));
+        }
+        if !matches!(
+            execution.result,
+            V2ExecutionResult::Attempt(V2Attempt::Realizable(_))
+        ) {
+            downgrades += 1;
+            violations.push(format!("{topic}: V2 execution downgraded"));
+        } else {
+            completed += 1;
+        }
+        if realized.clauses.is_empty() {
+            violations.push(format!("{topic}: realized surface is empty"));
+        }
+    }
+    if completed != topics.len() || downgrades != 0 || !violations.is_empty() {
+        return GateReport::failed(GatePhase::ZeroDowngrade, violations);
+    }
+    GateReport {
+        gate: GatePhase::ZeroDowngrade.as_str(),
+        passed: true,
+        details: format!(
+            "eligible_turns={}, attempted_turns={}, completed_turns={}, downgrades=0",
+            topics.len(),
+            topics.len(),
+            completed
+        ),
+        violations,
     }
 }
 
@@ -308,6 +383,38 @@ fn sha256_hex(bytes: &[u8]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
+fn contains_whole_word_surface(text: &str, accepted: &str) -> bool {
+    if accepted.is_empty() {
+        return false;
+    }
+    let text = text.to_lowercase();
+    let accepted = accepted.to_lowercase();
+    text.match_indices(&accepted).any(|(start, matched)| {
+        let before = text[..start].chars().next_back();
+        let after = text[start + matched.len()..].chars().next();
+        !before.is_some_and(|value| value.is_alphanumeric() || value == '_')
+            && !after.is_some_and(|value| value.is_alphanumeric() || value == '_')
+    })
+}
+
+fn valency_head_surfaces(relation_id: &str) -> Option<Vec<String>> {
+    let frame = valency_lexicon().get(relation_id).ok()?;
+    Some(match frame.head() {
+        HeadKind::Finite { surface } => vec![surface.clone()],
+        HeadKind::Agreeing {
+            masculine,
+            feminine,
+            neuter,
+            plural,
+        } => vec![
+            masculine.clone(),
+            feminine.clone(),
+            neuter.clone(),
+            plural.clone(),
+        ],
+    })
+}
+
 /// Path of the on-disk census artifact, for operator messages.
 pub const fn matrix_path() -> &'static str {
     MATRIX_PATH
@@ -340,8 +447,18 @@ struct AuditedCorpusClaim {
     approved_surface: String,
     approved_surface_sha256: String,
     realization_strategy: String,
+    surface_validation: String,
+    lexical_witnesses: Vec<LexicalWitness>,
     #[serde(default)]
     expected_clause_surface_sha256: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LexicalWitness {
+    kind: String,
+    source_semantic_id: String,
+    source_binding: String,
+    accepted_surfaces: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -648,16 +765,15 @@ fn run_phase_b() -> GateReport {
                     claim.claim_id.as_str()
                 ));
             }
-            if recorded.realization_strategy == "fixed_phrase" {
-                fixed_phrase_claims += 1;
-            }
-            if recorded.expected_clause_surface_sha256.is_some() {
-                exact_clause_topics += 1;
-            }
-            if recorded.realization_strategy == "clause"
-                && recorded.expected_clause_surface_sha256.is_none()
-            {
-                governed_clause_topics += 1;
+            match recorded.surface_validation.as_str() {
+                "exact_clause" => exact_clause_topics += 1,
+                "governed_clause" => governed_clause_topics += 1,
+                "audited_verbatim" => fixed_phrase_claims += 1,
+                other => violations.push(format!(
+                    "{}: claim {} has unknown surface_validation '{other}'",
+                    topic_name,
+                    claim.claim_id.as_str()
+                )),
             }
             let actual = sha256_hex(recorded.approved_surface.as_bytes());
             if actual != recorded.approved_surface_sha256 {
@@ -704,10 +820,9 @@ fn run_phase_b() -> GateReport {
     }
 }
 
-/// Phase C: realization parity over the approved V2 claim surfaces. Thesis
-/// claims carrying an expected clause digest must reproduce it exactly; the
-/// remaining thesis clauses must preserve lexicon-governed case. Fixed-phrase
-/// claims are bound to their approved surfaces by digest in the same manifest.
+/// Phase C: realization parity over the approved V2 claim surfaces. The
+/// manifest selects exact, governed, or audited-verbatim validation per claim
+/// and supplies lexical witnesses bound to semantic and realization assets.
 fn run_phase_c() -> GateReport {
     let manifest: AuditedCorpusManifest = match serde_json::from_str(EMBEDDED_AUDITED_CORPUS) {
         Ok(manifest) => manifest,
@@ -724,7 +839,10 @@ fn run_phase_c() -> GateReport {
     let mut claims_realized = 0usize;
     let mut fixed_surface_claims = 0usize;
 
-    let policy = SelectionPolicy::default();
+    let policy = SelectionPolicy {
+        response_plan_v2_mode: qxfx0_semantic::response_plan_v2::ResponsePlanV2Mode::Shadow,
+        ..SelectionPolicy::default()
+    };
     let budgets = V2BudgetPolicy::default();
     let contract = TurnContractSnapshot::new(
         AuthoritySnapshot::new(
@@ -803,8 +921,73 @@ fn run_phase_c() -> GateReport {
                 continue;
             }
             claims_realized += 1;
-            if recorded.realization_strategy == "fixed_phrase" {
-                fixed_surface_claims += 1;
+            match recorded.surface_validation.as_str() {
+                "audited_verbatim" => fixed_surface_claims += 1,
+                "exact_clause" | "governed_clause" => {}
+                other => {
+                    violations.push(format!(
+                        "{}: claim {} has unknown surface_validation '{other}'",
+                        topic_name,
+                        claim.claim_id.as_str()
+                    ));
+                    continue;
+                }
+            }
+            let Some((subject_binding, relation_binding, _)) =
+                topic.primary_proposition().canonical_slots()
+            else {
+                violations.push(format!(
+                    "{}: primary proposition has no bindings",
+                    topic_name
+                ));
+                continue;
+            };
+            let Some(claim_fact) = qxfx0_semantic::active_pack_set()
+                .facts()
+                .get(statement.fact_id())
+            else {
+                violations.push(format!(
+                    "{}: claim {} fact is unavailable",
+                    topic_name,
+                    claim.claim_id.as_str()
+                ));
+                continue;
+            };
+            for witness in &recorded.lexical_witnesses {
+                let source_valid = match witness.kind.as_str() {
+                    "subject_lemma" => {
+                        witness.source_semantic_id == claim_fact.subject.0
+                            && witness.source_binding == subject_binding.as_str()
+                    }
+                    "head" => {
+                        witness.source_semantic_id == claim_fact.relation.as_str()
+                            && witness.source_binding == relation_binding.as_str()
+                            && valency_head_surfaces(relation_binding.as_str())
+                                .is_some_and(|surfaces| surfaces == witness.accepted_surfaces)
+                    }
+                    _ => false,
+                };
+                if !source_valid {
+                    violations.push(format!(
+                        "{}: claim {} has an invalid {} witness source",
+                        topic_name,
+                        claim.claim_id.as_str(),
+                        witness.kind
+                    ));
+                    continue;
+                }
+                if witness.accepted_surfaces.is_empty()
+                    || !witness.accepted_surfaces.iter().any(|accepted| {
+                        contains_whole_word_surface(&recorded.approved_surface, accepted)
+                    })
+                {
+                    violations.push(format!(
+                        "{}: claim {} has no whole-word surface for {} witness",
+                        topic_name,
+                        claim.claim_id.as_str(),
+                        witness.kind
+                    ));
+                }
             }
         }
 
@@ -839,30 +1022,45 @@ fn run_phase_c() -> GateReport {
             continue;
         };
 
-        if let Some(expected) = &thesis_manifest.expected_clause_surface_sha256 {
-            exact_clauses += 1;
-            let actual = sha256_hex(surface.as_bytes());
-            if actual != *expected {
-                violations.push(format!(
-                    "{}: exact clause digest mismatch: expected={expected}, actual={actual}",
-                    topic_name
-                ));
+        match thesis_manifest.surface_validation.as_str() {
+            "exact_clause" => {
+                exact_clauses += 1;
+                let actual = sha256_hex(surface.as_bytes());
+                if thesis_manifest.expected_clause_surface_sha256.as_deref() != Some(&actual) {
+                    violations.push(format!(
+                        "{}: exact clause digest mismatch: expected={:?}, actual={actual}",
+                        topic_name, thesis_manifest.expected_clause_surface_sha256
+                    ));
+                }
             }
-        } else {
-            governed_clauses += 1;
-            let governed = resolved
-                .clauses()
-                .next()
-                .expect("realization produced a clause")
-                .governed_case;
-            let required = valency_lexicon()
-                .get(relation_id)
-                .expect("audited relation has a valency frame")
-                .complement()
-                .required_case();
-            if required.is_some() && governed != required {
+            "governed_clause" => {
+                governed_clauses += 1;
+                if thesis_manifest.expected_clause_surface_sha256.is_some() {
+                    violations.push(format!(
+                        "{}: governed clause carries an exact digest",
+                        topic_name
+                    ));
+                }
+                let governed = resolved
+                    .clauses()
+                    .next()
+                    .expect("realization produced a clause")
+                    .governed_case;
+                let required = valency_lexicon()
+                    .get(relation_id)
+                    .expect("audited relation has a valency frame")
+                    .complement()
+                    .required_case();
+                if required.is_some() && governed != required {
+                    violations.push(format!(
+                        "{}: realized case {governed:?} does not match lexicon {required:?}",
+                        topic_name
+                    ));
+                }
+            }
+            other => {
                 violations.push(format!(
-                    "{}: realized case {governed:?} does not match lexicon {required:?}",
+                    "{}: thesis has invalid surface_validation '{other}'",
                     topic_name
                 ));
             }
@@ -958,8 +1156,25 @@ mod tests {
     }
 
     #[test]
+    fn zero_downgrade_gate_passes_the_canary_allowlist() {
+        let report = run_gate(GatePhase::ZeroDowngrade);
+        assert!(
+            report.passed,
+            "zero downgrade failed: {:?}",
+            report.violations
+        );
+        assert!(report.details.contains("downgrades=0"));
+    }
+
+    #[test]
     fn gate_names_round_trip() {
-        for phase in [GatePhase::A, GatePhase::B, GatePhase::C, GatePhase::D] {
+        for phase in [
+            GatePhase::A,
+            GatePhase::B,
+            GatePhase::C,
+            GatePhase::D,
+            GatePhase::ZeroDowngrade,
+        ] {
             assert_eq!(GatePhase::parse(phase.as_str()), Some(phase));
         }
         assert_eq!(GatePhase::parse("response-plan-v2-phase-z"), None);

@@ -1,11 +1,14 @@
 //! Integration tests — replay determinism, multi-turn persistence, end-to-end pipeline.
 
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_trace, process_turn_with_trace_and_renderer_and_anomaly_shadow,
+    process_turn, process_turn_with_options, process_turn_with_options_and_trace,
+    process_turn_with_trace, process_turn_with_trace_and_renderer_and_anomaly_shadow,
     process_turn_with_trace_and_renderer_and_doubt_shadow,
     process_turn_with_trace_and_renderer_and_features,
-    process_turn_with_trace_and_renderer_and_features_and_suppression, AnomalyShadowMode,
-    ClarificationMode, DoubtShadowMode, RendererAuthority, SameTopicSuppressionMode, TurnInput,
+    process_turn_with_trace_and_renderer_and_features_and_suppression,
+    response_plan_v2_canary_allowlist, response_plan_v2_canary_digest,
+    response_plan_v2_state_parity, AnomalyShadowMode, ClarificationMode, DoubtShadowMode,
+    RendererAuthority, ResponsePlanV2Mode, SameTopicSuppressionMode, TurnInput, TurnOptions,
 };
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
@@ -520,6 +523,7 @@ fn test_stage_trace_is_replay_deterministic() {
             "same_topic_suppression",
             "prepare",
             "route",
+            "response_plan_v2",
             "plan_shadow",
             "render",
             "finalize",
@@ -571,6 +575,155 @@ fn test_stage_trace_is_replay_deterministic() {
         .metadata
         .get("predicate_refs")
         .is_some_and(|refs| refs.contains("freedom_choice")));
+}
+
+#[test]
+fn response_plan_v2_canary_is_sorted_stable_and_attribute_preserving() {
+    assert_eq!(
+        response_plan_v2_canary_allowlist(),
+        &["правда", "произвол", "свобода"]
+    );
+    assert_eq!(
+        response_plan_v2_canary_digest(),
+        response_plan_v2_canary_digest()
+    );
+
+    for topic in response_plan_v2_canary_allowlist() {
+        let session_id = format!("v2-canary-{topic}");
+        let input = TurnInput {
+            session_id: session_id.clone(),
+            raw_text: format!("что такое {topic}?"),
+        };
+        let mut baseline_state = test_state(&session_id);
+        let baseline_output =
+            process_turn_with_options(&input, &mut baseline_state, TurnOptions::new());
+        let mut canary_state = test_state(&session_id);
+        let (canary_output, trace) = process_turn_with_options_and_trace(
+            &input,
+            &mut canary_state,
+            TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Canary),
+        );
+
+        assert_eq!(canary_output.response, baseline_output.response, "{topic}");
+        assert_eq!(canary_output.family, baseline_output.family, "{topic}");
+        assert_eq!(
+            canary_output.guard_status, baseline_output.guard_status,
+            "{topic}"
+        );
+        assert_eq!(canary_output.blocked, baseline_output.blocked, "{topic}");
+        assert_eq!(
+            canary_output.commitment_engaged, baseline_output.commitment_engaged,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.governance_events, baseline_output.governance_events,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.conatus_energy, baseline_output.conatus_energy,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.path_depth, baseline_output.path_depth,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.holistic_dominant, baseline_output.holistic_dominant,
+            "{topic}"
+        );
+        assert_eq!(
+            canary_output.conversation_state, baseline_output.conversation_state,
+            "{topic}"
+        );
+        assert!(response_plan_v2_state_parity(
+            &baseline_state,
+            &canary_state
+        ));
+
+        let step = trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "response_plan_v2")
+            .expect("canary trace step");
+        for (key, expected) in [
+            ("requested_mode", "Canary"),
+            ("effective_mode", "Canary"),
+            ("canary_eligible", "true"),
+            ("attempted", "true"),
+            ("completed", "true"),
+            ("downgrade_count", "0"),
+            ("downgrade_reason", "none"),
+            ("v1_authoritative", "true"),
+        ] {
+            assert_eq!(
+                step.metadata.get(key).map(String::as_str),
+                Some(expected),
+                "{topic}:{key}"
+            );
+        }
+        assert_eq!(
+            step.metadata.get("canary_digest"),
+            Some(&response_plan_v2_canary_digest())
+        );
+        for parity in ["semantic_parity", "authority_parity", "realization_parity"] {
+            assert!(step.metadata.contains_key(parity), "{topic}:{parity}");
+        }
+    }
+}
+
+#[test]
+fn response_plan_v2_rollout_scopes_downgrade_without_affecting_stance_payload() {
+    let input = TurnInput {
+        session_id: "v2-rollout-scope".into(),
+        raw_text: "что такое знание?".into(),
+    };
+    let attestation = qxfx0_types::StanceDecisionAttestation {
+        version: qxfx0_types::STANCE_ATTESTATION_VERSION,
+        issuer_id: "issuer".into(),
+        key_id: "key".into(),
+        audience: "audience".into(),
+        session_id: input.session_id.clone(),
+        expected_pre_turn: 0,
+        topic: qxfx0_types::StanceTopic::new("знание").unwrap(),
+        polarity: qxfx0_types::StancePolarity::Affirmed,
+        request_digest: qxfx0_types::calculate_stance_request_digest(
+            &input.session_id,
+            &input.raw_text,
+        ),
+        decision_id: [3; 16],
+        issued_at_unix_seconds: 100,
+        expires_at_unix_seconds: 200,
+    };
+    let signing_payload = attestation.canonical_bytes().unwrap();
+    let mut state = test_state(&input.session_id);
+    let (_, trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Canary),
+    );
+    assert_eq!(attestation.canonical_bytes().unwrap(), signing_payload);
+    assert!(state.semantic.stance_provenance.is_empty());
+
+    let step = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "response_plan_v2")
+        .expect("rollout trace step");
+    for (key, expected) in [
+        ("requested_mode", "Canary"),
+        ("effective_mode", "Off"),
+        ("canary_eligible", "false"),
+        ("attempted", "false"),
+        ("completed", "false"),
+        ("downgrade_count", "1"),
+        ("downgrade_reason", "topic_outside_rollout_scope"),
+    ] {
+        assert_eq!(
+            step.metadata.get(key).map(String::as_str),
+            Some(expected),
+            "{key}"
+        );
+    }
 }
 
 #[test]

@@ -12,6 +12,8 @@
 //! stratum (`DerivedCuratedConclusion`) is exercised by the assertion
 //! boundary's own tests, not by this gate.
 
+use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 use crate::argued_topics::{argued_topic_registry, ArguedTopicRegistry};
@@ -29,7 +31,9 @@ use crate::response_plan_v2::evidence::{
     EvidenceCertifiedPlan, EvidenceError, EvidenceEvaluationContext,
 };
 use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
-use crate::response_plan_v2::realization::{linearize, try_realize, RealizedSurface};
+use crate::response_plan_v2::realization::{
+    join_realized_clauses, linearize, try_realize, RealizedSurface,
+};
 use crate::response_plan_v2::selection::{
     select_candidate, CandidateSelectionSignals, SelectionCandidate, SelectionPolicy,
     SelectionReceipt, SelfSelectionContext,
@@ -82,6 +86,108 @@ pub struct AuditedV2Execution {
     pub selection: Option<SelectionReceipt>,
     pub realized: Option<RealizedSurface>,
     pub exact_replay: Option<super::snapshot::ExactReplayBundle>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthoritySurfaceStrategy {
+    Compositional,
+    AuditedVerbatim,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum V2AuthorityOutcome {
+    Compositional {
+        output: RealizedSurface,
+    },
+    AuditedVerbatim {
+        output: RealizedSurface,
+        source_digest: String,
+    },
+    RealizationDowngrade {
+        reason: String,
+        output: RealizedSurface,
+        source_digest: String,
+    },
+    TypedNonDeclarative {
+        reason: String,
+    },
+}
+
+/// Select an authority surface after compositional realization. The fallback
+/// is deliberately assembled from the audited registry, not from a renderer.
+pub fn authority_outcome(
+    topic: &str,
+    strategy: AuthoritySurfaceStrategy,
+    compositional: Result<RealizedSurface, String>,
+    expected_source_digest: &str,
+) -> V2AuthorityOutcome {
+    if matches!(strategy, AuthoritySurfaceStrategy::Compositional) {
+        if let Ok(output) = compositional {
+            return V2AuthorityOutcome::Compositional { output };
+        }
+    }
+    let compositional_failure = compositional.err();
+    match audited_verbatim_surface(topic, expected_source_digest) {
+        Ok((output, source_digest)) => {
+            if let Some(reason) = compositional_failure {
+                V2AuthorityOutcome::RealizationDowngrade {
+                    reason,
+                    output,
+                    source_digest,
+                }
+            } else {
+                V2AuthorityOutcome::AuditedVerbatim {
+                    output,
+                    source_digest,
+                }
+            }
+        }
+        Err(reason) => V2AuthorityOutcome::TypedNonDeclarative { reason },
+    }
+}
+
+/// Return the registry-approved topic surface with a digest over the exact
+/// emitted bytes. A corrupt or unavailable registry fails closed.
+pub fn audited_verbatim_surface(
+    topic: &str,
+    expected_source_digest: &str,
+) -> Result<(RealizedSurface, String), String> {
+    let registry = argued_topic_registry().map_err(|error| error.to_string())?;
+    let entry = registry
+        .get(topic)
+        .ok_or_else(|| format!("topic '{topic}' is not audited"))?;
+    let clauses = entry
+        .statements()
+        .map(|statement| statement.surface().to_string())
+        .collect::<Vec<_>>();
+    let source_digest = sha256_hex(join_realized_clauses(&clauses).as_bytes());
+    if source_digest != expected_source_digest {
+        return Err(format!(
+            "audited surface digest mismatch: expected {expected_source_digest}, actual {source_digest}"
+        ));
+    }
+    let output = RealizedSurface {
+        surface_digest: domain_digest(b"qxfx0:realized-surface:v1", &clauses),
+        clauses,
+        realization_snapshot_digest: "audited-verbatim-v1".to_string(),
+        completeness_digest: source_digest.clone(),
+    };
+    Ok((output, source_digest))
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+fn domain_digest<T: Serialize>(domain: &[u8], value: &T) -> String {
+    let encoded = serde_json::to_vec(value).expect("surface serializes");
+    let mut hasher = Sha256::new();
+    hasher.update(domain);
+    hasher.update((encoded.len() as u64).to_be_bytes());
+    hasher.update(encoded);
+    format!("{:x}", hasher.finalize())
 }
 
 struct AuditedCandidate {
@@ -698,7 +804,7 @@ mod tests {
     use super::*;
     use crate::response_plan_v2::{
         preposition_allomorphs, valency_lexicon, AuthoritySnapshot, PlanningPolicySnapshot,
-        RealizationSnapshot, SelectionPolicySnapshot,
+        RealizationSnapshot, ResponsePlanV2Mode, SelectionPolicySnapshot,
     };
 
     fn execution_contract(
@@ -722,7 +828,10 @@ mod tests {
     }
 
     fn execute(topic: &str, budgets: V2BudgetPolicy) -> AuditedV2Execution {
-        let policy = SelectionPolicy::default();
+        let policy = SelectionPolicy {
+            response_plan_v2_mode: ResponsePlanV2Mode::Shadow,
+            ..SelectionPolicy::default()
+        };
         let contract = execution_contract(&budgets, policy);
         execute_audited_topic_at(
             topic,
@@ -854,5 +963,48 @@ mod tests {
                 AssertionPolicy::v1().digest()
             );
         }
+    }
+
+    #[test]
+    fn audited_downgrade_is_digest_verified_and_never_calls_a_renderer() {
+        let entry = argued_topic_registry()
+            .unwrap()
+            .get("свобода")
+            .expect("audited topic");
+        let approved = entry
+            .statements()
+            .map(|statement| statement.surface().to_string())
+            .collect::<Vec<_>>();
+        let digest = sha256_hex(join_realized_clauses(&approved).as_bytes());
+        let outcome = authority_outcome(
+            "свобода",
+            AuthoritySurfaceStrategy::AuditedVerbatim,
+            Err("compositional realization failed".into()),
+            &digest,
+        );
+        assert!(matches!(
+            outcome,
+            V2AuthorityOutcome::RealizationDowngrade {
+                reason,
+                output,
+                source_digest,
+            } if reason == "compositional realization failed"
+                && output.clauses == approved
+                && source_digest == digest
+        ));
+    }
+
+    #[test]
+    fn audited_digest_mismatch_is_typed_non_declarative() {
+        assert!(matches!(
+            authority_outcome(
+                "свобода",
+                AuthoritySurfaceStrategy::AuditedVerbatim,
+                Err("failed".into()),
+                "wrong-digest",
+            ),
+            V2AuthorityOutcome::TypedNonDeclarative { reason }
+                if reason.contains("digest mismatch")
+        ));
     }
 }

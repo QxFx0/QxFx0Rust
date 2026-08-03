@@ -14,18 +14,20 @@
     },
     "realization": {
       "valency_digest": "ee2737d82c84ba7030cf370659dc3a3bae1b4c10d8d0d92e2b243b4aa4589d37",
-      "grammar_digest": "clause-grammar-v1",
+      "grammar_digest": "37947350f9b4d481af22fa97d2a342ee20a0bdd16768d9326e5edda6a3caf911",
       "morphology_digest": "d7bc20571369d0e178c3866bff53e3cd4ceb67d27ca7830fa91213d656835ddf",
       "morphology_depth_digest": "19b3ba9c7f40112f160426947ca83adda42ac3aba854075c6cea56459b82c1d2",
-      "fingerprint": "4b2cb1a1ef7b6415423598588b856363f01b1a45fba91ccf39e1ba5ccbbb87bc"
+      "joiner_version": "punctuated-space-v1",
+      "fingerprint": "37100acfe8083027d950a52b388b910c7374ac140ef1277ea723e1eb33a76484"
     },
     "selection": {
-      "self_policy_digest": "e85b7520a255cbecb77fe08d750a37322df6b9ca28fec113112324233c995ae2",
+      "self_policy_digest": "d574455ead2c8f1a6bc88a683766ecaa375a0f1155cd3d890e1e651dcb262906",
+      "response_plan_v2_mode": "shadow",
       "ranking_version": "score-desc-merkle-asc-v1",
       "numeric_semantics_version": "basis-points-half-away-v1",
-      "fingerprint": "8263b406bea14d942dd38768044e3bd8e2540ad808b60156928d489fccb43460"
+      "fingerprint": "a1dc9de36f76b558a7299103454889f6d2f975c574ba15c04383e2bb1a4caf29"
     },
-    "digest": "d3e4630d288916c9bb9d3a59b96032a11762adc6864ba01c9e35a5621a52c577"
+    "digest": "de1e71fb3fd92ec543d9b4ae57a0e348f49aab5af21a93f672de00285dd751f1"
   },
   "selection": {
     "candidate_merkle_root": "2010bd3209b75e07b3b5530f4ca09402f94d13e77f63506f7df8ea7e09367807",
@@ -35,7 +37,7 @@
       "salience": 0,
       "doubt": 0
     },
-    "policy_digest": "e85b7520a255cbecb77fe08d750a37322df6b9ca28fec113112324233c995ae2",
+    "policy_digest": "d574455ead2c8f1a6bc88a683766ecaa375a0f1155cd3d890e1e651dcb262906",
     "ranking_version": "score-desc-merkle-asc-v1",
     "numeric_semantics_version": "basis-points-half-away-v1"
   },
@@ -47,7 +49,7 @@
       "logical_turn": 42,
       "authority_as_of": null
     },
-    "contract_digest": "d3e4630d288916c9bb9d3a59b96032a11762adc6864ba01c9e35a5621a52c577",
+    "contract_digest": "de1e71fb3fd92ec543d9b4ae57a0e348f49aab5af21a93f672de00285dd751f1",
     "candidate_merkle_root": "2010bd3209b75e07b3b5530f4ca09402f94d13e77f63506f7df8ea7e09367807",
     "nodes": [
       {
@@ -82,10 +84,10 @@
         "свобода требует осознанности — только выбор, понятый как свой, превращает возможность в свободу"
       ],
       "surface_digest": "baa775c8fb58883cc220900798e4e241c4bc54cc1094aacb07523e5e26506777",
-      "realization_snapshot_digest": "4b2cb1a1ef7b6415423598588b856363f01b1a45fba91ccf39e1ba5ccbbb87bc",
+      "realization_snapshot_digest": "37100acfe8083027d950a52b388b910c7374ac140ef1277ea723e1eb33a76484",
       "completeness_digest": "e3ad82a143bc1945e17403f9b60ae40bff96828f05d71977e2b57e345f79f049"
     },
-    "bundle_digest": "54be525e016b6d4d35f5909307e04aa8020b24d75edf35aee477638099f72e61"
+    "bundle_digest": "8f07c2b4a2fca4dd8eb318e0bea7ce8a7f6f1b67f9f75caa77c439c6d01e9d98"
   },
-  "stage_digest": "796da1148cda33d610d857b7d6ca8751c14840b9ef146b880fa4d35af8eba016"
+  "stage_digest": "09385995edb8a40904ba93887a6a2f72d761000032e5418699b2cca94c22568b"
 }

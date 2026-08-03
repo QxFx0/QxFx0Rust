@@ -6,7 +6,7 @@
     "governed_clause_surfaces": 18,
     "topics_total": 30
   },
-  "manifest_digest": "9f44646c3f3b6bfe55b7d43f019794bf4b30f11d86a1472e0ae5c7e35b92143e",
+  "manifest_digest": "9e982cda565c435d7a273393e9934e3d5e030babac3e74e1b8cd1d2e8c070d6c",
   "manifest_id": "response-plan-v2-audited-corpus-v2",
   "schema_version": 2,
   "source_files": {
@@ -26,8 +26,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "4a2060447349e85790121cf5e57fa54b95ace318916fe45e490e38a60e1d14c1",
           "fact_id": "fact.being_existence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "бытие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "bytie",
+              "source_semantic_id": "concept.бытие"
+            },
+            {
+              "accepted_surfaces": [
+                "обозначает"
+              ],
+              "kind": "head",
+              "source_binding": "oboznachaet",
+              "source_semantic_id": "RelDenotes"
+            }
+          ],
           "proposition_id": "48f186ec10f56a0f2a85adaf265dc0f59c02e3e7b97147f007012245adfd6bb8",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         },
         "95ec3f4d5e9ebf872efcb878421adcda29ea12888735d07d6805d40b40faf5e8": {
           "approved_surface": "бытие рассматривается как условие возможности любого суждения",
@@ -35,8 +54,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "4a2060447349e85790121cf5e57fa54b95ace318916fe45e490e38a60e1d14c1",
           "fact_id": "fact.being_existence.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "бытие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "bytie",
+              "source_semantic_id": "concept.бытие"
+            }
+          ],
           "proposition_id": "4542809b53a08797bb081f84b28e87859e6ec2c8a6472d6aa326df70346beeed",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -48,8 +78,19 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "33f9fc79c63dd3ccefd4deabb56e9e21d8d77902c46b73f6d76e9108de568d02",
           "fact_id": "fact.faith_acceptance.consequence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "вера"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "vera",
+              "source_semantic_id": "concept.вера"
+            }
+          ],
           "proposition_id": "680e5d06e75691836593cbb4a7998a678184ff5a401f3ad862f9f2d339dd8d28",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "70bbb7a32538858ddbbda6b4c45deb3adb59fde2a1280367c8fd84f355a07680": {
           "approved_surface": "вера требует принятия без полного доказательства",
@@ -57,8 +98,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "33f9fc79c63dd3ccefd4deabb56e9e21d8d77902c46b73f6d76e9108de568d02",
           "fact_id": "fact.faith_acceptance",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "вера"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "vera",
+              "source_semantic_id": "concept.вера"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
           "proposition_id": "590ad5791c4dd73eaffed5bc30f1eb172e02733156320f2643500cbf799fa049",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         },
         "7d8fcb8a6ccc2d8f8e3e60846ded77d9b104046dfd34e62e37c84ad21e5d46ac": {
           "approved_surface": "принятие без доказательств не означает принятия вопреки доказательствам — вера, игнорирующая факты, перестаёт быть верой и становится самообманом",
@@ -66,8 +126,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "33f9fc79c63dd3ccefd4deabb56e9e21d8d77902c46b73f6d76e9108de568d02",
           "fact_id": "fact.faith_acceptance.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "вера"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "vera",
+              "source_semantic_id": "concept.вера"
+            }
+          ],
           "proposition_id": "e736f4fefce951dcad16f53ea2c38eede7ef6aac855b5329f6f0ca232e38d19b",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -79,8 +150,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "f8cc97290d0a8062647ce603daccb0efa7a183e98e666a9e8341e3e24f7b123a",
           "fact_id": "fact.power_influence.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "власть"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "vlast",
+              "source_semantic_id": "concept.власть"
+            }
+          ],
           "proposition_id": "05c7df072094502952b731fa12c4a827d965c3eec3b30e49e6f49adddab03d12",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "d17ae0bc1bf98e91ccb2fc0a633a98f3d3441d9691b660fad075491e87575ac0": {
           "approved_surface": "власть означает способность влиять на действия других",
@@ -88,8 +170,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "f8cc97290d0a8062647ce603daccb0efa7a183e98e666a9e8341e3e24f7b123a",
           "fact_id": "fact.power_influence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "власть"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "vlast",
+              "source_semantic_id": "concept.власть"
+            },
+            {
+              "accepted_surfaces": [
+                "означает"
+              ],
+              "kind": "head",
+              "source_binding": "oznachaet",
+              "source_semantic_id": "RelDenotes"
+            }
+          ],
           "proposition_id": "8337687af19da9560366702edb0cb9cf1f0a8668545c15c86f37f568579bb39b",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -101,8 +202,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "480d74c5b81abce367203db62f684925a54066cbdbb51091f12376690b07b70d",
           "fact_id": "fact.will_goal",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "воля"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "volya",
+              "source_semantic_id": "concept.воля"
+            },
+            {
+              "accepted_surfaces": [
+                "направляет"
+              ],
+              "kind": "head",
+              "source_binding": "napravlyaet",
+              "source_semantic_id": "RelDirectedAt"
+            }
+          ],
           "proposition_id": "48ec6fbe1f10692e24d0661c1ad4f2660dd8bd0981a3440969d72182811a2fe8",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         },
         "6dc3675c124b5a87a26448320a241637394526dfc04b85024bab5d2952dc6066": {
           "approved_surface": "воля — не характер, а практика: она тренируется через повторение, а не даётся от рождения",
@@ -110,8 +230,19 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "480d74c5b81abce367203db62f684925a54066cbdbb51091f12376690b07b70d",
           "fact_id": "fact.will_goal.consequence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "воля"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "volya",
+              "source_semantic_id": "concept.воля"
+            }
+          ],
           "proposition_id": "31ee4a3df1a83b14e0bacf05aa6d502ded8d220734992140fc9c2dbbc9b5b9e2",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "c61a4adcbc5552ad303cd3a20d9d78fa177f828e3e7d9ec3c76631970311c6c1": {
           "approved_surface": "сила воли не бесконечна — она истощается, как мышца, и требует восстановления",
@@ -119,8 +250,10 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "480d74c5b81abce367203db62f684925a54066cbdbb51091f12376690b07b70d",
           "fact_id": "fact.will_goal.counterpoint",
+          "lexical_witnesses": [],
           "proposition_id": "d735322d59b5d0149eb994be339c2af3c2f5abfe5876afafb8c85aee1646959b",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -132,8 +265,10 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "2a57cabf6bde0553ce13f50cb628e6f134826a452359b8fdac35c2c76b9fbccc",
           "fact_id": "fact.recollection_new_frame.consequence",
+          "lexical_witnesses": [],
           "proposition_id": "2b5b71f97497b69a4b837b1d7fd27e3c56e714274c07623be16d739dd2782852",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "b2cbd730ddc6f2fdbb06d6ce3e33105ff47537d44750a17aaa9b6ba878b02e43": {
           "approved_surface": "воспоминание восстанавливает пережитое в новой рамке",
@@ -142,8 +277,27 @@
           "discourse_root_digest": "2a57cabf6bde0553ce13f50cb628e6f134826a452359b8fdac35c2c76b9fbccc",
           "expected_clause_surface_sha256": "e70d1db63c4977da88c2cb6c53d154c316c10d181f37b06fa3f0a9b8a544330d",
           "fact_id": "fact.recollection_new_frame",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "воспоминание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "vospominanie",
+              "source_semantic_id": "concept.воспоминание"
+            },
+            {
+              "accepted_surfaces": [
+                "восстанавливает"
+              ],
+              "kind": "head",
+              "source_binding": "vosstanavlivaet",
+              "source_semantic_id": "RelReconstructs"
+            }
+          ],
           "proposition_id": "158a11aa7b62616750a6a4d38916b08557b6d311247ce6e290df39473302a31c",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         },
         "ce6551ff157fb6dd22f3f662204e0b65231178614752320e7469195ba35154ee": {
           "approved_surface": "реконструкция неизбежно привносит настоящее — мы вспоминаем не то, что пережили, а то, кем стали после пережитого",
@@ -151,8 +305,10 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "2a57cabf6bde0553ce13f50cb628e6f134826a452359b8fdac35c2c76b9fbccc",
           "fact_id": "fact.recollection_new_frame.counterpoint",
+          "lexical_witnesses": [],
           "proposition_id": "b4e32b90763e5e769c03a465479fa8ed20c42606244f1d226d72ec93b2617ef2",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -164,8 +320,30 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "f8af2a0b5ea77fdef5ebfd74ac457b3a2a744789e4b89da57804be8a8f3710df",
           "fact_id": "fact.time_irreversible",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "время"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "vremya",
+              "source_semantic_id": "concept.время"
+            },
+            {
+              "accepted_surfaces": [
+                "необратим",
+                "необратима",
+                "необратимо",
+                "необратимы"
+              ],
+              "kind": "head",
+              "source_binding": "neobratimo",
+              "source_semantic_id": "RelSets"
+            }
+          ],
           "proposition_id": "127df83677145b0e009e520a58c9d98c4e589bf7cdd527c7bd7680a3acc4d6df",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         },
         "1d5b54f604c134ba0b96c3d54aded70e887ca6b3fe79073857c7c66ad82c0ead": {
           "approved_surface": "время задаёт порядок следования событий",
@@ -173,8 +351,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "f8af2a0b5ea77fdef5ebfd74ac457b3a2a744789e4b89da57804be8a8f3710df",
           "fact_id": "fact.time_irreversible.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "время"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "vremya",
+              "source_semantic_id": "concept.время"
+            }
+          ],
           "proposition_id": "89444a87f675e48e5bdb1b969cc1b1a292bdc485cb354ef232e85d69eb409d73",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -186,8 +375,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "d16400aabfd2d84a165ea08dd4ba4adec8685a49f3f436a10ba60b293a53967f",
           "fact_id": "fact.trust_experience.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "доверие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "doverie",
+              "source_semantic_id": "concept.доверие"
+            }
+          ],
           "proposition_id": "d684b6865eb446c0a0ca38cc8f3a740765f661b9968900b2693fec93c62488be",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "3ef6e1cb6ca4833a9a31a7c039fa94496c3c693e5706542a4b9f0efac547b817": {
           "approved_surface": "доверие — не ставка на гарантию, а решение принять риск",
@@ -195,8 +395,19 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "d16400aabfd2d84a165ea08dd4ba4adec8685a49f3f436a10ba60b293a53967f",
           "fact_id": "fact.trust_experience.consequence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "доверие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "doverie",
+              "source_semantic_id": "concept.доверие"
+            }
+          ],
           "proposition_id": "20f29f918695be93b0a920806fc73227b6c5042f3746ed7de69c345c97165f2e",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "d2512f48cd44f997dac2a76a70d4a24b788ba7473b69ede7a7601cdff2dab3cc": {
           "approved_surface": "доверие строится через повторяемый позитивный опыт",
@@ -204,8 +415,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "d16400aabfd2d84a165ea08dd4ba4adec8685a49f3f436a10ba60b293a53967f",
           "fact_id": "fact.trust_experience",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "доверие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "doverie",
+              "source_semantic_id": "concept.доверие"
+            },
+            {
+              "accepted_surfaces": [
+                "строится"
+              ],
+              "kind": "head",
+              "source_binding": "stroitsya",
+              "source_semantic_id": "RelBuiltThrough"
+            }
+          ],
           "proposition_id": "98a605a0706d29f8de70c8c44f6d2435518d6b168068261ef79195db1806c192",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -217,8 +447,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "082a944c8a989a1dfe1db9dfe53055a91517da3ea8fafc0ca0dff34a85e217d5",
           "fact_id": "fact.duty_action_singular.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "долг"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "dolg",
+              "source_semantic_id": "concept.долг"
+            }
+          ],
           "proposition_id": "c0e94672d5cfb6b97766badf51eaaea87bb135c0509323108e977c8e75566b5e",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "790b8937b09f7cd59a98b7989925612834d6d35eea4c651bb7649cf444ec684d": {
           "approved_surface": "долг предписывает действие независимо от желания",
@@ -227,8 +468,27 @@
           "discourse_root_digest": "082a944c8a989a1dfe1db9dfe53055a91517da3ea8fafc0ca0dff34a85e217d5",
           "expected_clause_surface_sha256": "f061d2467c0ae7a5b07d87d3568000bc63f7fe3b05a780301ab740fee876f7aa",
           "fact_id": "fact.duty_action_singular",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "долг"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "dolg",
+              "source_semantic_id": "concept.долг"
+            },
+            {
+              "accepted_surfaces": [
+                "предписывает"
+              ],
+              "kind": "head",
+              "source_binding": "predpisyvaet",
+              "source_semantic_id": "RelPrescribes"
+            }
+          ],
           "proposition_id": "8b0cdb4c6caf1322378fc25d3679a65b633e53be1a42a842c7ee4190d16d77e7",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         },
         "9610a74456090487013760f76344095d215c1bd551c336d6dbc59ff49cbf5002": {
           "approved_surface": "зрелый долг — не подчинение внешнему правилу, а принятие правила как своего",
@@ -236,8 +496,19 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "082a944c8a989a1dfe1db9dfe53055a91517da3ea8fafc0ca0dff34a85e217d5",
           "fact_id": "fact.duty_action_singular.consequence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "долг"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "dolg",
+              "source_semantic_id": "concept.долг"
+            }
+          ],
           "proposition_id": "306cfbf9ccdb3f23db1d2d62b1591f015b8104b59625727cb42a52ac62cf9a27",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -249,8 +520,19 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "1b35973621ada66e9847a73e86c0e83bb4000c96ca61488794f897eaaaafd04c",
           "fact_id": "fact.truth_reality.consequence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "истина"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "istina",
+              "source_semantic_id": "concept.истина"
+            }
+          ],
           "proposition_id": "44042bea425a70c798f4e06d869ef79ac68a175bba0e1f61a0027dd91d1f7e16",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "570b1ebd89f788f07d893c2edd4f93c9a6ff549b30336c68d8319c3899fa91fe": {
           "approved_surface": "истина претендует на соответствие реальности",
@@ -259,8 +541,27 @@
           "discourse_root_digest": "1b35973621ada66e9847a73e86c0e83bb4000c96ca61488794f897eaaaafd04c",
           "expected_clause_surface_sha256": "8486fa6c557b6611d10474a5b4c1ddbc018eff0911c5503d0b10ab87ea5e757d",
           "fact_id": "fact.truth_reality",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "истина"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "istina",
+              "source_semantic_id": "concept.истина"
+            },
+            {
+              "accepted_surfaces": [
+                "претендует"
+              ],
+              "kind": "head",
+              "source_binding": "pretenduet",
+              "source_semantic_id": "RelClaims"
+            }
+          ],
           "proposition_id": "b8e849cc496d3b7bf5ff485ed1c1dad0642cb7ebb05fd81d9510944d8d09eafe",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         },
         "b3deaac139f6450743945f728da4aeea2b68d2270c67ef0688d9afe0cdfaa02f": {
           "approved_surface": "доступ к реальности всегда опосредован наблюдателем — и наблюдатель не может выйти за пределы себя",
@@ -268,8 +569,10 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "1b35973621ada66e9847a73e86c0e83bb4000c96ca61488794f897eaaaafd04c",
           "fact_id": "fact.truth_reality.counterpoint",
+          "lexical_witnesses": [],
           "proposition_id": "f97212f9caf8b6e1bf5b950584334c9042bc26883735857188b05a8800eb6feb",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -281,8 +584,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "9033b2ad2bf7adb4d86b0ed79b4c49ebf3672c396344965e1f35849d3f411a85",
           "fact_id": "fact.history_viewpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "история"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "istoriya",
+              "source_semantic_id": "concept.история"
+            },
+            {
+              "accepted_surfaces": [
+                "зависит"
+              ],
+              "kind": "head",
+              "source_binding": "zavisit",
+              "source_semantic_id": "RelDependsOn"
+            }
+          ],
           "proposition_id": "c0cd53ecb31acadba10108114f1481c60e1a6c1fe032a278017b68d23f79d700",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         },
         "73d20c7ba12367d83b72946d1118842527189d488521c0c2195752aed923ca96": {
           "approved_surface": "история связывает прошлое с настоящим через интерпретацию",
@@ -290,8 +612,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "9033b2ad2bf7adb4d86b0ed79b4c49ebf3672c396344965e1f35849d3f411a85",
           "fact_id": "fact.history_viewpoint.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "история"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "istoriya",
+              "source_semantic_id": "concept.история"
+            }
+          ],
           "proposition_id": "1c86c4a736fb16b9176be24a363ab1193e5e1bc0a17f004fff8b3612f58a0f3a",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -303,8 +636,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "ba73afa34ae6b019f26eb49593fa0aa0e40dfb9a77b86e058d7a300cb4bfe52d",
           "fact_id": "fact.beauty_experience.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "красота"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "krasota",
+              "source_semantic_id": "concept.красота"
+            }
+          ],
           "proposition_id": "084f7c49d78411374dba9ac1369ba52d542c1c56b5b74a50053d51821a0fef7a",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "e457a9b9871aa71b8e3d1f4caf788f3b286f3655bb08fe2dfafc47870636b8a5": {
           "approved_surface": "красота вызывает эстетическое переживание",
@@ -313,8 +657,27 @@
           "discourse_root_digest": "ba73afa34ae6b019f26eb49593fa0aa0e40dfb9a77b86e058d7a300cb4bfe52d",
           "expected_clause_surface_sha256": "851d378da6899ca9c91b5d0a494137fb390ae0e158f0e56825942bc587a7b0c1",
           "fact_id": "fact.beauty_experience",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "красота"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "krasota",
+              "source_semantic_id": "concept.красота"
+            },
+            {
+              "accepted_surfaces": [
+                "вызывает"
+              ],
+              "kind": "head",
+              "source_binding": "vyzyvaet",
+              "source_semantic_id": "RelEvokes"
+            }
+          ],
           "proposition_id": "da0bd9c909b049fb5354884056294bf9e7420066ce341e37cad153b31ca85e0e",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -326,8 +689,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "551127f19fa73ffcf59e9bf39b9d2f9ce5b07f43fa9b79827545e1f75f344593",
           "fact_id": "fact.love_other.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "любовь"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "lyubov",
+              "source_semantic_id": "concept.любовь"
+            }
+          ],
           "proposition_id": "1db608cf6aca18bfa2e6ac85110c8fffdf0756822d0ec090c96ea862c33ccf6f",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "f784612fa2b99b790e59963ab75e2c35cf721d78bf6e01440eece1ac64e6e151": {
           "approved_surface": "любовь направлена на конкретного другого как на безусловно ценного",
@@ -335,8 +709,30 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "551127f19fa73ffcf59e9bf39b9d2f9ce5b07f43fa9b79827545e1f75f344593",
           "fact_id": "fact.love_other",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "любовь"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "lyubov",
+              "source_semantic_id": "concept.любовь"
+            },
+            {
+              "accepted_surfaces": [
+                "направлен",
+                "направлена",
+                "направлено",
+                "направлены"
+              ],
+              "kind": "head",
+              "source_binding": "napravlena",
+              "source_semantic_id": "RelDirectedAt"
+            }
+          ],
           "proposition_id": "fe16988c1aaf8f1cf31bf3fa2048dc27086c4b78dcfe6eb8cbc7462a4d243cee",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -348,8 +744,10 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "2ce417cb40237d9ad78071834ef2b071175dd4ea6fee36209f825865959d99f6",
           "fact_id": "fact.opinion_position.consequence",
+          "lexical_witnesses": [],
           "proposition_id": "1b53add2283a02b808b914f2c03eba315662c8b55dcacac61de5c8957d5d9b14",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "c59a7618cef1f4f9f345a19eb8089c602b1f40403687e23d7cf936efc3717a70": {
           "approved_surface": "субъективность мнения не означает его ложности — она означает его ограниченность перспективой",
@@ -357,8 +755,10 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "2ce417cb40237d9ad78071834ef2b071175dd4ea6fee36209f825865959d99f6",
           "fact_id": "fact.opinion_position.counterpoint",
+          "lexical_witnesses": [],
           "proposition_id": "a0230c17bb6fd1a110c57c2e0d0b6c100b499ac8e5e4bcf3d3e1fc2f20fff047",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "fb698e8936b67a930e1d6554d6d8e64b2d4973599a5527d88f6b26e465d99f9b": {
           "approved_surface": "мнение выражает позицию субъекта",
@@ -366,8 +766,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "2ce417cb40237d9ad78071834ef2b071175dd4ea6fee36209f825865959d99f6",
           "fact_id": "fact.opinion_position",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "мнение"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "mnenie",
+              "source_semantic_id": "concept.мнение"
+            },
+            {
+              "accepted_surfaces": [
+                "выражает"
+              ],
+              "kind": "head",
+              "source_binding": "vyrazhaet",
+              "source_semantic_id": "RelExpresses"
+            }
+          ],
           "proposition_id": "cd8edb4807f695edca6c3533178d337348fc2dee022933b89387e5e5ad199df1",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -379,8 +798,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "c912d8dc124b5c827792e4b46b809cf6a45a3a6590f593f745b25a47a8a1e90c",
           "fact_id": "fact.silence_speech",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "молчание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "molchanie",
+              "source_semantic_id": "concept.молчание"
+            },
+            {
+              "accepted_surfaces": [
+                "контрастирует"
+              ],
+              "kind": "head",
+              "source_binding": "kontrastiruet",
+              "source_semantic_id": "RelContrastsWith"
+            }
+          ],
           "proposition_id": "8a51856cbcf0210d79a9e3253eca6cfa0ecdc7c421b0ad855dd3b3596add3fd9",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         },
         "4fc436c4dfec43b393e8d3524e3316149d9fb7acfb552bcb80addba63d575228": {
           "approved_surface": "молчание может быть актом отказа или знаком присутствия",
@@ -388,8 +826,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "c912d8dc124b5c827792e4b46b809cf6a45a3a6590f593f745b25a47a8a1e90c",
           "fact_id": "fact.silence_speech.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "молчание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "molchanie",
+              "source_semantic_id": "concept.молчание"
+            }
+          ],
           "proposition_id": "8a51856cbcf0210d79a9e3253eca6cfa0ecdc7c421b0ad855dd3b3596add3fd9",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -402,8 +851,27 @@
           "discourse_root_digest": "7eb16e5576343f3445373716c99747080d72fc64405c82e71e61e577eeef335e",
           "expected_clause_surface_sha256": "195eaa58fe92f5b09ba9fbe5e8e26fcebc17c94888c00d4dbfc8d64ec700ef2c",
           "fact_id": "fact.hope_action",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "надежда"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "nadezhda",
+              "source_semantic_id": "concept.надежда"
+            },
+            {
+              "accepted_surfaces": [
+                "поддерживает"
+              ],
+              "kind": "head",
+              "source_binding": "podderzhivaet",
+              "source_semantic_id": "RelSupports"
+            }
+          ],
           "proposition_id": "a9f97f4b4937d711af0c2d833e8a7ad618d421de43546a2a776cc38956812799",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         },
         "980a8acda9ac16ad8ebbdfa8b489bfb62be098106992dddcdc533845733a87da": {
           "approved_surface": "надежда ориентирует на возможность будущего",
@@ -411,8 +879,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "7eb16e5576343f3445373716c99747080d72fc64405c82e71e61e577eeef335e",
           "fact_id": "fact.hope_action.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "надежда"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "nadezhda",
+              "source_semantic_id": "concept.надежда"
+            }
+          ],
           "proposition_id": "b4f90414305506312a0ca0313d5bb8b53ff26bccc4ebd417ad4b57f99ba26291",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -424,8 +903,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "59ce9374997a438b40578daba4c541d6c99463738a34f9dee2c309e2395977d1",
           "fact_id": "fact.loneliness_absence.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "одиночество"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "odinochestvo",
+              "source_semantic_id": "concept.одиночество"
+            }
+          ],
           "proposition_id": "812ad2727b8cf299d024195d0804ba518593e9de4ae39f7742bf9e75d46feb45",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "5c79085aaad4450e7e91f229c329817523451b2ae67ed6b5659cea6c5516a5e5": {
           "approved_surface": "одиночество выражает отсутствие значимого другого",
@@ -433,8 +923,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "59ce9374997a438b40578daba4c541d6c99463738a34f9dee2c309e2395977d1",
           "fact_id": "fact.loneliness_absence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "одиночество"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "odinochestvo",
+              "source_semantic_id": "concept.одиночество"
+            },
+            {
+              "accepted_surfaces": [
+                "выражает"
+              ],
+              "kind": "head",
+              "source_binding": "vyrazhaet",
+              "source_semantic_id": "RelExpresses"
+            }
+          ],
           "proposition_id": "e3fec239495ccd4bee50eae86b9621c46ff4f61b864e7a20032702f03aaef4ff",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -446,8 +955,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "5b365c6436fe9b118d4cca1fe486cfbf297b4e25a31c58f16f77e045ceb943d9",
           "fact_id": "fact.responsibility_accountability.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "ответственность"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "otvetstvennost",
+              "source_semantic_id": "concept.ответственность"
+            }
+          ],
           "proposition_id": "9d75ed67c952c1d4cc1cc11c69a3dcd6b517509f95fd7649e2fc0a095c32b8b0",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "8d6db49b130794670b2243d18bada1ec834f4140580b24dcf832a4627af0378e": {
           "approved_surface": "ответственность — это необходимость отвечать за свои действия",
@@ -456,8 +976,27 @@
           "discourse_root_digest": "5b365c6436fe9b118d4cca1fe486cfbf297b4e25a31c58f16f77e045ceb943d9",
           "expected_clause_surface_sha256": "dc9a7542180ce71009b84937c947a89703cf126093c442793b19f133e1fdfaef",
           "fact_id": "fact.responsibility_accountability",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "ответственность"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "otvetstvennost",
+              "source_semantic_id": "concept.ответственность"
+            },
+            {
+              "accepted_surfaces": [
+                "— это необходимость"
+              ],
+              "kind": "head",
+              "source_binding": "eto_neobhodimost",
+              "source_semantic_id": "RelIsA"
+            }
+          ],
           "proposition_id": "01d144d10cfc923acc5e39615eebde2d6d7d493272493dfe4effd8eca87b89a8",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -470,8 +1009,27 @@
           "discourse_root_digest": "17e27b25ee52213bea59945e4950fcbfc981847a52c552b4e16b6e83dbb4f543",
           "expected_clause_surface_sha256": "254834c879aef4440e8979b4d7671e2774b2638fcdc17e1b457c78a8a26337d6",
           "fact_id": "fact.memory_information_process",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "память"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "pamyat",
+              "source_semantic_id": "concept.память"
+            },
+            {
+              "accepted_surfaces": [
+                "это"
+              ],
+              "kind": "head",
+              "source_binding": "eto",
+              "source_semantic_id": "RelIsA"
+            }
+          ],
           "proposition_id": "7378665b4ffc78dd79275b78a6228a71c6b688c58f84c7ad60ecdd445ecde3f3",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         },
         "c9b36cf1bf92802c9887965b23d9d24d8d49dc00c1d3441afcf8526ae3c64d29": {
           "approved_surface": "память реконструирует а не просто копирует",
@@ -479,8 +1037,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "17e27b25ee52213bea59945e4950fcbfc981847a52c552b4e16b6e83dbb4f543",
           "fact_id": "fact.memory_information_process.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "память"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "pamyat",
+              "source_semantic_id": "concept.память"
+            }
+          ],
           "proposition_id": "ad83ab9707d00de11a2e0641dd95ef7433cbceae9652a2637f18c8a0f4790e17",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -492,8 +1061,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "a73413a9b9ea786803600790d6c5aef29a7300f39c337c402982129f613e0e65",
           "fact_id": "fact.rest_absence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "покой"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "pokoy",
+              "source_semantic_id": "concept.покой"
+            },
+            {
+              "accepted_surfaces": [
+                "обозначает"
+              ],
+              "kind": "head",
+              "source_binding": "oboznachaet",
+              "source_semantic_id": "RelDenotes"
+            }
+          ],
           "proposition_id": "6090adb2d7420596778b6556631060fae8d9f49eacabf74347039d03174ba670",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         },
         "4b4ec3ca60de53d6ff076eb27668dbc8160b86d3c8b98454e64705f56608d63e": {
           "approved_surface": "покой необходим для восстановления и интеграции опыта",
@@ -501,8 +1089,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "a73413a9b9ea786803600790d6c5aef29a7300f39c337c402982129f613e0e65",
           "fact_id": "fact.rest_absence.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "покой"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "pokoy",
+              "source_semantic_id": "concept.покой"
+            }
+          ],
           "proposition_id": "5e14024ebcddbb06ccb2bfcc80b247d30aa279dcc6381cb75003db858e1e184d",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -514,8 +1113,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "523bcdc6bad1072930a0b0853371f634ba5648d2cb1ed3f95aa3d32ad9007333",
           "fact_id": "fact.truthfulness_facts.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "правда"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "pravda",
+              "source_semantic_id": "concept.правда"
+            }
+          ],
           "proposition_id": "f1b301d06f1b89acfc297223885542be01963a3b9b110a5cd2c2e2ba1eead0ed",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "c6f0aa7f123b53afcf2c1d1f28f2c89cea155f4bd12d3b1c4878d1fb429d3d60": {
           "approved_surface": "правда претендует на соответствие фактам",
@@ -524,8 +1134,27 @@
           "discourse_root_digest": "523bcdc6bad1072930a0b0853371f634ba5648d2cb1ed3f95aa3d32ad9007333",
           "expected_clause_surface_sha256": "4085f0ca4f2ae3039dbea2fb5a429418b7b3dabdacdfd0abba18541219a3feb9",
           "fact_id": "fact.truthfulness_facts",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "правда"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "pravda",
+              "source_semantic_id": "concept.правда"
+            },
+            {
+              "accepted_surfaces": [
+                "претендует"
+              ],
+              "kind": "head",
+              "source_binding": "pretenduet",
+              "source_semantic_id": "RelClaims"
+            }
+          ],
           "proposition_id": "a7bd693a88729cc36483437a88cfa8e435fc5123cef0a08ba769fb27b1ad1998",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -537,8 +1166,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "fd427c8e6ead8ca0110a211613b6fdc32eb44b3eb7fb6f8173852f96bbfb73d3",
           "fact_id": "fact.arbitrariness_absence_constraints.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "произвол"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "proizvol",
+              "source_semantic_id": "concept.произвол"
+            }
+          ],
           "proposition_id": "fe88e2332795d70780e71c1ae3270fdc2ca43ed7ad6488de4334dd16b947976f",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "f16418c145f25b67325831f931af0a8d34a2548e31f3080a3538bfb4684afbdf": {
           "approved_surface": "произвол выражает отсутствие ограничений",
@@ -547,8 +1187,27 @@
           "discourse_root_digest": "fd427c8e6ead8ca0110a211613b6fdc32eb44b3eb7fb6f8173852f96bbfb73d3",
           "expected_clause_surface_sha256": "5e3608ceaebf48ba2ec372470a4ee87c849a7b2b8427f18acc9857769eb93e0f",
           "fact_id": "fact.arbitrariness_absence_constraints",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "произвол"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "proizvol",
+              "source_semantic_id": "concept.произвол"
+            },
+            {
+              "accepted_surfaces": [
+                "выражает"
+              ],
+              "kind": "head",
+              "source_binding": "vyrazhaet",
+              "source_semantic_id": "RelExpresses"
+            }
+          ],
           "proposition_id": "1b19267463104a37d490331816e1b0653fc48c7290398b0987fe9f78d7ac3be3",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -560,8 +1219,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "b2b79f3e361810e94238f8a46f988a9c71b5d46e81f6b81ff6ad4bf5832d1eca",
           "fact_id": "fact.reason_proof.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "разум"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "razum",
+              "source_semantic_id": "concept.разум"
+            }
+          ],
           "proposition_id": "a0e44590da2faa9493c171f0cf960090a83486639f975cf037a88c5ff2b08791",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "c7e1cad94540fa176936cc3c88d9abc3feca10e8afb065506a693d6d6dba195d": {
           "approved_surface": "разум отличается от интуиции потребностью в доказательстве",
@@ -569,8 +1239,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "b2b79f3e361810e94238f8a46f988a9c71b5d46e81f6b81ff6ad4bf5832d1eca",
           "fact_id": "fact.reason_proof",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "разум"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "razum",
+              "source_semantic_id": "concept.разум"
+            },
+            {
+              "accepted_surfaces": [
+                "отличается"
+              ],
+              "kind": "head",
+              "source_binding": "otlichaetsya",
+              "source_semantic_id": "RelDiffersFrom"
+            }
+          ],
           "proposition_id": "859e9c3fabd93cb1398e611c5ecbb6213ce8c5f39b29a2a7a14d15b2406939ec",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -583,8 +1272,27 @@
           "discourse_root_digest": "9db5acc912d1d41a0bb776db8adc3d5979281d1c73ed4365a3f912f1b72764dd",
           "expected_clause_surface_sha256": "f898d29b6349edce66448ebb7731f755f868d2aef2c293b5e4713af6a149e43d",
           "fact_id": "fact.self_awareness_reflexivity",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "самосознание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "samosoznanie",
+              "source_semantic_id": "concept.самосознание"
+            },
+            {
+              "accepted_surfaces": [
+                "выражает"
+              ],
+              "kind": "head",
+              "source_binding": "vyrazhaet",
+              "source_semantic_id": "RelExpresses"
+            }
+          ],
           "proposition_id": "bf2f91c9842dcffac0abbf850d86f60cbd238c39ea05a6040f95bbd14cdf2cee",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         },
         "e9b84e447b258f56fc400dc3066a1f6f8e56343f72170d9957e0d6f2c33d0aa1": {
           "approved_surface": "самосознание предполагает наличие сознания как своего основания",
@@ -592,8 +1300,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "9db5acc912d1d41a0bb776db8adc3d5979281d1c73ed4365a3f912f1b72764dd",
           "fact_id": "fact.self_awareness_reflexivity.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "самосознание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "samosoznanie",
+              "source_semantic_id": "concept.самосознание"
+            }
+          ],
           "proposition_id": "1c7228ba1fbeba88c91ab0cfbddbdae337edc8d3085f64a83cfe4b7a8b499ce0",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -605,8 +1324,19 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
           "fact_id": "fact.freedom_choice.consequence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "свобода"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "svoboda",
+              "source_semantic_id": "concept.свобода"
+            }
+          ],
           "proposition_id": "5506eb68729f402502485553d8e80c94340ba25ae187b6059a10295af692410a",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "cfcd256820d7fa3c9ab638e23c5db978f853f14b06d774830ec8e5e7815c87d7": {
           "approved_surface": "не любой выбор свободен: выбор под принуждением, страхом или незнанием не делает действие свободным",
@@ -614,8 +1344,10 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
           "fact_id": "fact.freedom_choice.counterpoint",
+          "lexical_witnesses": [],
           "proposition_id": "954e3b2c840d5e11e027e1d89ce263a0bde063c0be16ebe3ed10ddc4408c0753",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "ddc5fdbc1d3a581884c7a4b50e6d8133f3c5db031207caa22c2fd95c1120e2bb": {
           "approved_surface": "свобода предполагает возможность выбора",
@@ -624,8 +1356,27 @@
           "discourse_root_digest": "91530232c856abcb5621ff6704197d06f4a148db957f029728a57661ecb5c80b",
           "expected_clause_surface_sha256": "ce266378bba5c2eec6606c66538b0a9e2d8fe5e28c0bec83509dc319c774a342",
           "fact_id": "fact.freedom_choice",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "свобода"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "svoboda",
+              "source_semantic_id": "concept.свобода"
+            },
+            {
+              "accepted_surfaces": [
+                "предполагает"
+              ],
+              "kind": "head",
+              "source_binding": "predpolagaet",
+              "source_semantic_id": "RelPresupposes"
+            }
+          ],
           "proposition_id": "657f1af2512ed69d28a78ce2d1882daa5b689ac64c0f9027457852062c534e22",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -637,8 +1388,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "ca2c2b9da0556d4237b76b00836ccc292387c4884367418fcb7a8e98856b6889",
           "fact_id": "fact.death_cessation.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "смерть"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "smert",
+              "source_semantic_id": "concept.смерть"
+            }
+          ],
           "proposition_id": "2fa042c1d73b642502d076e96182bff4daed3bb182098c5f7c01e8f6921dd180",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "824c295d58c2b3dddcee73ae26dc6b00b194c374d41e207f3da776039d49e19f": {
           "approved_surface": "смерть обозначает необратимое прекращение существования",
@@ -646,8 +1408,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "ca2c2b9da0556d4237b76b00836ccc292387c4884367418fcb7a8e98856b6889",
           "fact_id": "fact.death_cessation",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "смерть"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "smert",
+              "source_semantic_id": "concept.смерть"
+            },
+            {
+              "accepted_surfaces": [
+                "обозначает"
+              ],
+              "kind": "head",
+              "source_binding": "oboznachaet",
+              "source_semantic_id": "RelDenotes"
+            }
+          ],
           "proposition_id": "51dd414cab6b635fae1d199c1d15d121e60ad859b66a9018193644e4c6fb4c46",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -660,8 +1441,27 @@
           "discourse_root_digest": "4aa27ce4e1327a799d84403f6a70755c05ac42534a559ac7d68cce637ac3b71c",
           "expected_clause_surface_sha256": "2a2fe37dee5da55812590239e13f103bf8927ee105db0b68d794a8528310c2a7",
           "fact_id": "fact.consciousness_awareness",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "сознание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "soznanie",
+              "source_semantic_id": "concept.сознание"
+            },
+            {
+              "accepted_surfaces": [
+                "это"
+              ],
+              "kind": "head",
+              "source_binding": "eto",
+              "source_semantic_id": "RelIsA"
+            }
+          ],
           "proposition_id": "1f189e54f21910060abbbd9aee277d5f2307b8244f5cb7a449e5718e89729512",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         },
         "dd0804b1407007afef47808042de91fa34f9c8be89898caf56aac58be66b7980": {
           "approved_surface": "сознание имеет аспект от первого лица",
@@ -669,8 +1469,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "4aa27ce4e1327a799d84403f6a70755c05ac42534a559ac7d68cce637ac3b71c",
           "fact_id": "fact.consciousness_awareness.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "сознание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "soznanie",
+              "source_semantic_id": "concept.сознание"
+            }
+          ],
           "proposition_id": "158dcf1940e5b977eb7429f21b176087c92cdbcfd04ea7af50f80393798e8678",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -682,8 +1493,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "e5632d5ad92447408c0fd65696dff2046d58aa12234a9a27b2b06931d7cca853",
           "fact_id": "fact.justice_proportionality",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "справедливость"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "spravedlivost",
+              "source_semantic_id": "concept.справедливость"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
           "proposition_id": "147b711eb9de84e3eec07b416dd9f83ee57ffbd3126be305f875de6d319cabf9",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         },
         "982a20d43dcd8bfd271bbd9bb87877c159307063a0cd96087813511afc84d540": {
           "approved_surface": "справедливость — не точная формула, а направление: стремление к соразмерности важнее точности",
@@ -691,8 +1521,19 @@
           "canonical_path": "2.consequence",
           "discourse_root_digest": "e5632d5ad92447408c0fd65696dff2046d58aa12234a9a27b2b06931d7cca853",
           "fact_id": "fact.justice_proportionality.consequence",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "справедливость"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "spravedlivost",
+              "source_semantic_id": "concept.справедливость"
+            }
+          ],
           "proposition_id": "e6766442c3820ea39444b0afb0d6a22061e6828818c2c892060c2c91de8e1e0c",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "d0783f6707af918db926ecb014fefee97900872ad05fa8769a0b531fe2790628": {
           "approved_surface": "соразмерность трудно измерить: как взвесить страдание или измерить ущерб намерению?",
@@ -700,8 +1541,10 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "e5632d5ad92447408c0fd65696dff2046d58aa12234a9a27b2b06931d7cca853",
           "fact_id": "fact.justice_proportionality.counterpoint",
+          "lexical_witnesses": [],
           "proposition_id": "029e252babb44627287340f546930e9e45c96fd59d40c5bf039d18d657932462",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -713,8 +1556,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "fcf35cee8575d7d2001cc05e722741c10da0c7f45320783548851d85ae915bf8",
           "fact_id": "fact.fear_action.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "страх"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "strah",
+              "source_semantic_id": "concept.страх"
+            }
+          ],
           "proposition_id": "8c993b3d5f55fe75498f244ad8995fa44cd2ff7d31c4fe5263bc372c9f5480c7",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "f1139f63aed55dd551a98361e612564ab3eb727c376315be26e90f5c5c5e753a": {
           "approved_surface": "страх может парализовать действие или мобилизовать его",
@@ -722,8 +1576,27 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "fcf35cee8575d7d2001cc05e722741c10da0c7f45320783548851d85ae915bf8",
           "fact_id": "fact.fear_action",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "страх"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "strah",
+              "source_semantic_id": "concept.страх"
+            },
+            {
+              "accepted_surfaces": [
+                "может"
+              ],
+              "kind": "head",
+              "source_binding": "mozhet",
+              "source_semantic_id": "RelCanBe"
+            }
+          ],
           "proposition_id": "2e70d56fc608946e74dd80906d0ba5cb13c6d4fcdc7e1b3e62cef1b529991295",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -735,8 +1608,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "183b37907a59fb558611ec688c1c7b32e46811ae2bda20be490047b7aff98fb9",
           "fact_id": "fact.labor_resources.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "труд"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "trud",
+              "source_semantic_id": "concept.труд"
+            }
+          ],
           "proposition_id": "e986253e0f520f56b665cb9044ca4ff7f1bd9e9692eae84033a09a9d979b3df1",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "6d91a40bfb863106552be2a4e60bf0750bb7a09ddf55b20c798ed7ed3e778e2b": {
           "approved_surface": "труд связан с потребностью и распределением ресурсов",
@@ -744,8 +1628,30 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "183b37907a59fb558611ec688c1c7b32e46811ae2bda20be490047b7aff98fb9",
           "fact_id": "fact.labor_resources",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "труд"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "trud",
+              "source_semantic_id": "concept.труд"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
           "proposition_id": "46ed8f8655a234d002cdc861cfa7fa9dd4804147e5c0e66dc739709830674ee1",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     },
@@ -757,8 +1663,19 @@
           "canonical_path": "1.counterpoint",
           "discourse_root_digest": "bce2153d938b8f514a6da25452d47ed37ea542bd7ef509b4064e2bd4851a2ecb",
           "fact_id": "fact.language_thought.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "язык"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "yazyk",
+              "source_semantic_id": "concept.язык"
+            }
+          ],
           "proposition_id": "e37e15e616a658b504715710cc4ee6a4bee73ba8c8e5e3be9348f629426caa23",
-          "realization_strategy": "fixed_phrase"
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         },
         "b06d8e03b46e2267c3615192cfef072faa44e64e9bd52b432a00f39a3781b952": {
           "approved_surface": "язык связан с мышлением — он не только выражает, но и формирует мысль",
@@ -766,8 +1683,30 @@
           "canonical_path": "0.thesis",
           "discourse_root_digest": "bce2153d938b8f514a6da25452d47ed37ea542bd7ef509b4064e2bd4851a2ecb",
           "fact_id": "fact.language_thought",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "язык"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "yazyk",
+              "source_semantic_id": "concept.язык"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
           "proposition_id": "57b72f33aa36f7ace0c5c5ac35301e6b7700823dec2525d26c9e7966439d05d7",
-          "realization_strategy": "clause"
+          "realization_strategy": "clause",
+          "surface_validation": "governed_clause"
         }
       }
     }

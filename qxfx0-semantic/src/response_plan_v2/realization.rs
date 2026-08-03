@@ -12,6 +12,29 @@ use super::syn_tree::{
 use super::valency::ValencyLexicon;
 use qxfx0_morphology::MorphologyRuntime;
 
+pub const REALIZATION_JOINER_VERSION: &str = "punctuated-space-v1";
+
+/// Joins arbitrary clause surfaces without relying on a renderer or locale.
+/// Empty clauses are omitted; existing terminal punctuation is preserved.
+pub fn join_realized_clauses<I, S>(clauses: I) -> String
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    clauses
+        .into_iter()
+        .map(|clause| clause.as_ref().trim().to_string())
+        .filter(|clause| !clause.is_empty())
+        .map(|mut clause| {
+            if !clause.ends_with(['.', '!', '?']) {
+                clause.push('.');
+            }
+            clause
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RealizablePlan {
     authorized: AssertionAuthorizedPlan,
@@ -91,6 +114,12 @@ pub struct RealizedSurface {
     pub surface_digest: String,
     pub realization_snapshot_digest: String,
     pub completeness_digest: String,
+}
+
+impl RealizedSurface {
+    pub fn joined(&self) -> String {
+        join_realized_clauses(&self.clauses)
+    }
 }
 
 pub fn linearize(
@@ -196,5 +225,14 @@ mod tests {
         assert_eq!(realized.completeness_certificate().clauses, 1);
         assert_eq!(realized.completeness_certificate().fixed_nodes, 2);
         assert_eq!(realized.resolved_syn_tree().linearize().len(), 3);
+    }
+
+    #[test]
+    fn joiner_is_total_and_punctuation_is_deterministic() {
+        assert_eq!(join_realized_clauses(Vec::<String>::new()), "");
+        assert_eq!(
+            join_realized_clauses([" first ", "", "second!", "third?"]),
+            "first. second! third?"
+        );
     }
 }

@@ -3,6 +3,7 @@
 import hashlib
 import json
 import struct
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +20,6 @@ GOVERNED_ONLY_TOPICS = {
     "история", "воля", "смерть", "одиночество", "любовь", "труд",
     "покой", "власть", "молчание", "страх", "время", "язык",
 }
-
 
 def absorb(value: str) -> bytes:
     data = value.encode("utf-8")
@@ -54,10 +54,51 @@ def valency_fingerprint(path: Path) -> str:
     return hashlib.sha256(b"qxfx0:valency-lexicon:v1" + path.read_bytes()).hexdigest()
 
 
+def valency_heads(path: Path) -> dict[str, list[str]]:
+    heads = {}
+    for line in path.read_text().splitlines():
+        if not line.strip() or line.startswith("#") or line.startswith("relation_id\t"):
+            continue
+        relation_id, head_kind, forms, _ = line.split("\t")
+        heads[relation_id] = forms.split(",") if head_kind == "agreeing" else [forms]
+    return heads
+
+
+def whole_word(surface: str, candidate: str) -> bool:
+    return re.search(
+        rf"(?<!\w){re.escape(candidate)}(?!\w)", surface, re.IGNORECASE
+    ) is not None
+
+
+def lexical_witnesses(surface: str, subject_semantic_id: str,
+                       subject_binding: str, relation_semantic_id: str,
+                       relation_binding: str | None,
+                       heads: dict[str, list[str]]) -> list[dict]:
+    witnesses = []
+    subject = subject_semantic_id.removeprefix("concept.")
+    if whole_word(surface, subject):
+        witnesses.append({
+            "kind": "subject_lemma",
+            "source_semantic_id": subject_semantic_id,
+            "source_binding": subject_binding,
+            "accepted_surfaces": [subject],
+        })
+    head_surfaces = heads.get(relation_binding, []) if relation_binding else []
+    if any(whole_word(surface, head) for head in head_surfaces):
+        witnesses.append({
+            "kind": "head",
+            "source_semantic_id": relation_semantic_id,
+            "source_binding": relation_binding,
+            "accepted_surfaces": head_surfaces,
+        })
+    return witnesses
+
+
 facts = {
     item["record"]["id"]: item["record"]
     for item in json.loads((PACK / "facts.json").read_text())
 }
+heads = valency_heads(VALENCY)
 lines = [
     line for line in TSV.read_text().splitlines()
     if line.strip() and not line.startswith("#")
@@ -88,7 +129,21 @@ for line in lines:
             "approved_surface": surface,
             "approved_surface_sha256": hashlib.sha256(surface.encode()).hexdigest(),
             "realization_strategy": "clause" if role == "thesis" else "fixed_phrase",
+            "surface_validation": (
+                "exact_clause" if role == "thesis" and topic not in GOVERNED_ONLY_TOPICS
+                else "governed_clause" if role == "thesis" else "audited_verbatim"
+            ),
         }
+        current = facts[fact]
+        primary = facts[fact_ids[0]]
+        row["lexical_witnesses"] = lexical_witnesses(
+            surface,
+            current["subject"],
+            cells[2],
+            current["relation"],
+            cells[3] if current["relation"] == primary["relation"] else None,
+            heads,
+        )
         if role == "thesis" and topic not in GOVERNED_ONLY_TOPICS:
             row["expected_clause_surface_sha256"] = row["approved_surface_sha256"]
         claims[claim_id(proposition, path)] = row

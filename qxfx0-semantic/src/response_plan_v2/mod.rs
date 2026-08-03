@@ -47,8 +47,9 @@ pub use attempt::{
     V2ExecutionResult, V2PreCandidateOutcome, V2Route,
 };
 pub use audited_corpus::{
-    audit_audited_corpus, build_audited_topic, build_audited_topic_at, execute_audited_topic_at,
-    AuditedCorpusError, AuditedCorpusReport, AuditedTopicPlan, AuditedV2Execution,
+    audit_audited_corpus, audited_verbatim_surface, authority_outcome, build_audited_topic,
+    build_audited_topic_at, execute_audited_topic_at, AuditedCorpusError, AuditedCorpusReport,
+    AuditedTopicPlan, AuditedV2Execution, AuthoritySurfaceStrategy, V2AuthorityOutcome,
 };
 pub use candidate::{CandidateInvariantError, CandidateResponsePlan};
 pub use derivation::{
@@ -71,11 +72,14 @@ pub use proposition::{
     PropositionDag, PropositionDagBuilder, PropositionId, PropositionInvariantError,
     PropositionNode, QualifierId, PROPOSITION_DOMAIN,
 };
-pub use realization::{linearize, try_realize, RealizablePlan, RealizedSurface};
+pub use realization::{
+    join_realized_clauses, linearize, try_realize, RealizablePlan, RealizedSurface,
+    REALIZATION_JOINER_VERSION,
+};
 pub use selection::{
-    select_candidate, BasisPoints, CandidateSelectionSignals, SelectedCandidate,
-    SelectionCandidate, SelectionError, SelectionPolicy, SelectionReceipt, SelfSelectionContext,
-    NUMERIC_SEMANTICS_VERSION, RANKING_VERSION,
+    select_candidate, BasisPoints, CandidateSelectionSignals, ResponsePlanV2Mode,
+    SelectedCandidate, SelectionCandidate, SelectionError, SelectionPolicy, SelectionReceipt,
+    SelfSelectionContext, NUMERIC_SEMANTICS_VERSION, RANKING_VERSION,
 };
 pub use snapshot::{
     inference_rule_set_digest, verify_replay, AuthoritySnapshot, CapturedRealizationNode,
