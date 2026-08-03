@@ -23,6 +23,8 @@ pub struct TraceStep {
 pub struct PipelineTrace {
     pub request_id: String,
     pub steps: Vec<TraceStep>,
+    /// Optional authority evidence kept outside persisted session state.
+    pub authority_receipt: Option<serde_json::Value>,
     /// Local diagnostic only; intentionally absent from serialized replay
     /// evidence so JSONL traces do not contain wall-clock data.
     #[serde(skip_serializing)]
@@ -34,6 +36,7 @@ impl PipelineTrace {
         Self {
             request_id: request_id.to_string(),
             steps: Vec::new(),
+            authority_receipt: None,
             total_duration: std::time::Duration::ZERO,
         }
     }
@@ -58,6 +61,12 @@ impl PipelineTrace {
 
     pub fn set_total_duration(&mut self, duration: std::time::Duration) {
         self.total_duration = duration;
+    }
+
+    pub fn set_authority_receipt<T: Serialize>(&mut self, receipt: &T) -> Result<(), String> {
+        self.authority_receipt =
+            Some(serde_json::to_value(receipt).map_err(|error| error.to_string())?);
+        Ok(())
     }
 
     /// Formats the trace for human-readable output or log files.

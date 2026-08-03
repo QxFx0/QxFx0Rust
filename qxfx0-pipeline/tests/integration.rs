@@ -772,6 +772,10 @@ fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
         replay_trace.replay_signature()
     );
     assert!(response_plan_v2_state_parity(&canary_state, &replay_state));
+    assert_eq!(
+        canary_trace.authority_receipt,
+        replay_trace.authority_receipt
+    );
 
     let mut rollback_state = test_state(&input.session_id);
     let (rollback_output, rollback_trace) = process_turn_with_options_and_trace(

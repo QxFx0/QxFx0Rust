@@ -184,6 +184,19 @@ The canary switch is covered by end-to-end render, replay, and rollback tests.
 Selecting `Disabled` restores V1 authority; no production default is changed
 by the authority implementation.
 
+The operator path is:
+
+```text
+qxfx0 turn "что такое свобода?" \
+  --response-plan-v2-authority \
+  --response-plan-v2-trace-jsonl authority.jsonl
+```
+
+Removing `--response-plan-v2-authority` is the rollback. The external JSONL
+contains the complete deterministic `AuthorityDecisionReceipt`; it is not
+written to SQLite or semantic session state. `RealizationDowngrade` remains a
+fail-closed, non-emitting authority outcome.
+
 ## 10. Historical F0 boundary
 
 F0 itself covered only the census. The recursive proposition DAG, derivation

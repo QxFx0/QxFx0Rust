@@ -1357,6 +1357,7 @@ fn record_response_plan_v2(
         ),
     ]);
     if let Some(trace) = trace {
+        let _ = trace.set_authority_receipt(&receipt);
         trace.record_step(
             "response_plan_v2",
             input_digest,

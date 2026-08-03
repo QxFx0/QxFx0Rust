@@ -63,3 +63,15 @@ jobs:
             response-plan-v2-canary-report; do
             target/release/qxfx0 doctor --gate "$gate"
           done
+
+      - name: Verify explicit canary authority CLI path
+        shell: bash
+        run: |
+          set -euo pipefail
+          trace="$RUNNER_TEMP/qxfx0-authority-trace.jsonl"
+          target/release/qxfx0 \
+            --db "$RUNNER_TEMP/qxfx0-authority.db" \
+            turn "что такое свобода?" \
+            --response-plan-v2-authority \
+            --response-plan-v2-trace-jsonl "$trace"
+          test -s "$trace"
