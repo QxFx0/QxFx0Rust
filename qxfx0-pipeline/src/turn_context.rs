@@ -166,6 +166,7 @@ impl RoutedTurnContext {
 pub struct PlannedTurnContext {
     routed: RoutedTurnContext,
     shadow_plan: ShadowPlanOutcome,
+    authority_decision: Option<crate::AuthorityDecisionReceipt>,
 }
 
 impl PlannedTurnContext {
@@ -173,6 +174,7 @@ impl PlannedTurnContext {
         Self {
             routed,
             shadow_plan,
+            authority_decision: None,
         }
     }
 
@@ -182,6 +184,18 @@ impl PlannedTurnContext {
 
     pub fn shadow_plan(&self) -> &ShadowPlanOutcome {
         &self.shadow_plan
+    }
+
+    pub(crate) fn with_authority_decision(
+        mut self,
+        receipt: Option<crate::AuthorityDecisionReceipt>,
+    ) -> Self {
+        self.authority_decision = receipt;
+        self
+    }
+
+    pub fn authority_decision(&self) -> Option<&crate::AuthorityDecisionReceipt> {
+        self.authority_decision.as_ref()
     }
 }
 
@@ -213,6 +227,7 @@ pub enum RendererSource {
     AuditedPlan,
     LegacyFallback,
     Clarification,
+    ResponsePlanV2,
 }
 
 impl RendererSource {
@@ -222,6 +237,7 @@ impl RendererSource {
             Self::AuditedPlan => "audited_plan",
             Self::LegacyFallback => "legacy_fallback",
             Self::Clarification => "clarification",
+            Self::ResponsePlanV2 => "response_plan_v2",
         }
     }
 }

@@ -388,6 +388,15 @@ TurnContractSnapshot {
   emitted surface digest, the audited source digest when applicable, claim
   identity/fact-binding/claim-authority digests, and explicit parity fields.
   These are observational evidence only and do not enter persisted turn state.
+- Authority selection is an explicit second switch, independent of V2
+  observation: `ResponsePlanV2Authority::Disabled` is the default and keeps
+  `RendererAuthority::LegacyShadow`; `ResponsePlanV2Authority::Canary` forces
+  `ResponsePlanV2Mode::Canary` and may emit V2 only for `правда`, `произвол`,
+  and `свобода` when the receipt is compositional or audited-verbatim.
+- `AuthorityDecisionReceipt` binds the selected authority, typed outcome,
+  contract digest, artifact digest, emitted surface digest, and replay bundle
+  digest. The receipt is passed to rendering but is not persisted in semantic
+  state. Disabling the authority switch is the explicit rollback to V1.
 
 ### 11. F0 data placement
 
