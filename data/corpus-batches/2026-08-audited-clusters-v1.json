@@ -1,0 +1,18 @@
+{
+  "schema": "qxfx0.topic-corpus-batch.v1",
+  "batch_id": "audited-clusters-2026-08-v1",
+  "status": "proposal_only",
+  "authority_change": "none",
+  "topics": [
+    {"canonical_topic": "истина", "cluster": "epistemology", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "мнение", "cluster": "epistemology", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "разум", "cluster": "epistemology", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "память", "cluster": "psychology", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "страх", "cluster": "psychology", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "надежда", "cluster": "psychology", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "одиночество", "cluster": "psychology", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "долг", "cluster": "ethics", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "вера", "cluster": "ethics", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"},
+    {"canonical_topic": "воля", "cluster": "ethics", "import_claims_from": "audited_corpus", "review_status": "approved", "target_maturity": "audited"}
+  ]
+}

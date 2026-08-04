@@ -1,0 +1,23 @@
+{
+  "schema": "qxfx0.response-plan-v2.operational-formulations.v1",
+  "raw_user_logs": false,
+  "reviewed_formulations_only": true,
+  "cases": [
+    {"case_id": "truth-direct", "topic": "правда", "input_class": "definition", "utterance": "что такое правда?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "truth-paraphrase", "topic": "правда", "input_class": "definition_paraphrase", "utterance": "что есть правда?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "arbitrariness-direct", "topic": "произвол", "input_class": "definition", "utterance": "что такое произвол?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "arbitrariness-clarify", "topic": "произвол", "input_class": "definition_clarification", "utterance": "уточни, что такое произвол?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "freedom-direct", "topic": "свобода", "input_class": "definition", "utterance": "что такое свобода?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "freedom-paraphrase", "topic": "свобода", "input_class": "definition_paraphrase", "utterance": "что есть свобода?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "time-direct", "topic": "время", "input_class": "definition", "utterance": "что такое время?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "time-clarify", "topic": "время", "input_class": "definition_clarification", "utterance": "уточни, что такое время?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "justice-direct", "topic": "справедливость", "input_class": "definition", "utterance": "что такое справедливость?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "justice-paraphrase", "topic": "справедливость", "input_class": "definition_paraphrase", "utterance": "что есть справедливость?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "responsibility-direct", "topic": "ответственность", "input_class": "definition", "utterance": "что такое ответственность?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "responsibility-clarify", "topic": "ответственность", "input_class": "definition_clarification", "utterance": "уточни, что такое ответственность?", "expected_result": "compositional", "expected_guard": "v2_successfully_emitted"},
+    {"case_id": "freedom-assertion", "topic": "свобода", "input_class": "unsupported_intent", "utterance": "свобода существует", "expected_result": "authority_denied", "expected_guard": "authority_denied_before_render"},
+    {"case_id": "time-challenge", "topic": "время", "input_class": "unexpected_semantic_route_probe", "utterance": "время это просто мнение", "expected_result": "authority_denied", "expected_guard": "authority_denied_before_render"},
+    {"case_id": "justice-challenge", "topic": "справедливость", "input_class": "unexpected_semantic_route_probe", "utterance": "справедливость это просто мнение", "expected_result": "authority_denied", "expected_guard": "authority_denied_before_render"},
+    {"case_id": "responsibility-assertion", "topic": "ответственность", "input_class": "unsupported_intent", "utterance": "ответственность существует", "expected_result": "authority_denied", "expected_guard": "authority_denied_before_render"}
+  ]
+}
