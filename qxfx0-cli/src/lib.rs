@@ -1483,7 +1483,11 @@ mod tests {
             format!("{}\n", serde_json::to_string(&extended).unwrap()),
         )
         .unwrap();
-        assert!(verify_debate_core_trace(&path).is_err());
+        let error = verify_debate_core_trace(&path).unwrap_err().to_string();
+        assert!(
+            error.contains("unknown field") && error.contains("raw_input"),
+            "top-level unknown field must be rejected by name, got: {error}"
+        );
 
         let mut nested: serde_json::Value = serde_json::from_str(&original).unwrap();
         nested["receipt"]["nodes"][0]["raw_text"] = serde_json::json!("hidden");
@@ -1492,7 +1496,11 @@ mod tests {
             format!("{}\n", serde_json::to_string(&nested).unwrap()),
         )
         .unwrap();
-        assert!(verify_debate_core_trace(&path).is_err());
+        let error = verify_debate_core_trace(&path).unwrap_err().to_string();
+        assert!(
+            error.contains("unknown field") && error.contains("raw_text"),
+            "nested unknown field must be rejected by name, got: {error}"
+        );
         let _ = std::fs::remove_file(path);
     }
 

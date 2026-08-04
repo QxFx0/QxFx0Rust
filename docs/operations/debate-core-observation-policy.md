@@ -40,6 +40,7 @@ python3 tools/debate_observation.py run \
   --output target/debate-core-observation
 ```
 
-The GitHub workflow requires an exact 40-character build SHA and uploads the
-result as a 90-day evidence artifact. Any authority or cross-turn persistence
-requires a separate ADR, PR, canary, and promotion decision.
+The GitHub workflow requires an exact lowercase 40-character build SHA that is
+already an ancestor of `main`, and uploads the result as a 90-day evidence
+artifact. Any authority or cross-turn persistence requires a separate ADR, PR,
+canary, and promotion decision.

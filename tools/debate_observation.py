@@ -2,6 +2,7 @@
 
 import argparse
 import collections
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -40,8 +41,11 @@ class ValidationError(Exception):
 
 
 def load_json(path):
-    with Path(path).open(encoding="utf-8") as source:
-        return json.load(source)
+    try:
+        with Path(path).open(encoding="utf-8") as source:
+            return json.load(source)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValidationError(f"invalid JSON in {path}: {error}") from error
 
 
 def validate_id(field, value):
@@ -222,7 +226,7 @@ def run_turn(binary, database, session_id, utterance, trace_path=None):
 
 
 def persisted_state(database, session_id):
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         row = connection.execute(
             "SELECT state_json FROM runtime_sessions WHERE id = ?", (session_id,)
         ).fetchone()

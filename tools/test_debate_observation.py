@@ -2,6 +2,7 @@
 
 import copy
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -51,6 +52,13 @@ class DebateObservationManifestTests(unittest.TestCase):
         with self.assertRaises(OBSERVATION.ValidationError):
             OBSERVATION.validate_manifest(manifest)
 
+    def test_malformed_manifest_json_is_a_validation_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "manifest.json"
+            path.write_text("{", encoding="utf-8")
+            with self.assertRaises(OBSERVATION.ValidationError):
+                OBSERVATION.load_json(path)
+
     def test_empty_input_is_reserved_for_typed_guard_case(self):
         manifest = self.manifest()
         manifest["scenarios"][0]["turns"][0]["utterance"] = ""
@@ -70,6 +78,23 @@ class DebateObservationManifestTests(unittest.TestCase):
             OBSERVATION.sequence_digest([b"a", b"bc"]),
             OBSERVATION.sequence_digest([b"ab", b"c"]),
         )
+
+    def test_receipt_digest_requires_a_32_byte_array(self):
+        self.assertEqual(
+            OBSERVATION.receipt_digest({"digest": [0] * 32}),
+            "00" * 32,
+        )
+        invalid_values = (
+            [0] * 31,
+            [0] * 33,
+            [256] + [0] * 31,
+            [-1] + [0] * 31,
+            "0" * 64,
+            None,
+        )
+        for invalid in invalid_values:
+            with self.assertRaises(OBSERVATION.ValidationError):
+                OBSERVATION.receipt_digest({"digest": invalid})
 
 
 if __name__ == "__main__":
