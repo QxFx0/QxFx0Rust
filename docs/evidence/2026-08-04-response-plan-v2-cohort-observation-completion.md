@@ -27,9 +27,10 @@ artifact `8874863251`, retained until 2026-11-01. The artifact SHA-256 is
 - Unexpected rollbacks: `0`.
 - Negative controls: `4/4` expected denials and `4/4` expected rollbacks.
 
-The six-topic explicit canary expansion is therefore accepted for continued
-canary operation. The production default remains V1, authority remains limited
-to `CMDefine`, and global V2 promotion is not authorized by this record.
+The existing six-topic explicit canary allowlist is therefore accepted for
+continued canary operation. This record does not authorize any further
+allowlist expansion. The production default remains V1, authority remains
+limited to `CMDefine`, and global V2 promotion is not authorized by this record.
 
 The previous `response-plan-v2-canary-2026-08` completion record remains
 immutable. This record is the new baseline for any later cohort decision.

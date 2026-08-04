@@ -61,6 +61,7 @@
   "owner_signoff": "QxFx0",
   "production_default": "V1",
   "authority_boundary": "CMDefine",
-  "allowlist_expansion_authorized": true,
+  "observed_canary_allowlist_accepted": true,
+  "further_allowlist_expansion_authorized": false,
   "global_v2_promotion_authorized": false
 }
