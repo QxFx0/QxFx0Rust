@@ -1,0 +1,67 @@
+{
+  "schema": "qxfx0.response-plan-v2.observation-completion.v1",
+  "window_id": "response-plan-v2-cohort-2026-08",
+  "decision": "observation_complete",
+  "build_sha": "92ee699eed976938ab5dce008845bd79dd8452a3",
+  "binary_version": "QxFx0 Rust v0.1.1",
+  "workflow_run": 30862350143,
+  "workflow_url": "https://github.com/QxFx0/QxFx0Rust/actions/runs/30862350143",
+  "artifact_id": 8874863251,
+  "artifact_name": "response-plan-v2-observation-response-plan-v2-cohort-2026-08-30862350143",
+  "artifact_sha256": "a672a1087c17bb8019bd742e976094a5d2262672e83628fa7888968a42a0824d",
+  "artifact_expiry": "2026-11-01T23:28:04Z",
+  "manifest_digest": "21c2ac32dffb6dd1538ee2fda81e748c175c6d35ca0c1684d7822c0eb561f9d0",
+  "allowlist_digest": "a2d7133ed6e8520cfde9a07f257336cd531aa70120f79d65be00f0701a921cd4",
+  "allowlist": [
+    "правда",
+    "произвол",
+    "свобода",
+    "время",
+    "справедливость",
+    "ответственность"
+  ],
+  "repetitions": 10,
+  "positive_turns": 240,
+  "coverage_by_topic": {
+    "правда": 40,
+    "произвол": 40,
+    "свобода": 40,
+    "время": 40,
+    "справедливость": 40,
+    "ответственность": 40
+  },
+  "coverage_by_input_class": {
+    "definition": 60,
+    "definition_paraphrase": 60,
+    "definition_clarification": 60,
+    "same_session_repeat": 60
+  },
+  "checkpoints": [
+    {"turns": 60, "compositional": 60, "failure_budgets": "all_zero"},
+    {"turns": 120, "compositional": 120, "failure_budgets": "all_zero"},
+    {"turns": 180, "compositional": 180, "failure_budgets": "all_zero"},
+    {"turns": 240, "compositional": 240, "failure_budgets": "all_zero"}
+  ],
+  "failure_budget_totals": {
+    "realization_downgrades": 0,
+    "replay_failures": 0,
+    "expectation_failures": 0,
+    "unauthorized_v1_fallbacks": 0,
+    "guard_blocks": 0,
+    "unexpected_denials": 0,
+    "unexpected_rollbacks": 0
+  },
+  "negative_controls": {
+    "turns": 4,
+    "expected_denials": 4,
+    "unexpected_denials": 0,
+    "expected_rollbacks": 4,
+    "unexpected_rollbacks": 0
+  },
+  "owner_signoff": "QxFx0",
+  "production_default": "V1",
+  "authority_boundary": "CMDefine",
+  "observed_canary_allowlist_accepted": true,
+  "further_allowlist_expansion_authorized": false,
+  "global_v2_promotion_authorized": false
+}
