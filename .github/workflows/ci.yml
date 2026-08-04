@@ -119,6 +119,9 @@ jobs:
             .totals.canary == 6 and
             .totals.production_stable == 6
           ' "$RUNNER_TEMP/topic-maturity.json" >/dev/null
+          test \
+            "$(jq -r .manifest_digest "$RUNNER_TEMP/topic-corpus-batch.json")" = \
+            "$(jq -r .compiled_batch.manifest_digest docs/evidence/topic-corpus-framework-baseline-v1.json)"
 
       - name: Export release metadata
         shell: bash

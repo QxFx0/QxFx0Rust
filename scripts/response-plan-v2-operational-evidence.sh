@@ -5,6 +5,9 @@ binary="${1:-target/release/qxfx0}"
 output_dir="${2:-target/response-plan-v2-operational-evidence}"
 manifest="${3:-data/gates/response-plan-v2/operational-formulations-v1.json}"
 
+jq -e '.raw_user_logs == false and .reviewed_formulations_only == true' "$manifest" >/dev/null
+raw_user_logs="$(jq -c .raw_user_logs "$manifest")"
+reviewed_formulations_only="$(jq -c .reviewed_formulations_only "$manifest")"
 test ! -e "$output_dir"
 mkdir -p "$output_dir/positive" "$output_dir/negative"
 manifest_digest="$(sha256sum "$manifest" | cut -d' ' -f1)"
@@ -59,5 +62,7 @@ jq -n \
   --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --argjson positive "$positive_expected" \
   --argjson negative "$negative_expected" \
-  '{schema:$schema,build_sha:$build_sha,manifest_digest:$manifest_digest,generated_at:$generated_at,positive_cases:$positive,negative_cases:$negative,raw_user_logs:false}' \
+  --argjson raw_user_logs "$raw_user_logs" \
+  --argjson reviewed_formulations_only "$reviewed_formulations_only" \
+  '{schema:$schema,build_sha:$build_sha,manifest_digest:$manifest_digest,generated_at:$generated_at,positive_cases:$positive,negative_cases:$negative,raw_user_logs:$raw_user_logs,reviewed_formulations_only:$reviewed_formulations_only}' \
   > "$output_dir/metadata.json"

@@ -103,6 +103,10 @@ def maturity_inventory():
     facts = facts_index()
     canary = set(canary_topics())
     stable = set(stable_topics())
+    for label, topics in (("audited", set(audited)), ("canary", canary), ("production-stable", stable)):
+        unrecognized = sorted(topics - recognized_set)
+        if unrecognized:
+            raise ValidationError(f"{label} topics are not recognized: {', '.join(unrecognized)}")
     rows = []
     counts = {level: 0 for level in MATURITY_ORDER}
     for topic in recognized:
@@ -164,6 +168,8 @@ def compile_imported_claim(topic, claim_id, claim, facts, frames):
     fact = facts.get(fact_id)
     if fact is None or fact["status"] != "curated":
         raise ValidationError(f"{topic}:{claim_id}: FactId is absent or not curated")
+    if fact["subject"] != f"concept.{topic}":
+        raise ValidationError(f"{topic}:{claim_id}: FactId belongs to another topic")
     surface = claim["approved_surface"]
     actual_surface_digest = hashlib.sha256(surface.encode()).hexdigest()
     if actual_surface_digest != claim["approved_surface_sha256"]:

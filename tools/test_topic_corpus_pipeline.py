@@ -52,6 +52,20 @@ class TopicCorpusPipelineTests(unittest.TestCase):
         with self.assertRaises(PIPELINE.ValidationError):
             PIPELINE.compile_batch(source)
 
+    def test_cross_topic_fact_fails_closed(self):
+        topic = "истина"
+        claim_id, claim = next(iter(PIPELINE.load_json(PIPELINE.AUDITED)["topics"][topic]["claims"].items()))
+        facts = PIPELINE.facts_index()
+        facts[claim["fact_id"]] = dict(facts[claim["fact_id"]], subject="concept.мнение")
+        with self.assertRaises(PIPELINE.ValidationError):
+            PIPELINE.compile_imported_claim(
+                topic,
+                claim_id,
+                claim,
+                facts,
+                PIPELINE.valency_frames(),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
