@@ -12,8 +12,8 @@ use qxfx0_cli::{
     run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
     run_turn_with_renderer_doubt_shadow_trace, run_turn_with_v2_shadow_trace,
-    verify_authority_trace, write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
-    write_cognitive_pilot_trace_jsonl, write_debate_core_trace_jsonl,
+    verify_authority_trace, verify_debate_core_trace, write_anomaly_shadow_trace_jsonl,
+    write_authority_trace_jsonl, write_cognitive_pilot_trace_jsonl, write_debate_core_trace_jsonl,
     write_doubt_shadow_trace_jsonl, write_response_plan_v2_shadow_trace_jsonl,
     AuthorityReportScope, DiagnosedTurn,
 };
@@ -173,6 +173,8 @@ enum Commands {
     CodeStats,
     /// Verify one external authority trace JSONL artifact
     VerifyAuthorityTrace { path: PathBuf },
+    /// Verify one receipt-only Debate Core JSONL artifact.
+    VerifyDebateTrace { path: PathBuf },
     /// Aggregate external authority trace JSONL artifacts
     AuthorityReport {
         #[arg(required = true, num_args = 1..)]
@@ -839,6 +841,13 @@ fn main() -> anyhow::Result<()> {
             println!(
                 "{}",
                 serde_json::to_string_pretty(&verify_authority_trace(path)?)?
+            );
+            Ok(())
+        }
+        Commands::VerifyDebateTrace { path } => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&verify_debate_core_trace(path)?)?
             );
             Ok(())
         }

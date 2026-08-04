@@ -1,0 +1,82 @@
+name: Debate Core Observation
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact release SHA to observe
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  observation:
+    name: Debate Core v1 observation corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Validate exact observation SHA
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "expected_sha must be exactly 40 lowercase hexadecimal characters" >&2
+            exit 1
+          }
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.expected_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify checked out SHA
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$EXPECTED_SHA" origin/main
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.93.1
+
+      - name: Build release binary
+        run: cargo build --workspace --release
+
+      - name: Run observation corpus
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          python3 tools/debate_observation.py run \
+            --binary target/release/qxfx0 \
+            --manifest data/gates/debate-core/observation-corpus-v1.json \
+            --output "$RUNNER_TEMP/debate-core-observation" \
+            --expected-sha "$EXPECTED_SHA"
+
+      - name: Enforce zero failure budgets
+        run: |
+          jq -e '
+            .authority_change == "none" and
+            .raw_user_logs == false and
+            .reviewed_formulations_only == true and
+            .receipt_generation_rate_basis_points == 10000 and
+            .validation_failures == 0 and
+            .replay_failures == 0 and
+            .privacy_violations == 0 and
+            .output_parity_violations == 0 and
+            .state_parity_violations == 0 and
+            .digest_mismatches == 0 and
+            .invalid_graph_references == 0
+          ' "$RUNNER_TEMP/debate-core-observation/report.json" >/dev/null
+
+      - name: Upload observation evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: debate-core-observation-${{ inputs.expected_sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/debate-core-observation
+          if-no-files-found: error
+          retention-days: 90

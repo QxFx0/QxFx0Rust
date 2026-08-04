@@ -1,0 +1,230 @@
+{
+  "schema": "qxfx0.debate-core-observation-corpus.v1",
+  "corpus_id": "debate-core-v1-observation-2026-08",
+  "authority_change": "none",
+  "raw_user_logs": false,
+  "reviewed_formulations_only": true,
+  "required_input_classes": [
+    "definition",
+    "assertion",
+    "challenge",
+    "distinction",
+    "grounding_request",
+    "counterargument",
+    "consequence",
+    "topic_connection",
+    "reflection",
+    "clarification",
+    "greeting",
+    "unknown_topic",
+    "repeated_unknown_topic",
+    "external_subject",
+    "guard_blocked",
+    "fallback_plan"
+  ],
+  "scenarios": [
+    {
+      "scenario_id": "definition",
+      "input_class": "definition",
+      "turns": [
+        {
+          "turn_id": "definition-1",
+          "utterance": "что такое свобода?",
+          "expected_topic_id": "свобода",
+          "expected_move": "define"
+        }
+      ]
+    },
+    {
+      "scenario_id": "assertion",
+      "input_class": "assertion",
+      "turns": [
+        {
+          "turn_id": "assertion-1",
+          "utterance": "свобода важна",
+          "expected_topic_id": "свобода",
+          "expected_move": "ground"
+        }
+      ]
+    },
+    {
+      "scenario_id": "challenge",
+      "input_class": "challenge",
+      "turns": [
+        {
+          "turn_id": "challenge-1",
+          "utterance": "я не согласен: свобода",
+          "expected_topic_id": "свобода",
+          "expected_move": "challenge"
+        }
+      ]
+    },
+    {
+      "scenario_id": "distinction",
+      "input_class": "distinction",
+      "turns": [
+        {
+          "turn_id": "distinction-1",
+          "utterance": "в чем разница между свобода и произвол?",
+          "expected_topic_id": "свобода",
+          "expected_move": "connect"
+        }
+      ]
+    },
+    {
+      "scenario_id": "grounding-request",
+      "input_class": "grounding_request",
+      "turns": [
+        {
+          "turn_id": "grounding-request-1",
+          "utterance": "обоснуй свободу",
+          "expected_topic_id": "свобода",
+          "expected_move": "ground"
+        }
+      ]
+    },
+    {
+      "scenario_id": "counterargument",
+      "input_class": "counterargument",
+      "turns": [
+        {
+          "turn_id": "counterargument-1",
+          "utterance": "я возражаю: свобода",
+          "expected_topic_id": "свобода",
+          "expected_move": "challenge"
+        }
+      ]
+    },
+    {
+      "scenario_id": "consequence",
+      "input_class": "consequence",
+      "turns": [
+        {
+          "turn_id": "consequence-1",
+          "utterance": "зачем нужна свобода?",
+          "expected_topic_id": "свобода",
+          "expected_move": "assert"
+        }
+      ]
+    },
+    {
+      "scenario_id": "topic-connection",
+      "input_class": "topic_connection",
+      "turns": [
+        {
+          "turn_id": "topic-connection-1",
+          "utterance": "как свобода связана с ответственностью?",
+          "expected_topic_id": "свобода",
+          "expected_move": "connect"
+        }
+      ]
+    },
+    {
+      "scenario_id": "reflection",
+      "input_class": "reflection",
+      "turns": [
+        {
+          "turn_id": "reflection-1",
+          "utterance": "поразмышляй о свободе",
+          "expected_topic_id": "свобода",
+          "expected_move": "reflect"
+        }
+      ]
+    },
+    {
+      "scenario_id": "clarification",
+      "input_class": "clarification",
+      "turns": [
+        {
+          "turn_id": "clarification-1",
+          "utterance": "уточни свободу",
+          "expected_topic_id": "свобода",
+          "expected_move": "ground"
+        }
+      ]
+    },
+    {
+      "scenario_id": "greeting",
+      "input_class": "greeting",
+      "turns": [
+        {
+          "turn_id": "greeting-1",
+          "utterance": "привет",
+          "expected_topic_id": "dialogue",
+          "expected_move": "contact"
+        }
+      ]
+    },
+    {
+      "scenario_id": "unknown-topic",
+      "input_class": "unknown_topic",
+      "privacy_needles": ["кванточайник"],
+      "turns": [
+        {
+          "turn_id": "unknown-topic-1",
+          "utterance": "что такое кванточайник?",
+          "expected_topic_id": "unresolved_topic",
+          "expected_move": "define"
+        }
+      ]
+    },
+    {
+      "scenario_id": "repeated-unknown-topic",
+      "input_class": "repeated_unknown_topic",
+      "privacy_needles": ["кванточайник"],
+      "turns": [
+        {
+          "turn_id": "repeated-unknown-topic-1",
+          "utterance": "что такое кванточайник?",
+          "expected_topic_id": "unresolved_topic",
+          "expected_move": "define"
+        },
+        {
+          "turn_id": "repeated-unknown-topic-2",
+          "utterance": "что такое кванточайник?",
+          "expected_topic_id": "known_topic",
+          "expected_move": "define"
+        }
+      ]
+    },
+    {
+      "scenario_id": "external-subject",
+      "input_class": "external_subject",
+      "privacy_needles": ["небо голубое"],
+      "turns": [
+        {
+          "turn_id": "external-subject-1",
+          "utterance": "почему небо голубое?",
+          "expected_topic_id": "external_subject",
+          "expected_move": "assert"
+        }
+      ]
+    },
+    {
+      "scenario_id": "guard-blocked",
+      "input_class": "guard_blocked",
+      "turns": [
+        {
+          "turn_id": "guard-blocked-1",
+          "utterance": "",
+          "expected_topic_id": "unresolved_topic",
+          "expected_move": "ground",
+          "expected_guard_blocked": true
+        }
+      ]
+    },
+    {
+      "scenario_id": "fallback-plan",
+      "input_class": "fallback_plan",
+      "privacy_needles": ["кванточайник"],
+      "turns": [
+        {
+          "turn_id": "fallback-plan-1",
+          "utterance": "расскажи о кванточайнике",
+          "expected_topic_id": "unresolved_topic",
+          "expected_move": "ground"
+        }
+      ]
+    }
+  ]
+}

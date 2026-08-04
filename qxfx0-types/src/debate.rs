@@ -53,6 +53,7 @@ pub enum ArgumentNodeKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ArgumentNode {
     pub id: String,
     pub kind: ArgumentNodeKind,
@@ -70,6 +71,7 @@ pub enum ArgumentEdgeKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ArgumentEdge {
     pub from: String,
     pub to: String,
@@ -86,6 +88,7 @@ pub enum PositionPolarity {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct LedgerEntry {
     pub sequence: u16,
     pub participant: DebateParticipant,
@@ -131,6 +134,7 @@ impl RubricScore {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RubricAssessment {
     pub dimension: RubricDimension,
     pub score: RubricScore,
@@ -138,6 +142,7 @@ pub struct RubricAssessment {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DebateObservationReceipt {
     pub version: u8,
     pub topic_id: String,

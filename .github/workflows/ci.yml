@@ -123,6 +123,12 @@ jobs:
             "$(jq -r .manifest_digest "$RUNNER_TEMP/topic-corpus-batch.json")" = \
             "$(jq -r .compiled_batch.manifest_digest docs/evidence/topic-corpus-framework-baseline-v1.json)"
 
+      - name: Validate Debate Core observation corpus
+        run: |
+          python3 -m unittest tools/test_debate_observation.py
+          python3 tools/debate_observation.py validate \
+            data/gates/debate-core/observation-corpus-v1.json
+
       - name: Export release metadata
         shell: bash
         run: |
