@@ -68,6 +68,13 @@ fn debate_core_trace_is_deterministic_and_preserves_output_and_state() {
     let mut baseline_state = test_state(session);
     let mut observed_state = baseline_state.clone();
     let baseline = process_turn_with_options(&input, &mut baseline_state, TurnOptions::new());
+    let mut default_state = test_state(session);
+    let (_, default_trace) =
+        process_turn_with_options_and_trace(&input, &mut default_state, TurnOptions::new());
+    assert!(
+        default_trace.debate_receipt.is_none(),
+        "debate core must stay off by default"
+    );
     let (observed, trace) = process_turn_with_options_and_trace(
         &input,
         &mut observed_state,

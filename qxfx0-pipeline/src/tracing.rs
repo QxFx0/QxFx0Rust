@@ -276,4 +276,44 @@ mod tests {
         let encoded = serde_json::to_value(PipelineTrace::new("default")).unwrap();
         assert!(encoded.get("debate_receipt").is_none());
     }
+
+    #[test]
+    fn debate_receipt_does_not_change_replay_signature() {
+        let mut trace = PipelineTrace::new("debate");
+        trace.record_step(
+            "plan_shadow",
+            "in".into(),
+            "out".into(),
+            std::time::Duration::ZERO,
+            BTreeMap::new(),
+        );
+        let expected = trace
+            .replay_signature()
+            .into_iter()
+            .map(|(stage, input, output)| (stage.to_owned(), input.to_owned(), output.to_owned()))
+            .collect::<Vec<_>>();
+        trace.set_debate_receipt(
+            qxfx0_types::DebateObservationReceipt::new(
+                "no_topic".into(),
+                qxfx0_types::DebateMove::Other,
+                vec![],
+                vec![],
+                vec![],
+                vec![],
+            )
+            .unwrap(),
+        );
+        assert_eq!(
+            trace
+                .replay_signature()
+                .into_iter()
+                .map(|(stage, input, output)| (
+                    stage.to_owned(),
+                    input.to_owned(),
+                    output.to_owned()
+                ))
+                .collect::<Vec<_>>(),
+            expected
+        );
+    }
 }

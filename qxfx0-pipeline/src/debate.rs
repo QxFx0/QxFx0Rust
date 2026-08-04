@@ -11,7 +11,7 @@ use qxfx0_types::{
 pub(crate) fn observe(planned: &PlannedTurnContext) -> Result<DebateObservationReceipt, String> {
     let route = planned.routed();
     let outcome = planned.shadow_plan();
-    let route_evidence = DebateEvidenceRef::RouteFamily(format!("{:?}", route.family()));
+    let route_evidence = DebateEvidenceRef::RouteFamily(route_family_label(route.family()).into());
     let outcome_evidence = DebateEvidenceRef::PlanOutcome(outcome.kind().as_str().into());
     let topic_id = outcome
         .ready()
@@ -189,6 +189,26 @@ fn node_kind(role: ClaimRole) -> ArgumentNodeKind {
     }
 }
 
+fn route_family_label(family: CanonicalMoveFamily) -> &'static str {
+    match family {
+        CanonicalMoveFamily::CMDefine => "cm_define",
+        CanonicalMoveFamily::CMDistinguish => "cm_distinguish",
+        CanonicalMoveFamily::CMGround => "cm_ground",
+        CanonicalMoveFamily::CMReflect => "cm_reflect",
+        CanonicalMoveFamily::CMDescribe => "cm_describe",
+        CanonicalMoveFamily::CMPurpose => "cm_purpose",
+        CanonicalMoveFamily::CMHypothesis => "cm_hypothesis",
+        CanonicalMoveFamily::CMRepair => "cm_repair",
+        CanonicalMoveFamily::CMContact => "cm_contact",
+        CanonicalMoveFamily::CMConnect => "cm_connect",
+        CanonicalMoveFamily::CMConfront => "cm_confront",
+        CanonicalMoveFamily::CMDeepen => "cm_deepen",
+        CanonicalMoveFamily::CMNextStep => "cm_next_step",
+        CanonicalMoveFamily::CMClarify => "cm_clarify",
+        CanonicalMoveFamily::CMAnchor => "cm_anchor",
+    }
+}
+
 fn debate_move(
     mode: PropositionMode,
     family: CanonicalMoveFamily,
@@ -210,5 +230,34 @@ fn debate_move(
         CanonicalMoveFamily::CMDescribe
         | CanonicalMoveFamily::CMPurpose
         | CanonicalMoveFamily::CMHypothesis => DebateMove::Assert,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn route_family_evidence_labels_are_explicit_and_stable() {
+        let cases = [
+            (CanonicalMoveFamily::CMDefine, "cm_define"),
+            (CanonicalMoveFamily::CMDistinguish, "cm_distinguish"),
+            (CanonicalMoveFamily::CMGround, "cm_ground"),
+            (CanonicalMoveFamily::CMReflect, "cm_reflect"),
+            (CanonicalMoveFamily::CMDescribe, "cm_describe"),
+            (CanonicalMoveFamily::CMPurpose, "cm_purpose"),
+            (CanonicalMoveFamily::CMHypothesis, "cm_hypothesis"),
+            (CanonicalMoveFamily::CMRepair, "cm_repair"),
+            (CanonicalMoveFamily::CMContact, "cm_contact"),
+            (CanonicalMoveFamily::CMConnect, "cm_connect"),
+            (CanonicalMoveFamily::CMConfront, "cm_confront"),
+            (CanonicalMoveFamily::CMDeepen, "cm_deepen"),
+            (CanonicalMoveFamily::CMNextStep, "cm_next_step"),
+            (CanonicalMoveFamily::CMClarify, "cm_clarify"),
+            (CanonicalMoveFamily::CMAnchor, "cm_anchor"),
+        ];
+        for (family, expected) in cases {
+            assert_eq!(route_family_label(family), expected);
+        }
     }
 }

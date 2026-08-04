@@ -81,11 +81,15 @@ fn debate_core_cli_writes_private_deterministic_trace_without_changing_a_turn() 
     let standard_db = base.join(format!("qxfx0-debate-cli-{pid}-standard.db"));
     let observed_db = base.join(format!("qxfx0-debate-cli-{pid}-observed.db"));
     let rejected_db = base.join(format!("qxfx0-debate-cli-{pid}-rejected.db"));
+    let conflict_db = base.join(format!("qxfx0-debate-cli-{pid}-conflict.db"));
     let trace = base.join(format!("qxfx0-debate-cli-{pid}.jsonl"));
+    let conflict_trace = base.join(format!("qxfx0-debate-cli-{pid}-conflict.jsonl"));
     cleanup(&standard_db);
     cleanup(&observed_db);
     cleanup(&rejected_db);
+    cleanup(&conflict_db);
     let _ = std::fs::remove_file(&trace);
+    let _ = std::fs::remove_file(&conflict_trace);
 
     let session = "debate-cli-session";
     let text = "что такое свобода?";
@@ -175,6 +179,7 @@ fn debate_core_cli_writes_private_deterministic_trace_without_changing_a_turn() 
         .expect("spawn repeated unknown-topic debate core turn");
     assert!(repeated_unknown.status.success());
     let repeated_encoded = std::fs::read_to_string(&repeated_unknown_trace).unwrap();
+    // Dialogue state may advance; this second turn verifies that redaction remains intact.
     assert!(!repeated_encoded.contains(unknown_text));
     assert!(!repeated_encoded.contains("кванточайник"));
     assert!(!repeated_encoded.contains("debate-cli-unknown"));
@@ -195,11 +200,30 @@ fn debate_core_cli_writes_private_deterministic_trace_without_changing_a_turn() 
     assert!(!rejected.status.success());
     assert!(!rejected_db.exists());
 
+    let conflict = Command::new(binary)
+        .args([
+            "--db",
+            conflict_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--debate-core-trace-jsonl",
+            conflict_trace.to_str().unwrap(),
+            "--record-stance-provenance",
+        ])
+        .output()
+        .expect("spawn conflicting debate core turn");
+    assert!(!conflict.status.success());
+    assert!(!conflict_db.exists());
+
     cleanup(&standard_db);
     cleanup(&observed_db);
     cleanup(&rejected_db);
+    cleanup(&conflict_db);
     cleanup(&unknown_db);
     let _ = std::fs::remove_file(&trace);
+    let _ = std::fs::remove_file(&conflict_trace);
     let _ = std::fs::remove_file(&unknown_trace);
     let _ = std::fs::remove_file(&repeated_unknown_trace);
 }

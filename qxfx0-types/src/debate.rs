@@ -15,6 +15,8 @@ const MAX_ID_BYTES: usize = 256;
 const MAX_NODES: usize = 16;
 const MAX_EDGES: usize = 32;
 const MAX_LEDGER_ENTRIES: usize = 16;
+const MAX_RUBRIC_ENTRIES: usize = 4;
+const MAX_EVIDENCE_PER_ASSESSMENT: usize = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -193,6 +195,9 @@ impl DebateObservationReceipt {
         if self.ledger.len() > MAX_LEDGER_ENTRIES {
             return Err(DebateValidationError::BoundExceeded("ledger"));
         }
+        if self.rubric.len() > MAX_RUBRIC_ENTRIES {
+            return Err(DebateValidationError::BoundExceeded("rubric"));
+        }
         let mut node_ids = BTreeSet::new();
         for node in &self.nodes {
             validate_id("node.id", &node.id)?;
@@ -215,6 +220,9 @@ impl DebateObservationReceipt {
         }
         let mut dimensions = BTreeSet::new();
         for assessment in &self.rubric {
+            if assessment.evidence.len() > MAX_EVIDENCE_PER_ASSESSMENT {
+                return Err(DebateValidationError::BoundExceeded("rubric.evidence"));
+            }
             if assessment.score.basis_points() > RubricScore::MAX_BASIS_POINTS {
                 return Err(DebateValidationError::RubricScoreOutOfRange(
                     assessment.score.basis_points(),
@@ -416,6 +424,27 @@ mod tests {
         assert_eq!(
             malformed.validate(),
             Err(DebateValidationError::RubricScoreOutOfRange(10_001))
+        );
+    }
+
+    #[test]
+    fn bounds_rubric_and_typed_evidence_after_deserialization() {
+        let assessment = receipt().rubric[0].clone();
+        let mut value = serde_json::to_value(receipt()).unwrap();
+        value["rubric"] = serde_json::to_value(vec![assessment.clone(); 5]).unwrap();
+        let oversized_rubric: DebateObservationReceipt = serde_json::from_value(value).unwrap();
+        assert_eq!(
+            oversized_rubric.validate(),
+            Err(DebateValidationError::BoundExceeded("rubric"))
+        );
+
+        let mut value = serde_json::to_value(receipt()).unwrap();
+        value["rubric"][0]["evidence"] =
+            serde_json::to_value(vec![DebateEvidenceRef::PlanOutcome("ready".into()); 33]).unwrap();
+        let oversized_evidence: DebateObservationReceipt = serde_json::from_value(value).unwrap();
+        assert_eq!(
+            oversized_evidence.validate(),
+            Err(DebateValidationError::BoundExceeded("rubric.evidence"))
         );
     }
 }

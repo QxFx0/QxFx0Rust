@@ -259,8 +259,12 @@ fn main() -> anyhow::Result<()> {
                     &text,
                     renderer_authority,
                 )?;
-                write_debate_core_trace_jsonl(&mut sink, &traced.trace)?;
                 println!("{}", traced.response);
+                if traced.trace.debate_receipt.is_none() {
+                    warn!("debate core observation unavailable; turn completed without a receipt");
+                    return Ok(());
+                }
+                write_debate_core_trace_jsonl(&mut sink, &traced.trace)?;
                 return Ok(());
             }
             if let Some(path) = response_plan_v2_shadow_trace_jsonl {

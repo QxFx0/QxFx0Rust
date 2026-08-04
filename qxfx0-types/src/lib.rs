@@ -27,8 +27,8 @@ pub use atom::{
 pub use cognitive::{DoubtDriver, DoubtInput, DoubtRoute, DoubtScore, EpisodicEvent, EpisodicKind};
 pub use debate::{
     ArgumentEdge, ArgumentEdgeKind, ArgumentNode, ArgumentNodeKind, DebateEvidenceRef, DebateMove,
-    DebateObservationReceipt, DebateParticipant, LedgerEntry, PositionPolarity, RubricAssessment,
-    RubricDimension, RubricScore, DEBATE_OBSERVATION_VERSION,
+    DebateObservationReceipt, DebateParticipant, DebateValidationError, LedgerEntry,
+    PositionPolarity, RubricAssessment, RubricDimension, RubricScore, DEBATE_OBSERVATION_VERSION,
 };
 pub use fact::{FactId, FactIdError};
 pub use field::{derive_field_confidence, Atmosphere, Field, FieldProfile, NarrativeTone};
