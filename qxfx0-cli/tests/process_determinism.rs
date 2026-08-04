@@ -74,6 +74,137 @@ fn fresh_process_replay_is_deterministic() {
 }
 
 #[test]
+fn debate_core_cli_writes_private_deterministic_trace_without_changing_a_turn() {
+    let binary = env!("CARGO_BIN_EXE_qxfx0");
+    let base = std::env::temp_dir();
+    let pid = std::process::id();
+    let standard_db = base.join(format!("qxfx0-debate-cli-{pid}-standard.db"));
+    let observed_db = base.join(format!("qxfx0-debate-cli-{pid}-observed.db"));
+    let rejected_db = base.join(format!("qxfx0-debate-cli-{pid}-rejected.db"));
+    let trace = base.join(format!("qxfx0-debate-cli-{pid}.jsonl"));
+    cleanup(&standard_db);
+    cleanup(&observed_db);
+    cleanup(&rejected_db);
+    let _ = std::fs::remove_file(&trace);
+
+    let session = "debate-cli-session";
+    let text = "что такое свобода?";
+    let standard = run_turn(binary, &standard_db, session, text);
+    let observed = Command::new(binary)
+        .args([
+            "--db",
+            observed_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--debate-core-trace-jsonl",
+            trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn debate core turn");
+    assert!(standard.status.success());
+    assert!(
+        observed.status.success(),
+        "debate core command failed: {}",
+        String::from_utf8_lossy(&observed.stderr)
+    );
+    assert_eq!(standard.stdout, observed.stdout);
+    let standard_state = qxfx0_persistence::Persistence::open(standard_db.to_str().unwrap())
+        .unwrap()
+        .load_state(session)
+        .unwrap()
+        .unwrap();
+    let observed_state = qxfx0_persistence::Persistence::open(observed_db.to_str().unwrap())
+        .unwrap()
+        .load_state(session)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&standard_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&observed_state).unwrap()
+    );
+
+    let encoded = std::fs::read_to_string(&trace).unwrap();
+    assert!(!encoded.contains(text));
+    assert!(!encoded.contains(String::from_utf8_lossy(&observed.stdout).trim()));
+    let value: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(value["schema"], "qxfx0.debate-core-trace.v1");
+    assert_eq!(value["receipt"]["topic_id"], "свобода");
+    assert_eq!(value["receipt"]["move_type"], "define");
+    assert!(value.get("trace").is_none());
+
+    let unknown_trace = base.join(format!("qxfx0-debate-cli-{pid}-unknown.jsonl"));
+    let repeated_unknown_trace =
+        base.join(format!("qxfx0-debate-cli-{pid}-unknown-repeated.jsonl"));
+    let unknown_db = base.join(format!("qxfx0-debate-cli-{pid}-unknown.db"));
+    cleanup(&unknown_db);
+    let _ = std::fs::remove_file(&unknown_trace);
+    let _ = std::fs::remove_file(&repeated_unknown_trace);
+    let unknown_text = "что такое кванточайник?";
+    let unknown = Command::new(binary)
+        .args([
+            "--db",
+            unknown_db.to_str().unwrap(),
+            "--session-id",
+            "debate-cli-unknown",
+            "turn",
+            unknown_text,
+            "--debate-core-trace-jsonl",
+            unknown_trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn unknown-topic debate core turn");
+    assert!(unknown.status.success());
+    let unknown_encoded = std::fs::read_to_string(&unknown_trace).unwrap();
+    assert!(!unknown_encoded.contains(unknown_text));
+    assert!(!unknown_encoded.contains("кванточайник"));
+    assert!(!unknown_encoded.contains("debate-cli-unknown"));
+    let repeated_unknown = Command::new(binary)
+        .args([
+            "--db",
+            unknown_db.to_str().unwrap(),
+            "--session-id",
+            "debate-cli-unknown",
+            "turn",
+            unknown_text,
+            "--debate-core-trace-jsonl",
+            repeated_unknown_trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn repeated unknown-topic debate core turn");
+    assert!(repeated_unknown.status.success());
+    let repeated_encoded = std::fs::read_to_string(&repeated_unknown_trace).unwrap();
+    assert!(!repeated_encoded.contains(unknown_text));
+    assert!(!repeated_encoded.contains("кванточайник"));
+    assert!(!repeated_encoded.contains("debate-cli-unknown"));
+
+    let rejected = Command::new(binary)
+        .args([
+            "--db",
+            rejected_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--debate-core-trace-jsonl",
+            trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn rejected debate core turn");
+    assert!(!rejected.status.success());
+    assert!(!rejected_db.exists());
+
+    cleanup(&standard_db);
+    cleanup(&observed_db);
+    cleanup(&rejected_db);
+    cleanup(&unknown_db);
+    let _ = std::fs::remove_file(&trace);
+    let _ = std::fs::remove_file(&unknown_trace);
+    let _ = std::fs::remove_file(&repeated_unknown_trace);
+}
+
+#[test]
 fn doubt_shadow_cli_writes_external_trace_without_changing_a_turn() {
     let binary = env!("CARGO_BIN_EXE_qxfx0");
     let base = std::env::temp_dir();

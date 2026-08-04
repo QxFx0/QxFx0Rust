@@ -1,6 +1,7 @@
 pub mod anomaly;
 pub mod atom;
 pub mod cognitive;
+pub mod debate;
 pub mod fact;
 pub mod field;
 pub mod frame;
@@ -24,6 +25,11 @@ pub use atom::{
     RelationSource, SenseField, SenseVector,
 };
 pub use cognitive::{DoubtDriver, DoubtInput, DoubtRoute, DoubtScore, EpisodicEvent, EpisodicKind};
+pub use debate::{
+    ArgumentEdge, ArgumentEdgeKind, ArgumentNode, ArgumentNodeKind, DebateEvidenceRef, DebateMove,
+    DebateObservationReceipt, DebateParticipant, LedgerEntry, PositionPolarity, RubricAssessment,
+    RubricDimension, RubricScore, DEBATE_OBSERVATION_VERSION,
+};
 pub use fact::{FactId, FactIdError};
 pub use field::{derive_field_confidence, Atmosphere, Field, FieldProfile, NarrativeTone};
 pub use frame::SemanticFrame;

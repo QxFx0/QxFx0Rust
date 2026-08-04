@@ -25,6 +25,9 @@ pub struct PipelineTrace {
     pub steps: Vec<TraceStep>,
     /// Optional authority evidence kept outside persisted session state.
     pub authority_receipt: Option<serde_json::Value>,
+    /// Optional Debate Core evidence. It is excluded from state and replay steps.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debate_receipt: Option<qxfx0_types::DebateObservationReceipt>,
     /// Final authority/guard boundary result, including turns denied before a
     /// receipt could be created.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -49,6 +52,7 @@ impl PipelineTrace {
             request_id: request_id.to_string(),
             steps: Vec::new(),
             authority_receipt: None,
+            debate_receipt: None,
             authority_guard_classification: None,
             authority_case_id: None,
             authority_input_class: None,
@@ -84,6 +88,10 @@ impl PipelineTrace {
         self.authority_receipt =
             Some(serde_json::to_value(receipt).map_err(|error| error.to_string())?);
         Ok(())
+    }
+
+    pub fn set_debate_receipt(&mut self, receipt: qxfx0_types::DebateObservationReceipt) {
+        self.debate_receipt = Some(receipt);
     }
 
     pub fn set_authority_guard_classification(&mut self, classification: &str) {
@@ -261,5 +269,11 @@ mod tests {
                 .collect::<Vec<_>>(),
             expected
         );
+    }
+
+    #[test]
+    fn default_trace_schema_omits_debate_receipt() {
+        let encoded = serde_json::to_value(PipelineTrace::new("default")).unwrap();
+        assert!(encoded.get("debate_receipt").is_none());
     }
 }
