@@ -97,6 +97,32 @@ jobs:
       - name: Run behavioral authority matrix
         run: bash scripts/response-plan-v2-behavioral-canary.sh target/release/qxfx0 "$RUNNER_TEMP/qxfx0-v2-behavioral"
 
+      - name: Validate topic corpus expansion framework
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest tools/test_topic_corpus_pipeline.py
+          python3 tools/topic_corpus_pipeline.py inventory --output "$RUNNER_TEMP/topic-maturity.json"
+          python3 tools/topic_corpus_pipeline.py compile \
+            data/corpus-batches/2026-08-audited-clusters-v1.json \
+            --output "$RUNNER_TEMP/topic-corpus-batch.json"
+          jq -e '
+            .schema == "qxfx0.topic-corpus-compiled.v1" and
+            .status == "proposal_only" and
+            .authority_change == "none" and
+            .topics_total == 10 and .claims_total == 25
+          ' "$RUNNER_TEMP/topic-corpus-batch.json" >/dev/null
+          jq -e '
+            .totals.recognized == 107 and
+            .totals.grounded == 30 and
+            .totals.audited == 30 and
+            .totals.canary == 6 and
+            .totals.production_stable == 6
+          ' "$RUNNER_TEMP/topic-maturity.json" >/dev/null
+          test \
+            "$(jq -r .manifest_digest "$RUNNER_TEMP/topic-corpus-batch.json")" = \
+            "$(jq -r .compiled_batch.manifest_digest docs/evidence/topic-corpus-framework-baseline-v1.json)"
+
       - name: Export release metadata
         shell: bash
         run: |

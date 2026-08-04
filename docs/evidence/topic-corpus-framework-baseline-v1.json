@@ -1,0 +1,35 @@
+{
+  "schema": "qxfx0.topic-corpus-framework-baseline.v1",
+  "build_sha": "47c56134a0879ca150a577106ab2c1075ede8e6a",
+  "production_default": "V1",
+  "canary_allowlist_changed": false,
+  "maturity_totals": {
+    "recognized": 107,
+    "grounded": 30,
+    "audited": 30,
+    "canary": 6,
+    "production_stable": 6
+  },
+  "compiled_batch": {
+    "batch_id": "audited-clusters-2026-08-v1",
+    "topics": 10,
+    "claims": 25,
+    "manifest_digest": "53a9d8ad9cdbda0e3226d855490ec48d5710bc46c106d39b177af8c4a7c74a01",
+    "authority_change": "none"
+  },
+  "operational_smoke": {
+    "formulations_manifest_sha256": "bc67db8bcf2b7d2998247c5798ca74a1a1d554129d0fc4a7de0c6387484b5885",
+    "positive_cases": 12,
+    "negative_cases": 4,
+    "realization_downgrades": 0,
+    "replay_failures": 0,
+    "expectation_failures": 0,
+    "unexpected_denials": 0,
+    "unexpected_rollbacks": 0,
+    "positive_report_sha256": "21d1beba1b7acd09ef7c843e94d3aff05f552846b0e6a31873e1554b067b23aa",
+    "negative_report_sha256": "2118a92571dc20decc49b682d5a02a567c68b2df1f2846a16347a9d9fe121e9e",
+    "raw_user_logs": false
+  },
+  "further_allowlist_expansion_authorized": false,
+  "global_v2_promotion_authorized": false
+}

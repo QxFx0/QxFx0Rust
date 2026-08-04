@@ -6,3 +6,5 @@
 *.log
 .forge/
 .agent2048/
+__pycache__/
+*.pyc

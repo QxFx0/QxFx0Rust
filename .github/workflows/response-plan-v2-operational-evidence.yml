@@ -1,0 +1,35 @@
+name: ResponsePlan V2 Operational Evidence
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    name: Six-topic operational evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.93.1
+
+      - name: Build release binary
+        run: cargo build --workspace --release
+
+      - name: Run reviewed formulations
+        run: bash scripts/response-plan-v2-operational-evidence.sh target/release/qxfx0 "$RUNNER_TEMP/qxfx0-operational-evidence"
+
+      - name: Upload operational evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: response-plan-v2-operational-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/qxfx0-operational-evidence
+          if-no-files-found: error
+          retention-days: 90
