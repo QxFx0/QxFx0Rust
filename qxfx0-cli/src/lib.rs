@@ -252,6 +252,43 @@ struct DebateCoreTraceRecord<'a> {
     receipt: &'a qxfx0_types::DebateObservationReceipt,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedDebateCoreTraceRecord {
+    schema: String,
+    receipt: qxfx0_types::DebateObservationReceipt,
+}
+
+/// Verify one receipt-only Debate Core artifact and return its validated receipt.
+pub fn verify_debate_core_trace(
+    path: impl AsRef<Path>,
+) -> anyhow::Result<qxfx0_types::DebateObservationReceipt> {
+    const MAX_TRACE_BYTES: u64 = 1_048_576;
+    let path = path.as_ref();
+    let metadata = std::fs::metadata(path)?;
+    if metadata.len() > MAX_TRACE_BYTES {
+        anyhow::bail!("debate core trace exceeds {MAX_TRACE_BYTES} bytes");
+    }
+    let source = std::fs::read_to_string(path)?;
+    let mut records = source.lines().filter(|line| !line.trim().is_empty());
+    let line = records
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("debate core trace contains no records"))?;
+    if records.next().is_some() {
+        anyhow::bail!("debate core trace must contain exactly one record");
+    }
+    let record: OwnedDebateCoreTraceRecord = serde_json::from_str(line)
+        .map_err(|error| anyhow::anyhow!("invalid debate core trace: {error}"))?;
+    if record.schema != "qxfx0.debate-core-trace.v1" {
+        anyhow::bail!("unsupported debate core trace schema '{}'", record.schema);
+    }
+    record
+        .receipt
+        .validate()
+        .map_err(|error| anyhow::anyhow!("invalid debate core receipt: {error}"))?;
+    Ok(record.receipt)
+}
+
 #[derive(Debug, Serialize)]
 struct TraceRecord<'a> {
     schema: &'a str,
@@ -1405,6 +1442,58 @@ mod tests {
             "qxfx0-authority-{label}-{}.jsonl",
             std::process::id()
         ))
+    }
+
+    fn debate_trace_path(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("qxfx0-debate-{label}-{}.jsonl", std::process::id()))
+    }
+
+    #[test]
+    fn debate_trace_verification_is_strict_and_tamper_evident() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open memory db");
+        let traced = run_turn_with_debate_core_trace(
+            &db,
+            "debate-verification",
+            "что такое свобода?",
+            RendererAuthority::LegacyShadow,
+        )
+        .expect("debate turn");
+        let path = debate_trace_path("verification");
+        let _ = std::fs::remove_file(&path);
+        let mut sink = create_debate_core_trace_sink(&path).expect("new debate sink");
+        write_debate_core_trace_jsonl(&mut sink, &traced.trace).expect("write debate trace");
+        drop(sink);
+        let receipt = verify_debate_core_trace(&path).expect("valid trace verifies");
+        assert_eq!(receipt.topic_id, "свобода");
+
+        let original = std::fs::read_to_string(&path).unwrap();
+        let mut tampered: serde_json::Value = serde_json::from_str(&original).unwrap();
+        tampered["receipt"]["topic_id"] = serde_json::json!("произвол");
+        std::fs::write(
+            &path,
+            format!("{}\n", serde_json::to_string(&tampered).unwrap()),
+        )
+        .unwrap();
+        assert!(verify_debate_core_trace(&path).is_err());
+
+        let mut extended: serde_json::Value = serde_json::from_str(&original).unwrap();
+        extended["receipt"]["raw_input"] = serde_json::json!("hidden");
+        std::fs::write(
+            &path,
+            format!("{}\n", serde_json::to_string(&extended).unwrap()),
+        )
+        .unwrap();
+        assert!(verify_debate_core_trace(&path).is_err());
+
+        let mut nested: serde_json::Value = serde_json::from_str(&original).unwrap();
+        nested["receipt"]["nodes"][0]["raw_text"] = serde_json::json!("hidden");
+        std::fs::write(
+            &path,
+            format!("{}\n", serde_json::to_string(&nested).unwrap()),
+        )
+        .unwrap();
+        assert!(verify_debate_core_trace(&path).is_err());
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]
