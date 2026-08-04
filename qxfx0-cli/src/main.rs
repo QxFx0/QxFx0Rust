@@ -2,9 +2,10 @@ use clap::{Parser, Subcommand, ValueEnum};
 use qxfx0_cli::measurement::{run_renderer_diversity_audit, run_runtime_benchmark};
 use qxfx0_cli::{
     append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
-    create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
-    create_response_plan_v2_shadow_trace_sink, load_or_create_state, run_doctor,
-    run_operational_metrics, run_turn_with_renderer, run_turn_with_renderer_and_stance_provenance,
+    create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_debate_core_trace_sink,
+    create_doubt_shadow_trace_sink, create_response_plan_v2_shadow_trace_sink,
+    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_debate_core_trace,
+    run_turn_with_renderer, run_turn_with_renderer_and_stance_provenance,
     run_turn_with_renderer_anomaly_shadow_trace, run_turn_with_renderer_cognitive_pilot,
     run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
@@ -12,8 +13,9 @@ use qxfx0_cli::{
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
     run_turn_with_renderer_doubt_shadow_trace, run_turn_with_v2_shadow_trace,
     verify_authority_trace, write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
-    write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl,
-    write_response_plan_v2_shadow_trace_jsonl, AuthorityReportScope, DiagnosedTurn,
+    write_cognitive_pilot_trace_jsonl, write_debate_core_trace_jsonl,
+    write_doubt_shadow_trace_jsonl, write_response_plan_v2_shadow_trace_jsonl,
+    AuthorityReportScope, DiagnosedTurn,
 };
 use qxfx0_pipeline::{
     process_turn_with_renderer, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
@@ -93,6 +95,9 @@ enum Commands {
             value_name = "PATH"
         )]
         response_plan_v2_shadow_trace_jsonl: Option<PathBuf>,
+        /// Write deterministic observation-only argument evidence to a new JSONL file.
+        #[arg(long, value_name = "PATH")]
+        debate_core_trace_jsonl: Option<PathBuf>,
         /// Default-off typed provenance recording; it never enables recovery.
         #[arg(long)]
         record_stance_provenance: bool,
@@ -227,11 +232,41 @@ fn main() -> anyhow::Result<()> {
             authority_expected_result,
             authority_expected_guard,
             response_plan_v2_shadow_trace_jsonl,
+            debate_core_trace_jsonl,
             record_stance_provenance,
             enable_clarification,
             enable_same_topic_suppression,
         } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
+            if let Some(path) = debate_core_trace_jsonl {
+                if diagnostics_jsonl.is_some()
+                    || doubt_shadow_trace_jsonl.is_some()
+                    || anomaly_shadow_trace_jsonl.is_some()
+                    || cognitive_pilot_trace_jsonl.is_some()
+                    || response_plan_v2_authority
+                    || response_plan_v2_shadow_trace_jsonl.is_some()
+                    || record_stance_provenance
+                    || enable_clarification
+                    || enable_same_topic_suppression
+                {
+                    anyhow::bail!("debate core evidence requires a standalone turn");
+                }
+                let mut sink = create_debate_core_trace_sink(&path)?;
+                let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+                let traced = run_turn_with_debate_core_trace(
+                    &db,
+                    &cli.session_id,
+                    &text,
+                    renderer_authority,
+                )?;
+                println!("{}", traced.response);
+                if traced.trace.debate_receipt.is_none() {
+                    warn!("debate core observation unavailable; turn completed without a receipt");
+                    return Ok(());
+                }
+                write_debate_core_trace_jsonl(&mut sink, &traced.trace)?;
+                return Ok(());
+            }
             if let Some(path) = response_plan_v2_shadow_trace_jsonl {
                 if diagnostics_jsonl.is_some()
                     || doubt_shadow_trace_jsonl.is_some()

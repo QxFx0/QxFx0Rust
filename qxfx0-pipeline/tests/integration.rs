@@ -7,9 +7,9 @@ use qxfx0_pipeline::{
     process_turn_with_trace_and_renderer_and_features,
     process_turn_with_trace_and_renderer_and_features_and_suppression,
     response_plan_v2_canary_allowlist, response_plan_v2_canary_digest,
-    response_plan_v2_state_parity, AnomalyShadowMode, ClarificationMode, DoubtShadowMode,
-    RendererAuthority, ResponsePlanV2Authority, ResponsePlanV2Mode, SameTopicSuppressionMode,
-    TurnInput, TurnOptions,
+    response_plan_v2_state_parity, AnomalyShadowMode, ClarificationMode, DebateCoreMode,
+    DoubtShadowMode, RendererAuthority, ResponsePlanV2Authority, ResponsePlanV2Mode,
+    SameTopicSuppressionMode, TurnInput, TurnOptions,
 };
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
@@ -56,6 +56,67 @@ fn test_replay_determinism_5_turns() {
     for (i, (a, b)) in outputs1.iter().zip(outputs2.iter()).enumerate() {
         assert_eq!(a, b, "turn {} response differs between runs", i);
     }
+}
+
+#[test]
+fn debate_core_trace_is_deterministic_and_preserves_output_and_state() {
+    let session = "debate-core-parity";
+    let input = TurnInput {
+        session_id: session.into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let mut baseline_state = test_state(session);
+    let mut observed_state = baseline_state.clone();
+    let baseline = process_turn_with_options(&input, &mut baseline_state, TurnOptions::new());
+    let mut default_state = test_state(session);
+    let (_, default_trace) =
+        process_turn_with_options_and_trace(&input, &mut default_state, TurnOptions::new());
+    assert!(
+        default_trace.debate_receipt.is_none(),
+        "debate core must stay off by default"
+    );
+    let (observed, trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut observed_state,
+        TurnOptions::new().with_debate_core(DebateCoreMode::TraceOnly),
+    );
+
+    assert_eq!(baseline.response, observed.response);
+    assert_eq!(baseline.blocked, observed.blocked);
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&baseline_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&observed_state).unwrap()
+    );
+    let receipt = trace
+        .debate_receipt
+        .expect("trace-only mode must emit a receipt");
+    receipt.validate().unwrap();
+    assert_eq!(receipt.topic_id, "свобода");
+    assert_eq!(receipt.nodes.len(), 3);
+    assert_eq!(receipt.edges.len(), 2);
+    let thesis = receipt
+        .nodes
+        .iter()
+        .find(|node| node.kind == qxfx0_types::ArgumentNodeKind::Thesis)
+        .unwrap();
+    let consequence = receipt
+        .nodes
+        .iter()
+        .find(|node| node.kind == qxfx0_types::ArgumentNodeKind::Consequence)
+        .unwrap();
+    assert!(receipt.edges.iter().any(|edge| {
+        edge.kind == qxfx0_types::ArgumentEdgeKind::Entails
+            && edge.from == thesis.id
+            && edge.to == consequence.id
+    }));
+
+    let mut replay_state = test_state(session);
+    let (_, replay_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut replay_state,
+        TurnOptions::new().with_debate_core(DebateCoreMode::TraceOnly),
+    );
+    assert_eq!(receipt.digest, replay_trace.debate_receipt.unwrap().digest);
 }
 
 #[test]
