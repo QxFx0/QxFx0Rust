@@ -1,0 +1,76 @@
+{
+  "schema": "qxfx0.debate-core-observation-completion.v1",
+  "window_id": "debate-core-v1-observation-2026-08",
+  "status": "completed",
+  "completed_at": "2026-08-04T18:22:20Z",
+  "exact_build_sha": "c014a1cfd8aa93f26ffe2eb1e91adffcc59833da",
+  "workflow": {
+    "name": "Debate Core Observation",
+    "run_id": 30938119122,
+    "job_id": 92089306926,
+    "conclusion": "success"
+  },
+  "artifact": {
+    "id": 8904024099,
+    "name": "debate-core-observation-c014a1cfd8aa93f26ffe2eb1e91adffcc59833da-30938119122",
+    "sha256": "fc3c8d6f302eed4fb25aa473c6600ed7713334c6b031c358d20410ea1dbede04",
+    "size_bytes": 13411,
+    "retention_days": 90,
+    "expires_at": "2026-11-02T18:20:04Z"
+  },
+  "manifest_digest": "474a565414898ff0f62ed1ae81424b6108a2f0b89641bde833750c925dad56dc",
+  "evidence_digest": "cf4b3f83fc3557c1d53f7cb6b13b821726a6f6f39833ef94cfcfbf960514ccd4",
+  "scenarios_total": 16,
+  "turns_total": 17,
+  "receipts_generated": 17,
+  "receipt_generation_rate_basis_points": 10000,
+  "validation_failures": 0,
+  "replay_failures": 0,
+  "privacy_violations": 0,
+  "output_parity_violations": 0,
+  "state_parity_violations": 0,
+  "digest_mismatches": 0,
+  "invalid_graph_references": 0,
+  "move_distribution": {
+    "assert": 2,
+    "challenge": 2,
+    "connect": 2,
+    "contact": 1,
+    "define": 4,
+    "ground": 5,
+    "reflect": 1
+  },
+  "graph_shape_distribution": {
+    "nodes_0_edges_0": 5,
+    "nodes_1_edges_0": 2,
+    "nodes_3_edges_2": 10
+  },
+  "rubric_score_distribution": {
+    "claim_clarity": {
+      "0": 5,
+      "10000": 12
+    },
+    "consequence_coverage": {
+      "0": 7,
+      "10000": 10
+    },
+    "counterargument_coverage": {
+      "0": 7,
+      "10000": 10
+    },
+    "evidence_grounding": {
+      "0": 7,
+      "10000": 10
+    }
+  },
+  "artifact_privacy_scan": {
+    "raw_prompts_found": 0,
+    "rendered_responses_found": 0,
+    "session_markers_found": 0,
+    "unknown_topic_labels_found": 0,
+    "sqlite_payloads_found": 0
+  },
+  "authority_change": "none",
+  "persistence_change": "none",
+  "promotion_decision": "none"
+}
