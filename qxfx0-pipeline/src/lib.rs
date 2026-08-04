@@ -1557,7 +1557,11 @@ fn process_turn_internal(
     if debate_core == DebateCoreMode::TraceOnly {
         if let Some(trace) = trace.as_deref_mut() {
             match debate::observe(&planned) {
-                Ok(receipt) => trace.set_debate_receipt(receipt),
+                Ok(receipt) => {
+                    if let Err(error) = trace.set_debate_receipt(receipt) {
+                        tracing::warn!("debate observation skipped: {error}");
+                    }
+                }
                 Err(error) => tracing::warn!("debate observation skipped: {error}"),
             }
         }

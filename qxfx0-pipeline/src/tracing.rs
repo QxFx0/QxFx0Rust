@@ -90,8 +90,13 @@ impl PipelineTrace {
         Ok(())
     }
 
-    pub fn set_debate_receipt(&mut self, receipt: qxfx0_types::DebateObservationReceipt) {
+    pub fn set_debate_receipt(
+        &mut self,
+        receipt: qxfx0_types::DebateObservationReceipt,
+    ) -> Result<(), qxfx0_types::DebateValidationError> {
+        receipt.validate()?;
         self.debate_receipt = Some(receipt);
+        Ok(())
     }
 
     pub fn set_authority_guard_classification(&mut self, classification: &str) {
@@ -292,17 +297,19 @@ mod tests {
             .into_iter()
             .map(|(stage, input, output)| (stage.to_owned(), input.to_owned(), output.to_owned()))
             .collect::<Vec<_>>();
-        trace.set_debate_receipt(
-            qxfx0_types::DebateObservationReceipt::new(
-                "no_topic".into(),
-                qxfx0_types::DebateMove::Other,
-                vec![],
-                vec![],
-                vec![],
-                vec![],
+        trace
+            .set_debate_receipt(
+                qxfx0_types::DebateObservationReceipt::new(
+                    "no_topic".into(),
+                    qxfx0_types::DebateMove::Other,
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                )
+                .unwrap(),
             )
-            .unwrap(),
-        );
+            .unwrap();
         assert_eq!(
             trace
                 .replay_signature()
@@ -315,5 +322,25 @@ mod tests {
                 .collect::<Vec<_>>(),
             expected
         );
+    }
+
+    #[test]
+    fn debate_receipt_setter_rejects_mutated_receipts() {
+        let mut receipt = qxfx0_types::DebateObservationReceipt::new(
+            "no_topic".into(),
+            qxfx0_types::DebateMove::Other,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        )
+        .unwrap();
+        receipt.topic_id = "tampered".into();
+        let mut trace = PipelineTrace::new("debate");
+        assert_eq!(
+            trace.set_debate_receipt(receipt),
+            Err(qxfx0_types::DebateValidationError::DigestMismatch)
+        );
+        assert!(trace.debate_receipt.is_none());
     }
 }
