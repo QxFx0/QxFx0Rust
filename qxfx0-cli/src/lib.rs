@@ -129,6 +129,33 @@ pub struct AuthorityTracedTurn {
     pub trace: qxfx0_pipeline::execution_trace::PipelineTrace,
 }
 
+/// Run an ordinary persisted turn while collecting Debate Core evidence that
+/// remains external to session state and has no response authority.
+pub fn run_turn_with_debate_core_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<AuthorityTracedTurn> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = qxfx0_pipeline::TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, trace) = qxfx0_pipeline::process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        qxfx0_pipeline::TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_debate_core(qxfx0_pipeline::DebateCoreMode::TraceOnly),
+    );
+    db.save_state(session_id, &state)?;
+    Ok(AuthorityTracedTurn {
+        response: output.response,
+        trace,
+    })
+}
+
 /// Run ResponsePlan V2 as an observation-only shadow without persisting the
 /// in-memory turn. V1 remains authoritative for the returned response.
 pub fn run_turn_with_v2_shadow_trace(
@@ -198,6 +225,33 @@ pub fn write_response_plan_v2_shadow_trace_jsonl(
     write_trace_jsonl(sink, "qxfx0.response-plan-v2-shadow-trace.v1", trace)
 }
 
+pub fn create_debate_core_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    create_trace_sink(path, "debate core")
+}
+
+pub fn write_debate_core_trace_jsonl(
+    sink: &mut File,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    let receipt = trace
+        .debate_receipt
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("debate core trace has no observation receipt"))?;
+    let mut record = serde_json::to_vec(&DebateCoreTraceRecord {
+        schema: "qxfx0.debate-core-trace.v1",
+        receipt,
+    })?;
+    record.push(b'\n');
+    sink.write_all(&record)?;
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+struct DebateCoreTraceRecord<'a> {
+    schema: &'a str,
+    receipt: &'a qxfx0_types::DebateObservationReceipt,
+}
+
 #[derive(Debug, Serialize)]
 struct TraceRecord<'a> {
     schema: &'a str,
@@ -218,6 +272,8 @@ struct OwnedAuthorityTrace {
     _request_id: String,
     steps: Vec<OwnedTraceStep>,
     authority_receipt: Option<serde_json::Value>,
+    #[serde(default, rename = "debate_receipt")]
+    _debate_receipt: Option<serde_json::Value>,
     authority_guard_classification: Option<String>,
     authority_case_id: Option<String>,
     authority_input_class: Option<String>,

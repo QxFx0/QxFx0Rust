@@ -6,6 +6,7 @@
 #[cfg(test)]
 mod conjugate_pipeline;
 pub mod conversation_fsm;
+mod debate;
 #[path = "tracing.rs"]
 pub mod execution_trace;
 pub mod fact_grounded;
@@ -109,6 +110,14 @@ pub enum AnomalyShadowMode {
     #[default]
     Disabled,
     /// Calculate a recovery proposal but never apply it to routing or state.
+    TraceOnly,
+}
+
+/// Enables Debate Core as a pure post-plan observer.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum DebateCoreMode {
+    #[default]
+    Disabled,
     TraceOnly,
 }
 
@@ -472,6 +481,7 @@ pub struct TurnOptions {
     pub fact_grounded: fact_grounded::FactGroundedRollout,
     pub response_plan_v2: ResponsePlanV2Mode,
     pub response_plan_v2_authority: ResponsePlanV2Authority,
+    pub debate_core: DebateCoreMode,
 }
 
 impl TurnOptions {
@@ -520,6 +530,11 @@ impl TurnOptions {
         if authority == ResponsePlanV2Authority::Canary {
             self.response_plan_v2 = ResponsePlanV2Mode::Canary;
         }
+        self
+    }
+
+    pub fn with_debate_core(mut self, mode: DebateCoreMode) -> Self {
+        self.debate_core = mode;
         self
     }
 }
@@ -1416,6 +1431,7 @@ fn process_turn_internal(
         fact_grounded: fact_grounded_rollout,
         response_plan_v2,
         response_plan_v2_authority,
+        debate_core,
     } = options;
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -1538,6 +1554,18 @@ fn process_turn_internal(
             return recovery_output(state, &recovery);
         }
     };
+    if debate_core == DebateCoreMode::TraceOnly {
+        if let Some(trace) = trace.as_deref_mut() {
+            match debate::observe(&planned) {
+                Ok(receipt) => {
+                    if let Err(error) = trace.set_debate_receipt(receipt) {
+                        tracing::warn!("debate observation skipped: {error}");
+                    }
+                }
+                Err(error) => tracing::warn!("debate observation skipped: {error}"),
+            }
+        }
+    }
 
     // Stage 4: Render
     let rendered = match execute_stage(
