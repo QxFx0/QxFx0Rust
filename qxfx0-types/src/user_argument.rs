@@ -119,20 +119,20 @@ impl ParseConfidence {
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum ArgumentSourceClass {
-    Direct,
-    Quoted,
-    Reported,
-    Hypothetical,
-    Unknown,
+    Direct = 0,
+    Quoted = 1,
+    Reported = 2,
+    Hypothetical = 3,
+    Unknown = 4,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum ArgumentPolarity {
-    Affirmed,
-    Negated,
-    Unknown,
+    Affirmed = 0,
+    Negated = 1,
+    Unknown = 2,
 }
 
 /// Privacy-safe subject identity. Unknown and external names are categorical.
@@ -151,21 +151,21 @@ pub enum ArgumentSubject {
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum ArgumentPredicate {
-    Is,
-    Defines,
-    HasProperty,
-    Causes,
-    Enables,
-    Prevents,
-    Requires,
-    Permits,
-    Prohibits,
-    Values,
-    Justifies,
-    FollowsFrom,
-    Contradicts,
-    NeedsEvidence,
-    NeedsDefinition,
+    Is = 0,
+    Defines = 1,
+    HasProperty = 2,
+    Causes = 3,
+    Enables = 4,
+    Prevents = 5,
+    Requires = 6,
+    Permits = 7,
+    Prohibits = 8,
+    Values = 9,
+    Justifies = 10,
+    FollowsFrom = 11,
+    Contradicts = 12,
+    NeedsEvidence = 13,
+    NeedsDefinition = 14,
 }
 
 /// Closed or typed object identity; it cannot retain an unknown surface label.
@@ -231,9 +231,9 @@ impl NormalizedArgumentProposition {
 #[repr(u8)]
 pub enum ArgumentSpanDigestScope {
     /// The source formulation belongs to an explicitly reviewed gold corpus.
-    ReviewedGold,
+    ReviewedGold = 0,
     /// An integrating service supplied a separately governed keyed digest.
-    ServiceKeyed,
+    ServiceKeyed = 1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -244,6 +244,10 @@ pub struct ArgumentSpanDigest {
 }
 
 impl ArgumentSpanDigest {
+    /// Constructs a digest whose privacy prerequisites were checked by the
+    /// producer. `ReviewedGold` is restricted to an explicitly reviewed corpus;
+    /// `ServiceKeyed` requires keying governed outside this crate. This type
+    /// cannot verify either provenance or keying.
     pub fn new(
         scope: ArgumentSpanDigestScope,
         digest: [u8; 32],
@@ -262,6 +266,8 @@ impl ArgumentSpanDigest {
     }
 
     fn validate(&self) -> Result<(), UserArgumentValidationError> {
+        // This catches only an uninitialized sentinel. It does not establish
+        // that the source was reviewed or that a service digest was keyed.
         if self.digest == [0; 32] {
             Err(UserArgumentValidationError::InvalidSpanDigest)
         } else {
@@ -437,15 +443,15 @@ impl UserArgumentNode {
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum ArgumentRelationKind {
-    Supports,
-    Attacks,
-    Qualifies,
-    Rebuts,
-    Undercuts,
-    Entails,
-    Contradicts,
-    RequestsEvidence,
-    RequestsDefinition,
+    Supports = 0,
+    Attacks = 1,
+    Qualifies = 2,
+    Rebuts = 3,
+    Undercuts = 4,
+    Entails = 5,
+    Contradicts = 6,
+    RequestsEvidence = 7,
+    RequestsDefinition = 8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -523,21 +529,21 @@ impl ArgumentRelation {
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum ParseDisposition {
-    Parsed,
-    Partial,
-    Abstained,
+    Parsed = 0,
+    Partial = 1,
+    Abstained = 2,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum ParseOmissionReason {
-    AmbiguousAttachment,
-    UnresolvedProposition,
-    QuotedPositionAmbiguity,
-    UnsupportedRelation,
-    NegationAmbiguity,
-    InsufficientEvidence,
+    AmbiguousAttachment = 0,
+    UnresolvedProposition = 1,
+    QuotedPositionAmbiguity = 2,
+    UnsupportedRelation = 3,
+    NegationAmbiguity = 4,
+    InsufficientEvidence = 5,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -580,12 +586,12 @@ impl ParseOmission {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UserArgumentParseReceipt {
-    pub version: u8,
-    pub disposition: ParseDisposition,
-    pub nodes: Vec<UserArgumentNode>,
-    pub relations: Vec<ArgumentRelation>,
-    pub omissions: Vec<ParseOmission>,
-    pub digest: [u8; 32],
+    version: u8,
+    disposition: ParseDisposition,
+    nodes: Vec<UserArgumentNode>,
+    relations: Vec<ArgumentRelation>,
+    omissions: Vec<ParseOmission>,
+    digest: [u8; 32],
 }
 
 impl UserArgumentParseReceipt {
@@ -616,6 +622,30 @@ impl UserArgumentParseReceipt {
         Ok(())
     }
 
+    pub const fn version(&self) -> u8 {
+        self.version
+    }
+
+    pub const fn disposition(&self) -> ParseDisposition {
+        self.disposition
+    }
+
+    pub fn nodes(&self) -> &[UserArgumentNode] {
+        &self.nodes
+    }
+
+    pub fn relations(&self) -> &[ArgumentRelation] {
+        &self.relations
+    }
+
+    pub fn omissions(&self) -> &[ParseOmission] {
+        &self.omissions
+    }
+
+    pub const fn digest(&self) -> &[u8; 32] {
+        &self.digest
+    }
+
     fn validate_structure(&self) -> Result<(), UserArgumentValidationError> {
         if self.version != USER_ARGUMENT_PARSE_VERSION {
             return Err(UserArgumentValidationError::UnsupportedVersion(
@@ -632,14 +662,14 @@ impl UserArgumentParseReceipt {
             return Err(UserArgumentValidationError::BoundExceeded("omissions"));
         }
 
-        let evidence_items = self.nodes.len()
-            + self.relations.len()
-            + self
-                .omissions
-                .iter()
-                .filter(|omission| omission.parser_rule.is_some())
-                .count();
-        if evidence_items > MAX_TYPED_EVIDENCE_ITEMS {
+        // Repeated applications of the same rule/version refer to one typed
+        // evidence identity. This keeps the evidence registry bounded while
+        // preserving the independent 32-relation graph bound from the ADR.
+        let mut evidence_items = BTreeSet::new();
+        evidence_items.extend(self.nodes.iter().map(UserArgumentNode::parser_rule));
+        evidence_items.extend(self.relations.iter().map(ArgumentRelation::parser_rule));
+        evidence_items.extend(self.omissions.iter().filter_map(ParseOmission::parser_rule));
+        if evidence_items.len() > MAX_TYPED_EVIDENCE_ITEMS {
             return Err(UserArgumentValidationError::BoundExceeded("typed_evidence"));
         }
 
@@ -684,6 +714,9 @@ impl UserArgumentParseReceipt {
         Ok(())
     }
 
+    /// Encodes collections in their stored order. Reordering nodes, relations,
+    /// or omissions changes the digest: this is a tamper-evident payload digest,
+    /// not a canonical equivalence identifier for semantically equal parses.
     fn calculate_digest(&self) -> [u8; 32] {
         let mut digest = Sha256::new();
         digest.update(RECEIPT_DOMAIN);
@@ -724,7 +757,9 @@ impl UserArgumentParseReceipt {
 pub enum UserArgumentValidationError {
     #[error("unsupported user argument parse version {0}")]
     UnsupportedVersion(u8),
-    #[error("{0} is empty, too long, or contains a control character")]
+    #[error(
+        "{0} is empty, too long, or contains disallowed whitespace, format, or control characters"
+    )]
     InvalidId(&'static str),
     #[error("parser rule version must be greater than zero")]
     InvalidParserRuleVersion,
@@ -751,12 +786,39 @@ pub enum UserArgumentValidationError {
 }
 
 fn validate_id(field: &'static str, value: &str) -> Result<(), UserArgumentValidationError> {
-    if value.trim().is_empty() || value.len() > MAX_ID_BYTES || value.chars().any(char::is_control)
-    {
+    if value.is_empty() || value.len() > MAX_ID_BYTES || value.chars().any(is_disallowed_id_char) {
         Err(UserArgumentValidationError::InvalidId(field))
     } else {
         Ok(())
     }
+}
+
+fn is_disallowed_id_char(character: char) -> bool {
+    character.is_control()
+        || character.is_whitespace()
+        || matches!(
+            character,
+            '\u{00ad}'
+                | '\u{0600}'..='\u{0605}'
+                | '\u{061c}'
+                | '\u{06dd}'
+                | '\u{070f}'
+                | '\u{0890}'..='\u{0891}'
+                | '\u{08e2}'
+                | '\u{180e}'
+                | '\u{200b}'..='\u{200f}'
+                | '\u{202a}'..='\u{202e}'
+                | '\u{2060}'..='\u{206f}'
+                | '\u{feff}'
+                | '\u{fff9}'..='\u{fffb}'
+                | '\u{110bd}'
+                | '\u{110cd}'
+                | '\u{13430}'..='\u{1343f}'
+                | '\u{1bca0}'..='\u{1bca3}'
+                | '\u{1d173}'..='\u{1d17a}'
+                | '\u{e0001}'
+                | '\u{e0020}'..='\u{e007f}'
+        )
 }
 
 fn validate_subject(subject: &ArgumentSubject) -> Result<(), UserArgumentValidationError> {
@@ -975,6 +1037,39 @@ mod tests {
     }
 
     #[test]
+    fn valid_receipts_round_trip_and_revalidate_with_and_without_span_digest() {
+        let original = receipt();
+        let restored: UserArgumentParseReceipt =
+            serde_json::from_str(&serde_json::to_string(&original).unwrap()).unwrap();
+        assert_eq!(restored, original);
+        assert_eq!(restored.validate(), Ok(()));
+
+        let node = UserArgumentNode::Claim(
+            UserClaim::new(
+                id("claim.1"),
+                proposition(),
+                ArgumentSourceClass::Quoted,
+                ArgumentPolarity::Affirmed,
+                ParseConfidence::from_basis_points(7_500).unwrap(),
+                rule("claim.quoted"),
+                Some(
+                    ArgumentSpanDigest::new(ArgumentSpanDigestScope::ServiceKeyed, [7; 32])
+                        .unwrap(),
+                ),
+            )
+            .unwrap(),
+        );
+        let with_span =
+            UserArgumentParseReceipt::new(ParseDisposition::Parsed, vec![node], vec![], vec![])
+                .unwrap();
+        let restored: UserArgumentParseReceipt =
+            serde_json::from_str(&serde_json::to_string(&with_span).unwrap()).unwrap();
+        assert_eq!(restored, with_span);
+        assert_eq!(restored.validate(), Ok(()));
+        assert_eq!(restored.digest(), with_span.digest());
+    }
+
+    #[test]
     fn deserialization_cannot_bypass_version_confidence_or_rule_validation() {
         let mut value = serde_json::to_value(receipt()).unwrap();
         value["version"] = serde_json::json!(2);
@@ -1161,6 +1256,12 @@ mod tests {
             UserArgumentNodeId::try_new("a".repeat(257)),
             Err(UserArgumentValidationError::InvalidId("node.id"))
         ));
+        for invalid in [" leading", "trailing ", "zero\u{200b}width", "bidi\u{202e}"] {
+            assert!(matches!(
+                UserArgumentNodeId::try_new(invalid),
+                Err(UserArgumentValidationError::InvalidId("node.id"))
+            ));
+        }
         assert_eq!(
             ParseConfidence::from_basis_points(10_001),
             Err(UserArgumentValidationError::ConfidenceOutOfRange(10_001))
@@ -1187,7 +1288,7 @@ mod tests {
             UserArgumentValidationError::BoundExceeded("omissions")
         );
 
-        let relations = vec![
+        let oversized_relations = vec![
             relation(
                 "relation.1",
                 "premise.1",
@@ -1200,7 +1301,7 @@ mod tests {
             UserArgumentParseReceipt::new(
                 ParseDisposition::Parsed,
                 vec![premise("premise.1"), conclusion("conclusion.1")],
-                relations,
+                oversized_relations,
                 vec![],
             )
             .unwrap_err(),
@@ -1210,14 +1311,30 @@ mod tests {
         let nodes: Vec<_> = (0..16)
             .map(|index| premise(&format!("node.{index}")))
             .collect();
-        let relations: Vec<_> = (0..17)
+        let relations: Vec<_> = (0..32)
             .map(|index| {
                 relation(
                     &format!("relation.{index}"),
                     &format!("node.{}", index % 16),
-                    &format!("node.{}", (index + 1) % 16),
+                    &format!("node.{}", (index % 16 + 1 + index / 16) % 16),
                     ArgumentRelationKind::Supports,
                 )
+            })
+            .collect();
+        UserArgumentParseReceipt::new(ParseDisposition::Parsed, nodes.clone(), relations, vec![])
+            .unwrap();
+
+        let relations: Vec<_> = (0..32)
+            .map(|index| {
+                ArgumentRelation::new(
+                    ArgumentRelationId::try_new(format!("unique-relation.{index}")).unwrap(),
+                    id(&format!("node.{}", index % 16)),
+                    id(&format!("node.{}", (index % 16 + 1 + index / 16) % 16)),
+                    ArgumentRelationKind::Supports,
+                    ParseConfidence::from_basis_points(8_000).unwrap(),
+                    ParserRuleId::try_new(format!("relation.unique.{index}"), 1).unwrap(),
+                )
+                .unwrap()
             })
             .collect();
         assert_eq!(
