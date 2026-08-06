@@ -1,0 +1,646 @@
+{
+  "schema": "qxfx0.user-argument-gold-corpus.v1",
+  "corpus_id": "user-argument-gold-2026-08-v1",
+  "authority_change": "none",
+  "persistence_change": "none",
+  "raw_user_logs": false,
+  "reviewed_formulations_only": true,
+  "source_policy": "curated_synthetic_only",
+  "required_categories": [
+    "clean_argument",
+    "concession",
+    "contradiction",
+    "counterexample",
+    "definition_request",
+    "enthymeme",
+    "evidence_request",
+    "external_subject",
+    "hypothetical",
+    "malformed_input",
+    "negation",
+    "quotation",
+    "revision",
+    "sarcasm_probe",
+    "undercut",
+    "unknown_topic",
+    "unsupported_assertion"
+  ],
+  "required_relation_kinds": [
+    "attacks",
+    "contradicts",
+    "entails",
+    "qualifies",
+    "rebuts",
+    "requests_definition",
+    "requests_evidence",
+    "supports",
+    "undercuts"
+  ],
+  "required_formulation_classes": [
+    "ambiguous",
+    "direct",
+    "hypothetical",
+    "negated",
+    "quoted"
+  ],
+  "cases": [
+    {
+      "case_id": "clean-support",
+      "category": "clean_argument",
+      "formulation": "Свобода требует ответственности, потому что выбор имеет последствия.",
+      "formulation_sha256": "14e23b31f50aeccb21434d42905d6ae453ebdb51a0492337c036fe9d5f077de8",
+      "review_status": "approved",
+      "formulation_classes": ["direct"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "clean.premise",
+          "kind": "premise",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "ответственность"},
+            "predicate": "follows_from",
+            "object": {"kind": "canonical_topic", "id": "свобода"}
+          },
+          "confidence_min_basis_points": 7500
+        },
+        {
+          "node_id": "clean.conclusion",
+          "kind": "conclusion",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "requires",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 8000
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "clean.premise",
+          "to": "clean.conclusion",
+          "kind": "supports",
+          "confidence_min_basis_points": 7500
+        }
+      ],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "enthymeme-entails",
+      "category": "enthymeme",
+      "formulation": "Если поступок свободен, за него отвечают; значит, свобода влечёт ответственность.",
+      "formulation_sha256": "08b5629c3751220c75cb369abca582646fb2b26e20538b22cacf1093e87bffaf",
+      "review_status": "approved",
+      "formulation_classes": ["direct"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "enthymeme.premise",
+          "kind": "premise",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "requires",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 7000
+        },
+        {
+          "node_id": "enthymeme.conclusion",
+          "kind": "conclusion",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "ответственность"},
+            "predicate": "follows_from",
+            "object": {"kind": "canonical_topic", "id": "свобода"}
+          },
+          "confidence_min_basis_points": 7500
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "enthymeme.premise",
+          "to": "enthymeme.conclusion",
+          "kind": "entails",
+          "confidence_min_basis_points": 7000
+        }
+      ],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "unsupported-assertion",
+      "category": "unsupported_assertion",
+      "formulation": "Свобода всегда полезна.",
+      "formulation_sha256": "2a7bb74fc743f5fba664451c60d04ed6ea9055f03e49e8774c255fd104d6ef55",
+      "review_status": "approved",
+      "formulation_classes": ["direct"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "unsupported.claim",
+          "kind": "claim",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "has_property"
+          },
+          "confidence_min_basis_points": 8500
+        }
+      ],
+      "expected_relations": [],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "counterexample-rebuts",
+      "category": "counterexample",
+      "formulation": "Свобода якобы всегда полезна, но безответственный выбор причиняет вред.",
+      "formulation_sha256": "81df28a672e1e5cfc2a3241b6f9175ae8a46b92feac27202761ebdaf58f11222",
+      "review_status": "approved",
+      "formulation_classes": ["direct", "quoted"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "counterexample.target",
+          "kind": "claim",
+          "source": "reported",
+          "polarity": "unknown",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "has_property"
+          },
+          "confidence_min_basis_points": 7000
+        },
+        {
+          "node_id": "counterexample.counterclaim",
+          "kind": "counterclaim",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "requires",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 6500
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "counterexample.counterclaim",
+          "to": "counterexample.target",
+          "kind": "rebuts",
+          "confidence_min_basis_points": 6500
+        }
+      ],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "concession-qualifies",
+      "category": "concession",
+      "formulation": "Свобода важна, хотя её следует ограничивать там, где начинается вред.",
+      "formulation_sha256": "205f8cb1e96eb8922e8d3f3e7b647698acee83948f74051e092fda2aef854e0f",
+      "review_status": "approved",
+      "formulation_classes": ["direct"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "concession.claim",
+          "kind": "claim",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "values",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 8000
+        },
+        {
+          "node_id": "concession.qualifier",
+          "kind": "qualifier",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "requires",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 6500
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "concession.qualifier",
+          "to": "concession.claim",
+          "kind": "qualifies",
+          "confidence_min_basis_points": 6500
+        }
+      ],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "revision-contradicts",
+      "category": "revision",
+      "formulation": "Раньше я считал свободу произволом, но теперь различаю их.",
+      "formulation_sha256": "6fe3bf4d3b8a3af3e21ae103ed128c5082d8381ee394ede8f577ac0d87a6cd0e",
+      "review_status": "approved",
+      "formulation_classes": ["direct", "negated"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "revision.old",
+          "kind": "claim",
+          "source": "reported",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "is",
+            "object": {"kind": "canonical_topic", "id": "произвол"}
+          },
+          "confidence_min_basis_points": 8000
+        },
+        {
+          "node_id": "revision.new",
+          "kind": "counterclaim",
+          "source": "direct",
+          "polarity": "negated",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "is",
+            "object": {"kind": "canonical_topic", "id": "произвол"}
+          },
+          "confidence_min_basis_points": 8000
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "revision.new",
+          "to": "revision.old",
+          "kind": "contradicts",
+          "confidence_min_basis_points": 8000
+        }
+      ],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "contradiction-attacks",
+      "category": "contradiction",
+      "formulation": "Свобода исключает ответственность, а ответственность ограничивает свободу.",
+      "formulation_sha256": "a05639cee9a3f0d9f435a4e34c1c1b0d30db8c02f2c89f080d4433fb544eb68f",
+      "review_status": "approved",
+      "formulation_classes": ["direct"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "contradiction.claim",
+          "kind": "claim",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "prevents",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 8000
+        },
+        {
+          "node_id": "contradiction.counterclaim",
+          "kind": "counterclaim",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "ответственность"},
+            "predicate": "prevents",
+            "object": {"kind": "canonical_topic", "id": "свобода"}
+          },
+          "confidence_min_basis_points": 8000
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "contradiction.counterclaim",
+          "to": "contradiction.claim",
+          "kind": "attacks",
+          "confidence_min_basis_points": 7000
+        }
+      ],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "evidence-request",
+      "category": "evidence_request",
+      "formulation": "Какие основания подтверждают, что свобода требует ответственности?",
+      "formulation_sha256": "9e60e2ca391d4b2f8903ba4b04b9ece3d0e137360f9589456dac6131c9ade1b1",
+      "review_status": "approved",
+      "formulation_classes": ["direct", "quoted"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "evidence.target",
+          "kind": "claim",
+          "source": "quoted",
+          "polarity": "unknown",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "requires",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 8000
+        },
+        {
+          "node_id": "evidence.request",
+          "kind": "claim",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "needs_evidence",
+            "object": {"kind": "evidence"}
+          },
+          "confidence_min_basis_points": 8500
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "evidence.request",
+          "to": "evidence.target",
+          "kind": "requests_evidence",
+          "confidence_min_basis_points": 8000
+        }
+      ],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "definition-request",
+      "category": "definition_request",
+      "formulation": "Что именно означает свобода?",
+      "formulation_sha256": "31f2e03351baeb733670e87a14afb35e3ff5a2892f1a356ba359896148c694d0",
+      "review_status": "approved",
+      "formulation_classes": ["direct"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "definition.target",
+          "kind": "claim",
+          "source": "unknown",
+          "polarity": "unknown",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "defines",
+            "object": {"kind": "definition"}
+          },
+          "confidence_min_basis_points": 7000
+        },
+        {
+          "node_id": "definition.request",
+          "kind": "claim",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "needs_definition",
+            "object": {"kind": "definition"}
+          },
+          "confidence_min_basis_points": 9000
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "definition.request",
+          "to": "definition.target",
+          "kind": "requests_definition",
+          "confidence_min_basis_points": 8500
+        }
+      ],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "quotation-not-endorsement",
+      "category": "quotation",
+      "formulation": "Он сказал: «Свобода важнее ответственности».",
+      "formulation_sha256": "37c651f9d6f3a09fc9a67b52954c5ee247f3200cc3dee4c0ea2b5ebc8509cda2",
+      "review_status": "approved",
+      "formulation_classes": ["quoted"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "quotation.claim",
+          "kind": "claim",
+          "source": "quoted",
+          "polarity": "unknown",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "values",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 8500
+        }
+      ],
+      "expected_relations": [],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "hypothetical-negation",
+      "category": "hypothetical",
+      "formulation": "Если бы свобода не требовала ответственности, выбор не имел бы последствий.",
+      "formulation_sha256": "3b14ba8aa7871594fab5fe5a59783531cf57fb7dc0893a2beec72751766cfb64",
+      "review_status": "approved",
+      "formulation_classes": ["hypothetical", "negated"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "hypothetical.claim",
+          "kind": "claim",
+          "source": "hypothetical",
+          "polarity": "negated",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "requires",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 8000
+        }
+      ],
+      "expected_relations": [],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "explicit-negation",
+      "category": "negation",
+      "formulation": "Я не утверждаю, что свобода разрешает произвол.",
+      "formulation_sha256": "3d61648c1f1fd2e716c72cbfe1843dd603a8be190b87fbbe5a1eb01a39c06bf9",
+      "review_status": "approved",
+      "formulation_classes": ["direct", "negated"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "negation.claim",
+          "kind": "claim",
+          "source": "direct",
+          "polarity": "negated",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "permits",
+            "object": {"kind": "canonical_topic", "id": "произвол"}
+          },
+          "confidence_min_basis_points": 8500
+        }
+      ],
+      "expected_relations": [],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "sarcasm-abstention",
+      "category": "sarcasm_probe",
+      "formulation": "Ну да, конечно, любая свобода автоматически делает всех ответственными.",
+      "formulation_sha256": "f812de2b5403981739a28c09152d8274708d3e492a6d689e3b0d95edbc5f5f8a",
+      "review_status": "approved",
+      "formulation_classes": ["ambiguous"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["abstained"],
+      "expected_nodes": [],
+      "expected_relations": [],
+      "expected_omissions": ["insufficient_evidence"]
+    },
+    {
+      "case_id": "malformed-abstention",
+      "category": "malformed_input",
+      "formulation": "Свобода потому что значит однако.",
+      "formulation_sha256": "27ab88a423cfe4a318222ef13b70dd092d130fe2d4e61ed1c31bb9eca4e85853",
+      "review_status": "approved",
+      "formulation_classes": ["ambiguous"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["abstained"],
+      "expected_nodes": [],
+      "expected_relations": [],
+      "expected_omissions": ["unresolved_proposition"]
+    },
+    {
+      "case_id": "external-subject-categorical",
+      "category": "external_subject",
+      "formulation": "Господин Икс утверждает, что свобода важнее ответственности.",
+      "formulation_sha256": "553b40b2a1c172701959aba0655080d868c9560b6ef194af636af9f730830eaa",
+      "review_status": "approved",
+      "formulation_classes": ["quoted"],
+      "privacy_needles": ["Господин Икс"],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "external.claim",
+          "kind": "claim",
+          "source": "reported",
+          "polarity": "unknown",
+          "proposition": {
+            "subject": {"kind": "external_subject"},
+            "predicate": "values",
+            "object": {"kind": "canonical_topic", "id": "свобода"}
+          },
+          "confidence_min_basis_points": 7500
+        }
+      ],
+      "expected_relations": [],
+      "expected_omissions": []
+    },
+    {
+      "case_id": "unknown-topic-categorical",
+      "category": "unknown_topic",
+      "formulation": "Кванточайник обосновывает свободу.",
+      "formulation_sha256": "90e9c05c6cf4ef60cf48c17216e4502cd947b7ab8b01651cbafcdc3f1c07723f",
+      "review_status": "approved",
+      "formulation_classes": ["direct", "ambiguous"],
+      "privacy_needles": ["Кванточайник"],
+      "accepted_dispositions": ["partial", "abstained"],
+      "expected_nodes": [
+        {
+          "node_id": "unknown.claim",
+          "kind": "claim",
+          "source": "direct",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "unresolved_topic"},
+            "predicate": "justifies",
+            "object": {"kind": "canonical_topic", "id": "свобода"}
+          },
+          "confidence_min_basis_points": 5000
+        }
+      ],
+      "expected_relations": [],
+      "expected_omissions": ["unresolved_proposition"]
+    },
+    {
+      "case_id": "warrant-undercut",
+      "category": "undercut",
+      "formulation": "То, что выбор имеет последствия, не доказывает, что свобода требует ответственности.",
+      "formulation_sha256": "f745ad11ddf72ff4d72d8a04112c06e18fb59e649b73cd77452987aadc07edf6",
+      "review_status": "approved",
+      "formulation_classes": ["direct", "negated"],
+      "privacy_needles": [],
+      "accepted_dispositions": ["parsed"],
+      "expected_nodes": [
+        {
+          "node_id": "undercut.warrant",
+          "kind": "premise",
+          "source": "quoted",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "ответственность"},
+            "predicate": "follows_from",
+            "object": {"kind": "canonical_topic", "id": "свобода"}
+          },
+          "confidence_min_basis_points": 7000
+        },
+        {
+          "node_id": "undercut.conclusion",
+          "kind": "conclusion",
+          "source": "quoted",
+          "polarity": "affirmed",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "свобода"},
+            "predicate": "requires",
+            "object": {"kind": "canonical_topic", "id": "ответственность"}
+          },
+          "confidence_min_basis_points": 7000
+        },
+        {
+          "node_id": "undercut.counterclaim",
+          "kind": "counterclaim",
+          "source": "direct",
+          "polarity": "negated",
+          "proposition": {
+            "subject": {"kind": "canonical_topic", "id": "ответственность"},
+            "predicate": "follows_from",
+            "object": {"kind": "canonical_topic", "id": "свобода"}
+          },
+          "confidence_min_basis_points": 7500
+        }
+      ],
+      "expected_relations": [
+        {
+          "from": "undercut.counterclaim",
+          "to": "undercut.warrant",
+          "kind": "undercuts",
+          "confidence_min_basis_points": 7000
+        }
+      ],
+      "expected_omissions": []
+    }
+  ],
+  "manifest_digest": "da0b54cadbde6326045cdec05fc686833323cef26acdf6519c4853c1d314d6a0"
+}
