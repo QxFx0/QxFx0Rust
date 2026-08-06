@@ -117,6 +117,7 @@ class ValidationError(ValueError):
 
 
 def load_json(path):
+    """Load one UTF-8 JSON document and normalize decode failures."""
     try:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -124,6 +125,7 @@ def load_json(path):
 
 
 def reject_unknown_fields(label, value, allowed):
+    """Reject non-object values and fields outside a closed schema."""
     if not isinstance(value, dict):
         raise ValidationError(f"{label} must be an object")
     unknown = sorted(set(value) - set(allowed))
@@ -132,11 +134,13 @@ def reject_unknown_fields(label, value, allowed):
 
 
 def validate_id(field, value):
+    """Validate a bounded ASCII metadata or graph identifier."""
     if not isinstance(value, str) or not ID_PATTERN.fullmatch(value):
         raise ValidationError(f"{field} is not a bounded stable identifier")
 
 
 def validate_contract_id(field, value):
+    """Validate a visible bounded identifier used by the Rust contract."""
     if not isinstance(value, str) or not value or len(value.encode("utf-8")) > 256:
         raise ValidationError(f"{field} is not a bounded contract identifier")
     if any(character.isspace() or unicodedata.category(character) in {"Cc", "Cf"} for character in value):
@@ -144,11 +148,13 @@ def validate_contract_id(field, value):
 
 
 def validate_sha256(field, value):
+    """Validate one lowercase SHA-256 hexadecimal digest."""
     if not isinstance(value, str) or not SHA256_PATTERN.fullmatch(value):
         raise ValidationError(f"{field} must be a lowercase SHA-256 digest")
 
 
 def canonical_digest(value, domain):
+    """Hash canonical JSON with domain separation and length framing."""
     encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
         "utf-8"
     )
@@ -159,12 +165,14 @@ def canonical_digest(value, domain):
 
 
 def manifest_digest(manifest):
+    """Calculate the gold manifest digest without its recorded digest field."""
     payload = copy.deepcopy(manifest)
     payload.pop("manifest_digest", None)
     return canonical_digest(payload, MANIFEST_DOMAIN)
 
 
 def validate_term(label, term, allowed_kinds):
+    """Validate a closed proposition subject or object term."""
     reject_unknown_fields(label, term, {"kind", "id"})
     kind = term.get("kind")
     if kind not in allowed_kinds:
@@ -177,6 +185,7 @@ def validate_term(label, term, allowed_kinds):
 
 
 def validate_proposition(label, proposition):
+    """Validate one text-free normalized proposition."""
     reject_unknown_fields(label, proposition, {"subject", "predicate", "object"})
     validate_term(f"{label}.subject", proposition.get("subject"), SUBJECT_KINDS)
     if proposition.get("predicate") not in PREDICATES:
@@ -186,6 +195,7 @@ def validate_proposition(label, proposition):
 
 
 def validate_expected_node(case_id, node):
+    """Validate one reviewed expected node."""
     reject_unknown_fields(
         f"{case_id}.expected_node",
         node,
@@ -212,6 +222,7 @@ def validate_expected_node(case_id, node):
 
 
 def validate_expected_relation(case_id, relation, node_ids):
+    """Validate one reviewed expected relation and its references."""
     reject_unknown_fields(
         f"{case_id}.expected_relation",
         relation,
@@ -233,6 +244,7 @@ def validate_expected_relation(case_id, relation, node_ids):
 
 
 def validate_case(case):
+    """Validate one reviewed gold case and return its coverage inventory."""
     reject_unknown_fields(
         "gold case",
         case,
@@ -321,8 +333,12 @@ def validate_case(case):
             raise ValidationError(f"{case_id}: duplicate expected relation")
         relation_tuples.add(relation_tuple)
 
-    if nodes and "abstained" == dispositions[0] and len(dispositions) == 1:
-        raise ValidationError(f"{case_id}: abstained-only case cannot expect nodes")
+    encoded_expectations = json.dumps(
+        [nodes, relations, omissions], ensure_ascii=False, sort_keys=True
+    ).casefold()
+    if any(needle.casefold() in encoded_expectations for needle in needles):
+        raise ValidationError(f"{case_id}: privacy needle appears in the expected graph")
+
     if not nodes and "abstained" not in dispositions:
         raise ValidationError(f"{case_id}: empty graph must accept abstention")
     if "parsed" in dispositions and omissions:
@@ -343,6 +359,7 @@ def validate_case(case):
 
 
 def validate_manifest(manifest, *, verify_digest=True):
+    """Validate the complete corpus, coverage axes, policies, and digest."""
     reject_unknown_fields(
         "manifest",
         manifest,
@@ -392,12 +409,22 @@ def validate_manifest(manifest, *, verify_digest=True):
     covered_categories = {item["category"] for item in inventories}
     covered_classes = {value for item in inventories for value in item["classes"]}
     covered_relations = {value for item in inventories for value in item["relations"]}
+    covered_sources = {value for item in inventories for value in item["sources"]}
+    covered_polarities = {value for item in inventories for value in item["polarities"]}
+    covered_dispositions = {value for item in inventories for value in item["dispositions"]}
     if covered_categories != REQUIRED_CATEGORIES:
         raise ValidationError(f"gold corpus category coverage mismatch: {sorted(covered_categories)}")
     if covered_classes != REQUIRED_FORMULATION_CLASSES:
         raise ValidationError(f"gold corpus formulation-class coverage mismatch: {sorted(covered_classes)}")
     if covered_relations != RELATION_KINDS:
         raise ValidationError(f"gold corpus relation coverage mismatch: {sorted(covered_relations)}")
+    for label, covered, expected in (
+        ("source class", covered_sources, SOURCE_CLASSES),
+        ("polarity", covered_polarities, POLARITIES),
+        ("accepted disposition", covered_dispositions, DISPOSITIONS),
+    ):
+        if covered != expected:
+            raise ValidationError(f"gold corpus {label} coverage mismatch: {sorted(covered)}")
     validate_sha256("manifest_digest", manifest.get("manifest_digest"))
     actual_digest = manifest_digest(manifest)
     if verify_digest and manifest["manifest_digest"] != actual_digest:
@@ -410,15 +437,14 @@ def validate_manifest(manifest, *, verify_digest=True):
         "category_distribution": dict(sorted(collections.Counter(item["category"] for item in inventories).items())),
         "relation_coverage": sorted(covered_relations),
         "formulation_class_coverage": sorted(covered_classes),
-        "source_class_coverage": sorted({value for item in inventories for value in item["sources"]}),
-        "polarity_coverage": sorted({value for item in inventories for value in item["polarities"]}),
-        "accepted_disposition_coverage": sorted(
-            {value for item in inventories for value in item["dispositions"]}
-        ),
+        "source_class_coverage": sorted(covered_sources),
+        "polarity_coverage": sorted(covered_polarities),
+        "accepted_disposition_coverage": sorted(covered_dispositions),
     }
 
 
 def compile_manifest(manifest):
+    """Compile privacy-safe corpus inventory without reviewed formulations."""
     inventory = validate_manifest(manifest)
     return {
         "schema": COMPILED_SCHEMA,
@@ -443,6 +469,7 @@ def compile_manifest(manifest):
 
 
 def validate_actual_node(case_id, node):
+    """Validate one typed parser prediction node."""
     reject_unknown_fields(
         f"{case_id}.prediction.node",
         node,
@@ -473,6 +500,7 @@ def validate_actual_node(case_id, node):
 
 
 def validate_actual_relation(case_id, relation, node_ids):
+    """Validate one typed parser prediction relation."""
     reject_unknown_fields(
         f"{case_id}.prediction.relation",
         relation,
@@ -507,6 +535,7 @@ def validate_actual_relation(case_id, relation, node_ids):
 
 
 def validate_prediction_case(case):
+    """Validate one prediction case, graph, parity evidence, and disposition."""
     reject_unknown_fields(
         "prediction case",
         case,
@@ -583,6 +612,7 @@ def validate_prediction_case(case):
 
 
 def validate_predictions(predictions, corpus_id, expected_case_ids):
+    """Validate an exact-build prediction envelope against the gold case set."""
     reject_unknown_fields(
         "predictions",
         predictions,
@@ -611,6 +641,7 @@ def validate_predictions(predictions, corpus_id, expected_case_ids):
 
 
 def forbidden_keys(value):
+    """Find recursively forbidden privacy-bearing artifact keys."""
     found = set()
     if isinstance(value, dict):
         found.update(FORBIDDEN_ARTIFACT_KEYS.intersection(value))
@@ -623,6 +654,7 @@ def forbidden_keys(value):
 
 
 def node_signature(node):
+    """Return the ID-independent semantic signature of a node."""
     return (
         node["kind"],
         node["source"],
@@ -632,6 +664,7 @@ def node_signature(node):
 
 
 def relation_signatures(nodes, relations):
+    """Return ID-independent semantic relation signatures with multiplicity."""
     signatures = {node["node_id"]: node_signature(node) for node in nodes}
     return collections.Counter(
         (signatures[relation["from"]], signatures[relation["to"]], relation["kind"])
@@ -640,6 +673,7 @@ def relation_signatures(nodes, relations):
 
 
 def confidence_floor_misses(expected_items, actual_items, signature, expected_field, actual_field):
+    """Count matched predictions whose confidence is below the gold floor."""
     expected_by_signature = collections.defaultdict(list)
     actual_by_signature = collections.defaultdict(list)
     for item in expected_items:
@@ -651,12 +685,14 @@ def confidence_floor_misses(expected_items, actual_items, signature, expected_fi
         expected_values = sorted(expected_by_signature[item_signature], reverse=True)
         actual_values = sorted(actual_by_signature[item_signature], reverse=True)
         misses += sum(
-            actual < expected for expected, actual in zip(expected_values, actual_values)
+            actual < expected
+            for expected, actual in zip(expected_values, actual_values, strict=False)
         )
     return misses
 
 
 def confidence_bucket(value):
+    """Map basis-point confidence into a stable calibration bucket."""
     if value < 2_500:
         return "0000_2499"
     if value < 5_000:
@@ -667,10 +703,12 @@ def confidence_bucket(value):
 
 
 def ratio_basis_points(numerator, denominator):
+    """Calculate a bounded ratio or preserve an undefined denominator."""
     return None if denominator == 0 else numerator * 10_000 // denominator
 
 
 def evaluate(manifest, predictions):
+    """Score typed predictions and produce deterministic observation evidence."""
     inventory = validate_manifest(manifest)
     gold_by_id = {case["case_id"]: case for case in manifest["cases"]}
     predicted_by_id = validate_predictions(predictions, manifest["corpus_id"], gold_by_id)
@@ -752,16 +790,11 @@ def evaluate(manifest, predictions):
         actual_node_signatures = {
             node["node_id"]: node_signature(node) for node in predicted["nodes"]
         }
-        expected_relation_signature = lambda relation: (
-            expected_node_signatures[relation["from"]],
-            expected_node_signatures[relation["to"]],
-            relation["kind"],
-        )
-        actual_relation_signature = lambda relation: (
-            actual_node_signatures[relation["from"]],
-            actual_node_signatures[relation["to"]],
-            relation["kind"],
-        )
+        def expected_relation_signature(relation, signatures=expected_node_signatures):
+            return (signatures[relation["from"]], signatures[relation["to"]], relation["kind"])
+
+        def actual_relation_signature(relation, signatures=actual_node_signatures):
+            return (signatures[relation["from"]], signatures[relation["to"]], relation["kind"])
         confidence_floor_failures += confidence_floor_misses(
             gold["expected_relations"],
             predicted["relations"],
@@ -853,6 +886,9 @@ def evaluate(manifest, predictions):
             }
             for kind in sorted(RELATION_KINDS)
         },
+        # Structural validation and graph-reference failures raise before a
+        # report exists. A retained report therefore records these as zero by
+        # construction rather than as recoverable evaluation outcomes.
         "validation_failures": 0,
         "replay_failures": replay_failures,
         "privacy_violations": privacy_violations,
@@ -878,6 +914,7 @@ def evaluate(manifest, predictions):
 
 
 def write_new_json(path, value):
+    """Write formatted JSON with create-new semantics."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("x", encoding="utf-8") as output:
@@ -886,6 +923,7 @@ def write_new_json(path, value):
 
 
 def main():
+    """Run the validation, digest, compile, or evaluation command."""
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate = subparsers.add_parser("validate")

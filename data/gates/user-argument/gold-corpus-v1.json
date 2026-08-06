@@ -151,8 +151,7 @@
           "polarity": "affirmed",
           "proposition": {
             "subject": {"kind": "canonical_topic", "id": "свобода"},
-            "predicate": "values",
-            "object": {"kind": "canonical_topic", "id": "ответственность"}
+            "predicate": "has_property"
           },
           "confidence_min_basis_points": 8500
         }
@@ -177,8 +176,7 @@
           "polarity": "unknown",
           "proposition": {
             "subject": {"kind": "canonical_topic", "id": "свобода"},
-            "predicate": "values",
-            "object": {"kind": "canonical_topic", "id": "ответственность"}
+            "predicate": "has_property"
           },
           "confidence_min_basis_points": 7000
         },
@@ -563,8 +561,8 @@
     {
       "case_id": "unknown-topic-categorical",
       "category": "unknown_topic",
-      "formulation": "Кванточайник доказывает, что свобода невозможна.",
-      "formulation_sha256": "52f7c55ad36129ed49672aecbf7f6060e3dd3ad2847171d0eb0fd974ecbe1449",
+      "formulation": "Кванточайник обосновывает свободу.",
+      "formulation_sha256": "90e9c05c6cf4ef60cf48c17216e4502cd947b7ab8b01651cbafcdc3f1c07723f",
       "review_status": "approved",
       "formulation_classes": ["direct", "ambiguous"],
       "privacy_needles": ["Кванточайник"],
@@ -644,5 +642,5 @@
       "expected_omissions": []
     }
   ],
-  "manifest_digest": "907b3b2b69a33f42c9c4b05baa2f65893d9dcc5c1cccb7877a00adc833567c83"
+  "manifest_digest": "da0b54cadbde6326045cdec05fc686833323cef26acdf6519c4853c1d314d6a0"
 }

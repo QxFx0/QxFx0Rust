@@ -45,7 +45,15 @@ python3 tools/user_argument_evaluation.py compile \
 `compile` emits inventory and coverage only. It deliberately omits
 formulations and privacy needles and uses create-new output semantics.
 
-The future parser evaluation command accepts a typed prediction envelope:
+The `digest` command prints the digest that must be reviewed after an intentional
+manifest edit:
+
+```bash
+python3 tools/user_argument_evaluation.py digest
+```
+
+The `evaluate` command is available now. It consumes a typed prediction
+envelope once a future parser or parser fixture produces one:
 
 ```bash
 python3 tools/user_argument_evaluation.py evaluate \

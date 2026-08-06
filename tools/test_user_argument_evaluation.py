@@ -155,6 +155,37 @@ class UserArgumentEvaluationTests(unittest.TestCase):
             EVALUATION.validate_manifest(manifest, verify_digest=False)
 
         manifest = self.manifest()
+        unknown = next(case for case in manifest["cases"] if case["category"] == "unknown_topic")
+        unknown["expected_nodes"][0]["proposition"]["subject"] = {
+            "kind": "canonical_topic",
+            "id": "Кванточайник",
+        }
+        with self.assertRaises(EVALUATION.ValidationError):
+            EVALUATION.validate_manifest(manifest, verify_digest=False)
+
+    def test_validator_enforces_source_polarity_and_disposition_coverage(self):
+        manifest = self.manifest()
+        hypothetical = next(case for case in manifest["cases"] if case["category"] == "hypothetical")
+        hypothetical["expected_nodes"][0]["source"] = "direct"
+        with self.assertRaises(EVALUATION.ValidationError):
+            EVALUATION.validate_manifest(manifest, verify_digest=False)
+
+        manifest = self.manifest()
+        for case in manifest["cases"]:
+            for node in case["expected_nodes"]:
+                if node["polarity"] == "unknown":
+                    node["polarity"] = "affirmed"
+        with self.assertRaises(EVALUATION.ValidationError):
+            EVALUATION.validate_manifest(manifest, verify_digest=False)
+
+        manifest = self.manifest()
+        unknown = next(case for case in manifest["cases"] if case["category"] == "unknown_topic")
+        unknown["accepted_dispositions"] = ["abstained"]
+        unknown["expected_nodes"] = []
+        with self.assertRaises(EVALUATION.ValidationError):
+            EVALUATION.validate_manifest(manifest, verify_digest=False)
+
+        manifest = self.manifest()
         external = next(case for case in manifest["cases"] if case["category"] == "external_subject")
         external["expected_nodes"][0]["proposition"]["subject"]["id"] = "Господин Икс"
         with self.assertRaises(EVALUATION.ValidationError):

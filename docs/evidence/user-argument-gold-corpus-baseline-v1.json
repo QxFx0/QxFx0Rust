@@ -1,7 +1,7 @@
 {
   "schema": "qxfx0.user-argument-gold-corpus-baseline.v1",
   "corpus_id": "user-argument-gold-2026-08-v1",
-  "manifest_digest": "907b3b2b69a33f42c9c4b05baa2f65893d9dcc5c1cccb7877a00adc833567c83",
+  "manifest_digest": "da0b54cadbde6326045cdec05fc686833323cef26acdf6519c4853c1d314d6a0",
   "cases_total": 17,
   "categories_total": 17,
   "relation_kinds": [
