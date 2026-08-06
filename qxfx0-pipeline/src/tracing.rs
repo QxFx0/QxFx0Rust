@@ -28,6 +28,10 @@ pub struct PipelineTrace {
     /// Optional Debate Core evidence. It is excluded from state and replay steps.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debate_receipt: Option<qxfx0_types::DebateObservationReceipt>,
+    /// Optional User Argument Parsing evidence. It is excluded from state and
+    /// replay steps and contains no raw user text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_argument_receipt: Option<qxfx0_types::UserArgumentParseReceipt>,
     /// Final authority/guard boundary result, including turns denied before a
     /// receipt could be created.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -53,6 +57,7 @@ impl PipelineTrace {
             steps: Vec::new(),
             authority_receipt: None,
             debate_receipt: None,
+            user_argument_receipt: None,
             authority_guard_classification: None,
             authority_case_id: None,
             authority_input_class: None,
@@ -96,6 +101,15 @@ impl PipelineTrace {
     ) -> Result<(), qxfx0_types::DebateValidationError> {
         receipt.validate()?;
         self.debate_receipt = Some(receipt);
+        Ok(())
+    }
+
+    pub fn set_user_argument_receipt(
+        &mut self,
+        receipt: qxfx0_types::UserArgumentParseReceipt,
+    ) -> Result<(), qxfx0_types::UserArgumentValidationError> {
+        receipt.validate()?;
+        self.user_argument_receipt = Some(receipt);
         Ok(())
     }
 
@@ -280,6 +294,7 @@ mod tests {
     fn default_trace_schema_omits_debate_receipt() {
         let encoded = serde_json::to_value(PipelineTrace::new("default")).unwrap();
         assert!(encoded.get("debate_receipt").is_none());
+        assert!(encoded.get("user_argument_receipt").is_none());
     }
 
     #[test]

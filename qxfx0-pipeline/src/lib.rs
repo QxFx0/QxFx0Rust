@@ -15,6 +15,7 @@ pub mod shadow_plan;
 mod stages;
 pub mod stance_request;
 pub mod turn_context;
+mod user_argument;
 #[cfg(test)]
 mod vector_pipeline;
 
@@ -116,6 +117,14 @@ pub enum AnomalyShadowMode {
 /// Enables Debate Core as a pure post-plan observer.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 pub enum DebateCoreMode {
+    #[default]
+    Disabled,
+    TraceOnly,
+}
+
+/// Enables User Argument Parsing v1 as a pure post-plan observer.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum UserArgumentParserMode {
     #[default]
     Disabled,
     TraceOnly,
@@ -482,6 +491,7 @@ pub struct TurnOptions {
     pub response_plan_v2: ResponsePlanV2Mode,
     pub response_plan_v2_authority: ResponsePlanV2Authority,
     pub debate_core: DebateCoreMode,
+    pub user_argument_parser: UserArgumentParserMode,
 }
 
 impl TurnOptions {
@@ -535,6 +545,11 @@ impl TurnOptions {
 
     pub fn with_debate_core(mut self, mode: DebateCoreMode) -> Self {
         self.debate_core = mode;
+        self
+    }
+
+    pub fn with_user_argument_parser(mut self, mode: UserArgumentParserMode) -> Self {
+        self.user_argument_parser = mode;
         self
     }
 }
@@ -1432,6 +1447,7 @@ fn process_turn_internal(
         response_plan_v2,
         response_plan_v2_authority,
         debate_core,
+        user_argument_parser,
     } = options;
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -1563,6 +1579,18 @@ fn process_turn_internal(
                     }
                 }
                 Err(error) => tracing::warn!("debate observation skipped: {error}"),
+            }
+        }
+    }
+    if user_argument_parser == UserArgumentParserMode::TraceOnly {
+        if let Some(trace) = trace.as_deref_mut() {
+            match user_argument::observe(&planned) {
+                Ok(receipt) => {
+                    if let Err(error) = trace.set_user_argument_receipt(receipt) {
+                        tracing::warn!("user argument observation skipped: {error}");
+                    }
+                }
+                Err(error) => tracing::warn!("user argument observation skipped: {error}"),
             }
         }
     }

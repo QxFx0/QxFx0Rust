@@ -156,6 +156,33 @@ pub fn run_turn_with_debate_core_trace(
     })
 }
 
+/// Run an ordinary persisted turn while collecting User Argument Parsing v1
+/// evidence that remains external to session state and has no response authority.
+pub fn run_turn_with_user_argument_trace(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<AuthorityTracedTurn> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = qxfx0_pipeline::TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let (output, trace) = qxfx0_pipeline::process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        qxfx0_pipeline::TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_user_argument_parser(qxfx0_pipeline::UserArgumentParserMode::TraceOnly),
+    );
+    db.save_state(session_id, &state)?;
+    Ok(AuthorityTracedTurn {
+        response: output.response,
+        trace,
+    })
+}
+
 /// Run ResponsePlan V2 as an observation-only shadow without persisting the
 /// in-memory turn. V1 remains authoritative for the returned response.
 pub fn run_turn_with_v2_shadow_trace(
@@ -229,6 +256,10 @@ pub fn create_debate_core_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<F
     create_trace_sink(path, "debate core")
 }
 
+pub fn create_user_argument_trace_sink(path: impl AsRef<Path>) -> anyhow::Result<File> {
+    create_trace_sink(path, "user argument")
+}
+
 pub fn write_debate_core_trace_jsonl(
     sink: &mut File,
     trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
@@ -246,10 +277,36 @@ pub fn write_debate_core_trace_jsonl(
     Ok(())
 }
 
+pub fn write_user_argument_trace_jsonl(
+    sink: &mut File,
+    trace: &qxfx0_pipeline::execution_trace::PipelineTrace,
+) -> anyhow::Result<()> {
+    let receipt = trace
+        .user_argument_receipt
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("user argument trace has no parse receipt"))?;
+    receipt
+        .validate()
+        .map_err(|error| anyhow::anyhow!("invalid user argument receipt: {error}"))?;
+    let mut record = serde_json::to_vec(&UserArgumentTraceRecord {
+        schema: "qxfx0.user-argument-parse-trace.v1",
+        receipt,
+    })?;
+    record.push(b'\n');
+    sink.write_all(&record)?;
+    Ok(())
+}
+
 #[derive(Debug, Serialize)]
 struct DebateCoreTraceRecord<'a> {
     schema: &'a str,
     receipt: &'a qxfx0_types::DebateObservationReceipt,
+}
+
+#[derive(Debug, Serialize)]
+struct UserArgumentTraceRecord<'a> {
+    schema: &'a str,
+    receipt: &'a qxfx0_types::UserArgumentParseReceipt,
 }
 
 #[derive(Debug, Deserialize)]
@@ -257,6 +314,13 @@ struct DebateCoreTraceRecord<'a> {
 struct OwnedDebateCoreTraceRecord {
     schema: String,
     receipt: qxfx0_types::DebateObservationReceipt,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedUserArgumentTraceRecord {
+    schema: String,
+    receipt: qxfx0_types::UserArgumentParseReceipt,
 }
 
 /// Verify one receipt-only Debate Core artifact and return its validated receipt.
@@ -289,6 +353,36 @@ pub fn verify_debate_core_trace(
     Ok(record.receipt)
 }
 
+/// Verify one receipt-only User Argument Parsing artifact.
+pub fn verify_user_argument_trace(
+    path: impl AsRef<Path>,
+) -> anyhow::Result<qxfx0_types::UserArgumentParseReceipt> {
+    const MAX_TRACE_BYTES: u64 = 1_048_576;
+    let path = path.as_ref();
+    let metadata = std::fs::metadata(path)?;
+    if metadata.len() > MAX_TRACE_BYTES {
+        anyhow::bail!("user argument trace exceeds {MAX_TRACE_BYTES} bytes");
+    }
+    let source = std::fs::read_to_string(path)?;
+    let mut records = source.lines().filter(|line| !line.trim().is_empty());
+    let line = records
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("user argument trace contains no records"))?;
+    if records.next().is_some() {
+        anyhow::bail!("user argument trace must contain exactly one record");
+    }
+    let record: OwnedUserArgumentTraceRecord = serde_json::from_str(line)
+        .map_err(|error| anyhow::anyhow!("invalid user argument trace: {error}"))?;
+    if record.schema != "qxfx0.user-argument-parse-trace.v1" {
+        anyhow::bail!("unsupported user argument trace schema '{}'", record.schema);
+    }
+    record
+        .receipt
+        .validate()
+        .map_err(|error| anyhow::anyhow!("invalid user argument receipt: {error}"))?;
+    Ok(record.receipt)
+}
+
 #[derive(Debug, Serialize)]
 struct TraceRecord<'a> {
     schema: &'a str,
@@ -311,6 +405,8 @@ struct OwnedAuthorityTrace {
     authority_receipt: Option<serde_json::Value>,
     #[serde(default, rename = "debate_receipt")]
     _debate_receipt: Option<serde_json::Value>,
+    #[serde(default, rename = "user_argument_receipt")]
+    _user_argument_receipt: Option<serde_json::Value>,
     authority_guard_classification: Option<String>,
     authority_case_id: Option<String>,
     authority_input_class: Option<String>,

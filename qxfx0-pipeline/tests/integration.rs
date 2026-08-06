@@ -9,7 +9,7 @@ use qxfx0_pipeline::{
     response_plan_v2_canary_allowlist, response_plan_v2_canary_digest,
     response_plan_v2_state_parity, AnomalyShadowMode, ClarificationMode, DebateCoreMode,
     DoubtShadowMode, RendererAuthority, ResponsePlanV2Authority, ResponsePlanV2Mode,
-    SameTopicSuppressionMode, TurnInput, TurnOptions,
+    SameTopicSuppressionMode, TurnInput, TurnOptions, UserArgumentParserMode,
 };
 use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
@@ -117,6 +117,77 @@ fn debate_core_trace_is_deterministic_and_preserves_output_and_state() {
         TurnOptions::new().with_debate_core(DebateCoreMode::TraceOnly),
     );
     assert_eq!(receipt.digest, replay_trace.debate_receipt.unwrap().digest);
+}
+
+#[test]
+fn user_argument_trace_is_deterministic_private_and_preserves_output_and_state() {
+    let session = "user-argument-parity";
+    let text = "Свобода требует ответственности, потому что выбор имеет последствия.";
+    let input = TurnInput {
+        session_id: session.into(),
+        raw_text: text.into(),
+    };
+    let mut baseline_state = test_state(session);
+    let mut observed_state = baseline_state.clone();
+    let baseline = process_turn_with_options(&input, &mut baseline_state, TurnOptions::new());
+
+    let mut default_state = test_state(session);
+    let (_, default_trace) =
+        process_turn_with_options_and_trace(&input, &mut default_state, TurnOptions::new());
+    assert!(
+        default_trace.user_argument_receipt.is_none(),
+        "user argument parsing must stay off by default"
+    );
+
+    let (observed, trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut observed_state,
+        TurnOptions::new().with_user_argument_parser(UserArgumentParserMode::TraceOnly),
+    );
+    assert_eq!(baseline.response, observed.response);
+    assert_eq!(baseline.blocked, observed.blocked);
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&baseline_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&observed_state).unwrap()
+    );
+
+    let receipt = trace
+        .user_argument_receipt
+        .expect("trace-only mode must emit a receipt");
+    receipt.validate().unwrap();
+    assert_eq!(receipt.disposition(), qxfx0_types::ParseDisposition::Parsed);
+    assert_eq!(receipt.nodes().len(), 2);
+    assert_eq!(receipt.relations().len(), 1);
+    let encoded = serde_json::to_string(&receipt).unwrap();
+    assert!(!encoded.contains(text));
+    assert!(!encoded.contains(session));
+
+    let mut replay_state = test_state(session);
+    let (_, replay_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut replay_state,
+        TurnOptions::new().with_user_argument_parser(UserArgumentParserMode::TraceOnly),
+    );
+    assert_eq!(
+        receipt.digest(),
+        replay_trace.user_argument_receipt.unwrap().digest()
+    );
+
+    let unknown_text = "Кванточайник обосновывает свободу.";
+    let unknown_input = TurnInput {
+        session_id: "user-argument-unknown".into(),
+        raw_text: unknown_text.into(),
+    };
+    let mut unknown_state = test_state("user-argument-unknown");
+    let (_, unknown_trace) = process_turn_with_options_and_trace(
+        &unknown_input,
+        &mut unknown_state,
+        TurnOptions::new().with_user_argument_parser(UserArgumentParserMode::TraceOnly),
+    );
+    let unknown_encoded =
+        serde_json::to_string(&unknown_trace.user_argument_receipt.unwrap()).unwrap();
+    assert!(!unknown_encoded.to_lowercase().contains("кванточайник"));
+    assert!(!unknown_encoded.contains("user-argument-unknown"));
 }
 
 #[test]

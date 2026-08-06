@@ -4,18 +4,19 @@ use qxfx0_cli::{
     append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
     create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_debate_core_trace_sink,
     create_doubt_shadow_trace_sink, create_response_plan_v2_shadow_trace_sink,
-    load_or_create_state, run_doctor, run_operational_metrics, run_turn_with_debate_core_trace,
-    run_turn_with_renderer, run_turn_with_renderer_and_stance_provenance,
-    run_turn_with_renderer_anomaly_shadow_trace, run_turn_with_renderer_cognitive_pilot,
-    run_turn_with_renderer_diagnostics,
+    create_user_argument_trace_sink, load_or_create_state, run_doctor, run_operational_metrics,
+    run_turn_with_debate_core_trace, run_turn_with_renderer,
+    run_turn_with_renderer_and_stance_provenance, run_turn_with_renderer_anomaly_shadow_trace,
+    run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
     run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
-    run_turn_with_renderer_doubt_shadow_trace, run_turn_with_v2_shadow_trace,
-    verify_authority_trace, verify_debate_core_trace, write_anomaly_shadow_trace_jsonl,
-    write_authority_trace_jsonl, write_cognitive_pilot_trace_jsonl, write_debate_core_trace_jsonl,
+    run_turn_with_renderer_doubt_shadow_trace, run_turn_with_user_argument_trace,
+    run_turn_with_v2_shadow_trace, verify_authority_trace, verify_debate_core_trace,
+    verify_user_argument_trace, write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
+    write_cognitive_pilot_trace_jsonl, write_debate_core_trace_jsonl,
     write_doubt_shadow_trace_jsonl, write_response_plan_v2_shadow_trace_jsonl,
-    AuthorityReportScope, DiagnosedTurn,
+    write_user_argument_trace_jsonl, AuthorityReportScope, DiagnosedTurn,
 };
 use qxfx0_pipeline::{
     process_turn_with_renderer, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
@@ -98,6 +99,9 @@ enum Commands {
         /// Write deterministic observation-only argument evidence to a new JSONL file.
         #[arg(long, value_name = "PATH")]
         debate_core_trace_jsonl: Option<PathBuf>,
+        /// Write private receipt-only User Argument Parsing v1 evidence to a new file.
+        #[arg(long, value_name = "PATH", conflicts_with = "debate_core_trace_jsonl")]
+        user_argument_trace_jsonl: Option<PathBuf>,
         /// Default-off typed provenance recording; it never enables recovery.
         #[arg(long)]
         record_stance_provenance: bool,
@@ -175,6 +179,8 @@ enum Commands {
     VerifyAuthorityTrace { path: PathBuf },
     /// Verify one receipt-only Debate Core JSONL artifact.
     VerifyDebateTrace { path: PathBuf },
+    /// Verify one receipt-only User Argument Parsing JSONL artifact.
+    VerifyUserArgumentTrace { path: PathBuf },
     /// Aggregate external authority trace JSONL artifacts
     AuthorityReport {
         #[arg(required = true, num_args = 1..)]
@@ -235,6 +241,7 @@ fn main() -> anyhow::Result<()> {
             authority_expected_guard,
             response_plan_v2_shadow_trace_jsonl,
             debate_core_trace_jsonl,
+            user_argument_trace_jsonl,
             record_stance_provenance,
             enable_clarification,
             enable_same_topic_suppression,
@@ -250,6 +257,7 @@ fn main() -> anyhow::Result<()> {
                     || record_stance_provenance
                     || enable_clarification
                     || enable_same_topic_suppression
+                    || user_argument_trace_jsonl.is_some()
                 {
                     anyhow::bail!("debate core evidence requires a standalone turn");
                 }
@@ -267,6 +275,37 @@ fn main() -> anyhow::Result<()> {
                     return Ok(());
                 }
                 write_debate_core_trace_jsonl(&mut sink, &traced.trace)?;
+                return Ok(());
+            }
+            if let Some(path) = user_argument_trace_jsonl {
+                if diagnostics_jsonl.is_some()
+                    || doubt_shadow_trace_jsonl.is_some()
+                    || anomaly_shadow_trace_jsonl.is_some()
+                    || cognitive_pilot_trace_jsonl.is_some()
+                    || response_plan_v2_authority
+                    || response_plan_v2_shadow_trace_jsonl.is_some()
+                    || record_stance_provenance
+                    || enable_clarification
+                    || enable_same_topic_suppression
+                {
+                    anyhow::bail!("user argument evidence requires a standalone turn");
+                }
+                let mut sink = create_user_argument_trace_sink(&path)?;
+                let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+                let traced = run_turn_with_user_argument_trace(
+                    &db,
+                    &cli.session_id,
+                    &text,
+                    renderer_authority,
+                )?;
+                println!("{}", traced.response);
+                if traced.trace.user_argument_receipt.is_none() {
+                    warn!(
+                        "user argument observation unavailable; turn completed without a receipt"
+                    );
+                    return Ok(());
+                }
+                write_user_argument_trace_jsonl(&mut sink, &traced.trace)?;
                 return Ok(());
             }
             if let Some(path) = response_plan_v2_shadow_trace_jsonl {
@@ -848,6 +887,13 @@ fn main() -> anyhow::Result<()> {
             println!(
                 "{}",
                 serde_json::to_string_pretty(&verify_debate_core_trace(path)?)?
+            );
+            Ok(())
+        }
+        Commands::VerifyUserArgumentTrace { path } => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&verify_user_argument_trace(path)?)?
             );
             Ok(())
         }
