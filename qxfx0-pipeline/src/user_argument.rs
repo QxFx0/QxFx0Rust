@@ -571,7 +571,7 @@ fn build_receipt(
         .enumerate()
         .map(|(index, relation)| {
             ArgumentRelation::new(
-                ArgumentRelationId::try_new(format!("relation.{index}"))?,
+                ArgumentRelationId::try_new(format!("{}.relation.{index}", spec.id))?,
                 UserArgumentNodeId::try_new(relation.from)?,
                 UserArgumentNodeId::try_new(relation.to)?,
                 relation.kind,

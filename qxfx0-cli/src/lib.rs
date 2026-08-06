@@ -327,60 +327,64 @@ struct OwnedUserArgumentTraceRecord {
 pub fn verify_debate_core_trace(
     path: impl AsRef<Path>,
 ) -> anyhow::Result<qxfx0_types::DebateObservationReceipt> {
-    const MAX_TRACE_BYTES: u64 = 1_048_576;
-    let path = path.as_ref();
-    let metadata = std::fs::metadata(path)?;
-    if metadata.len() > MAX_TRACE_BYTES {
-        anyhow::bail!("debate core trace exceeds {MAX_TRACE_BYTES} bytes");
-    }
-    let source = std::fs::read_to_string(path)?;
-    let mut records = source.lines().filter(|line| !line.trim().is_empty());
-    let line = records
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("debate core trace contains no records"))?;
-    if records.next().is_some() {
-        anyhow::bail!("debate core trace must contain exactly one record");
-    }
-    let record: OwnedDebateCoreTraceRecord = serde_json::from_str(line)
-        .map_err(|error| anyhow::anyhow!("invalid debate core trace: {error}"))?;
-    if record.schema != "qxfx0.debate-core-trace.v1" {
-        anyhow::bail!("unsupported debate core trace schema '{}'", record.schema);
-    }
-    record
-        .receipt
+    let receipt = verify_receipt_artifact::<OwnedDebateCoreTraceRecord, _, _>(
+        path.as_ref(),
+        "debate core",
+        "qxfx0.debate-core-trace.v1",
+        |record| (record.schema, record.receipt),
+    )?;
+    receipt
         .validate()
         .map_err(|error| anyhow::anyhow!("invalid debate core receipt: {error}"))?;
-    Ok(record.receipt)
+    Ok(receipt)
 }
 
 /// Verify one receipt-only User Argument Parsing artifact.
 pub fn verify_user_argument_trace(
     path: impl AsRef<Path>,
 ) -> anyhow::Result<qxfx0_types::UserArgumentParseReceipt> {
+    let receipt = verify_receipt_artifact::<OwnedUserArgumentTraceRecord, _, _>(
+        path.as_ref(),
+        "user argument",
+        "qxfx0.user-argument-parse-trace.v1",
+        |record| (record.schema, record.receipt),
+    )?;
+    receipt
+        .validate()
+        .map_err(|error| anyhow::anyhow!("invalid user argument receipt: {error}"))?;
+    Ok(receipt)
+}
+
+fn verify_receipt_artifact<T, R, F>(
+    path: &Path,
+    label: &str,
+    expected_schema: &str,
+    into_receipt: F,
+) -> anyhow::Result<R>
+where
+    T: serde::de::DeserializeOwned,
+    F: FnOnce(T) -> (String, R),
+{
     const MAX_TRACE_BYTES: u64 = 1_048_576;
-    let path = path.as_ref();
     let metadata = std::fs::metadata(path)?;
     if metadata.len() > MAX_TRACE_BYTES {
-        anyhow::bail!("user argument trace exceeds {MAX_TRACE_BYTES} bytes");
+        anyhow::bail!("{label} trace exceeds {MAX_TRACE_BYTES} bytes");
     }
     let source = std::fs::read_to_string(path)?;
     let mut records = source.lines().filter(|line| !line.trim().is_empty());
     let line = records
         .next()
-        .ok_or_else(|| anyhow::anyhow!("user argument trace contains no records"))?;
+        .ok_or_else(|| anyhow::anyhow!("{label} trace contains no records"))?;
     if records.next().is_some() {
-        anyhow::bail!("user argument trace must contain exactly one record");
+        anyhow::bail!("{label} trace must contain exactly one record");
     }
-    let record: OwnedUserArgumentTraceRecord = serde_json::from_str(line)
-        .map_err(|error| anyhow::anyhow!("invalid user argument trace: {error}"))?;
-    if record.schema != "qxfx0.user-argument-parse-trace.v1" {
-        anyhow::bail!("unsupported user argument trace schema '{}'", record.schema);
+    let record: T = serde_json::from_str(line)
+        .map_err(|error| anyhow::anyhow!("invalid {label} trace: {error}"))?;
+    let (schema, receipt) = into_receipt(record);
+    if schema != expected_schema {
+        anyhow::bail!("unsupported {label} trace schema '{schema}'");
     }
-    record
-        .receipt
-        .validate()
-        .map_err(|error| anyhow::anyhow!("invalid user argument receipt: {error}"))?;
-    Ok(record.receipt)
+    Ok(receipt)
 }
 
 #[derive(Debug, Serialize)]

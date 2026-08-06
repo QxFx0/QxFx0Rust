@@ -340,6 +340,48 @@ mod tests {
     }
 
     #[test]
+    fn user_argument_receipt_does_not_change_replay_signature() {
+        let mut trace = PipelineTrace::new("user-argument");
+        trace.record_step(
+            "plan_shadow",
+            "in".into(),
+            "out".into(),
+            std::time::Duration::ZERO,
+            BTreeMap::new(),
+        );
+        let expected = trace
+            .replay_signature()
+            .into_iter()
+            .map(|(stage, input, output)| (stage.to_owned(), input.to_owned(), output.to_owned()))
+            .collect::<Vec<_>>();
+        let omission = qxfx0_types::ParseOmission::new(
+            qxfx0_types::ParseOmissionReason::InsufficientEvidence,
+            None,
+        )
+        .unwrap();
+        let receipt = qxfx0_types::UserArgumentParseReceipt::new(
+            qxfx0_types::ParseDisposition::Abstained,
+            vec![],
+            vec![],
+            vec![omission],
+        )
+        .unwrap();
+        trace.set_user_argument_receipt(receipt).unwrap();
+        assert_eq!(
+            trace
+                .replay_signature()
+                .into_iter()
+                .map(|(stage, input, output)| (
+                    stage.to_owned(),
+                    input.to_owned(),
+                    output.to_owned()
+                ))
+                .collect::<Vec<_>>(),
+            expected
+        );
+    }
+
+    #[test]
     fn debate_receipt_setter_rejects_mutated_receipts() {
         let mut receipt = qxfx0_types::DebateObservationReceipt::new(
             "no_topic".into(),

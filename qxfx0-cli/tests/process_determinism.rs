@@ -240,10 +240,20 @@ fn user_argument_cli_writes_private_receipt_without_changing_a_turn() {
     let trace = base.join(format!("qxfx0-user-argument-{pid}.jsonl"));
     let privacy_trace = base.join(format!("qxfx0-user-argument-{pid}-privacy.jsonl"));
     let repeated_trace = base.join(format!("qxfx0-user-argument-{pid}-repeated.jsonl"));
+    let duplicate_trace = base.join(format!("qxfx0-user-argument-{pid}-duplicate.jsonl"));
+    let wrong_schema_trace = base.join(format!("qxfx0-user-argument-{pid}-schema.jsonl"));
+    let tampered_trace = base.join(format!("qxfx0-user-argument-{pid}-tampered.jsonl"));
     for path in [&standard_db, &observed_db, &rejected_db, &privacy_db] {
         cleanup(path);
     }
-    for path in [&trace, &privacy_trace, &repeated_trace] {
+    for path in [
+        &trace,
+        &privacy_trace,
+        &repeated_trace,
+        &duplicate_trace,
+        &wrong_schema_trace,
+        &tampered_trace,
+    ] {
         let _ = std::fs::remove_file(path);
     }
 
@@ -287,6 +297,13 @@ fn user_argument_cli_writes_private_receipt_without_changing_a_turn() {
     );
 
     let encoded = std::fs::read_to_string(&trace).unwrap();
+    assert_eq!(
+        encoded
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .count(),
+        1
+    );
     assert!(!encoded.contains(text));
     assert!(!encoded.contains(session));
     assert!(!encoded.contains(String::from_utf8_lossy(&observed.stdout).trim()));
@@ -305,6 +322,32 @@ fn user_argument_cli_writes_private_receipt_without_changing_a_turn() {
         "verification failed: {}",
         String::from_utf8_lossy(&verified.stderr)
     );
+
+    std::fs::write(&duplicate_trace, format!("{encoded}{encoded}")).unwrap();
+    let mut wrong_schema = value.clone();
+    wrong_schema["schema"] = serde_json::json!("qxfx0.user-argument-parse-trace.v2");
+    std::fs::write(
+        &wrong_schema_trace,
+        serde_json::to_vec(&wrong_schema).unwrap(),
+    )
+    .unwrap();
+    let mut tampered = value.clone();
+    tampered["receipt"]["nodes"][0]["node"]["confidence"] = serde_json::json!(7_499);
+    std::fs::write(&tampered_trace, serde_json::to_vec(&tampered).unwrap()).unwrap();
+    for (label, path) in [
+        ("duplicate", &duplicate_trace),
+        ("wrong schema", &wrong_schema_trace),
+        ("tampered", &tampered_trace),
+    ] {
+        let rejected_verify = Command::new(binary)
+            .args(["verify-user-argument-trace", path.to_str().unwrap()])
+            .output()
+            .unwrap_or_else(|error| panic!("spawn {label} verification: {error}"));
+        assert!(
+            !rejected_verify.status.success(),
+            "{label} artifact must be rejected"
+        );
+    }
 
     let unknown_text = "что такое кванточайник?";
     let first_unknown = Command::new(binary)
@@ -370,7 +413,14 @@ fn user_argument_cli_writes_private_receipt_without_changing_a_turn() {
     for path in [&standard_db, &observed_db, &rejected_db, &privacy_db] {
         cleanup(path);
     }
-    for path in [&trace, &privacy_trace, &repeated_trace] {
+    for path in [
+        &trace,
+        &privacy_trace,
+        &repeated_trace,
+        &duplicate_trace,
+        &wrong_schema_trace,
+        &tampered_trace,
+    ] {
         let _ = std::fs::remove_file(path);
     }
 }
