@@ -229,6 +229,203 @@ fn debate_core_cli_writes_private_deterministic_trace_without_changing_a_turn() 
 }
 
 #[test]
+fn user_argument_cli_writes_private_receipt_without_changing_a_turn() {
+    let binary = env!("CARGO_BIN_EXE_qxfx0");
+    let base = std::env::temp_dir();
+    let pid = std::process::id();
+    let standard_db = base.join(format!("qxfx0-user-argument-{pid}-standard.db"));
+    let observed_db = base.join(format!("qxfx0-user-argument-{pid}-observed.db"));
+    let rejected_db = base.join(format!("qxfx0-user-argument-{pid}-rejected.db"));
+    let privacy_db = base.join(format!("qxfx0-user-argument-{pid}-privacy.db"));
+    let trace = base.join(format!("qxfx0-user-argument-{pid}.jsonl"));
+    let privacy_trace = base.join(format!("qxfx0-user-argument-{pid}-privacy.jsonl"));
+    let repeated_trace = base.join(format!("qxfx0-user-argument-{pid}-repeated.jsonl"));
+    let duplicate_trace = base.join(format!("qxfx0-user-argument-{pid}-duplicate.jsonl"));
+    let wrong_schema_trace = base.join(format!("qxfx0-user-argument-{pid}-schema.jsonl"));
+    let tampered_trace = base.join(format!("qxfx0-user-argument-{pid}-tampered.jsonl"));
+    for path in [&standard_db, &observed_db, &rejected_db, &privacy_db] {
+        cleanup(path);
+    }
+    for path in [
+        &trace,
+        &privacy_trace,
+        &repeated_trace,
+        &duplicate_trace,
+        &wrong_schema_trace,
+        &tampered_trace,
+    ] {
+        let _ = std::fs::remove_file(path);
+    }
+
+    let session = "user-argument-cli-session";
+    let text = "Свобода требует ответственности, потому что выбор имеет последствия.";
+    let standard = run_turn(binary, &standard_db, session, text);
+    let observed = Command::new(binary)
+        .args([
+            "--db",
+            observed_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--user-argument-trace-jsonl",
+            trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn user argument turn");
+    assert!(standard.status.success());
+    assert!(
+        observed.status.success(),
+        "user argument command failed: {}",
+        String::from_utf8_lossy(&observed.stderr)
+    );
+    assert_eq!(standard.stdout, observed.stdout);
+
+    let standard_state = qxfx0_persistence::Persistence::open(standard_db.to_str().unwrap())
+        .unwrap()
+        .load_state(session)
+        .unwrap()
+        .unwrap();
+    let observed_state = qxfx0_persistence::Persistence::open(observed_db.to_str().unwrap())
+        .unwrap()
+        .load_state(session)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&standard_state).unwrap(),
+        qxfx0_pipeline::execution_trace::calculate_stable_digest(&observed_state).unwrap()
+    );
+
+    let encoded = std::fs::read_to_string(&trace).unwrap();
+    assert_eq!(
+        encoded
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .count(),
+        1
+    );
+    assert!(!encoded.contains(text));
+    assert!(!encoded.contains(session));
+    assert!(!encoded.contains(String::from_utf8_lossy(&observed.stdout).trim()));
+    let value: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(value["schema"], "qxfx0.user-argument-parse-trace.v1");
+    assert_eq!(value["receipt"]["disposition"], "parsed");
+    assert_eq!(value["receipt"]["nodes"].as_array().unwrap().len(), 2);
+    assert!(value.get("trace").is_none());
+
+    let verified = Command::new(binary)
+        .args(["verify-user-argument-trace", trace.to_str().unwrap()])
+        .output()
+        .expect("verify user argument trace");
+    assert!(
+        verified.status.success(),
+        "verification failed: {}",
+        String::from_utf8_lossy(&verified.stderr)
+    );
+
+    std::fs::write(&duplicate_trace, format!("{encoded}{encoded}")).unwrap();
+    let mut wrong_schema = value.clone();
+    wrong_schema["schema"] = serde_json::json!("qxfx0.user-argument-parse-trace.v2");
+    std::fs::write(
+        &wrong_schema_trace,
+        serde_json::to_vec(&wrong_schema).unwrap(),
+    )
+    .unwrap();
+    let mut tampered = value.clone();
+    tampered["receipt"]["nodes"][0]["node"]["confidence"] = serde_json::json!(7_499);
+    std::fs::write(&tampered_trace, serde_json::to_vec(&tampered).unwrap()).unwrap();
+    for (label, path) in [
+        ("duplicate", &duplicate_trace),
+        ("wrong schema", &wrong_schema_trace),
+        ("tampered", &tampered_trace),
+    ] {
+        let rejected_verify = Command::new(binary)
+            .args(["verify-user-argument-trace", path.to_str().unwrap()])
+            .output()
+            .unwrap_or_else(|error| panic!("spawn {label} verification: {error}"));
+        assert!(
+            !rejected_verify.status.success(),
+            "{label} artifact must be rejected"
+        );
+    }
+
+    let unknown_text = "что такое кванточайник?";
+    let first_unknown = Command::new(binary)
+        .args([
+            "--db",
+            privacy_db.to_str().unwrap(),
+            "--session-id",
+            "user-argument-private",
+            "turn",
+            unknown_text,
+            "--user-argument-trace-jsonl",
+            privacy_trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn unmatched user argument turn");
+    assert!(first_unknown.status.success());
+    let first_encoded = std::fs::read_to_string(&privacy_trace).unwrap();
+    assert!(!first_encoded.to_lowercase().contains("кванточайник"));
+    assert!(!first_encoded.contains("user-argument-private"));
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&first_encoded).unwrap()["receipt"]
+            ["disposition"],
+        "abstained"
+    );
+
+    let repeated_unknown = Command::new(binary)
+        .args([
+            "--db",
+            privacy_db.to_str().unwrap(),
+            "--session-id",
+            "user-argument-private",
+            "turn",
+            unknown_text,
+            "--user-argument-trace-jsonl",
+            repeated_trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn repeated unmatched user argument turn");
+    assert!(repeated_unknown.status.success());
+    let repeated_encoded = std::fs::read_to_string(&repeated_trace).unwrap();
+    assert!(!repeated_encoded.to_lowercase().contains("кванточайник"));
+    assert!(!repeated_encoded.contains("user-argument-private"));
+
+    let rejected = Command::new(binary)
+        .args([
+            "--db",
+            rejected_db.to_str().unwrap(),
+            "--session-id",
+            session,
+            "turn",
+            text,
+            "--user-argument-trace-jsonl",
+            trace.to_str().unwrap(),
+        ])
+        .output()
+        .expect("spawn rejected user argument turn");
+    assert!(!rejected.status.success());
+    assert!(
+        !rejected_db.exists(),
+        "DB must not be opened after sink failure"
+    );
+
+    for path in [&standard_db, &observed_db, &rejected_db, &privacy_db] {
+        cleanup(path);
+    }
+    for path in [
+        &trace,
+        &privacy_trace,
+        &repeated_trace,
+        &duplicate_trace,
+        &wrong_schema_trace,
+        &tampered_trace,
+    ] {
+        let _ = std::fs::remove_file(path);
+    }
+}
+
+#[test]
 fn doubt_shadow_cli_writes_external_trace_without_changing_a_turn() {
     let binary = env!("CARGO_BIN_EXE_qxfx0");
     let base = std::env::temp_dir();
