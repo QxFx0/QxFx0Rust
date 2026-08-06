@@ -129,6 +129,29 @@ jobs:
           python3 tools/debate_observation.py validate \
             data/gates/debate-core/observation-corpus-v1.json
 
+      - name: Validate User Argument Parsing gold corpus
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest tools/test_user_argument_evaluation.py
+          python3 tools/user_argument_evaluation.py validate
+          python3 tools/user_argument_evaluation.py compile \
+            --output "$RUNNER_TEMP/user-argument-gold-compiled.json"
+          jq -e '
+            .schema == "qxfx0.user-argument-gold-compiled.v1" and
+            .authority_change == "none" and
+            .persistence_change == "none" and
+            .raw_user_logs == false and
+            .reviewed_formulations_only == true and
+            .parser_implementation == false and
+            .runtime_integration == false and
+            .cases_total == 17 and
+            (.relation_coverage | length) == 9
+          ' "$RUNNER_TEMP/user-argument-gold-compiled.json" >/dev/null
+          test \
+            "$(jq -r .manifest_digest "$RUNNER_TEMP/user-argument-gold-compiled.json")" = \
+            "$(jq -r .manifest_digest docs/evidence/user-argument-gold-corpus-baseline-v1.json)"
+
       - name: Export release metadata
         shell: bash
         run: |

@@ -1,0 +1,50 @@
+{
+  "schema": "qxfx0.user-argument-gold-corpus-baseline.v1",
+  "corpus_id": "user-argument-gold-2026-08-v1",
+  "manifest_digest": "907b3b2b69a33f42c9c4b05baa2f65893d9dcc5c1cccb7877a00adc833567c83",
+  "cases_total": 17,
+  "categories_total": 17,
+  "relation_kinds": [
+    "attacks",
+    "contradicts",
+    "entails",
+    "qualifies",
+    "rebuts",
+    "requests_definition",
+    "requests_evidence",
+    "supports",
+    "undercuts"
+  ],
+  "source_classes": [
+    "direct",
+    "hypothetical",
+    "quoted",
+    "reported",
+    "unknown"
+  ],
+  "polarities": [
+    "affirmed",
+    "negated",
+    "unknown"
+  ],
+  "accepted_dispositions": [
+    "abstained",
+    "parsed",
+    "partial"
+  ],
+  "formulation_classes": [
+    "ambiguous",
+    "direct",
+    "hypothetical",
+    "negated",
+    "quoted"
+  ],
+  "raw_user_logs": false,
+  "reviewed_formulations_only": true,
+  "source_policy": "curated_synthetic_only",
+  "parser_implementation": false,
+  "runtime_integration": false,
+  "persistence_change": "none",
+  "authority_change": "none",
+  "promotion_decision": "none"
+}
