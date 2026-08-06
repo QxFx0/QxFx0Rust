@@ -111,8 +111,11 @@ class UserArgumentEvaluationTests(unittest.TestCase):
         self.assertNotIn("formulation", first)
         self.assertNotIn("privacy_needles", first)
         encoded = json.dumps(first, ensure_ascii=False, sort_keys=True)
+        self.assertNotIn('"privacy_needles"', encoded)
         for case in self.manifest()["cases"]:
             self.assertNotIn(case["formulation"], encoded)
+            for needle in case["privacy_needles"]:
+                self.assertNotIn(needle, encoded)
         self.assertFalse(first["parser_implementation"])
         self.assertFalse(first["runtime_integration"])
         self.assertEqual(first["authority_change"], "none")
@@ -319,7 +322,7 @@ class UserArgumentEvaluationTests(unittest.TestCase):
         predictions = self.perfect_predictions()
         first_relation = next(case for case in predictions["cases"] if case["relations"])
         duplicate = copy.deepcopy(first_relation["relations"][0])
-        duplicate["from"], duplicate["to"] = duplicate["to"], duplicate["from"]
+        duplicate["relation_id"] = f"{duplicate['relation_id']}.duplicate"
         first_relation["relations"].append(duplicate)
         with self.assertRaises(EVALUATION.ValidationError):
             EVALUATION.evaluate(self.manifest(), predictions)
