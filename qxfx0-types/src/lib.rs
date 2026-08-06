@@ -18,6 +18,7 @@ pub mod semantic_intent;
 pub mod stance;
 pub mod stance_authority;
 pub mod system_state;
+pub mod user_argument;
 
 pub use anomaly::AnomalyEvidence;
 pub use atom::{
@@ -64,3 +65,11 @@ pub use stance_authority::{
     VerifiedStanceDecision, STANCE_ATTESTATION_VERSION,
 };
 pub use system_state::SystemState;
+pub use user_argument::{
+    ArgumentObject, ArgumentPolarity, ArgumentPredicate, ArgumentRelation, ArgumentRelationId,
+    ArgumentRelationKind, ArgumentSourceClass, ArgumentSpanDigest, ArgumentSpanDigestScope,
+    ArgumentSubject, CanonicalArgumentTopicId, NormalizedArgumentProposition, ParseConfidence,
+    ParseDisposition, ParseOmission, ParseOmissionReason, ParserRuleId, UserArgumentNode,
+    UserArgumentNodeId, UserArgumentParseReceipt, UserArgumentValidationError, UserClaim,
+    UserConclusion, UserCounterclaim, UserPremise, UserQualifier, USER_ARGUMENT_PARSE_VERSION,
+};
