@@ -141,10 +141,17 @@ def validate_id(field, value):
 
 def validate_contract_id(field, value):
     """Validate a visible bounded identifier used by the Rust contract."""
-    if not isinstance(value, str) or not value or len(value.encode("utf-8")) > 256:
+    if not isinstance(value, str) or not value:
         raise ValidationError(f"{field} is not a bounded contract identifier")
-    if any(character.isspace() or unicodedata.category(character) in {"Cc", "Cf"} for character in value):
-        raise ValidationError(f"{field} contains whitespace, control, or format characters")
+    if any(
+        character.isspace() or unicodedata.category(character) in {"Cc", "Cf", "Cs"}
+        for character in value
+    ):
+        raise ValidationError(
+            f"{field} contains whitespace, control, format, or surrogate characters"
+        )
+    if len(value.encode("utf-8")) > 256:
+        raise ValidationError(f"{field} is not a bounded contract identifier")
 
 
 def validate_sha256(field, value):
@@ -269,8 +276,8 @@ def validate_case(case):
     formulation = case.get("formulation")
     if not isinstance(formulation, str) or not formulation.strip() or len(formulation) > 512:
         raise ValidationError(f"{case_id}: formulation must contain 1-512 characters")
-    if any(unicodedata.category(character) == "Cc" for character in formulation):
-        raise ValidationError(f"{case_id}: formulation contains a control character")
+    if any(unicodedata.category(character) in {"Cc", "Cs"} for character in formulation):
+        raise ValidationError(f"{case_id}: formulation contains a control or surrogate character")
     validate_sha256("formulation_sha256", case.get("formulation_sha256"))
     if hashlib.sha256(formulation.encode("utf-8")).hexdigest() != case["formulation_sha256"]:
         raise ValidationError(f"{case_id}: formulation digest mismatch")
@@ -290,7 +297,7 @@ def validate_case(case):
         not isinstance(value, str)
         or not value
         or len(value) > 256
-        or any(unicodedata.category(character) in {"Cc", "Cf"} for character in value)
+        or any(unicodedata.category(character) in {"Cc", "Cf", "Cs"} for character in value)
         for value in needles
     ):
         raise ValidationError(f"{case_id}: invalid privacy needles")
@@ -672,14 +679,21 @@ def relation_signatures(nodes, relations):
     )
 
 
-def confidence_floor_misses(expected_items, actual_items, signature, expected_field, actual_field):
+def confidence_floor_misses(
+    expected_items,
+    actual_items,
+    expected_signature,
+    actual_signature,
+    expected_field,
+    actual_field,
+):
     """Count matched predictions whose confidence is below the gold floor."""
     expected_by_signature = collections.defaultdict(list)
     actual_by_signature = collections.defaultdict(list)
     for item in expected_items:
-        expected_by_signature[signature(item)].append(item[expected_field])
+        expected_by_signature[expected_signature(item)].append(item[expected_field])
     for item in actual_items:
-        actual_by_signature[signature(item)].append(item[actual_field])
+        actual_by_signature[actual_signature(item)].append(item[actual_field])
     misses = 0
     for item_signature in expected_by_signature.keys() & actual_by_signature.keys():
         expected_values = sorted(expected_by_signature[item_signature], reverse=True)
@@ -766,6 +780,7 @@ def evaluate(manifest, predictions):
             gold["expected_nodes"],
             predicted["nodes"],
             node_signature,
+            node_signature,
             "confidence_min_basis_points",
             "confidence_basis_points",
         )
@@ -790,20 +805,23 @@ def evaluate(manifest, predictions):
         actual_node_signatures = {
             node["node_id"]: node_signature(node) for node in predicted["nodes"]
         }
+
         def expected_relation_signature(relation, signatures=expected_node_signatures):
             return (signatures[relation["from"]], signatures[relation["to"]], relation["kind"])
 
         def actual_relation_signature(relation, signatures=actual_node_signatures):
             return (signatures[relation["from"]], signatures[relation["to"]], relation["kind"])
+
         confidence_floor_failures += confidence_floor_misses(
             gold["expected_relations"],
             predicted["relations"],
             expected_relation_signature,
+            actual_relation_signature,
             "confidence_min_basis_points",
             "confidence_basis_points",
         )
 
-        expected_relation_set = set(expected_relations)
+        remaining_expected_relations = collections.Counter(expected_relations)
         actual_nodes = {node["node_id"]: node for node in predicted["nodes"]}
         for relation in predicted["relations"]:
             signature = (
@@ -811,7 +829,11 @@ def evaluate(manifest, predictions):
                 node_signature(actual_nodes[relation["to"]]),
                 relation["kind"],
             )
-            outcome = "correct" if signature in expected_relation_set else "incorrect"
+            if remaining_expected_relations[signature] > 0:
+                outcome = "correct"
+                remaining_expected_relations[signature] -= 1
+            else:
+                outcome = "incorrect"
             confidence[relation["kind"]][confidence_bucket(relation["confidence_basis_points"])][
                 outcome
             ] += 1
