@@ -188,6 +188,10 @@ fn run_canary_report_gate() -> GateReport {
             session_id: session_id.clone(),
             raw_text: format!("что такое {topic}?"),
         };
+        let Ok(attested_topic) = qxfx0_types::StanceTopic::new(topic) else {
+            violations.push(format!("{topic}: audited topic is invalid"));
+            continue;
+        };
         let attestation = qxfx0_types::StanceDecisionAttestation {
             version: qxfx0_types::STANCE_ATTESTATION_VERSION,
             issuer_id: "response-plan-v2-canary-report".into(),
@@ -195,7 +199,7 @@ fn run_canary_report_gate() -> GateReport {
             audience: "release-gate".into(),
             session_id: session_id.clone(),
             expected_pre_turn: 0,
-            topic: qxfx0_types::StanceTopic::new(topic).expect("audited topic is valid"),
+            topic: attested_topic,
             polarity: qxfx0_types::StancePolarity::Affirmed,
             request_digest: qxfx0_types::calculate_stance_request_digest(
                 &session_id,
@@ -205,9 +209,15 @@ fn run_canary_report_gate() -> GateReport {
             issued_at_unix_seconds: 100,
             expires_at_unix_seconds: 200,
         };
-        let attestation_payload = attestation
-            .canonical_bytes()
-            .expect("canary attestation serializes");
+        let attestation_payload = match attestation.canonical_bytes() {
+            Ok(payload) => payload,
+            Err(error) => {
+                violations.push(format!(
+                    "{topic}: canary attestation serialization failed: {error}"
+                ));
+                continue;
+            }
+        };
         let mut baseline_state = crate::fresh_state(&session_id);
         let baseline_output = qxfx0_pipeline::process_turn_with_options(
             &input,
@@ -667,16 +677,28 @@ fn run_replay_gate() -> GateReport {
     if manifest.manifest_digest.len() != 64 {
         violations.push("replay manifest must carry a SHA-256 digest".into());
     }
-    let mut canonical = serde_json::to_value(&manifest).expect("replay manifest serializes");
-    canonical
-        .as_object_mut()
-        .expect("manifest is an object")
-        .remove("manifest_digest");
-    let actual_manifest_digest = sha256_hex(
-        serde_json::to_string(&canonical)
-            .expect("canonical replay manifest serializes")
-            .as_bytes(),
-    );
+    let mut canonical = match serde_json::to_value(&manifest) {
+        Ok(value) => value,
+        Err(error) => {
+            violations.push(format!("replay manifest serialization failed: {error}"));
+            serde_json::Value::Null
+        }
+    };
+    let actual_manifest_digest = if let Some(object) = canonical.as_object_mut() {
+        object.remove("manifest_digest");
+        match serde_json::to_string(&canonical) {
+            Ok(encoded) => sha256_hex(encoded.as_bytes()),
+            Err(error) => {
+                violations.push(format!(
+                    "canonical replay manifest serialization failed: {error}"
+                ));
+                String::new()
+            }
+        }
+    } else {
+        violations.push("serialized replay manifest is not an object".into());
+        String::new()
+    };
     if actual_manifest_digest != manifest.manifest_digest {
         violations.push(format!(
             "replay manifest digest mismatch: recorded={}, actual={actual_manifest_digest}",
@@ -1150,11 +1172,17 @@ fn run_phase_c() -> GateReport {
             violations.push(format!("{}: thesis is not compositional", topic_name));
             continue;
         }
-        let relation_id = topic
+        let Some(relation_id) = topic
             .primary_proposition()
             .canonical_slots()
             .map(|(_, relation, _)| relation.as_str())
-            .expect("audited primary proposition has canonical slots");
+        else {
+            violations.push(format!(
+                "{}: audited primary proposition has no canonical slots",
+                topic_name
+            ));
+            continue;
+        };
         let Some(surface) = execution
             .realized
             .as_ref()
@@ -1183,16 +1211,21 @@ fn run_phase_c() -> GateReport {
                         topic_name
                     ));
                 }
-                let governed = resolved
-                    .clauses()
-                    .next()
-                    .expect("realization produced a clause")
-                    .governed_case;
-                let required = valency_lexicon()
-                    .get(relation_id)
-                    .expect("audited relation has a valency frame")
-                    .complement()
-                    .required_case();
+                let Some(governed) = resolved.clauses().next().map(|clause| clause.governed_case)
+                else {
+                    violations.push(format!("{}: realization produced no clause", topic_name));
+                    continue;
+                };
+                let required = match valency_lexicon().get(relation_id) {
+                    Ok(frame) => frame.complement().required_case(),
+                    Err(error) => {
+                        violations.push(format!(
+                            "{}: audited relation has no valency frame: {error}",
+                            topic_name
+                        ));
+                        continue;
+                    }
+                };
                 if required.is_some() && governed != required {
                     violations.push(format!(
                         "{}: realized case {governed:?} does not match lexicon {required:?}",

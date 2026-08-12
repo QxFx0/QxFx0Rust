@@ -329,8 +329,11 @@ fn parse_case(line: usize, value: &str) -> Result<Case, ValencyError> {
 pub fn valency_lexicon() -> &'static ValencyLexicon {
     static LEXICON: OnceLock<ValencyLexicon> = OnceLock::new();
     LEXICON.get_or_init(|| {
+        // The infallible process-global accessor is established public API. The source is
+        // compile-time embedded and exercised by lexicon/reference-vector tests, so failure
+        // is a release-build invariant rather than an external-input error boundary.
         ValencyLexicon::load_from_str(VALENCY_FRAMES_TSV)
-            .expect("embedded valency lexicon must parse")
+            .expect("embedded valency lexicon is release-validated")
     })
 }
 

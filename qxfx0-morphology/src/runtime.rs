@@ -584,9 +584,11 @@ pub fn get_runtime() -> &'static MorphologyRuntime {
             }
         }
 
-        // Fallback to embedded assets (always validated)
+        // Process-global access cannot return `Result` without breaking the public API.
+        // These bytes are compile-time embedded and covered by bundle-validation tests, so
+        // failure means a corrupt release artifact rather than untrusted runtime input.
         MorphologyRuntime::load_from_bytes(EMBEDDED_LEXEMES_JSON, Some(EMBEDDED_MANIFEST_JSON))
-            .expect("Critical: Failed to load embedded morphology assets")
+            .expect("embedded morphology assets are release-validated")
     })
 }
 

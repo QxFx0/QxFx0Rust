@@ -374,7 +374,10 @@ pub fn fallback_action_for_result(result: &V2ExecutionResult) -> FallbackAction 
 }
 
 fn digest<T: Serialize>(domain: &[u8], value: &T) -> String {
-    let encoded = serde_json::to_vec(value).expect("V2 artifact serializes");
+    // Digest methods are intentionally infallible public contracts. Their current callers
+    // use derived serializers over closed V2 value types (no custom fallible serializer),
+    // so propagating `Result` would be a broad API break for an internal invariant.
+    let encoded = serde_json::to_vec(value).expect("closed V2 artifact type serializes");
     let mut hasher = Sha256::new();
     hasher.update(domain);
     hasher.update((encoded.len() as u64).to_be_bytes());

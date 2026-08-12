@@ -402,6 +402,10 @@ TurnContractSnapshot {
   the production default on V1. `--response-plan-v2-trace-jsonl PATH` writes a
   create-new external `qxfx0.authority-trace.v1` record containing the full
   receipt and deterministic pipeline trace, never session state.
+  Verification of this external JSONL checks schema, digest shape, internal
+  cross-field consistency, replay metadata, and release eligibility only. It
+  does **not** authenticate provenance: records are unsigned and must be
+  transported and retained inside an operator-trusted boundary.
 - `RealizationDowngrade` and `TypedNonDeclarative` receipts are never eligible
   for authoritative emission. Canary authority fails closed instead of calling
   any V1 renderer; only `Compositional` and `AuditedVerbatim` may emit.
