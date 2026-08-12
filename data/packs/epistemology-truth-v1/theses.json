@@ -1,0 +1,52 @@
+[
+  {
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality",
+    "authority_fact_id": "fact.truth_reality",
+    "thesis_digest": "bc6cbf698afbecfc24b9101c542be3b5c44e995146c79e99245dcc22b72b317c",
+    "theme": "epistemology-truth",
+    "tags": [
+      "epistemology-truth",
+      "истина"
+    ]
+  },
+  {
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality.counterpoint",
+    "authority_fact_id": "fact.truth_reality.counterpoint",
+    "thesis_digest": "9b4191632892370db4ee7c3cc3d84141a8cd2578389ee6b7a0dab2a77b03f89a",
+    "theme": "epistemology-truth",
+    "tags": [
+      "epistemology-truth",
+      "истина"
+    ]
+  },
+  {
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality.consequence",
+    "authority_fact_id": "fact.truth_reality.consequence",
+    "thesis_digest": "d7a09a4d9ad75ed06d71033aaeb0684698508288ff249c3c6127808be333eea6",
+    "theme": "epistemology-truth",
+    "tags": [
+      "epistemology-truth",
+      "истина"
+    ]
+  },
+  {
+    "thesis_id": "epistemology-truth-v1:fact.opinion_position",
+    "authority_fact_id": "fact.opinion_position",
+    "thesis_digest": "b53f6435a04abb920e735a4971308ac53862e9b15a250f534a6335e231d25df3",
+    "theme": "epistemology-truth",
+    "tags": [
+      "epistemology-truth",
+      "мнение"
+    ]
+  },
+  {
+    "thesis_id": "epistemology-truth-v1:fact.opinion_position.counterpoint",
+    "authority_fact_id": "fact.opinion_position.counterpoint",
+    "thesis_digest": "d936d7b07e41297b5046fc30c0957d8e5185187128d85bf8a396ef1a0d1eb2c0",
+    "theme": "epistemology-truth",
+    "tags": [
+      "epistemology-truth",
+      "мнение"
+    ]
+  }
+]

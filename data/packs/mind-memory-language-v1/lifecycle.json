@@ -1,0 +1,20 @@
+[
+  {
+    "scenario_id": "mind-memory-language-v1:counterargument",
+    "action": "Counterargument",
+    "head": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6",
+    "trigger": "8c82116a510e445043f056cf55a307154f5b1ea50c898ab1e9ceeeb912e7e017",
+    "result": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6",
+    "relation": "Counters",
+    "rationale": "An explicit counterargument contests the active authority thesis without replacing its stable identity."
+  },
+  {
+    "scenario_id": "mind-memory-language-v1:revision",
+    "action": "Revision",
+    "head": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6",
+    "trigger": "80390823a63bedb250addcfae9b1cad60af884678eb55b68b6c1fe176ff08f54",
+    "result": "f68501b92b1c0c8c3bb4090d40bd3bdc0b1ce1748ef5cec1d4d19e6f3ffd3ba6",
+    "relation": "Qualifies",
+    "rationale": "A scoped qualification motivates deterministic revision to a distinct existing authority thesis."
+  }
+]

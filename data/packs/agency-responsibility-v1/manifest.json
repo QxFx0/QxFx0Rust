@@ -1,0 +1,19 @@
+{
+  "pack_id": "agency-responsibility-v1",
+  "pack_version": 1,
+  "schema_version": 2,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "license": "MIT",
+  "dependencies": [
+    "philosophy-core-v1"
+  ],
+  "files": {
+    "assessments.json": "5b7a7eb5444f1f052280a72063539f33bc4dce1582f76822063662f2733d98ba",
+    "evidence-links.json": "ef31a7b8551642ba16b53558433c24cb58373d038c1f4fd70055deec80423000",
+    "evidence.json": "cc12fb7be9ab58d08d6949dc05b47c8b91831b8ac7efbea06e1bf7677e414489",
+    "lifecycle.json": "4f68e03ab79cc146e626aade95bf133c10e0656378fd97061f726683e3ddb3cb",
+    "relations.json": "433f628e6a7cf6e42baf757392b8dfd9fd677cc7f26951380140614af9c80237",
+    "theses.json": "35cff6d11d00242f2c440e34e602f3d5ee0331f58ca7422cfc80b4460559f1be"
+  }
+}

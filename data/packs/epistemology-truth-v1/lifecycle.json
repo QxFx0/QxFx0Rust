@@ -1,0 +1,20 @@
+[
+  {
+    "scenario_id": "epistemology-truth-v1:counterargument",
+    "action": "Counterargument",
+    "head": "bc6cbf698afbecfc24b9101c542be3b5c44e995146c79e99245dcc22b72b317c",
+    "trigger": "9b4191632892370db4ee7c3cc3d84141a8cd2578389ee6b7a0dab2a77b03f89a",
+    "result": "bc6cbf698afbecfc24b9101c542be3b5c44e995146c79e99245dcc22b72b317c",
+    "relation": "Counters",
+    "rationale": "An explicit counterargument contests the active authority thesis without replacing its stable identity."
+  },
+  {
+    "scenario_id": "epistemology-truth-v1:revision",
+    "action": "Revision",
+    "head": "bc6cbf698afbecfc24b9101c542be3b5c44e995146c79e99245dcc22b72b317c",
+    "trigger": "b53f6435a04abb920e735a4971308ac53862e9b15a250f534a6335e231d25df3",
+    "result": "d7a09a4d9ad75ed06d71033aaeb0684698508288ff249c3c6127808be333eea6",
+    "relation": "Qualifies",
+    "rationale": "A scoped qualification motivates deterministic revision to a distinct existing authority thesis."
+  }
+]

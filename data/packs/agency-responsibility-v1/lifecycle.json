@@ -1,0 +1,20 @@
+[
+  {
+    "scenario_id": "agency-responsibility-v1:counterargument",
+    "action": "Counterargument",
+    "head": "a4c1e7b6b359bd9626be1954c78f686e81df5b5189efa8a3c1d0258309a2a45b",
+    "trigger": "cf68101bfcc9154e3e7da073c174c920307b59522f8ee0c10164ffb1a1fe0c7b",
+    "result": "a4c1e7b6b359bd9626be1954c78f686e81df5b5189efa8a3c1d0258309a2a45b",
+    "relation": "Counters",
+    "rationale": "An explicit counterargument contests the active authority thesis without replacing its stable identity."
+  },
+  {
+    "scenario_id": "agency-responsibility-v1:revision",
+    "action": "Revision",
+    "head": "a4c1e7b6b359bd9626be1954c78f686e81df5b5189efa8a3c1d0258309a2a45b",
+    "trigger": "effc4bbb1c9d40abf37cb8848158267fbb9fcc7b85e5203353173cb2844435cb",
+    "result": "2177753aff81f0bda1489170b3a2d29489daf3ed0312da269f86cd15cce983f6",
+    "relation": "Qualifies",
+    "rationale": "A scoped qualification motivates deterministic revision to a distinct existing authority thesis."
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "catalog_id": "qxfx0-thematic-catalog-v1",
+  "catalog_version": 1,
+  "catalog_digest": "972022d8c8fdda0e8efde38296cfb74ffef473db9ad686e7f4b2fbfd7c0514ce",
+  "files": {
+    "catalog.json": "3252f888a975f10bf3017bcb0ceac65b7e2bcacabeb1e580ebc8b1bda1e03098"
+  },
+  "manifest_digest": "16afd0234da97d1a577f3da380ef6d2ba62dea76fb4489abd722b50575c4491f"
+}

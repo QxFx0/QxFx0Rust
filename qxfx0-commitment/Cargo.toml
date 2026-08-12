@@ -8,3 +8,7 @@ license.workspace = true
 [dependencies]
 qxfx0-types = { path = "../qxfx0-types" }
 serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

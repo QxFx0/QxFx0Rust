@@ -1,0 +1,19 @@
+{
+  "pack_id": "mind-memory-language-v1",
+  "pack_version": 1,
+  "schema_version": 2,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "license": "MIT",
+  "dependencies": [
+    "philosophy-core-v1"
+  ],
+  "files": {
+    "assessments.json": "14e410cfb677dfbdadb3a617be7f4ed203183beaf6fb51ef871ef831e418c898",
+    "evidence-links.json": "8263c9e35f0231aa40afd013c68f8c285146b22f0620481629a657d0afcd557f",
+    "evidence.json": "d6446ee668158e2e1d039ebdff8cfa897d14ea36663e4f811217ff5d3ace3ef5",
+    "lifecycle.json": "9dfb2736e0c38208658a5ae4761365533977f4abda6b35b626ce02a68e062934",
+    "relations.json": "816807c872edf81180dd5a9c802e67d9d60163bd9eac34437cf337121ba5cb28",
+    "theses.json": "d3c946e384d73cfa293a6c83728f54559bcb9fc131f6e3f4d13e056cbf00a903"
+  }
+}

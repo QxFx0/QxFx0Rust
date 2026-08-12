@@ -1,0 +1,27 @@
+[
+  {
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice",
+    "evidence_id": "agency-responsibility-v1:evidence:fact.freedom_choice",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice.counterpoint",
+    "evidence_id": "agency-responsibility-v1:evidence:fact.freedom_choice.counterpoint",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice.consequence",
+    "evidence_id": "agency-responsibility-v1:evidence:fact.freedom_choice.consequence",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "agency-responsibility-v1:fact.responsibility_accountability",
+    "evidence_id": "agency-responsibility-v1:evidence:fact.responsibility_accountability",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "agency-responsibility-v1:fact.responsibility_accountability.counterpoint",
+    "evidence_id": "agency-responsibility-v1:evidence:fact.responsibility_accountability.counterpoint",
+    "role": "supports"
+  }
+]

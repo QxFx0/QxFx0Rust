@@ -1,0 +1,62 @@
+[
+  {
+    "record": {
+      "id": "agency-responsibility-v1:evidence:fact.freedom_choice",
+      "source_id": "philosophy-core-v1:fact.freedom_choice",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "20084dd11de73879e568b160c3405b08f7763244964814425000291489abc5f6",
+      "strength_basis_points": 7000
+    },
+    "canonical_digest": "50f2a3c575171b5637da2c27d12f4dba5f117b460eec783205c7dd36afd2fa4c"
+  },
+  {
+    "record": {
+      "id": "agency-responsibility-v1:evidence:fact.freedom_choice.counterpoint",
+      "source_id": "philosophy-core-v1:fact.freedom_choice.counterpoint",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "9f263f35440ebc16c515a3981e056f17fe1dd66de92f1b63dbe0df4068442605",
+      "strength_basis_points": 7500
+    },
+    "canonical_digest": "2fcddcc819d5bdb1a5bc0a65b4ed49639cc10e545d9749d58dad1416be7e6342"
+  },
+  {
+    "record": {
+      "id": "agency-responsibility-v1:evidence:fact.freedom_choice.consequence",
+      "source_id": "philosophy-core-v1:fact.freedom_choice.consequence",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "20f348d719067f7142d177bf69834391d707ecd37e2003cd696c3d29eb0ae6ae",
+      "strength_basis_points": 8000
+    },
+    "canonical_digest": "e7c6b523becd7d33c1ad63cdf8c6678d52357b9470332fff37714ee850619d47"
+  },
+  {
+    "record": {
+      "id": "agency-responsibility-v1:evidence:fact.responsibility_accountability",
+      "source_id": "philosophy-core-v1:fact.responsibility_accountability",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "212b6a020a1d8c4096ed89f39a091c5122c92979e889fec9a8b91cb290830ccf",
+      "strength_basis_points": 8500
+    },
+    "canonical_digest": "4c6f64180d4ed9409f0775d844874fdf7a5569fe4e584672ed4f4d877e2db25d"
+  },
+  {
+    "record": {
+      "id": "agency-responsibility-v1:evidence:fact.responsibility_accountability.counterpoint",
+      "source_id": "philosophy-core-v1:fact.responsibility_accountability.counterpoint",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "1c8f255cb64963cb99622672553af4d2e323528aa2ae5fdb455480d37269c688",
+      "strength_basis_points": 9000
+    },
+    "canonical_digest": "ebecfb71a4ed554a7d945e3c7ffa3392d1934fa24ad2b3f3271d97c0253f55c0"
+  }
+]

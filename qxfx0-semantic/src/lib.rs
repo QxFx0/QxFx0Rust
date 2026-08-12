@@ -1,10 +1,12 @@
 pub mod argued_topics;
+pub mod catalog_registry;
 pub mod composer;
 pub mod concept_resolver;
 pub mod conjugate;
 pub mod content_selector;
 pub mod corpus_import;
 pub mod discourse_composer;
+pub mod evidence_registry;
 pub mod fact_model;
 pub mod gate;
 pub mod inference;
@@ -22,6 +24,9 @@ pub use argued_topics::{
     argued_topic_registry, argued_topics_source_digest, AdmittedStatement, ArguedTopic,
     ArguedTopicRegistry, ContentAssetMetrics, CONTENT_PROFILE,
 };
+pub use catalog_registry::{
+    catalog_registry, embedded_activation_allowlist, ActivationError, CatalogRegistry,
+};
 pub use composer::{
     ContextualComposer, GraphEngagement, ParsedProposition, PropositionMode, PropositionParser,
 };
@@ -36,6 +41,7 @@ pub use corpus_import::{
     CorpusImportReport,
 };
 pub use discourse_composer::{normalize_punctuation, DiscourseComposer};
+pub use evidence_registry::{EvidenceRegistry, EvidenceRegistryError, EVIDENCE_POLICY_V1};
 pub use fact_model::{
     FactCondition, FactId, FactKind, FactRecord, FactRegistry, FactRegistryError, FactStatus,
     TypedRelationModel,
@@ -44,7 +50,9 @@ pub use gate::GeneratedPredicateGate;
 pub use inference::derive_atoms;
 pub use knowledge_pack::{
     active_pack_asset_digests, active_pack_set, KnowledgePackError, KnowledgePackManifest,
-    KnowledgePackSet, KnowledgePackSource, KnowledgePackSummary, PackRelationRecord,
+    KnowledgePackSet, KnowledgePackSource, KnowledgePackSummary, OverlayLifecycleAction,
+    OverlayLifecycleScenario, OverlayRelationKind, OverlayRelationMetadata, OverlayThesisMetadata,
+    PackRelationRecord,
 };
 pub use network::{activate, build_semantic_network, cached_semantic_network, get_activated_atoms};
 pub use pathfinder::PathFinder;

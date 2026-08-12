@@ -583,7 +583,12 @@ mod tests {
                 manifest: &manifest,
                 concepts: &concepts,
                 facts: &facts,
+                theses: b"",
                 relations: &relations,
+                lifecycle: b"",
+                evidence: b"",
+                evidence_links: b"",
+                assessments: b"",
             }],
             &qxfx0_semantic::seed_graph(),
         )

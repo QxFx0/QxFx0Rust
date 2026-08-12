@@ -1,0 +1,52 @@
+[
+  {
+    "thesis_id": "mind-memory-language-v1:fact.memory_information_process",
+    "authority_fact_id": "fact.memory_information_process",
+    "thesis_digest": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6",
+    "theme": "mind-memory-language",
+    "tags": [
+      "mind-memory-language",
+      "память"
+    ]
+  },
+  {
+    "thesis_id": "mind-memory-language-v1:fact.memory_information_process.counterpoint",
+    "authority_fact_id": "fact.memory_information_process.counterpoint",
+    "thesis_digest": "8c82116a510e445043f056cf55a307154f5b1ea50c898ab1e9ceeeb912e7e017",
+    "theme": "mind-memory-language",
+    "tags": [
+      "mind-memory-language",
+      "память"
+    ]
+  },
+  {
+    "thesis_id": "mind-memory-language-v1:fact.recollection_new_frame",
+    "authority_fact_id": "fact.recollection_new_frame",
+    "thesis_digest": "f68501b92b1c0c8c3bb4090d40bd3bdc0b1ce1748ef5cec1d4d19e6f3ffd3ba6",
+    "theme": "mind-memory-language",
+    "tags": [
+      "mind-memory-language",
+      "воспоминание"
+    ]
+  },
+  {
+    "thesis_id": "mind-memory-language-v1:fact.recollection_new_frame.counterpoint",
+    "authority_fact_id": "fact.recollection_new_frame.counterpoint",
+    "thesis_digest": "80390823a63bedb250addcfae9b1cad60af884678eb55b68b6c1fe176ff08f54",
+    "theme": "mind-memory-language",
+    "tags": [
+      "mind-memory-language",
+      "воспоминание"
+    ]
+  },
+  {
+    "thesis_id": "mind-memory-language-v1:fact.language_thought",
+    "authority_fact_id": "fact.language_thought",
+    "thesis_digest": "0809078006374211efe4c3aa75b2ba4b52d65f8645f0b2f6f80ad450ef0dba58",
+    "theme": "mind-memory-language",
+    "tags": [
+      "mind-memory-language",
+      "язык"
+    ]
+  }
+]

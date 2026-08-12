@@ -1,6 +1,8 @@
 pub mod anomaly;
 pub mod atom;
+pub mod catalog;
 pub mod cognitive;
+pub mod evidence;
 pub mod fact;
 pub mod field;
 pub mod frame;
@@ -17,13 +19,23 @@ pub mod semantic_intent;
 pub mod stance;
 pub mod stance_authority;
 pub mod system_state;
+pub mod thesis;
 
 pub use anomaly::AnomalyEvidence;
 pub use atom::{
     Atom, AtomCategory, AtomGraph, AtomId, ConceptId, ConjugateVector, ObjectCase, Relation,
     RelationSource, SenseField, SenseVector,
 };
+pub use catalog::{
+    CatalogError, CatalogManifest, CatalogPack, PackCatalog, PackLifecycle, PackOwnership, PackPin,
+    PackTrustTier, CATALOG_SCHEMA_VERSION, MAX_CATALOG_PACKS,
+};
 pub use cognitive::{DoubtDriver, DoubtInput, DoubtRoute, DoubtScore, EpisodicEvent, EpisodicKind};
+pub use evidence::{
+    sorted_evidence_set_digest, AssessmentId, BasisPoints, ConfidenceAssessment, EvidenceDigest,
+    EvidenceId, EvidenceKind, EvidenceRecord, EvidenceTypeError, SourceId, ThesisEvidenceLink,
+    ThesisEvidenceRole, TrustClass, EVIDENCE_CANONICAL_VERSION,
+};
 pub use fact::{FactId, FactIdError};
 pub use field::{derive_field_confidence, Atmosphere, Field, FieldProfile, NarrativeTone};
 pub use frame::SemanticFrame;
@@ -58,3 +70,11 @@ pub use stance_authority::{
     VerifiedStanceDecision, STANCE_ATTESTATION_VERSION,
 };
 pub use system_state::SystemState;
+pub use thesis::{
+    ClosedContradictionRule, RelationId, RelationTriggerBasis, Thesis, ThesisDigest, ThesisError,
+    ThesisGraph, ThesisGraphError, ThesisId, ThesisKind, ThesisLifecycle, ThesisLifecycleEvent,
+    ThesisLifecycleValidationError, ThesisPredicate, ThesisRelation, ThesisRelationKind,
+    ThesisRelationTrigger, ThesisRevision, ThesisRevisionAction, ThesisRevisionReason, ThesisState,
+    ThesisStatus, MAX_THESIS_EVENTS, MAX_THESIS_REVISIONS, MAX_THESIS_TRIGGERS,
+    THESIS_CANONICAL_VERSION,
+};

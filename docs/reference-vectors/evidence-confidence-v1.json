@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "record": {
+    "id": "evidence.reference",
+    "source_id": "source.reference",
+    "kind": "curated_reference",
+    "trust_class": "curated_embedded",
+    "source_revision": "revision-1",
+    "content_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "strength_basis_points": 8000
+  },
+  "record_digest": "e11c4f8c9e4291ce763a0a0014b88e3203872f0501396d7510e3294992200300",
+  "singleton_set_digest": "88bd29495332c2974ba64cb77aa74cc75540004294d54fff02a56210384a6eee"
+}

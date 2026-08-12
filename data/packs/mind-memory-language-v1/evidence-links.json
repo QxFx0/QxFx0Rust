@@ -1,0 +1,27 @@
+[
+  {
+    "thesis_id": "mind-memory-language-v1:fact.memory_information_process",
+    "evidence_id": "mind-memory-language-v1:evidence:fact.memory_information_process",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "mind-memory-language-v1:fact.memory_information_process.counterpoint",
+    "evidence_id": "mind-memory-language-v1:evidence:fact.memory_information_process.counterpoint",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "mind-memory-language-v1:fact.recollection_new_frame",
+    "evidence_id": "mind-memory-language-v1:evidence:fact.recollection_new_frame",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "mind-memory-language-v1:fact.recollection_new_frame.counterpoint",
+    "evidence_id": "mind-memory-language-v1:evidence:fact.recollection_new_frame.counterpoint",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "mind-memory-language-v1:fact.language_thought",
+    "evidence_id": "mind-memory-language-v1:evidence:fact.language_thought",
+    "role": "supports"
+  }
+]

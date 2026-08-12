@@ -1,0 +1,62 @@
+[
+  {
+    "record": {
+      "id": "mind-memory-language-v1:evidence:fact.memory_information_process",
+      "source_id": "philosophy-core-v1:fact.memory_information_process",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "aa68d8386896e11300b4c5de07344fe38b4c1678bec498c53d629ac902324865",
+      "strength_basis_points": 7000
+    },
+    "canonical_digest": "182577c2e759865fb1e1bc7a569cc84a63d9731d66245e354e58e830ef6aad33"
+  },
+  {
+    "record": {
+      "id": "mind-memory-language-v1:evidence:fact.memory_information_process.counterpoint",
+      "source_id": "philosophy-core-v1:fact.memory_information_process.counterpoint",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "170278eeb2c42a3b6e7168cd6e698a3b0b10cbe558dce03e2bcf78bfef505063",
+      "strength_basis_points": 7500
+    },
+    "canonical_digest": "7e45fe034e24b42d3a62799bae2815d0304626737700f0860449dd1987fa2122"
+  },
+  {
+    "record": {
+      "id": "mind-memory-language-v1:evidence:fact.recollection_new_frame",
+      "source_id": "philosophy-core-v1:fact.recollection_new_frame",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "535b943bc8b4acb074befb725e5630639002c14e88e6cbdb5d2a6e12a24bb218",
+      "strength_basis_points": 8000
+    },
+    "canonical_digest": "626ce5c0533065e31c1d6d9d527443440f1b820bac251195e4f190cd78c35072"
+  },
+  {
+    "record": {
+      "id": "mind-memory-language-v1:evidence:fact.recollection_new_frame.counterpoint",
+      "source_id": "philosophy-core-v1:fact.recollection_new_frame.counterpoint",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "785918e92a0394d0545d5bdf0cde19adaeaf6fac5aa3ea95343a4ee3820005ea",
+      "strength_basis_points": 8500
+    },
+    "canonical_digest": "8bd15c6944325be034446afc030a32054bc73514713b8648eaba295800dafbfb"
+  },
+  {
+    "record": {
+      "id": "mind-memory-language-v1:evidence:fact.language_thought",
+      "source_id": "philosophy-core-v1:fact.language_thought",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "724d5eb0f717cbeae3e77571719a43633ee517073e7cb83dc098da131ef0730f",
+      "strength_basis_points": 9000
+    },
+    "canonical_digest": "61bcf877a76b00db658644a47addf2a5537b0c0d2c7ce920987c2f0d7c7916f4"
+  }
+]

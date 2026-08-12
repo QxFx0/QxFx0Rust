@@ -1,0 +1,52 @@
+[
+  {
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice",
+    "authority_fact_id": "fact.freedom_choice",
+    "thesis_digest": "a4c1e7b6b359bd9626be1954c78f686e81df5b5189efa8a3c1d0258309a2a45b",
+    "theme": "agency-responsibility",
+    "tags": [
+      "agency-responsibility",
+      "свобода"
+    ]
+  },
+  {
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice.counterpoint",
+    "authority_fact_id": "fact.freedom_choice.counterpoint",
+    "thesis_digest": "cf68101bfcc9154e3e7da073c174c920307b59522f8ee0c10164ffb1a1fe0c7b",
+    "theme": "agency-responsibility",
+    "tags": [
+      "agency-responsibility",
+      "свобода"
+    ]
+  },
+  {
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice.consequence",
+    "authority_fact_id": "fact.freedom_choice.consequence",
+    "thesis_digest": "2177753aff81f0bda1489170b3a2d29489daf3ed0312da269f86cd15cce983f6",
+    "theme": "agency-responsibility",
+    "tags": [
+      "agency-responsibility",
+      "свобода"
+    ]
+  },
+  {
+    "thesis_id": "agency-responsibility-v1:fact.responsibility_accountability",
+    "authority_fact_id": "fact.responsibility_accountability",
+    "thesis_digest": "430442cfcbd2f52a94373e5b1c7f0f1bcfec543b3d87291ddc53bd40910ee682",
+    "theme": "agency-responsibility",
+    "tags": [
+      "agency-responsibility",
+      "ответственность"
+    ]
+  },
+  {
+    "thesis_id": "agency-responsibility-v1:fact.responsibility_accountability.counterpoint",
+    "authority_fact_id": "fact.responsibility_accountability.counterpoint",
+    "thesis_digest": "effc4bbb1c9d40abf37cb8848158267fbb9fcc7b85e5203353173cb2844435cb",
+    "theme": "agency-responsibility",
+    "tags": [
+      "agency-responsibility",
+      "ответственность"
+    ]
+  }
+]

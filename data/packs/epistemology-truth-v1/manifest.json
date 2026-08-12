@@ -1,0 +1,19 @@
+{
+  "pack_id": "epistemology-truth-v1",
+  "pack_version": 1,
+  "schema_version": 2,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "license": "MIT",
+  "dependencies": [
+    "philosophy-core-v1"
+  ],
+  "files": {
+    "assessments.json": "bd3b832ee21557020d3cb4e1a7d5f76591f6225b98750b59ebcc0b296d20277a",
+    "evidence-links.json": "b22a324720b37a9330018ee678f8b69b457491dd4feeb15e3fb36ec800825b50",
+    "evidence.json": "a0e563fc1266103612be2b4785e51a98221222b859ff3b203d07430f47cb2d49",
+    "lifecycle.json": "6657739c08dd074832ddf18c0b270c4a69facabd5185a1a2cb624dc8f5c0f278",
+    "relations.json": "a687967673d17d1e2d094c296ec53b8f849dd82c973273bb047a2edba67c6ceb",
+    "theses.json": "26e9c2c8f1102f3372650f38c87ffc7f15b46abe0543ccccd7e77ee81f130c7d"
+  }
+}

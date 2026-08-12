@@ -1,0 +1,376 @@
+{
+  "schema_version": 1,
+  "catalog_id": "qxfx0-thematic-catalog-v1",
+  "catalog_version": 1,
+  "catalog_digest": "972022d8c8fdda0e8efde38296cfb74ffef473db9ad686e7f4b2fbfd7c0514ce",
+  "packs": [
+    {
+      "pack_id": "aesthetics-v1",
+      "pack_version": 1,
+      "manifest_digest": "5ca2d71cd2dc8877b5b3894c8a630f57d31a5a8eda3cd7ba05ba0f21da86500b",
+      "themes": [
+        "aesthetics"
+      ],
+      "concept_coverage": [],
+      "thesis_coverage": [],
+      "dependencies": [],
+      "trust_tier": "discovery_only",
+      "lifecycle": "planned",
+      "ownership": {
+        "concept_namespaces": [],
+        "thesis_namespaces": [],
+        "overlay_of": []
+      },
+      "license": "MIT",
+      "authority_facts": false
+    },
+    {
+      "pack_id": "affect-action-v1",
+      "pack_version": 1,
+      "manifest_digest": "0ee231abd2ca070c6cf997871b1243314094be55527fef13326471bdb496e883",
+      "themes": [
+        "affect-action"
+      ],
+      "concept_coverage": [],
+      "thesis_coverage": [],
+      "dependencies": [],
+      "trust_tier": "discovery_only",
+      "lifecycle": "candidate",
+      "ownership": {
+        "concept_namespaces": [],
+        "thesis_namespaces": [],
+        "overlay_of": []
+      },
+      "license": "MIT",
+      "authority_facts": false
+    },
+    {
+      "pack_id": "agency-responsibility-v1",
+      "pack_version": 1,
+      "manifest_digest": "05b539ad71444dfb43a32b109b24f2f1a9ebc857935cfa8b10267a13ec3cb3e2",
+      "themes": [
+        "agency-responsibility"
+      ],
+      "concept_coverage": [],
+      "thesis_coverage": [
+        "agency-responsibility-v1:fact.freedom_choice",
+        "agency-responsibility-v1:fact.freedom_choice.counterpoint",
+        "agency-responsibility-v1:fact.freedom_choice.consequence",
+        "agency-responsibility-v1:fact.responsibility_accountability",
+        "agency-responsibility-v1:fact.responsibility_accountability.counterpoint"
+      ],
+      "dependencies": [
+        {
+          "pack_id": "philosophy-core-v1",
+          "pack_version": 1,
+          "manifest_digest": "742bc65882172528a0760ca6a53bc53699c8e1d5b2f342b06133bb6bd4698f2f"
+        }
+      ],
+      "trust_tier": "curated_embedded",
+      "lifecycle": "approved",
+      "ownership": {
+        "concept_namespaces": [],
+        "thesis_namespaces": [
+          "agency-responsibility-v1:"
+        ],
+        "overlay_of": [
+          "philosophy-core-v1"
+        ]
+      },
+      "license": "MIT",
+      "authority_facts": false
+    },
+    {
+      "pack_id": "epistemology-truth-v1",
+      "pack_version": 1,
+      "manifest_digest": "6c53018f17f3a08e3d348fb276b06579e91ad1613ab4e526dd7ee86e081a93af",
+      "themes": [
+        "epistemology-truth"
+      ],
+      "concept_coverage": [],
+      "thesis_coverage": [
+        "epistemology-truth-v1:fact.truth_reality",
+        "epistemology-truth-v1:fact.truth_reality.counterpoint",
+        "epistemology-truth-v1:fact.truth_reality.consequence",
+        "epistemology-truth-v1:fact.opinion_position",
+        "epistemology-truth-v1:fact.opinion_position.counterpoint"
+      ],
+      "dependencies": [
+        {
+          "pack_id": "philosophy-core-v1",
+          "pack_version": 1,
+          "manifest_digest": "742bc65882172528a0760ca6a53bc53699c8e1d5b2f342b06133bb6bd4698f2f"
+        }
+      ],
+      "trust_tier": "curated_embedded",
+      "lifecycle": "approved",
+      "ownership": {
+        "concept_namespaces": [],
+        "thesis_namespaces": [
+          "epistemology-truth-v1:"
+        ],
+        "overlay_of": [
+          "philosophy-core-v1"
+        ]
+      },
+      "license": "MIT",
+      "authority_facts": false
+    },
+    {
+      "pack_id": "ethics-social-order-v1",
+      "pack_version": 1,
+      "manifest_digest": "a21498aa9dd946e679f4727e549a6ff7eef748f5820d1198db8ac3f68dd2cc81",
+      "themes": [
+        "ethics-social-order"
+      ],
+      "concept_coverage": [],
+      "thesis_coverage": [],
+      "dependencies": [],
+      "trust_tier": "discovery_only",
+      "lifecycle": "candidate",
+      "ownership": {
+        "concept_namespaces": [],
+        "thesis_namespaces": [],
+        "overlay_of": []
+      },
+      "license": "MIT",
+      "authority_facts": false
+    },
+    {
+      "pack_id": "existential-v1",
+      "pack_version": 1,
+      "manifest_digest": "6d4bb071aa1a47c68e1d136ce0fbddd9e69dfed96f33b4ee9f13a2bc811ac525",
+      "themes": [
+        "existential"
+      ],
+      "concept_coverage": [],
+      "thesis_coverage": [],
+      "dependencies": [],
+      "trust_tier": "discovery_only",
+      "lifecycle": "planned",
+      "ownership": {
+        "concept_namespaces": [],
+        "thesis_namespaces": [],
+        "overlay_of": []
+      },
+      "license": "MIT",
+      "authority_facts": false
+    },
+    {
+      "pack_id": "mind-memory-language-v1",
+      "pack_version": 1,
+      "manifest_digest": "100c2c2aea97e5597e597cd596bd8e708623f504e7cc5a2abf5aef0dde4839ae",
+      "themes": [
+        "mind-memory-language"
+      ],
+      "concept_coverage": [],
+      "thesis_coverage": [
+        "mind-memory-language-v1:fact.memory_information_process",
+        "mind-memory-language-v1:fact.memory_information_process.counterpoint",
+        "mind-memory-language-v1:fact.recollection_new_frame",
+        "mind-memory-language-v1:fact.recollection_new_frame.counterpoint",
+        "mind-memory-language-v1:fact.language_thought"
+      ],
+      "dependencies": [
+        {
+          "pack_id": "philosophy-core-v1",
+          "pack_version": 1,
+          "manifest_digest": "742bc65882172528a0760ca6a53bc53699c8e1d5b2f342b06133bb6bd4698f2f"
+        }
+      ],
+      "trust_tier": "curated_embedded",
+      "lifecycle": "approved",
+      "ownership": {
+        "concept_namespaces": [],
+        "thesis_namespaces": [
+          "mind-memory-language-v1:"
+        ],
+        "overlay_of": [
+          "philosophy-core-v1"
+        ]
+      },
+      "license": "MIT",
+      "authority_facts": false
+    },
+    {
+      "pack_id": "philosophy-core-v1",
+      "pack_version": 1,
+      "manifest_digest": "742bc65882172528a0760ca6a53bc53699c8e1d5b2f342b06133bb6bd4698f2f",
+      "themes": [
+        "philosophy-core"
+      ],
+      "concept_coverage": [
+        "concept.свобода",
+        "concept.произвол",
+        "concept.ответственность",
+        "concept.истина",
+        "concept.мнение",
+        "concept.память",
+        "concept.воспоминание",
+        "concept.помнить",
+        "concept.сознание",
+        "concept.самосознание",
+        "concept.вера",
+        "concept.красота",
+        "concept.долг",
+        "concept.доверие",
+        "concept.страх",
+        "concept.надежда",
+        "concept.справедливость",
+        "concept.время",
+        "concept.разум",
+        "concept.бытие",
+        "concept.история",
+        "concept.язык",
+        "concept.воля",
+        "concept.смерть",
+        "concept.одиночество",
+        "concept.любовь",
+        "concept.труд",
+        "concept.покой",
+        "concept.власть",
+        "concept.правда",
+        "concept.молчание",
+        "concept.знание",
+        "concept.понимание",
+        "concept.сомнение",
+        "concept.интуиция",
+        "concept.добро",
+        "concept.зло",
+        "concept.совесть",
+        "concept.поступок",
+        "concept.сущность",
+        "concept.существование",
+        "concept.необходимость",
+        "concept.мышление",
+        "concept.воображение",
+        "concept.желание",
+        "concept.значение",
+        "concept.интерпретация",
+        "concept.коммуникация",
+        "concept.культура",
+        "concept.творчество",
+        "concept.мудрость",
+        "concept.прогресс",
+        "concept.искусство",
+        "concept.гармония",
+        "concept.человек",
+        "concept.жизнь",
+        "concept.смысл",
+        "concept.счастье",
+        "concept.страдание",
+        "concept.природа",
+        "concept.игра",
+        "concept.работа",
+        "concept.деньги",
+        "concept.здоровье",
+        "concept.дружба",
+        "concept.семья",
+        "concept.образование",
+        "concept.музыка",
+        "concept.наука",
+        "concept.технология",
+        "concept.дом",
+        "concept.путешествие",
+        "concept.личность",
+        "concept.мотивaция",
+        "concept.стресс",
+        "concept.развитие",
+        "concept.государство",
+        "concept.демократия",
+        "concept.равенство",
+        "concept.права",
+        "concept.конфликт",
+        "concept.ресурс",
+        "concept.ценность",
+        "concept.обмен",
+        "concept.отношения",
+        "concept.уважение",
+        "concept.ревность",
+        "concept.привязанность",
+        "concept.успех",
+        "concept.талант",
+        "concept.дисциплина",
+        "concept.призвание",
+        "concept.информация",
+        "concept.внимание",
+        "concept.скорость",
+        "concept.радость",
+        "concept.грусть",
+        "concept.гнев",
+        "concept.спокойствие",
+        "concept.мораль",
+        "concept.этика",
+        "concept.система",
+        "concept.метод",
+        "concept.процесс",
+        "concept.результат",
+        "concept.диалог",
+        "concept.спор",
+        "concept.vozmozhnost_vybora",
+        "concept.otsutstvie_ogranicheniy",
+        "concept.otvechat_za_svoi_deystviya",
+        "concept.sootvetstvie_realnosti",
+        "concept.pozitsiyu_subekta",
+        "concept.protsess_zapominaniya_hraneniya_i_vosproizvedeniya_informatsii",
+        "concept.perezhitoe_v_novoy_ramke",
+        "concept.sposobnost_osoznavat_okruzhayushchiy_mir_i_samogo_sebya",
+        "concept.refleksivnost_subekta",
+        "concept.prinyatiya_bez_dokazatelstva",
+        "concept.esteticheskoe_perezhivanie",
+        "concept.deystvie_nezavisimo",
+        "concept.cherez_opyt",
+        "concept.paralizovat_deystvie",
+        "concept.deystvie_neopredelennost",
+        "concept.sorazmernosti",
+        "concept.proshloe_nedostupno",
+        "concept.ot_intuitsii",
+        "concept.fakt_sushchestvovaniya",
+        "concept.ot_tochki_zreniya",
+        "concept.s_myshleniem",
+        "concept.deystvie_k_tseli",
+        "concept.prekrashchenie_sushchestvovaniya",
+        "concept.otsutstvie_drugogo",
+        "concept.na_drugogo",
+        "concept.s_potrebnostyu",
+        "concept.otsutstvie_dvizheniya",
+        "concept.vliyat_na_drugih",
+        "concept.na_sootvetstvie_faktam",
+        "concept.s_rechyu"
+      ],
+      "thesis_coverage": [],
+      "dependencies": [],
+      "trust_tier": "curated_embedded",
+      "lifecycle": "approved",
+      "ownership": {
+        "concept_namespaces": [
+          "concept."
+        ],
+        "thesis_namespaces": [],
+        "overlay_of": []
+      },
+      "license": "MIT",
+      "authority_facts": true
+    },
+    {
+      "pack_id": "temporality-history-v1",
+      "pack_version": 1,
+      "manifest_digest": "c963b4e3509bffacb76186c40e7a599dc6623021fda2354c909579f8e57b60b1",
+      "themes": [
+        "temporality-history"
+      ],
+      "concept_coverage": [],
+      "thesis_coverage": [],
+      "dependencies": [],
+      "trust_tier": "discovery_only",
+      "lifecycle": "planned",
+      "ownership": {
+        "concept_namespaces": [],
+        "thesis_namespaces": [],
+        "overlay_of": []
+      },
+      "license": "MIT",
+      "authority_facts": false
+    }
+  ]
+}

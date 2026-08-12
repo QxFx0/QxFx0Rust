@@ -1,0 +1,62 @@
+[
+  {
+    "record": {
+      "id": "epistemology-truth-v1:evidence:fact.truth_reality",
+      "source_id": "philosophy-core-v1:fact.truth_reality",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "578ea4bd533d2686d319933bec28c1cca779a65c520d7301f2dfb7084acd459e",
+      "strength_basis_points": 7000
+    },
+    "canonical_digest": "a78571908157fe1fc57ba8999e6cd928f9a65f3de6783f3d45c644208357f5c4"
+  },
+  {
+    "record": {
+      "id": "epistemology-truth-v1:evidence:fact.truth_reality.counterpoint",
+      "source_id": "philosophy-core-v1:fact.truth_reality.counterpoint",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "8fb91bb359030557900d1856327349a36c4271c06774c970715f12dfb35ccf35",
+      "strength_basis_points": 7500
+    },
+    "canonical_digest": "361b2da05c0d36c7a85f4817b3cd0e166f842c72d3b86d7eb39a537db1459eaf"
+  },
+  {
+    "record": {
+      "id": "epistemology-truth-v1:evidence:fact.truth_reality.consequence",
+      "source_id": "philosophy-core-v1:fact.truth_reality.consequence",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "7a3798fac37cdfc03d76d127ddba8e8d6f45203e321398157eadcb1e0f2c65a3",
+      "strength_basis_points": 8000
+    },
+    "canonical_digest": "4cbd0a265935270b9e00e51e31bc0be4668150aeac8ac7269ca1d3142c2b7be7"
+  },
+  {
+    "record": {
+      "id": "epistemology-truth-v1:evidence:fact.opinion_position",
+      "source_id": "philosophy-core-v1:fact.opinion_position",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "b0bbabda137a5b8d104bdf4d3036f3cda060593653c21613a4f98d708c2872bb",
+      "strength_basis_points": 8500
+    },
+    "canonical_digest": "597c76f95a15301d9dc790a22afc3845463861941f96a86e2986b0c466897c05"
+  },
+  {
+    "record": {
+      "id": "epistemology-truth-v1:evidence:fact.opinion_position.counterpoint",
+      "source_id": "philosophy-core-v1:fact.opinion_position.counterpoint",
+      "kind": "curated_reference",
+      "trust_class": "curated_embedded",
+      "source_revision": "49440f81b6c84700f44082a28494a04dab7b3689",
+      "content_digest": "7e1cc0e4382e2358be165b66c499739240629b36a82905ea827769eef70e0789",
+      "strength_basis_points": 9000
+    },
+    "canonical_digest": "3dd48929089a0fcf0759de1663014f38c3ded150501137420a56aae99804a477"
+  }
+]

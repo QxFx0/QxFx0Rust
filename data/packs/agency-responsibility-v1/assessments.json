@@ -1,0 +1,47 @@
+[
+  {
+    "id": "agency-responsibility-v1:assessment:fact.freedom_choice",
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice",
+    "thesis_digest": "a4c1e7b6b359bd9626be1954c78f686e81df5b5189efa8a3c1d0258309a2a45b",
+    "policy_version": 1,
+    "evidence_set_digest": "f87db0c1d155fcb5c674b8e0494f91f79340daa88ae82d02d9f3e3c8cc01d590",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "agency-responsibility-v1:assessment:fact.freedom_choice.counterpoint",
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice.counterpoint",
+    "thesis_digest": "cf68101bfcc9154e3e7da073c174c920307b59522f8ee0c10164ffb1a1fe0c7b",
+    "policy_version": 1,
+    "evidence_set_digest": "f630cb2c6ccc3c3e8938268319a725d93ae2f283e08db7a5865b94ff6359853d",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "agency-responsibility-v1:assessment:fact.freedom_choice.consequence",
+    "thesis_id": "agency-responsibility-v1:fact.freedom_choice.consequence",
+    "thesis_digest": "2177753aff81f0bda1489170b3a2d29489daf3ed0312da269f86cd15cce983f6",
+    "policy_version": 1,
+    "evidence_set_digest": "f69830442a810783d2566834e85cfc639c4164129df6db17315a931aec7e093c",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "agency-responsibility-v1:assessment:fact.responsibility_accountability",
+    "thesis_id": "agency-responsibility-v1:fact.responsibility_accountability",
+    "thesis_digest": "430442cfcbd2f52a94373e5b1c7f0f1bcfec543b3d87291ddc53bd40910ee682",
+    "policy_version": 1,
+    "evidence_set_digest": "e6c856ac19d4421ef65734fe5283e6202792fc80edf306e9c452b491e40c7ee6",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "agency-responsibility-v1:assessment:fact.responsibility_accountability.counterpoint",
+    "thesis_id": "agency-responsibility-v1:fact.responsibility_accountability.counterpoint",
+    "thesis_digest": "effc4bbb1c9d40abf37cb8848158267fbb9fcc7b85e5203353173cb2844435cb",
+    "policy_version": 1,
+    "evidence_set_digest": "23daebfb6c435796946adc444d5a7a9925150de8d4733fc6c08c982d9f40a2a5",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  }
+]

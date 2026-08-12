@@ -9,6 +9,7 @@ pub mod temporal_recovery;
 /// separate from the authoritative PerspectiveRegistry above.
 pub mod fact_perspective;
 pub mod perspective;
+pub mod thesis_perspective;
 
 use qxfx0_types::field::Field;
 use qxfx0_types::system_state::*;

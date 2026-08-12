@@ -1,0 +1,47 @@
+[
+  {
+    "id": "mind-memory-language-v1:assessment:fact.memory_information_process",
+    "thesis_id": "mind-memory-language-v1:fact.memory_information_process",
+    "thesis_digest": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6",
+    "policy_version": 1,
+    "evidence_set_digest": "0c310be16d4e4e8819dddde91d3164282172369c132672232e39d1f1fb97a5f2",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "mind-memory-language-v1:assessment:fact.memory_information_process.counterpoint",
+    "thesis_id": "mind-memory-language-v1:fact.memory_information_process.counterpoint",
+    "thesis_digest": "8c82116a510e445043f056cf55a307154f5b1ea50c898ab1e9ceeeb912e7e017",
+    "policy_version": 1,
+    "evidence_set_digest": "db331c9cc024bfeac6e929f902f1395e33c3409523adb7903e7e0c0d47db5a98",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "mind-memory-language-v1:assessment:fact.recollection_new_frame",
+    "thesis_id": "mind-memory-language-v1:fact.recollection_new_frame",
+    "thesis_digest": "f68501b92b1c0c8c3bb4090d40bd3bdc0b1ce1748ef5cec1d4d19e6f3ffd3ba6",
+    "policy_version": 1,
+    "evidence_set_digest": "16c203a8ca9021ebee70ef9d044d595b165066cba6b8558e6e248ae8ad5e6ab8",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "mind-memory-language-v1:assessment:fact.recollection_new_frame.counterpoint",
+    "thesis_id": "mind-memory-language-v1:fact.recollection_new_frame.counterpoint",
+    "thesis_digest": "80390823a63bedb250addcfae9b1cad60af884678eb55b68b6c1fe176ff08f54",
+    "policy_version": 1,
+    "evidence_set_digest": "8d203d308f49b0359ac4affa1c096fd671c4a6a866d56742d8220fda99e92363",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "mind-memory-language-v1:assessment:fact.language_thought",
+    "thesis_id": "mind-memory-language-v1:fact.language_thought",
+    "thesis_digest": "0809078006374211efe4c3aa75b2ba4b52d65f8645f0b2f6f80ad450ef0dba58",
+    "policy_version": 1,
+    "evidence_set_digest": "3cb68b85bba8ff70adfcd832773d546a4a58313d5d67417ebba5e783d1982375",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  }
+]

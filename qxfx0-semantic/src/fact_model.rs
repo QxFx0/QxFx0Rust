@@ -2,7 +2,10 @@
 
 use crate::{ConceptResolver, PredicateRef, SemanticId};
 pub use qxfx0_types::FactId;
-use qxfx0_types::{ConceptId, RelationType};
+use qxfx0_types::{
+    ConceptId, RelationId, RelationType, Thesis, ThesisGraph, ThesisGraphError, ThesisId,
+    ThesisKind, ThesisRelation, ThesisRelationKind,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -51,6 +54,38 @@ pub struct FactRecord {
 }
 
 impl FactRecord {
+    /// Compatibility adapter into the P0 typed thesis model. Legacy FactId,
+    /// response-plan contracts, and knowledge-pack fingerprints remain unchanged.
+    pub fn canonical_thesis(&self) -> Result<Thesis, FactRegistryError> {
+        let id = ThesisId::try_new(self.id.as_str())
+            .map_err(|error| FactRegistryError::ThesisAdapter(error.to_string()))?;
+        let predicate = RelationId::try_new(self.relation.as_str())
+            .map_err(|error| FactRegistryError::ThesisAdapter(error.to_string()))?;
+        let kind = match self.kind {
+            FactKind::Definition => ThesisKind::Definition,
+            FactKind::InterpretiveClaim => ThesisKind::InterpretiveClaim,
+            FactKind::EmpiricalClaim => ThesisKind::EmpiricalClaim,
+            FactKind::NormativeClaim => ThesisKind::NormativeClaim,
+            FactKind::Hypothesis => ThesisKind::Hypothesis,
+        };
+        Ok(Thesis {
+            id,
+            subject: self.subject.clone(),
+            predicate,
+            object: self.object.clone(),
+            kind,
+            qualifiers: BTreeMap::new(),
+            surface_text: None,
+            confidence_basis_points: Some(self.confidence_basis_points),
+            provenance: BTreeMap::from([
+                ("source_pack".into(), self.source_pack.clone()),
+                ("source_ref".into(), self.source_ref.clone()),
+            ]),
+            valid_from: self.valid_from.clone(),
+            valid_to: self.valid_to.clone(),
+        })
+    }
+
     pub fn validate_shape(&self) -> Result<(), FactRegistryError> {
         if self.id.as_str().trim().is_empty() {
             return Err(FactRegistryError::Validation(
@@ -121,6 +156,10 @@ pub enum FactRegistryError {
     TemporalValidityRequired(FactId),
     #[error("fact is outside its validity window: {0}")]
     OutsideValidityWindow(FactId),
+    #[error("fact-to-thesis adapter failed: {0}")]
+    ThesisAdapter(String),
+    #[error("fact relation graph failed: {0}")]
+    ThesisGraph(#[from] ThesisGraphError),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -277,6 +316,31 @@ impl FactRegistry {
         self.records.is_empty()
     }
 
+    /// Materializes every current fact and condition into the deterministic
+    /// thesis authority graph. Condition direction is dependent -> referenced.
+    pub fn canonical_thesis_graph(&self) -> Result<ThesisGraph, FactRegistryError> {
+        let mut graph = ThesisGraph::default();
+        for record in self.records.values() {
+            graph.insert_thesis(record.canonical_thesis()?)?;
+        }
+        for record in self.records.values() {
+            for condition in &record.conditions {
+                let (kind, target) = match condition {
+                    FactCondition::Counters(target) => (ThesisRelationKind::Counters, target),
+                    FactCondition::FollowsFrom(target) => (ThesisRelationKind::FollowsFrom, target),
+                };
+                graph.insert_relation(ThesisRelation {
+                    from: ThesisId::try_new(record.id.as_str())
+                        .map_err(|error| FactRegistryError::ThesisAdapter(error.to_string()))?,
+                    kind,
+                    to: ThesisId::try_new(target.as_str())
+                        .map_err(|error| FactRegistryError::ThesisAdapter(error.to_string()))?,
+                })?;
+            }
+        }
+        Ok(graph)
+    }
+
     pub fn count_by_status(&self, status: FactStatus) -> usize {
         self.records
             .values()
@@ -416,5 +480,55 @@ mod tests {
             FactRegistry::load([fact], [], get_resolver(), &TypedRelationModel::default()),
             Err(FactRegistryError::UnknownFact(_))
         ));
+    }
+    #[test]
+    fn active_pack_maps_all_69_facts_and_39_conditions() {
+        let registry = crate::active_pack_set().facts();
+        let graph = registry.canonical_thesis_graph().unwrap();
+        assert_eq!(registry.len(), 69);
+        assert_eq!(graph.theses().len(), 69);
+        assert_eq!(graph.relations().len(), 39);
+        assert_eq!(
+            graph
+                .relations()
+                .iter()
+                .filter(|edge| edge.kind == ThesisRelationKind::Counters)
+                .count(),
+            30
+        );
+        assert_eq!(
+            graph
+                .relations()
+                .iter()
+                .filter(|edge| edge.kind == ThesisRelationKind::FollowsFrom)
+                .count(),
+            9
+        );
+        graph.validate().unwrap();
+    }
+
+    #[test]
+    fn fact_adapter_preserves_slots_and_excludes_legacy_metadata_from_digest() {
+        let fact = record("fact.adapter", FactStatus::Curated);
+        let thesis = fact.canonical_thesis().unwrap();
+        assert_eq!(thesis.id.as_str(), fact.id.as_str());
+        assert_eq!(thesis.subject, fact.subject);
+        assert_eq!(thesis.predicate.as_str(), fact.relation.as_str());
+        assert_eq!(thesis.object, fact.object);
+
+        let mut changed = fact.clone();
+        changed.id = FactId::try_new("fact.other-id").unwrap();
+        changed.confidence_basis_points = 1;
+        changed.source_pack = "other-pack".into();
+        changed.source_ref = "other-ref".into();
+        changed.valid_from = Some("2099-01-01".into());
+        assert_eq!(
+            thesis.canonical_digest().unwrap(),
+            changed
+                .canonical_thesis()
+                .unwrap()
+                .canonical_digest()
+                .unwrap()
+        );
     }
 }

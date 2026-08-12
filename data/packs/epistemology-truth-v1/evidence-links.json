@@ -1,0 +1,27 @@
+[
+  {
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality",
+    "evidence_id": "epistemology-truth-v1:evidence:fact.truth_reality",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality.counterpoint",
+    "evidence_id": "epistemology-truth-v1:evidence:fact.truth_reality.counterpoint",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality.consequence",
+    "evidence_id": "epistemology-truth-v1:evidence:fact.truth_reality.consequence",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "epistemology-truth-v1:fact.opinion_position",
+    "evidence_id": "epistemology-truth-v1:evidence:fact.opinion_position",
+    "role": "supports"
+  },
+  {
+    "thesis_id": "epistemology-truth-v1:fact.opinion_position.counterpoint",
+    "evidence_id": "epistemology-truth-v1:evidence:fact.opinion_position.counterpoint",
+    "role": "supports"
+  }
+]

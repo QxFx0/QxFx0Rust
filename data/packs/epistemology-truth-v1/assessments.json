@@ -1,0 +1,47 @@
+[
+  {
+    "id": "epistemology-truth-v1:assessment:fact.truth_reality",
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality",
+    "thesis_digest": "bc6cbf698afbecfc24b9101c542be3b5c44e995146c79e99245dcc22b72b317c",
+    "policy_version": 1,
+    "evidence_set_digest": "fe01e4dc973990317341f7772275287ff47102fe3a5fdd4ad5995c18da0fdaf5",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "epistemology-truth-v1:assessment:fact.truth_reality.counterpoint",
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality.counterpoint",
+    "thesis_digest": "9b4191632892370db4ee7c3cc3d84141a8cd2578389ee6b7a0dab2a77b03f89a",
+    "policy_version": 1,
+    "evidence_set_digest": "0172d3e28b3cc2aada76e3bb7e623c9c05f4439d97d47604af8c6de8b0ab65af",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "epistemology-truth-v1:assessment:fact.truth_reality.consequence",
+    "thesis_id": "epistemology-truth-v1:fact.truth_reality.consequence",
+    "thesis_digest": "d7a09a4d9ad75ed06d71033aaeb0684698508288ff249c3c6127808be333eea6",
+    "policy_version": 1,
+    "evidence_set_digest": "7b9f9813cd0a3b4fa6a4cfc3d0bdeaee016c3d9d2cb1fafa5cdaa24893c94b20",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "epistemology-truth-v1:assessment:fact.opinion_position",
+    "thesis_id": "epistemology-truth-v1:fact.opinion_position",
+    "thesis_digest": "b53f6435a04abb920e735a4971308ac53862e9b15a250f534a6335e231d25df3",
+    "policy_version": 1,
+    "evidence_set_digest": "1b5676e3cf8148ca65b29913bd11260ed924e242b56043970a1a0b9558ec35bc",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  },
+  {
+    "id": "epistemology-truth-v1:assessment:fact.opinion_position.counterpoint",
+    "thesis_id": "epistemology-truth-v1:fact.opinion_position.counterpoint",
+    "thesis_digest": "d936d7b07e41297b5046fc30c0957d8e5185187128d85bf8a396ef1a0d1eb2c0",
+    "policy_version": 1,
+    "evidence_set_digest": "443958d7595bcdd71fa8966ca24ad01dd5ec821f59e11e19e94dc86de999daab",
+    "confidence_basis_points": 10000,
+    "authority_evidence_count": 1
+  }
+]

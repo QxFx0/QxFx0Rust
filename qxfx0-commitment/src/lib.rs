@@ -1,3 +1,6 @@
+pub mod thesis_lifecycle;
+pub use thesis_lifecycle::{LifecycleApply, LifecycleError, ThesisLifecycleOps};
+
 use qxfx0_types::system_state::*;
 use std::collections::BTreeSet;
 

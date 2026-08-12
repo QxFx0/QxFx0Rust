@@ -1,0 +1,37 @@
+[
+  {
+    "from": "8c82116a510e445043f056cf55a307154f5b1ea50c898ab1e9ceeeb912e7e017",
+    "kind": "Counters",
+    "to": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6"
+  },
+  {
+    "from": "80390823a63bedb250addcfae9b1cad60af884678eb55b68b6c1fe176ff08f54",
+    "kind": "Contradicts",
+    "to": "f68501b92b1c0c8c3bb4090d40bd3bdc0b1ce1748ef5cec1d4d19e6f3ffd3ba6"
+  },
+  {
+    "from": "f68501b92b1c0c8c3bb4090d40bd3bdc0b1ce1748ef5cec1d4d19e6f3ffd3ba6",
+    "kind": "Supports",
+    "to": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6"
+  },
+  {
+    "from": "0809078006374211efe4c3aa75b2ba4b52d65f8645f0b2f6f80ad450ef0dba58",
+    "kind": "Entails",
+    "to": "f68501b92b1c0c8c3bb4090d40bd3bdc0b1ce1748ef5cec1d4d19e6f3ffd3ba6"
+  },
+  {
+    "from": "0809078006374211efe4c3aa75b2ba4b52d65f8645f0b2f6f80ad450ef0dba58",
+    "kind": "DependsOn",
+    "to": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6"
+  },
+  {
+    "from": "80390823a63bedb250addcfae9b1cad60af884678eb55b68b6c1fe176ff08f54",
+    "kind": "Qualifies",
+    "to": "ee7cadbf08ce55a65d6a7d36189cc5696ca1972a00eeccdc79154f644127fef6"
+  },
+  {
+    "from": "f68501b92b1c0c8c3bb4090d40bd3bdc0b1ce1748ef5cec1d4d19e6f3ffd3ba6",
+    "kind": "Supports",
+    "to": "0809078006374211efe4c3aa75b2ba4b52d65f8645f0b2f6f80ad450ef0dba58"
+  }
+]
