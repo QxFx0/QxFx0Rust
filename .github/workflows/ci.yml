@@ -26,27 +26,54 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.93.1
+        uses: dtolnay/rust-toolchain@96d8491b80fc26e2ab48ff0c3928c002176297c8 # 1.93.1
         with:
           components: clippy, rustfmt
 
       - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --version 0.22.2 --locked
+
+      - name: Audit dependencies
+        run: cargo audit --deny unsound
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
       - name: Run strict clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
 
       - name: Run all tests and targets
-        run: cargo test --workspace --all-targets
+        run: cargo test --locked --workspace --all-targets
+
+      - name: Install pinned cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --version 0.8.4 --locked
+
+      - name: Generate required coverage reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p coverage
+          cargo llvm-cov --locked --workspace --all-targets --lcov --output-path coverage/lcov.info
+          cargo llvm-cov --locked report --text > coverage/summary.txt
+          test -s coverage/lcov.info
+          test -s coverage/summary.txt
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: rust-coverage-${{ github.run_id }}
+          path: coverage/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Build release binaries
-        run: cargo build --workspace --release
+        run: cargo build --locked --workspace --release
 
       - name: Run production health check
         run: target/release/qxfx0 --db "$RUNNER_TEMP/qxfx0-doctor.db" doctor
@@ -110,7 +137,7 @@ jobs:
             > "$RUNNER_TEMP/qxfx0-release-metadata.json"
 
       - name: Upload ResponsePlan V2 operational evidence
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: response-plan-v2-operational-evidence-${{ github.run_id }}
           path: |

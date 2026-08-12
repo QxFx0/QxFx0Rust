@@ -1,0 +1,45 @@
+name: Operational Acceptance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: operational-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ignored-operational-tests:
+    name: Ignored operational acceptance tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@96d8491b80fc26e2ab48ff0c3928c002176297c8 # 1.93.1
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+
+      - name: Run 300-turn restart soak
+        timeout-minutes: 30
+        run: >-
+          cargo test --locked -p qxfx0-cli --test cli_restart_soak
+          restart_load_extended_soak_is_deterministic_across_twin_databases
+          -- --ignored --exact
+
+      - name: Run writer-lock boundary
+        timeout-minutes: 10
+        run: >-
+          cargo test --locked -p qxfx0-cli --test cli_restart_soak
+          concurrent_writer_lock_fails_cleanly_and_retry_succeeds
+          -- --ignored --exact
