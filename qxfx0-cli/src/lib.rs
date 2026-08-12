@@ -25,7 +25,7 @@ use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::time::Instant;
 
@@ -262,6 +262,10 @@ pub enum AuthorityReportScope {
     Negative,
 }
 
+const MAX_AUTHORITY_TRACE_LINE_BYTES: usize = 8 * 1024 * 1024;
+const MAX_AUTHORITY_TRACE_RECORDS: usize = 100_000;
+const MAX_AUTHORITY_TRACE_TOTAL_BYTES: u64 = 256 * 1024 * 1024;
+
 pub fn verify_authority_trace(path: impl AsRef<Path>) -> anyhow::Result<AuthorityReport> {
     authority_report([path.as_ref()], true, AuthorityReportScope::All)
 }
@@ -277,16 +281,89 @@ where
 {
     let mut report = AuthorityReport::default();
     let mut artifact_count = 0;
+    let mut record_count = 0usize;
+    let mut total_bytes = 0u64;
     let mut case_ids = std::collections::BTreeSet::new();
     for path in paths {
         artifact_count += 1;
-        let source = std::fs::read_to_string(path.as_ref())?;
-        for (index, line) in source.lines().enumerate() {
+        let path = path.as_ref();
+        let file = File::open(path).map_err(|error| {
+            anyhow::anyhow!(
+                "failed to open authority trace '{}': {error}",
+                path.display()
+            )
+        })?;
+        let mut reader = BufReader::new(file);
+        let mut line = Vec::new();
+        let mut index = 0usize;
+        loop {
+            index += 1;
+            line.clear();
+            let mut ended_with_newline = false;
+            loop {
+                let available = reader.fill_buf().map_err(|error| {
+                    anyhow::anyhow!(
+                        "failed to read authority trace '{}' at line {index}: {error}",
+                        path.display()
+                    )
+                })?;
+                if available.is_empty() {
+                    break;
+                }
+                let take = available
+                    .iter()
+                    .position(|byte| *byte == b'\n')
+                    .map_or(available.len(), |position| position + 1);
+                if line.len().saturating_add(take) > MAX_AUTHORITY_TRACE_LINE_BYTES {
+                    anyhow::bail!(
+                        "authority trace '{}' line {index} exceeds the {} byte limit",
+                        path.display(),
+                        MAX_AUTHORITY_TRACE_LINE_BYTES
+                    );
+                }
+                line.extend_from_slice(&available[..take]);
+                reader.consume(take);
+                if line.last() == Some(&b'\n') {
+                    ended_with_newline = true;
+                    break;
+                }
+            }
+            if line.is_empty() && !ended_with_newline {
+                break;
+            }
+            total_bytes = total_bytes.saturating_add(line.len() as u64);
+            if total_bytes > MAX_AUTHORITY_TRACE_TOTAL_BYTES {
+                anyhow::bail!(
+                    "authority traces exceed the {} byte aggregate limit",
+                    MAX_AUTHORITY_TRACE_TOTAL_BYTES
+                );
+            }
+            if line.last() == Some(&b'\n') {
+                line.pop();
+                if line.last() == Some(&b'\r') {
+                    line.pop();
+                }
+            }
+            let line = std::str::from_utf8(&line).map_err(|error| {
+                anyhow::anyhow!(
+                    "authority trace '{}' line {index} is not UTF-8: {error}",
+                    path.display()
+                )
+            })?;
             if line.trim().is_empty() {
                 continue;
             }
-            let record: OwnedAuthorityTraceRecord = serde_json::from_str(line)
-                .map_err(|error| anyhow::anyhow!("authority trace line {}: {error}", index + 1))?;
+            record_count = record_count.saturating_add(1);
+            if record_count > MAX_AUTHORITY_TRACE_RECORDS {
+                anyhow::bail!(
+                    "authority traces exceed the {} record aggregate limit",
+                    MAX_AUTHORITY_TRACE_RECORDS
+                );
+            }
+            let record: OwnedAuthorityTraceRecord =
+                serde_json::from_str(line).map_err(|error| {
+                    anyhow::anyhow!("authority trace '{}' line {index}: {error}", path.display())
+                })?;
             for step in &record.trace.steps {
                 if !valid_digest(&step.input_digest) || !valid_digest(&step.output_digest) {
                     anyhow::bail!(
@@ -1386,6 +1463,39 @@ mod tests {
         )
         .unwrap();
         assert!(verify_authority_trace(&path).is_err());
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn authority_report_rejects_an_oversized_jsonl_line() {
+        let path = authority_trace_path("oversized-line");
+        let _ = std::fs::remove_file(&path);
+        std::fs::write(&path, vec![b'x'; MAX_AUTHORITY_TRACE_LINE_BYTES + 1])
+            .expect("write oversized trace line");
+
+        let error = authority_report([&path], false, AuthorityReportScope::All)
+            .expect_err("oversized line must be rejected");
+        let message = error.to_string();
+        assert!(message.contains("line 1"), "{message}");
+        assert!(message.contains("byte limit"), "{message}");
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn authority_report_rejects_non_utf8_with_path_and_line_context() {
+        let path = authority_trace_path("non-utf8");
+        let _ = std::fs::remove_file(&path);
+        std::fs::write(&path, [0xff, b'\n']).expect("write non-UTF-8 trace line");
+
+        let error = authority_report([&path], false, AuthorityReportScope::All)
+            .expect_err("non-UTF-8 line must be rejected");
+        let message = error.to_string();
+        assert!(message.contains("line 1"), "{message}");
+        assert!(message.contains("not UTF-8"), "{message}");
+        assert!(
+            message.contains(path.to_string_lossy().as_ref()),
+            "{message}"
+        );
         let _ = std::fs::remove_file(path);
     }
 

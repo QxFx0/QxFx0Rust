@@ -166,9 +166,9 @@ enum Commands {
     },
     /// Code orchestration — show registry statistics
     CodeStats,
-    /// Verify one external authority trace JSONL artifact
+    /// Check structural consistency of one external authority trace JSONL artifact (not authenticity)
     VerifyAuthorityTrace { path: PathBuf },
-    /// Aggregate external authority trace JSONL artifacts
+    /// Aggregate structurally checked authority trace JSONL artifacts (not authenticated)
     AuthorityReport {
         #[arg(required = true, num_args = 1..)]
         paths: Vec<PathBuf>,

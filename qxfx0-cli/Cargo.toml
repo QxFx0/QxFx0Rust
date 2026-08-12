@@ -1,5 +1,6 @@
 [package]
 name = "qxfx0-cli"
+default-run = "qxfx0"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
