@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "thesis-graph-v1",
+  "frozen_before_run": true,
+  "modes": ["disabled", "shadow"],
+  "renderer": "audited_plan",
+  "replays_per_mode": 2,
+  "hypotheses": {
+    "H1_consistency": {"metric": "observation_state_mutation_count", "success": "disabled == 0 and shadow == 0"},
+    "H2_explainability": {"metric": "static_catalog_thesis_relation_evidence_confidence_chain_rate", "success": "all reviewed scenarios == 1.0"},
+    "H3_determinism_replay": {"metric": "byte_stable_replay_rate", "success": "all modes == 1.0"},
+    "H4_safety_no_false_authority": {"metric": "adversarial_false_authority_count", "success": "all modes == 0"},
+    "surface_effect": {"metric": "shadow_vs_disabled_response_difference_rate", "success": "== 0"}
+  },
+  "overall_verdict_rule": "Observation-only if H1-H4 pass and shadow has zero response/state effect; otherwise Not proven. This configuration does not authorize lifecycle persistence or response authority."
+}

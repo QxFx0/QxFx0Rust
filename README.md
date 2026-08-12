@@ -8,7 +8,7 @@ The system is self-contained: it does not call an LLM or an external knowledge s
 
 The CLI is the supported production surface. It includes:
 
-- atomic SQLite persistence and automatic compatibility migration to schema v8;
+- atomic SQLite persistence and automatic compatibility migration to schema v10;
 - six-stage turn processing with guard rollback and governance events;
 - 107 recognized topics, of which 30 have audited declarative content;
 - 172 seed atoms, 276 semantic relations and 69 curated `FactRecord` values;
@@ -53,13 +53,13 @@ cannot silently cross a semantic-authority change.
 Build the CLI:
 
 ```bash
-cargo build -p qxfx0-cli
+cargo build --locked -p qxfx0-cli
 ```
 
 Run a single turn in a named session:
 
 ```bash
-cargo run -p qxfx0-cli -- \
+cargo run --locked -p qxfx0-cli -- \
   --db /tmp/qxfx0.db \
   --session-id demo \
   turn "что такое свобода?"
@@ -68,7 +68,7 @@ cargo run -p qxfx0-cli -- \
 Continue the same session from another process:
 
 ```bash
-cargo run -p qxfx0-cli -- \
+cargo run --locked -p qxfx0-cli -- \
   --db /tmp/qxfx0.db \
   --session-id demo \
   turn "я купил дом"
@@ -77,17 +77,17 @@ cargo run -p qxfx0-cli -- \
 Interactive mode and other commands:
 
 ```bash
-cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db --session-id demo chat
-cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db sessions
-cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db doctor
-cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db doctor --json
-cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db metrics
-cargo run -p qxfx0-cli -- benchmark --samples 100 --warmup 10
-cargo run -p qxfx0-cli -- renderer-audit
-cargo run -p qxfx0-cli -- --db /tmp/qxfx0.db backup /tmp/qxfx0-backup.db
-cargo run -p qxfx0-cli -- discover свобода
-cargo run -p qxfx0-cli -- code "посчитать сумму элементов"
-cargo run -p qxfx0-cli -- code-stats
+cargo run --locked -p qxfx0-cli -- --db /tmp/qxfx0.db --session-id demo chat
+cargo run --locked -p qxfx0-cli -- --db /tmp/qxfx0.db sessions
+cargo run --locked -p qxfx0-cli -- --db /tmp/qxfx0.db doctor
+cargo run --locked -p qxfx0-cli -- --db /tmp/qxfx0.db doctor --json
+cargo run --locked -p qxfx0-cli -- --db /tmp/qxfx0.db metrics
+cargo run --locked -p qxfx0-cli -- benchmark --samples 100 --warmup 10
+cargo run --locked -p qxfx0-cli -- renderer-audit
+cargo run --locked -p qxfx0-cli -- --db /tmp/qxfx0.db backup /tmp/qxfx0-backup.db
+cargo run --locked -p qxfx0-cli -- discover свобода
+cargo run --locked -p qxfx0-cli -- code "посчитать сумму элементов"
+cargo run --locked -p qxfx0-cli -- code-stats
 ```
 
 Example output:
@@ -102,7 +102,7 @@ Example output:
 
 `doctor` is an executable health gate, not an informational banner. It checks:
 
-- SQLite `quick_check`, foreign keys, schema v8 and every stored session;
+- SQLite `quick_check`, foreign keys, schema v10 and every stored session;
 - seed-graph identities, endpoints, indexes and covered topics;
 - concept, fact and active knowledge-pack manifests, hashes and conflicts;
 - FactId-grounded Perspective capacity and curated counterpoint links;
@@ -117,7 +117,7 @@ It exits non-zero if any check fails:
 
 ```text
 QxFx0 Rust v0.1.1 health check:
-  [OK] SQLite: schema v8, quick_check/foreign keys/session states valid
+  [OK] SQLite: schema v10, quick_check/foreign keys/session states valid
   [OK] Seed graph: 172 atoms, 276 relations, 107 covered topics
   [OK] Knowledge packs: active_packs=[philosophy-core-v1@1(...)], fact_conflicts=0, fingerprint=...
   [OK] Corpus import pilot: pilot_topics=300, already_active=5, quarantine=295, promotion_enabled=false
@@ -162,15 +162,15 @@ target/release/qxfx0 renderer-audit --opening-words 3 --json
 
 ## SQLite migration, backup and recovery
 
-The database is upgraded automatically on open. Migration v9 is idempotent and transactional. It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
+The database is upgraded automatically on open. Migration v10 is idempotent and transactional. It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
 
 Back up before upgrading a valuable database. The built-in command opens the
 source read-only, uses SQLite's online backup API, verifies the partial copy,
 and refuses to overwrite an existing destination:
 
 ```bash
-cargo run -p qxfx0-cli -- --db qxfx0.db backup qxfx0-before-v7.db
-cargo run -p qxfx0-cli -- --db qxfx0-before-v7.db doctor
+cargo run --locked -p qxfx0-cli -- --db qxfx0.db backup qxfx0-before-v7.db
+cargo run --locked -p qxfx0-cli -- --db qxfx0-before-v7.db doctor
 ```
 
 If the migration or health check fails, keep the failed database for diagnosis and restore the backup while QxFx0 is stopped:
@@ -178,7 +178,7 @@ If the migration or health check fails, keep the failed database for diagnosis a
 ```bash
 mv qxfx0.db qxfx0.failed.db
 cp qxfx0-before-v7.db qxfx0.db
-cargo run -p qxfx0-cli -- --db qxfx0.db doctor
+cargo run --locked -p qxfx0-cli -- --db qxfx0.db doctor
 ```
 
 Do not copy only the main database file while another process is writing in
@@ -212,6 +212,15 @@ Rebuild the current pack from audited Rust assets:
 ```bash
 python3 scripts/build_core_pack.py
 ```
+
+The typed P4 catalog is `data/packs/catalog-v1`. It records four approved digest-pinned packs and five non-authoritative candidate/planned themes. Rebuild or verify all thematic assets deterministically:
+
+```bash
+python3 scripts/build_thematic_packs.py
+python3 scripts/build_thematic_packs.py --check
+```
+
+Discovery does not grant authority; activation additionally requires approved lifecycle, the embedded digest allowlist, and complete pinned dependencies. Promotion gates are documented in ADR-0039.
 
 The Haskell corpus is not an active pack. The bounded importer is audit-only:
 
@@ -250,9 +259,9 @@ Run the same checks as CI:
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --all-targets
-cargo build --workspace --release
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo test --locked --workspace --all-targets
+cargo build --locked --workspace --release
 target/release/qxfx0 --db /tmp/qxfx0-doctor.db doctor
 ```
 
@@ -262,11 +271,33 @@ CI and local release checks use the Rust 1.93.1 toolchain pinned in
 The exact test count is intentionally not hardcoded because it changes with
 each semantic contract. The commands above are the authoritative release gate.
 
-The audited content-plan corpus is part of `cargo test --workspace --all-targets`.
+### Acceptance tests
+
+The regular workspace test command above includes the short black-box CLI
+acceptance tests (`cli_backup_recovery`, `cli_fail_closed`, and the short test
+in `cli_restart_soak`). They are non-ignored, so PR CI runs them without a
+second acceptance-only test pass. Run just that short set locally with:
+
+```bash
+cargo test --locked -p qxfx0-cli --test cli_backup_recovery
+cargo test --locked -p qxfx0-cli --test cli_fail_closed
+cargo test --locked -p qxfx0-cli --test cli_restart_soak restart_load_acceptance_is_deterministic_across_twin_databases -- --exact
+```
+
+The longer operational checks are ignored by default and run only in the
+scheduled/manual Operational Acceptance workflow. Run them locally by exact
+test name (do not enable every ignored workspace test):
+
+```bash
+cargo test --locked -p qxfx0-cli --test cli_restart_soak restart_load_extended_soak_is_deterministic_across_twin_databases -- --ignored --exact
+cargo test --locked -p qxfx0-cli --test cli_restart_soak concurrent_writer_lock_fails_cleanly_and_retry_succeeds -- --ignored --exact
+```
+
+The audited content-plan corpus is part of `cargo test --locked --workspace --all-targets`.
 Run it in isolation with:
 
 ```bash
-cargo test -p qxfx0-pipeline --test structural_corpus
+cargo test --locked -p qxfx0-pipeline --test structural_corpus
 ```
 
 It validates all 30 admitted topics in fresh sessions and one shared 30-turn
@@ -301,3 +332,7 @@ contracts.
 ## License
 
 MIT
+
+### Thesis projection rollout and schema v10
+
+SQLite schema v10 additively reserves nullable `session_semantic.thesis_state_json`; v9 rows are not rewritten and NULL loads as an empty bounded projection. `ThesisProjectionRollout` is explicit and default-off: `Disabled` preserves the production path, while `Shadow` validates catalog-bound receipts without state mutation. There is deliberately no pipeline or CLI write mode: thesis lifecycle persistence requires a separate policy, retention/export/delete design, and evidence window. User or generated text never creates thesis authority.

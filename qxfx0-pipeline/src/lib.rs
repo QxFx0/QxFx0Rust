@@ -463,6 +463,7 @@ pub struct TurnOptions {
     pub clarification: ClarificationMode,
     pub suppression: SameTopicSuppressionMode,
     pub fact_grounded: fact_grounded::FactGroundedRollout,
+    pub thesis_projection: fact_grounded::ThesisProjectionRollout,
     pub response_plan_v2: ResponsePlanV2Mode,
     pub response_plan_v2_authority: ResponsePlanV2Authority,
 }
@@ -500,6 +501,14 @@ impl TurnOptions {
 
     pub fn with_fact_grounded(mut self, fact_grounded: fact_grounded::FactGroundedRollout) -> Self {
         self.fact_grounded = fact_grounded;
+        self
+    }
+
+    pub fn with_thesis_projection(
+        mut self,
+        thesis_projection: fact_grounded::ThesisProjectionRollout,
+    ) -> Self {
+        self.thesis_projection = thesis_projection;
         self
     }
 
@@ -1407,6 +1416,7 @@ fn process_turn_internal(
         clarification,
         suppression,
         fact_grounded: fact_grounded_rollout,
+        thesis_projection,
         response_plan_v2,
         response_plan_v2_authority,
     } = options;
@@ -1550,7 +1560,13 @@ fn process_turn_internal(
     };
     recovery.path_depth = Some(rendered.path_depth());
     let active_packs = qxfx0_semantic::active_pack_set();
-    let rendered_receipt = if fact_grounded_rollout.observes() {
+    // Thesis catalog observation and V2 renderer authority are independent
+    // promotion boundaries. Do not collect even shadow thesis evidence in an
+    // authority-enabled V2 turn; a later joint experiment requires its own
+    // explicit contract and evidence window.
+    let thesis_shadow_allowed = thesis_projection.observes()
+        && response_plan_v2_authority == ResponsePlanV2Authority::Disabled;
+    let rendered_receipt = if fact_grounded_rollout.observes() || thesis_shadow_allowed {
         match fact_grounded::RenderedPlanReceipt::from_rendered(&rendered, state, active_packs) {
             Ok(receipt) => Ok(receipt),
             Err(error) if fact_grounded_rollout.permits_render_authorization() => {

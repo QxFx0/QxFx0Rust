@@ -13,7 +13,7 @@ use qxfx0_semantic::{
 };
 use qxfx0_types::{
     AtomId, ConceptId, FactId, PerspectiveState, StanceTopic, SystemStanceDecision, SystemState,
-    VerifiedStanceDecision,
+    ThesisDigest, ThesisId, VerifiedStanceDecision,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -27,6 +27,21 @@ pub enum FactGroundedRollout {
     TraceOnly,
     LimitedNonProduction,
     Enabled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ThesisProjectionRollout {
+    #[default]
+    Disabled,
+    /// Validate a catalog-bound rendered receipt after guard without changing
+    /// `SystemState`, SQLite, routing, or response authority.
+    Shadow,
+}
+impl ThesisProjectionRollout {
+    pub const fn observes(self) -> bool {
+        !matches!(self, Self::Disabled)
+    }
 }
 
 impl FactGroundedRollout {
@@ -122,6 +137,8 @@ pub struct RenderedPlanReceipt {
     pre_turn_seq: usize,
     pack_fingerprint: String,
     response_digest: String,
+    thesis_id: ThesisId,
+    thesis_digest: ThesisDigest,
 }
 
 impl RenderedPlanReceipt {
@@ -156,6 +173,13 @@ impl RenderedPlanReceipt {
             .collect::<Result<Vec<_>, _>>()?;
         let response_digest = crate::execution_trace::calculate_stable_digest(&rendered.response())
             .map_err(|error| FactGroundedCompositionError::InvalidPlan(error.to_string()))?;
+        let (thesis_digest, metadata) = packs
+            .overlay_theses()
+            .iter()
+            .find(|(_, metadata)| metadata.authority_fact_id == binding.thesis_fact_id)
+            .ok_or(FactGroundedCompositionError::MissingCatalogThesis)?;
+        let thesis_id = ThesisId::try_new(metadata.thesis_id.clone())
+            .map_err(|error| FactGroundedCompositionError::InvalidPlan(error.to_string()))?;
         Ok(Some(Self {
             binding,
             claims,
@@ -163,6 +187,8 @@ impl RenderedPlanReceipt {
             pre_turn_seq: state.dialogue.turn_count,
             pack_fingerprint: packs.fingerprint().into(),
             response_digest,
+            thesis_id,
+            thesis_digest: *thesis_digest,
         }))
     }
 
@@ -211,6 +237,8 @@ pub enum FactGroundedCompositionError {
     MultipleTheses,
     #[error("thesis FactId belongs to another topic")]
     ThesisTopicMismatch,
+    #[error("validated plan thesis is absent from the active catalog/pack registry")]
+    MissingCatalogThesis,
     #[error("audited renderer did not retain a ready plan")]
     RenderedPlanMissing,
     #[error("rendered-plan receipt belongs to another session or turn")]

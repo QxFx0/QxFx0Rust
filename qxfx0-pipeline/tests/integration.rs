@@ -1,5 +1,6 @@
 //! Integration tests — replay determinism, multi-turn persistence, end-to-end pipeline.
 
+use qxfx0_pipeline::fact_grounded::ThesisProjectionRollout;
 use qxfx0_pipeline::{
     process_turn, process_turn_with_options, process_turn_with_options_and_trace,
     process_turn_with_trace, process_turn_with_trace_and_renderer_and_anomaly_shadow,
@@ -1796,4 +1797,63 @@ fn test_soak_1000_turns_has_bounded_state() {
     assert!(commitments <= qxfx0_commitment::MAX_COMMITMENTS);
     assert!(state.semantic.essence.witnesses.len() <= 32);
     assert!(state.validate().is_empty(), "final soak state is invalid");
+}
+
+#[test]
+fn thesis_projection_shadow_is_bounded_deterministic_and_observational() {
+    let input = TurnInput {
+        session_id: "thesis-rollout-e2e".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let baseline_options = TurnOptions::new().with_renderer(RendererAuthority::AuditedPlan);
+
+    let mut baseline = test_state(&input.session_id);
+    let baseline_output = process_turn_with_options(&input, &mut baseline, baseline_options);
+    let baseline_bytes = serde_json::to_vec(&baseline).unwrap();
+
+    let mut disabled = test_state(&input.session_id);
+    let disabled_output = process_turn_with_options(
+        &input,
+        &mut disabled,
+        baseline_options.with_thesis_projection(ThesisProjectionRollout::Disabled),
+    );
+    assert_eq!(disabled_output.response, baseline_output.response);
+    assert_eq!(serde_json::to_vec(&disabled).unwrap(), baseline_bytes);
+    assert!(disabled.semantic.thesis_state.lifecycles.is_empty());
+
+    let mut shadow = test_state(&input.session_id);
+    let shadow_output = process_turn_with_options(
+        &input,
+        &mut shadow,
+        baseline_options.with_thesis_projection(ThesisProjectionRollout::Shadow),
+    );
+    assert_eq!(shadow_output.response, baseline_output.response);
+    assert_eq!(serde_json::to_vec(&shadow).unwrap(), baseline_bytes);
+    assert!(shadow.semantic.thesis_state.lifecycles.is_empty());
+}
+
+#[test]
+fn thesis_shadow_does_not_compose_with_v2_authority() {
+    let input = TurnInput {
+        session_id: "thesis-v2-isolation".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let options = TurnOptions::new()
+        .with_thesis_projection(ThesisProjectionRollout::Shadow)
+        .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary);
+    let mut isolated = test_state(&input.session_id);
+    let mut authority_only = test_state(&input.session_id);
+    let isolated_output = process_turn_with_options(&input, &mut isolated, options);
+    let authority_output = process_turn_with_options(
+        &input,
+        &mut authority_only,
+        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+    );
+    assert_eq!(isolated_output.response, authority_output.response);
+    assert_eq!(isolated_output.blocked, authority_output.blocked);
+    assert_eq!(
+        serde_json::to_vec(&isolated).unwrap(),
+        serde_json::to_vec(&authority_only).unwrap()
+    );
+    assert!(isolated.semantic.thesis_state.is_empty());
 }
