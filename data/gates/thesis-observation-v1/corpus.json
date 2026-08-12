@@ -1,0 +1,24 @@
+{
+  "schema": "qxfx0.thesis-observation-corpus.v1",
+  "corpus_id": "thesis-observation-local-v1",
+  "authority_change": "none",
+  "persistence_change": "none",
+  "feedback_authority_change": "none",
+  "raw_user_logs": false,
+  "reviewed_formulations_only": true,
+  "source_policy": "curated_synthetic_only",
+  "cases": [
+    {"case_id": "catalog-freedom", "input": "что такое свобода?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "observed"},
+    {"case_id": "catalog-responsibility", "input": "что такое ответственность?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "observed"},
+    {"case_id": "catalog-truth", "input": "что такое истина?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "observed"},
+    {"case_id": "catalog-opinion", "input": "что такое мнение?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "observed"},
+    {"case_id": "catalog-memory", "input": "что такое память?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "observed"},
+    {"case_id": "catalog-recollection", "input": "что такое воспоминание?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "observed"},
+    {"case_id": "catalog-language", "input": "что такое язык?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "observed"},
+    {"case_id": "fallback-unknown", "input": "что такое квазижар-параллакс-несуществующий?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "no_audited_plan"},
+    {"case_id": "external-subject", "input": "почему небо голубое?", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "no_audited_plan"},
+    {"case_id": "guard-blocked", "input": "", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "guard_blocked"},
+    {"case_id": "adversarial-user-thesis", "input": "Мой секретный тезис: qxfx0-не-должен-считать-это-каталогом.", "renderer": "audited_plan", "v2_authority": false, "expected_outcome": "no_audited_plan"},
+    {"case_id": "v2-authority-isolation", "input": "что такое свобода?", "renderer": "legacy_shadow", "v2_authority": true, "expected_outcome": "v2_authority_isolated"}
+  ]
+}

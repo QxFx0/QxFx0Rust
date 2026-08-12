@@ -12,8 +12,8 @@ use qxfx0_pipeline::{
     RendererAuthority, ResponsePlanV2Authority, ResponsePlanV2Mode, SameTopicSuppressionMode,
     TurnInput, TurnOptions,
 };
-use qxfx0_types::field::Atmosphere;
 use qxfx0_types::system_state::SystemState;
+use qxfx0_types::{field::Atmosphere, ThesisObservationOutcome};
 
 fn test_state(session_id: &str) -> SystemState {
     SystemState {
@@ -1833,6 +1833,145 @@ fn thesis_projection_shadow_is_bounded_deterministic_and_observational() {
 }
 
 #[test]
+fn thesis_observation_catalog_receipt_is_private_deterministic_and_observational() {
+    let input = TurnInput {
+        session_id: "thesis-observation-catalog".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let baseline_options = TurnOptions::new().with_renderer(RendererAuthority::AuditedPlan);
+    let shadow_options = baseline_options.with_thesis_projection(ThesisProjectionRollout::Shadow);
+
+    let mut baseline = test_state(&input.session_id);
+    let baseline_output = process_turn_with_options(&input, &mut baseline, baseline_options);
+    let baseline_state = serde_json::to_vec(&baseline).unwrap();
+
+    let mut observed = test_state(&input.session_id);
+    let (observed_output, observed_trace) =
+        process_turn_with_options_and_trace(&input, &mut observed, shadow_options);
+    assert_eq!(
+        serde_json::to_vec(&observed_output).unwrap(),
+        serde_json::to_vec(&baseline_output).unwrap()
+    );
+    assert_eq!(serde_json::to_vec(&observed).unwrap(), baseline_state);
+    assert!(observed.semantic.thesis_state.is_empty());
+
+    let receipt = observed_trace
+        .thesis_observation_receipt
+        .as_ref()
+        .expect("shadow trace must carry a receipt");
+    assert_eq!(receipt.outcome(), ThesisObservationOutcome::Observed);
+    assert!(receipt.thesis_id().is_some());
+    assert!(receipt.thesis_digest().is_some());
+    assert!(receipt.fact_id().is_some());
+    assert!(receipt.pack_fingerprint().is_some());
+    receipt.validate().unwrap();
+    let artifact = serde_json::to_string(receipt).unwrap();
+    assert!(!artifact.contains(&input.raw_text));
+    assert!(!artifact.contains(&observed_output.response));
+    assert!(!artifact.contains(&input.session_id));
+
+    let mut replay = test_state(&input.session_id);
+    let (replay_output, replay_trace) =
+        process_turn_with_options_and_trace(&input, &mut replay, shadow_options);
+    assert_eq!(
+        serde_json::to_vec(&replay_output).unwrap(),
+        serde_json::to_vec(&observed_output).unwrap()
+    );
+    assert_eq!(
+        serde_json::to_vec(&replay).unwrap(),
+        serde_json::to_vec(&observed).unwrap()
+    );
+    assert_eq!(
+        replay_trace
+            .thesis_observation_receipt
+            .as_ref()
+            .unwrap()
+            .digest(),
+        receipt.digest()
+    );
+    assert_eq!(
+        replay_trace.replay_signature(),
+        observed_trace.replay_signature()
+    );
+}
+
+#[test]
+fn thesis_observation_non_catalog_and_guard_cases_have_no_bindings_or_leaks() {
+    let cases = [
+        (
+            "unknown",
+            "что такое квазижар-параллакс-несуществующий?",
+            ThesisObservationOutcome::NoAuditedPlan,
+        ),
+        (
+            "external",
+            "почему небо голубое?",
+            ThesisObservationOutcome::NoAuditedPlan,
+        ),
+        (
+            "adversarial",
+            "Мой секретный тезис: qxfx0-не-должен-считать-это-каталогом.",
+            ThesisObservationOutcome::NoAuditedPlan,
+        ),
+        ("guard", "", ThesisObservationOutcome::GuardBlocked),
+    ];
+    let baseline_options = TurnOptions::new().with_renderer(RendererAuthority::AuditedPlan);
+    let shadow_options = baseline_options.with_thesis_projection(ThesisProjectionRollout::Shadow);
+
+    for (name, raw_text, expected) in cases {
+        let session_id = format!("thesis-observation-{name}");
+        let input = TurnInput {
+            session_id: session_id.clone(),
+            raw_text: raw_text.into(),
+        };
+        let mut baseline = test_state(&session_id);
+        let baseline_output = process_turn_with_options(&input, &mut baseline, baseline_options);
+        let baseline_state = serde_json::to_vec(&baseline).unwrap();
+        let mut shadow = test_state(&session_id);
+        let (shadow_output, trace) =
+            process_turn_with_options_and_trace(&input, &mut shadow, shadow_options);
+        assert_eq!(
+            serde_json::to_vec(&shadow_output).unwrap(),
+            serde_json::to_vec(&baseline_output).unwrap(),
+            "output parity for {name}"
+        );
+        assert_eq!(
+            serde_json::to_vec(&shadow).unwrap(),
+            baseline_state,
+            "state parity for {name}"
+        );
+        assert!(shadow.semantic.thesis_state.is_empty());
+        let receipt = trace.thesis_observation_receipt.as_ref().unwrap();
+        assert_eq!(receipt.outcome(), expected, "outcome for {name}");
+        assert!(receipt.thesis_id().is_none());
+        assert!(receipt.thesis_digest().is_none());
+        assert!(receipt.fact_id().is_none());
+        assert!(receipt.pack_fingerprint().is_none());
+        let artifact = serde_json::to_string(receipt).unwrap();
+        if !raw_text.is_empty() {
+            assert!(!artifact.contains(raw_text), "raw input leaked for {name}");
+        }
+        assert!(
+            !artifact.contains(&shadow_output.response),
+            "response leaked for {name}"
+        );
+        assert!(!artifact.contains(&session_id), "session leaked for {name}");
+    }
+}
+
+#[test]
+fn default_trace_schema_omits_thesis_observation_receipt() {
+    let input = TurnInput {
+        session_id: "thesis-observation-default".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let mut state = test_state(&input.session_id);
+    let (_, trace) = process_turn_with_options_and_trace(&input, &mut state, TurnOptions::new());
+    let encoded = serde_json::to_value(trace).unwrap();
+    assert!(encoded.get("thesis_observation_receipt").is_none());
+}
+
+#[test]
 fn thesis_shadow_does_not_compose_with_v2_authority() {
     let input = TurnInput {
         session_id: "thesis-v2-isolation".into(),
@@ -1843,7 +1982,8 @@ fn thesis_shadow_does_not_compose_with_v2_authority() {
         .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary);
     let mut isolated = test_state(&input.session_id);
     let mut authority_only = test_state(&input.session_id);
-    let isolated_output = process_turn_with_options(&input, &mut isolated, options);
+    let (isolated_output, isolated_trace) =
+        process_turn_with_options_and_trace(&input, &mut isolated, options);
     let authority_output = process_turn_with_options(
         &input,
         &mut authority_only,
@@ -1856,4 +1996,11 @@ fn thesis_shadow_does_not_compose_with_v2_authority() {
         serde_json::to_vec(&authority_only).unwrap()
     );
     assert!(isolated.semantic.thesis_state.is_empty());
+    let receipt = isolated_trace.thesis_observation_receipt.as_ref().unwrap();
+    assert_eq!(
+        receipt.outcome(),
+        ThesisObservationOutcome::V2AuthorityIsolated
+    );
+    assert!(receipt.thesis_id().is_none());
+    assert!(receipt.fact_id().is_none());
 }

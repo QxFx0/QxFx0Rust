@@ -25,6 +25,10 @@ pub struct PipelineTrace {
     pub steps: Vec<TraceStep>,
     /// Optional authority evidence kept outside persisted session state.
     pub authority_receipt: Option<serde_json::Value>,
+    /// Private thesis catalog observation evidence. This field is absent from
+    /// the default schema and never enters persisted session state.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thesis_observation_receipt: Option<qxfx0_types::ThesisObservationReceipt>,
     /// Final authority/guard boundary result, including turns denied before a
     /// receipt could be created.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -49,6 +53,7 @@ impl PipelineTrace {
             request_id: request_id.to_string(),
             steps: Vec::new(),
             authority_receipt: None,
+            thesis_observation_receipt: None,
             authority_guard_classification: None,
             authority_case_id: None,
             authority_input_class: None,
@@ -83,6 +88,15 @@ impl PipelineTrace {
     pub fn set_authority_receipt<T: Serialize>(&mut self, receipt: &T) -> Result<(), String> {
         self.authority_receipt =
             Some(serde_json::to_value(receipt).map_err(|error| error.to_string())?);
+        Ok(())
+    }
+
+    pub fn set_thesis_observation_receipt(
+        &mut self,
+        receipt: qxfx0_types::ThesisObservationReceipt,
+    ) -> Result<(), qxfx0_types::ThesisObservationValidationError> {
+        receipt.validate()?;
+        self.thesis_observation_receipt = Some(receipt);
         Ok(())
     }
 
@@ -212,6 +226,12 @@ mod tests {
     }
 
     #[test]
+    fn default_trace_schema_omits_thesis_observation() {
+        let encoded = serde_json::to_value(PipelineTrace::new("default")).unwrap();
+        assert!(encoded.get("thesis_observation_receipt").is_none());
+    }
+
+    #[test]
     fn replay_signature_ignores_duration() {
         let mut a = PipelineTrace::new("a");
         let mut b = PipelineTrace::new("b");
@@ -249,6 +269,53 @@ mod tests {
             .collect::<Vec<_>>();
         trace.authority_receipt = Some(serde_json::json!({"authority": "Canary"}));
         trace.set_authority_guard_classification("v2_successfully_emitted");
+        assert_eq!(
+            trace
+                .replay_signature()
+                .into_iter()
+                .map(|(stage, input, output)| (
+                    stage.to_owned(),
+                    input.to_owned(),
+                    output.to_owned()
+                ))
+                .collect::<Vec<_>>(),
+            expected
+        );
+    }
+
+    #[test]
+    fn thesis_observation_evidence_does_not_change_replay_signature() {
+        let mut trace = PipelineTrace::new("thesis");
+        trace.record_step(
+            "render",
+            "in".into(),
+            "out".into(),
+            std::time::Duration::ZERO,
+            BTreeMap::new(),
+        );
+        let expected = trace
+            .replay_signature()
+            .into_iter()
+            .map(|(stage, input, output)| (stage.to_owned(), input.to_owned(), output.to_owned()))
+            .collect::<Vec<_>>();
+        trace
+            .set_thesis_observation_receipt(
+                qxfx0_types::ThesisObservationReceipt::new(
+                    qxfx0_types::ThesisObservationOutcome::NoAuditedPlan,
+                    0,
+                    qxfx0_types::calculate_thesis_observation_turn_binding(
+                        "private-session",
+                        0,
+                        "private-input",
+                    ),
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap(),
+            )
+            .unwrap();
         assert_eq!(
             trace
                 .replay_signature()

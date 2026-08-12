@@ -20,6 +20,7 @@ pub mod stance;
 pub mod stance_authority;
 pub mod system_state;
 pub mod thesis;
+pub mod thesis_observation;
 
 pub use anomaly::AnomalyEvidence;
 pub use atom::{
@@ -77,4 +78,8 @@ pub use thesis::{
     ThesisRelationTrigger, ThesisRevision, ThesisRevisionAction, ThesisRevisionReason, ThesisState,
     ThesisStatus, MAX_THESIS_EVENTS, MAX_THESIS_REVISIONS, MAX_THESIS_TRIGGERS,
     THESIS_CANONICAL_VERSION,
+};
+pub use thesis_observation::{
+    calculate_thesis_observation_turn_binding, ThesisObservationOutcome, ThesisObservationReceipt,
+    ThesisObservationValidationError, THESIS_OBSERVATION_VERSION,
 };

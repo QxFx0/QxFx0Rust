@@ -13,7 +13,8 @@ use qxfx0_semantic::{
 };
 use qxfx0_types::{
     AtomId, ConceptId, FactId, PerspectiveState, StanceTopic, SystemStanceDecision, SystemState,
-    ThesisDigest, ThesisId, VerifiedStanceDecision,
+    ThesisDigest, ThesisId, ThesisObservationOutcome, ThesisObservationReceipt,
+    VerifiedStanceDecision,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -198,6 +199,54 @@ impl RenderedPlanReceipt {
 
     pub fn response_digest(&self) -> &str {
         &self.response_digest
+    }
+}
+
+/// Convert a validated internal receipt to the private, receipt-only thesis
+/// observation artifact. The internal session and response bindings are used
+/// for validation above but never copied into this external representation.
+pub(crate) fn thesis_observation_receipt(
+    outcome: ThesisObservationOutcome,
+    pre_turn_index: usize,
+    session_id: &str,
+    raw_input: &str,
+    receipt: Option<&RenderedPlanReceipt>,
+) -> Result<ThesisObservationReceipt, FactGroundedCompositionError> {
+    let pre_turn_index = u64::try_from(pre_turn_index).map_err(|_| {
+        FactGroundedCompositionError::InvalidState("turn index cannot fit receipt encoding".into())
+    })?;
+    let turn_binding = qxfx0_types::calculate_thesis_observation_turn_binding(
+        session_id,
+        pre_turn_index,
+        raw_input,
+    );
+    match (outcome, receipt) {
+        (ThesisObservationOutcome::Observed, Some(receipt)) => ThesisObservationReceipt::new(
+            outcome,
+            pre_turn_index,
+            turn_binding,
+            Some(receipt.thesis_id.clone()),
+            Some(receipt.thesis_digest),
+            Some(receipt.binding.thesis_fact_id.clone()),
+            Some(receipt.pack_fingerprint.clone()),
+        )
+        .map_err(|error| FactGroundedCompositionError::InvalidState(error.to_string())),
+        (ThesisObservationOutcome::Observed, None) => {
+            Err(FactGroundedCompositionError::RenderedPlanMissing)
+        }
+        (_, None) => ThesisObservationReceipt::new(
+            outcome,
+            pre_turn_index,
+            turn_binding,
+            None,
+            None,
+            None,
+            None,
+        )
+        .map_err(|error| FactGroundedCompositionError::InvalidState(error.to_string())),
+        (_, Some(_)) => Err(FactGroundedCompositionError::InvalidState(
+            "non-observed thesis outcome cannot export a catalog binding".into(),
+        )),
     }
 }
 

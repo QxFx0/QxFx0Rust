@@ -1,0 +1,43 @@
+{
+  "schema": "qxfx0.thesis-observation-evidence.v1",
+  "window_id": "thesis-observation-local-v1",
+  "scope": "local deterministic observation corpus",
+  "base_commit_before_receipt_change": "bc1ecba7246f38295b8a0b0f66905d8153f9dc26",
+  "corpus_sha256": "1e27d5432c9b7b36852e91d411a768c684afca7b1f5d38ff43d828962ba24005",
+  "corpus_cases": 12,
+  "receipt_outcomes": {
+    "observed": 7,
+    "no_audited_plan": 3,
+    "guard_blocked": 1,
+    "v2_authority_isolated": 1,
+    "validation_rejected": 0
+  },
+  "validation": {
+    "command": "cargo test -p qxfx0-pipeline --test thesis_observation_corpus",
+    "result": "passed",
+    "replay_runs_per_case": 2,
+    "trace_schema_default_receipt_absent": true,
+    "receipt_only_privacy_checks": true
+  },
+  "failure_budgets": {
+    "nondeterminism": 0,
+    "raw_input_leakage": 0,
+    "response_leakage": 0,
+    "session_id_leakage": 0,
+    "state_mutation": 0,
+    "output_mutation": 0,
+    "digest_mismatch": 0,
+    "invalid_catalog_binding": 0,
+    "v2_authority_composition": 0
+  },
+  "boundaries": {
+    "rollout_modes": ["disabled", "shadow"],
+    "authority_change": "none",
+    "v2_authority_change": "none",
+    "sqlite_write": false,
+    "system_state_write": false,
+    "feedback_authority_change": "none",
+    "active_projection": "not implemented"
+  },
+  "verdict": "shadow_only_evidence_complete_no_promotion_authorized"
+}

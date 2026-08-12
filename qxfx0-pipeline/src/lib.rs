@@ -1636,6 +1636,50 @@ fn process_turn_internal(
         tracing::warn!("guard rejected turn: {rejection}");
     }
 
+    if thesis_projection.observes() {
+        let outcome = if response_plan_v2_authority == ResponsePlanV2Authority::Canary {
+            qxfx0_types::ThesisObservationOutcome::V2AuthorityIsolated
+        } else if guarded.blocked() {
+            qxfx0_types::ThesisObservationOutcome::GuardBlocked
+        } else {
+            match &rendered_receipt {
+                Ok(Some(_)) => qxfx0_types::ThesisObservationOutcome::Observed,
+                Ok(None) => qxfx0_types::ThesisObservationOutcome::NoAuditedPlan,
+                Err(_) => qxfx0_types::ThesisObservationOutcome::ValidationRejected,
+            }
+        };
+        if let Some(trace) = trace.as_deref_mut() {
+            let receipt = match outcome {
+                qxfx0_types::ThesisObservationOutcome::Observed => {
+                    fact_grounded::thesis_observation_receipt(
+                        outcome,
+                        state.dialogue.turn_count,
+                        &input.session_id,
+                        &input.raw_text,
+                        rendered_receipt.as_ref().ok().and_then(Option::as_ref),
+                    )
+                }
+                _ => fact_grounded::thesis_observation_receipt(
+                    outcome,
+                    state.dialogue.turn_count,
+                    &input.session_id,
+                    &input.raw_text,
+                    None,
+                ),
+            };
+            match receipt.and_then(|receipt| {
+                trace
+                    .set_thesis_observation_receipt(receipt)
+                    .map_err(|error| {
+                        fact_grounded::FactGroundedCompositionError::InvalidState(error.to_string())
+                    })
+            }) {
+                Ok(()) => {}
+                Err(error) => tracing::warn!("thesis observation receipt skipped: {error}"),
+            }
+        }
+    }
+
     if fact_grounded_rollout.observes() {
         let outcome = if guarded.blocked() {
             Ok(None)
