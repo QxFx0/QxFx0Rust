@@ -9,6 +9,7 @@ use crate::move_family::CanonicalMoveFamily;
 use crate::network::SemanticNetwork;
 use crate::perspective::PerspectiveState;
 use crate::stance::BoundedStanceProvenance;
+use crate::thesis::ThesisState;
 
 /// Dialogue state — multi-turn context, history, last routing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,6 +165,9 @@ pub struct SemanticState {
     pub perspective: PerspectiveState,
     #[serde(default)]
     pub stance_provenance: BoundedStanceProvenance,
+    /// Catalog-authorized thesis lifecycle/projection state. Missing in legacy snapshots.
+    #[serde(default, skip_serializing_if = "ThesisState::is_empty")]
+    pub thesis_state: ThesisState,
     /// Cached edge count — when this differs from runtime_graph.edges.len(),
     /// downstream consumers know the SemanticNetwork/ContentSelector cache
     /// is stale and must be rebuilt.
@@ -244,6 +248,9 @@ impl SystemState {
                 .into_iter()
                 .map(|violation| format!("semantic.perspective: {violation}")),
         );
+        if let Err(error) = self.semantic.thesis_state.validate_state() {
+            violations.push(format!("semantic.thesis_state: {error}"));
+        }
         if self.semantic.stance_provenance.len() > self.semantic.stance_provenance.capacity() {
             violations.push("stance provenance exceeds its capacity".into());
         }

@@ -1,11 +1,15 @@
 use qxfx0_types::system_state::SystemState;
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use std::collections::BTreeMap;
+use std::fs::{File, OpenOptions};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
 mod db;
+
+const MAX_THESIS_STATE_JSON_BYTES: usize = 4 * 1024 * 1024;
 
 fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
     let mut violations = Vec::new();
@@ -28,6 +32,29 @@ fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
             active_pack,
         ),
     );
+    let thesis = &state.semantic.thesis_state;
+    if !thesis.is_empty() {
+        if thesis.pack_fingerprint != active_pack.fingerprint() {
+            violations.push("thesis projection knowledge-pack fingerprint mismatch".into());
+        }
+        for digest in &thesis.projected_digests {
+            if !active_pack.overlay_theses().contains_key(digest) {
+                violations.push(format!(
+                    "thesis projection references unknown digest {digest}"
+                ));
+            }
+        }
+        for (id, lifecycle) in &thesis.lifecycles {
+            if let Some(head) = lifecycle.active_head {
+                match active_pack.overlay_theses().get(&head) {
+                    Some(metadata) if metadata.thesis_id == id.as_str() => {}
+                    _ => violations.push(format!(
+                        "thesis lifecycle {id} is not bound to the active catalog"
+                    )),
+                }
+            }
+        }
+    }
     violations
 }
 
@@ -110,10 +137,35 @@ impl Persistence {
     /// Create a consistent online backup without migrating or writing to the
     /// source database. The destination must not exist.
     ///
-    /// SQLite writes into a process-specific partial file first. The partial
-    /// copy is verified with `PRAGMA quick_check` and atomically renamed only
-    /// after the backup has completed successfully.
+    /// SQLite writes into a uniquely owned partial file first. After the
+    /// connections are closed, the copy is verified, synced, atomically
+    /// renamed, and (on Unix) its parent directory is synced. A failure before
+    /// the rename removes only this invocation's partial file.
     pub fn backup_database(source: &str, destination: &str) -> Result<(), PersistenceError> {
+        static PARTIAL_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+        fn backup_error(context: &str, error: impl std::fmt::Display) -> PersistenceError {
+            PersistenceError::Backup(format!("{context}: {error}"))
+        }
+
+        fn close_connection(connection: Connection, name: &str) -> Result<(), PersistenceError> {
+            connection
+                .close()
+                .map_err(|(_, error)| backup_error(&format!("closing {name} connection"), error))
+        }
+
+        #[cfg(unix)]
+        fn sync_parent_directory(parent: &Path) -> Result<(), PersistenceError> {
+            File::open(parent)
+                .and_then(|directory| directory.sync_all())
+                .map_err(|error| backup_error("syncing backup parent directory", error))
+        }
+
+        #[cfg(not(unix))]
+        fn sync_parent_directory(_parent: &Path) -> Result<(), PersistenceError> {
+            Ok(())
+        }
+
         let source_path = Path::new(source);
         let destination_path = Path::new(destination);
 
@@ -131,13 +183,13 @@ impl Persistence {
         }
 
         let source_canonical = std::fs::canonicalize(source_path)
-            .map_err(|error| PersistenceError::Backup(error.to_string()))?;
+            .map_err(|error| backup_error("resolving source database", error))?;
         let destination_parent = destination_path
             .parent()
             .filter(|parent| !parent.as_os_str().is_empty())
             .unwrap_or_else(|| Path::new("."));
         let destination_parent = std::fs::canonicalize(destination_parent)
-            .map_err(|error| PersistenceError::Backup(error.to_string()))?;
+            .map_err(|error| backup_error("resolving destination directory", error))?;
         let destination_name = destination_path.file_name().ok_or_else(|| {
             PersistenceError::Backup("destination must include a file name".into())
         })?;
@@ -149,56 +201,121 @@ impl Persistence {
             ));
         }
 
-        let partial_name = format!(
-            ".{}.partial-{}",
-            destination_name.to_string_lossy(),
-            std::process::id()
-        );
-        let partial_path = destination_parent.join(partial_name);
-        if partial_path.exists() {
-            return Err(PersistenceError::Backup(format!(
-                "partial destination '{}' already exists",
-                partial_path.display()
-            )));
-        }
+        let partial_path = (0..100)
+            .find_map(|_| {
+                let sequence = PARTIAL_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+                let partial_name = format!(
+                    ".{}.partial-{}-{sequence}",
+                    destination_name.to_string_lossy(),
+                    std::process::id()
+                );
+                let candidate = destination_parent.join(partial_name);
+                match OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(&candidate)
+                {
+                    Ok(file) => {
+                        drop(file);
+                        Some(Ok(candidate))
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => None,
+                    Err(error) => Some(Err(backup_error("creating partial backup", error))),
+                }
+            })
+            .transpose()?
+            .ok_or_else(|| {
+                PersistenceError::Backup("could not allocate partial backup file".into())
+            })?;
 
         let result = (|| {
             let source_connection = Connection::open_with_flags(
                 &source_canonical,
                 OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-            )?;
-            source_connection.busy_timeout(Duration::from_secs(5))?;
+            )
+            .map_err(|error| backup_error("opening source database", error))?;
+            source_connection
+                .busy_timeout(Duration::from_secs(5))
+                .map_err(|error| backup_error("configuring source database", error))?;
 
             let mut destination_connection = Connection::open_with_flags(
                 &partial_path,
-                OpenFlags::SQLITE_OPEN_READ_WRITE
-                    | OpenFlags::SQLITE_OPEN_CREATE
-                    | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-            )?;
+                OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            )
+            .map_err(|error| backup_error("opening partial backup", error))?;
             {
                 let backup =
-                    rusqlite::backup::Backup::new(&source_connection, &mut destination_connection)?;
-                backup.run_to_completion(128, Duration::from_millis(10), None)?;
+                    rusqlite::backup::Backup::new(&source_connection, &mut destination_connection)
+                        .map_err(|error| backup_error("starting SQLite backup", error))?;
+                backup
+                    .run_to_completion(128, Duration::from_millis(10), None)
+                    .map_err(|error| backup_error("copying SQLite backup", error))?;
             }
+            // The source commonly uses WAL, and the backup copies that
+            // persistent journal-mode setting. Return the standalone backup to
+            // DELETE mode before closing so integrity verification cannot
+            // leave WAL/SHM sidecars behind.
+            destination_connection
+                .pragma_update(None, "journal_mode", "DELETE")
+                .map_err(|error| backup_error("finalizing backup journal mode", error))?;
 
-            let quick_check: String =
-                destination_connection.query_row("PRAGMA quick_check", [], |row| row.get(0))?;
-            if quick_check != "ok" {
+            close_connection(destination_connection, "partial backup")?;
+            close_connection(source_connection, "source")?;
+
+            let integrity_connection = Connection::open_with_flags(
+                &partial_path,
+                OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            )
+            .map_err(|error| backup_error("opening backup for integrity check", error))?;
+            let quick_check_results = {
+                let mut statement = integrity_connection
+                    .prepare("PRAGMA quick_check")
+                    .map_err(|error| backup_error("preparing backup integrity check", error))?;
+                let rows = statement
+                    .query_map([], |row| row.get::<_, String>(0))
+                    .map_err(|error| backup_error("running backup integrity check", error))?;
+                rows.collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| backup_error("reading backup integrity check", error))?
+            };
+            if quick_check_results.as_slice() != ["ok"] {
                 return Err(PersistenceError::Backup(format!(
-                    "destination quick_check failed: {quick_check}"
+                    "destination quick_check failed: {}",
+                    quick_check_results.join("; ")
                 )));
             }
-            drop(destination_connection);
+            close_connection(integrity_connection, "integrity check")?;
 
+            File::open(&partial_path)
+                .and_then(|file| file.sync_all())
+                .map_err(|error| backup_error("syncing partial backup", error))?;
+
+            // The API has always required a non-existent destination. Recheck
+            // immediately before rename so a failure never replaces a backup
+            // that appeared while SQLite was copying.
+            if destination_canonical.exists() {
+                return Err(PersistenceError::Backup(format!(
+                    "destination '{}' already exists",
+                    destination_canonical.display()
+                )));
+            }
             std::fs::rename(&partial_path, &destination_canonical)
-                .map_err(|error| PersistenceError::Backup(error.to_string()))?;
+                .map_err(|error| backup_error("renaming completed backup", error))?;
+            sync_parent_directory(&destination_parent)?;
             Ok(())
         })();
 
-        if result.is_err() {
-            let _ = std::fs::remove_file(&partial_path);
+        match result {
+            Err(error) if partial_path.exists() => {
+                if let Err(cleanup_error) = std::fs::remove_file(&partial_path) {
+                    return Err(PersistenceError::Backup(format!(
+                        "{error}; additionally failed to remove partial backup '{}': {cleanup_error}",
+                        partial_path.display()
+                    )));
+                }
+                Err(error)
+            }
+            result => result,
         }
-        result
     }
 
     /// Save system state for a session across normalized tables.
@@ -259,6 +376,13 @@ impl Persistence {
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
         let perspective_json = serde_json::to_string(&state.semantic.perspective)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
+        let thesis_state_json = serde_json::to_string(&state.semantic.thesis_state)
+            .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
+        if thesis_state_json.len() > MAX_THESIS_STATE_JSON_BYTES {
+            return Err(PersistenceError::InvalidState(format!(
+                "thesis_state_json exceeds {MAX_THESIS_STATE_JSON_BYTES} bytes"
+            )));
+        }
 
         let state_json = serde_json::to_string(state)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
@@ -292,16 +416,17 @@ impl Persistence {
         )?;
 
         tx.execute(
-            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
              ON CONFLICT(session_id) DO UPDATE SET
                 field_json=excluded.field_json,
                 essence_json=excluded.essence_json,
                 adjunction_json=excluded.adjunction_json,
                 commitments_json=excluded.commitments_json,
                 stance_provenance_json=excluded.stance_provenance_json,
-                perspective_json=excluded.perspective_json",
-            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json],
+                perspective_json=excluded.perspective_json,
+                thesis_state_json=excluded.thesis_state_json",
+            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json],
         )?;
         let sqlite_remaining_writes_ms = SaveStateTimings::elapsed_ms(remaining_writes_started);
 
@@ -338,7 +463,7 @@ impl Persistence {
         let semantic = self
             .conn
             .query_row(
-                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json
+                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json
                  FROM session_semantic WHERE session_id = ?1",
                 params![session_id],
                 |row| {
@@ -349,6 +474,7 @@ impl Persistence {
                         row.get::<_, Option<String>>(3)?,
                         row.get::<_, Option<String>>(4)?,
                         row.get::<_, Option<String>>(5)?,
+                        row.get::<_, Option<String>>(6)?,
                     ))
                 },
             )
@@ -363,6 +489,7 @@ impl Persistence {
                 commitments_json,
                 stance_provenance_json,
                 perspective_json,
+                thesis_state_json,
             )),
         ) = (graph, semantic)
         {
@@ -413,6 +540,11 @@ impl Persistence {
                 Some(json) => serde_json::from_str(json)
                     .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
             };
+            let thesis_state = match thesis_state_json.as_deref() {
+                Some("null") | Some("") | None => Default::default(),
+                Some(json) => serde_json::from_str(json)
+                    .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
+            };
             let perspective = match perspective_json.as_deref() {
                 Some("null") | Some("") | None => Default::default(),
                 Some(json) => serde_json::from_str(json)
@@ -439,6 +571,7 @@ impl Persistence {
                         adjunction,
                         stance_provenance,
                         perspective,
+                        thesis_state,
                         cached_edge_count: 0,
                         cached_network: None,
                     }
@@ -583,6 +716,7 @@ mod tests {
     use qxfx0_types::system_state::*;
     use qxfx0_types::{BeliefPolarity, ConceptId, FactId, OpinionCore};
     use std::collections::BTreeSet;
+    use std::sync::{Arc, Barrier};
 
     fn qualified_without_counterpoint_state(session_id: &str) -> SystemState {
         let packs = qxfx0_semantic::active_pack_set();
@@ -613,26 +747,213 @@ mod tests {
     }
 
     #[test]
+    fn schema_v9_to_v10_is_additive_idempotent_and_null_defaults() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "PRAGMA foreign_keys=ON;
+             CREATE TABLE runtime_sessions (id TEXT PRIMARY KEY, state_json TEXT NOT NULL, last_active TEXT NOT NULL DEFAULT current_timestamp, turn_count INTEGER NOT NULL DEFAULT 0);
+             CREATE TABLE session_graphs (session_id TEXT PRIMARY KEY, atoms_json TEXT NOT NULL, edges_json TEXT NOT NULL, FOREIGN KEY(session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE);
+             CREATE TABLE session_semantic (session_id TEXT PRIMARY KEY, field_json TEXT NOT NULL, essence_json TEXT NOT NULL, adjunction_json TEXT NOT NULL, commitments_json TEXT, stance_provenance_json TEXT, perspective_json TEXT, FOREIGN KEY(session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE);
+             PRAGMA user_version=9;"
+        ).unwrap();
+        let state = SystemState {
+            session_id: "v9".into(),
+            ..Default::default()
+        };
+        let legacy = serde_json::to_string(&state).unwrap();
+        conn.execute(
+            "INSERT INTO runtime_sessions(id,state_json) VALUES (?1,?2)",
+            params!["v9", legacy],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO session_graphs VALUES (?1,?2,?3)",
+            params!["v9", "[]", "[]"],
+        )
+        .unwrap();
+        let field = serde_json::to_string(&state.semantic.field).unwrap();
+        let essence = serde_json::to_string(&state.semantic.essence).unwrap();
+        let adj = serde_json::to_string(&state.semantic.adjunction).unwrap();
+        conn.execute("INSERT INTO session_semantic(session_id,field_json,essence_json,adjunction_json) VALUES (?1,?2,?3,?4)", params!["v9", field, essence, adj]).unwrap();
+        let before: String = conn
+            .query_row(
+                "SELECT state_json FROM runtime_sessions WHERE id=?1",
+                ["v9"],
+                |r| r.get(0),
+            )
+            .unwrap();
+        db::migrations::apply_migrations(&mut conn).unwrap();
+        db::migrations::apply_migrations(&mut conn).unwrap();
+        assert_eq!(
+            conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            10
+        );
+        let after: String = conn
+            .query_row(
+                "SELECT state_json FROM runtime_sessions WHERE id=?1",
+                ["v9"],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(before.as_bytes(), after.as_bytes());
+        let value: Option<String> = conn
+            .query_row(
+                "SELECT thesis_state_json FROM session_semantic WHERE session_id=?1",
+                ["v9"],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(value.is_none());
+        assert_eq!(
+            conn.query_row("PRAGMA quick_check", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "ok"
+        );
+        assert_eq!(
+            conn.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r
+                .get::<_, i64>(
+                0
+            ))
+            .unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn thesis_state_roundtrips_exactly() {
+        let db = Persistence::open_memory().unwrap();
+        let packs = qxfx0_semantic::active_pack_set();
+        let (digest, metadata) = packs.overlay_theses().iter().next().unwrap();
+        let fact = packs.facts().get(&metadata.authority_fact_id).unwrap();
+        let mut thesis = fact.canonical_thesis().unwrap();
+        thesis.id = qxfx0_types::ThesisId::try_new(metadata.thesis_id.clone()).unwrap();
+        let lifecycle = qxfx0_types::ThesisLifecycle::draft(thesis).unwrap();
+        let mut state = SystemState {
+            session_id: "thesis-roundtrip".into(),
+            ..Default::default()
+        };
+        state.semantic.thesis_state.pack_fingerprint = packs.fingerprint().into();
+        state
+            .semantic
+            .thesis_state
+            .projected_digests
+            .insert(*digest);
+        state
+            .semantic
+            .thesis_state
+            .lifecycles
+            .insert(lifecycle.thesis_id.clone(), lifecycle);
+        db.save_state(&state.session_id, &state).unwrap();
+        let loaded = db.load_state(&state.session_id).unwrap().unwrap();
+        assert_eq!(loaded.semantic.thesis_state, state.semantic.thesis_state);
+    }
+
+    #[test]
     fn test_open_memory() {
         let db = Persistence::open_memory();
         assert!(db.is_ok());
     }
 
     #[test]
-    fn test_online_backup_is_consistent_and_refuses_overwrite() {
-        let source = std::env::temp_dir().join(format!(
-            "qxfx0-online-backup-source-{}.db",
+    fn file_connections_configure_five_second_busy_timeout() {
+        let directory = backup_test_directory("busy-timeout");
+        let path = directory.join("state.db");
+        let db = Persistence::open(path.to_str().unwrap()).unwrap();
+        let timeout_ms: i64 = db
+            .conn
+            .query_row("PRAGMA busy_timeout", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(timeout_ms, 5_000);
+        drop(db);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn concurrent_writer_lock_failure_is_diagnosable() {
+        let directory = backup_test_directory("writer-contention");
+        let path = directory.join("state.db");
+        let lock_holder = Persistence::open(path.to_str().unwrap()).unwrap();
+        lock_holder.conn.execute_batch("BEGIN IMMEDIATE").unwrap();
+
+        let barrier = Arc::new(Barrier::new(2));
+        let worker_barrier = Arc::clone(&barrier);
+        let worker_path = path.clone();
+        let worker = std::thread::spawn(move || {
+            let writer = Persistence::open(worker_path.to_str().unwrap()).unwrap();
+            // Keep this contention test fast and deterministic. The configured
+            // production timeout is asserted independently above.
+            writer.conn.busy_timeout(Duration::ZERO).unwrap();
+            let state = SystemState {
+                session_id: "contended".into(),
+                ..SystemState::default()
+            };
+            worker_barrier.wait();
+            writer.save_state("contended", &state)
+        });
+
+        barrier.wait();
+        let error = worker.join().unwrap().unwrap_err();
+        assert!(matches!(
+            error,
+            PersistenceError::SQLite(rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error {
+                    code: rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked,
+                    ..
+                },
+                _
+            ))
+        ));
+
+        lock_holder.conn.execute_batch("ROLLBACK").unwrap();
+        drop(lock_holder);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn operations_schema_marker_matches_current_schema_version() {
+        const PREFIX: &str = "<!-- qxfx0-current-schema-version: ";
+        let operations = include_str!("../../ops/README.md");
+        let marker = operations
+            .lines()
+            .find_map(|line| line.strip_prefix(PREFIX)?.strip_suffix(" -->"))
+            .expect("ops README must contain the structured schema-version marker");
+        assert_eq!(
+            marker.parse::<i64>().unwrap(),
+            db::migrations::CURRENT_SCHEMA_VERSION
+        );
+    }
+
+    fn backup_test_directory(label: &str) -> std::path::PathBuf {
+        static TEST_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+        let sequence = TEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let directory = std::env::temp_dir().join(format!(
+            "qxfx0-backup-{label}-{}-{sequence}",
             std::process::id()
         ));
-        let destination = std::env::temp_dir().join(format!(
-            "qxfx0-online-backup-destination-{}.db",
-            std::process::id()
-        ));
-        for path in [&source, &destination] {
-            let _ = std::fs::remove_file(path);
-            let _ = std::fs::remove_file(format!("{}-wal", path.display()));
-            let _ = std::fs::remove_file(format!("{}-shm", path.display()));
-        }
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir(&directory).unwrap();
+        directory
+    }
+
+    fn partial_backups(directory: &Path) -> Vec<std::path::PathBuf> {
+        std::fs::read_dir(directory)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| {
+                path.file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .contains(".partial-")
+            })
+            .collect()
+    }
+
+    #[test]
+    fn online_backup_is_consistent_durable_and_leaves_no_partial() {
+        let directory = backup_test_directory("success");
+        let source = directory.join("source.db");
+        let destination = directory.join("backup.db");
 
         let db = Persistence::open(source.to_str().unwrap()).unwrap();
         let state = SystemState {
@@ -648,11 +969,8 @@ mod tests {
 
         Persistence::backup_database(source.to_str().unwrap(), destination.to_str().unwrap())
             .unwrap();
-        let overwrite =
-            Persistence::backup_database(source.to_str().unwrap(), destination.to_str().unwrap());
-        assert!(
-            matches!(overwrite, Err(PersistenceError::Backup(message)) if message.contains("already exists"))
-        );
+        assert!(destination.is_file());
+        assert!(partial_backups(&directory).is_empty());
 
         let backup = Persistence::open(destination.to_str().unwrap()).unwrap();
         let restored = backup.load_state("backup-session").unwrap().unwrap();
@@ -662,11 +980,39 @@ mod tests {
 
         drop(backup);
         drop(db);
-        for path in [&source, &destination] {
-            let _ = std::fs::remove_file(path);
-            let _ = std::fs::remove_file(format!("{}-wal", path.display()));
-            let _ = std::fs::remove_file(format!("{}-shm", path.display()));
-        }
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn failed_backup_cleans_partial_and_preserves_existing_destination() {
+        let directory = backup_test_directory("failure");
+        let invalid_source = directory.join("invalid.db");
+        let destination = directory.join("backup.db");
+        std::fs::write(&invalid_source, b"not a SQLite database").unwrap();
+
+        let error = Persistence::backup_database(
+            invalid_source.to_str().unwrap(),
+            destination.to_str().unwrap(),
+        )
+        .unwrap_err();
+        assert!(matches!(error, PersistenceError::Backup(_)));
+        assert!(!destination.exists());
+        assert!(partial_backups(&directory).is_empty());
+
+        let original_backup = b"previous valid backup";
+        std::fs::write(&destination, original_backup).unwrap();
+        let error = Persistence::backup_database(
+            invalid_source.to_str().unwrap(),
+            destination.to_str().unwrap(),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(error, PersistenceError::Backup(message) if message.contains("already exists"))
+        );
+        assert_eq!(std::fs::read(&destination).unwrap(), original_backup);
+        assert!(partial_backups(&directory).is_empty());
+
+        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
@@ -1087,7 +1433,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 9);
+        assert_eq!(db.schema_version().unwrap(), 10);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -1142,7 +1488,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 9);
+            assert_eq!(db.schema_version().unwrap(), 10);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db
