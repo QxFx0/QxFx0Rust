@@ -5,7 +5,7 @@
 
 ## Decision
 
-Schema v8 adds nullable `session_semantic.stance_provenance_json`. It stores
+The v8 migration added nullable `session_semantic.stance_provenance_json`; current schema v9 retains it. It stores
 the V1 bounded typed provenance contract, including an explicit version and
 retention capacity. Migration adds only the column and does not rewrite
 `runtime_sessions.state_json`, normalized rows, or session data. A legacy row

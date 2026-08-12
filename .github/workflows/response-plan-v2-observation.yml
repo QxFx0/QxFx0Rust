@@ -26,15 +26,15 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ inputs.expected_sha }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.93.1
+        uses: dtolnay/rust-toolchain@96d8491b80fc26e2ab48ff0c3928c002176297c8 # 1.93.1
 
       - name: Build release binary
-        run: cargo build --workspace --release
+        run: cargo build --locked --workspace --release
 
       - name: Run observation batch
         env:
@@ -44,7 +44,7 @@ jobs:
         run: bash scripts/response-plan-v2-observation.sh target/release/qxfx0 "$REPETITIONS" "$WINDOW_ID" "$RUNNER_TEMP/qxfx0-observation" "$EXPECTED_SHA"
 
       - name: Upload observation evidence
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: response-plan-v2-observation-${{ inputs.window_id }}-${{ github.run_id }}
           path: ${{ runner.temp }}/qxfx0-observation
