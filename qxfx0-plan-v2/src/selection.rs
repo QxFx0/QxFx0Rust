@@ -265,7 +265,7 @@ fn domain_digest(domain: &[u8], payload: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan_v2::build_audited_topic;
+    use crate::build_audited_topic;
 
     #[derive(Deserialize)]
     struct NumericReferenceVectors {
@@ -351,9 +351,8 @@ mod tests {
 
     #[test]
     fn numeric_semantics_reference_vectors_are_cross_platform_stable() {
-        let source = include_str!(
-            "../../../docs/reference-vectors/response-plan-v2-numeric-semantics-v1.json"
-        );
+        let source =
+            include_str!("../../docs/reference-vectors/response-plan-v2-numeric-semantics-v1.json");
         let vectors: NumericReferenceVectors =
             serde_json::from_str(source).expect("numeric reference vectors parse");
         assert_eq!(
@@ -382,7 +381,7 @@ mod tests {
     #[test]
     fn selection_reference_vectors_are_executable() {
         let vectors: SelectionVectors = serde_json::from_str(include_str!(
-            "../../../docs/reference-vectors/response-plan-v2-selection-v1.json"
+            "../../docs/reference-vectors/response-plan-v2-selection-v1.json"
         ))
         .expect("selection vectors parse");
         assert_eq!(vectors.schema, "qxfx0.response-plan-v2.selection.v1");

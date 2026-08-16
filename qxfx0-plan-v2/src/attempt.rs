@@ -388,7 +388,7 @@ fn digest<T: Serialize>(domain: &[u8], value: &T) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan_v2::SnapshotError;
+    use crate::SnapshotError;
 
     #[test]
     fn budget_is_inclusive_and_deterministic() {

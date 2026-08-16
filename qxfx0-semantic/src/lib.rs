@@ -14,7 +14,6 @@ pub mod knowledge_pack;
 pub mod network;
 pub mod pathfinder;
 pub mod response_plan;
-pub mod response_plan_v2;
 pub mod seed;
 pub mod sense_decomposer;
 pub mod syntactic_generator;

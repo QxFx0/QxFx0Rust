@@ -19,7 +19,7 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 use super::proposition::{PropositionDag, PropositionId, PropositionNode};
-use crate::response_plan::{Confidence, NonEmptyVec};
+use qxfx0_semantic::{Confidence, NonEmptyVec};
 
 pub const DERIVATION_DOMAIN: &str = "qxfx0:derivation:v1";
 
@@ -383,8 +383,8 @@ impl DerivationDagBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan::SemanticId;
-    use crate::response_plan_v2::proposition::PropositionDagBuilder;
+    use crate::proposition::PropositionDagBuilder;
+    use qxfx0_semantic::SemanticId;
 
     fn sem(value: &str) -> SemanticId {
         SemanticId::try_new(value).expect("semantic id")

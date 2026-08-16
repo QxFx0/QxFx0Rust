@@ -32,6 +32,7 @@ qxfx0-pipeline     Prepare → Route → Render → Finalize → Guard → Persi
        │
        ├── qxfx0-self         conatus, deliberation, Perspective, semantic episodes
        ├── qxfx0-semantic     parser, seed graph, activation, selection, composition
+       ├── qxfx0-plan-v2      ResponsePlan V2 certificate chain (ADR-0034/0041)
        ├── qxfx0-render       typed semantic-frame rendering
        ├── qxfx0-guard        input, quality and post-render safety gates
        ├── qxfx0-commitment   bounded semantic commitments and lineage

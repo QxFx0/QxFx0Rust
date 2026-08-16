@@ -16,39 +16,31 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
-use crate::argued_topics::{argued_topic_registry, ArguedTopicRegistry};
-use crate::fact_model::FactId;
-use crate::knowledge_pack::active_pack_set;
-use crate::response_plan::SemanticId;
-use crate::response_plan_v2::admission::{AdmissionError, LeafAdmittedPlan};
-use crate::response_plan_v2::assertion::{
-    AssertionAuthorizedPlan, AssertionError, AssertionPolicy, ClaimAuthority,
-};
-use crate::response_plan_v2::candidate::{CandidateInvariantError, CandidateResponsePlan};
-use crate::response_plan_v2::derivation::DerivationDag;
-use crate::response_plan_v2::discourse::{ClaimId, DiscoursePlan, DiscourseTree};
-use crate::response_plan_v2::evidence::{
-    EvidenceCertifiedPlan, EvidenceError, EvidenceEvaluationContext,
-};
-use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
-use crate::response_plan_v2::realization::{
-    join_realized_clauses, linearize, try_realize, RealizedSurface,
-};
-use crate::response_plan_v2::selection::{
+use crate::admission::{AdmissionError, LeafAdmittedPlan};
+use crate::assertion::{AssertionAuthorizedPlan, AssertionError, AssertionPolicy, ClaimAuthority};
+use crate::candidate::{CandidateInvariantError, CandidateResponsePlan};
+use crate::derivation::DerivationDag;
+use crate::discourse::{ClaimId, DiscoursePlan, DiscourseTree};
+use crate::evidence::{EvidenceCertifiedPlan, EvidenceError, EvidenceEvaluationContext};
+use crate::proposition::{PropositionDagBuilder, PropositionNode};
+use crate::realization::{join_realized_clauses, linearize, try_realize, RealizedSurface};
+use crate::selection::{
     select_candidate, CandidateSelectionSignals, SelectionCandidate, SelectionPolicy,
     SelectionReceipt, SelfSelectionContext,
 };
-use crate::response_plan_v2::snapshot::TurnContractSnapshot;
-use crate::response_plan_v2::syn_tree::{
-    Clause, NounPhrase, RealizationError, SynTree, VerbPhrase,
-};
-use crate::response_plan_v2::valency::{starts_with_word, Complement, ValencyLexicon};
-use crate::response_plan_v2::{
+use crate::snapshot::TurnContractSnapshot;
+use crate::syn_tree::{Clause, NounPhrase, RealizationError, SynTree, VerbPhrase};
+use crate::valency::{starts_with_word, Complement, ValencyLexicon};
+use crate::{
     attempt_input_digest, enforce_work_budget, BoundedRejectedArtifact, BudgetPhase,
     BudgetResource, BudgetWorkItem, CertifiedPrefix, V2Attempt, V2BudgetPolicy, V2ExecutionResult,
     V2Failure, V2PreCandidateOutcome, V2Route,
 };
 use qxfx0_morphology::MorphologyRuntime;
+use qxfx0_semantic::active_pack_set;
+use qxfx0_semantic::FactId;
+use qxfx0_semantic::SemanticId;
+use qxfx0_semantic::{argued_topic_registry, ArguedTopicRegistry};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum AuditedCorpusError {
@@ -908,7 +900,7 @@ pub fn audit_audited_corpus() -> Result<AuditedCorpusReport, Vec<(String, Audite
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan_v2::{
+    use crate::{
         preposition_allomorphs, valency_lexicon, AuthoritySnapshot, PlanningPolicySnapshot,
         RealizationSnapshot, ResponsePlanV2Mode, SelectionPolicySnapshot,
     };
@@ -1102,7 +1094,7 @@ mod tests {
 
     #[test]
     fn syntax_adapter_fails_typed_on_valency_drift_instead_of_panicking() {
-        use crate::response_plan_v2::valency::ValencyError;
+        use crate::valency::ValencyError;
         let plan = build_audited_topic("свобода").expect("topic chain");
         let empty_lexicon = ValencyLexicon::load_from_str("").expect("empty lexicon parses");
         let result = plan.syn_tree(&empty_lexicon);

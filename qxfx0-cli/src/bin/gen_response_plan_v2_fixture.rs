@@ -1,4 +1,4 @@
-use qxfx0_semantic::response_plan_v2::*;
+use qxfx0_plan_v2::*;
 
 fn main() {
     let binary_digest = std::env::args()

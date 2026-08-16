@@ -550,7 +550,7 @@ fn verify_fingerprint<T: Fingerprinted>(domain: &[u8], value: &T) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan_v2::{
+    use crate::{
         preposition_allomorphs, valency_lexicon, AssertionPolicy, BasisPoints, SelfSelectionContext,
     };
 

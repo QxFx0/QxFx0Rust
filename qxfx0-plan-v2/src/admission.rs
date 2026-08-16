@@ -20,9 +20,9 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
-use crate::argued_topics::{ArguedTopicRegistry, CONTENT_PROFILE};
-use crate::fact_model::{FactId, FactRegistry, FactRegistryError, FactStatus};
-use crate::knowledge_pack::KnowledgePackSet;
+use qxfx0_semantic::KnowledgePackSet;
+use qxfx0_semantic::{ArguedTopicRegistry, CONTENT_PROFILE};
+use qxfx0_semantic::{FactId, FactRegistry, FactRegistryError, FactStatus};
 
 use super::candidate::CandidateResponsePlan;
 use super::discourse::ClaimId;
@@ -209,9 +209,9 @@ impl LeafAdmittedPlan {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::active_pack_set;
-    use crate::argued_topics::argued_topic_registry;
-    use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
+    use crate::proposition::{PropositionDagBuilder, PropositionNode};
+    use qxfx0_semantic::active_pack_set;
+    use qxfx0_semantic::argued_topic_registry;
 
     fn pack_and_argued() -> (&'static KnowledgePackSet, &'static ArguedTopicRegistry) {
         (active_pack_set(), argued_topic_registry().unwrap())
@@ -289,12 +289,12 @@ mod tests {
     /// record must not read as curated anywhere a boundary looks.
     #[test]
     fn is_curated_distinguishes_status() {
-        use crate::fact_model::{FactKind, TypedRelationModel};
-        use crate::get_resolver;
-        use crate::response_plan::SemanticId;
+        use qxfx0_semantic::get_resolver;
+        use qxfx0_semantic::SemanticId;
+        use qxfx0_semantic::{FactKind, TypedRelationModel};
         use qxfx0_types::ConceptId;
 
-        let curated = crate::fact_model::FactRecord {
+        let curated = qxfx0_semantic::FactRecord {
             id: FactId::try_new("fact.status.curated").unwrap(),
             subject: ConceptId("concept.свобода".into()),
             relation: SemanticId::try_new("RelPresupposes").unwrap(),
@@ -308,7 +308,7 @@ mod tests {
             valid_to: None,
             status: FactStatus::Curated,
         };
-        let draft = crate::fact_model::FactRecord {
+        let draft = qxfx0_semantic::FactRecord {
             id: FactId::try_new("fact.status.draft").unwrap(),
             status: FactStatus::Draft,
             ..curated.clone()
@@ -348,9 +348,9 @@ mod tests {
         assert_eq!(left.digest(), right.digest());
         let _ = PropositionDagBuilder::new();
         let _ = PropositionNode::Predicate {
-            subject: crate::response_plan::SemanticId::try_new("x").unwrap(),
-            relation: crate::response_plan::SemanticId::try_new("y").unwrap(),
-            object: crate::response_plan::SemanticId::try_new("z").unwrap(),
+            subject: qxfx0_semantic::SemanticId::try_new("x").unwrap(),
+            relation: qxfx0_semantic::SemanticId::try_new("y").unwrap(),
+            object: qxfx0_semantic::SemanticId::try_new("z").unwrap(),
         };
     }
 }

@@ -178,9 +178,7 @@ fn digest<T: Serialize>(domain: &[u8], value: &T) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan_v2::{
-        build_audited_topic, preposition_allomorphs, valency_lexicon, SynTree,
-    };
+    use crate::{build_audited_topic, preposition_allomorphs, valency_lexicon, SynTree};
 
     fn snapshot() -> RealizationSnapshot {
         RealizationSnapshot::new(
@@ -252,7 +250,7 @@ mod tests {
 
     #[test]
     fn joiner_capitalizes_every_audited_topic_surface() {
-        let registry = crate::argued_topic_registry().expect("audited registry");
+        let registry = qxfx0_semantic::argued_topic_registry().expect("audited registry");
         for topic in registry.topics() {
             let joined =
                 join_realized_clauses(topic.statements().map(|statement| statement.surface()));

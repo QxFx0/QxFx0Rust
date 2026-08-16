@@ -39,11 +39,11 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::fact_model::{FactId, FactRegistry, FactStatus};
-use crate::response_plan_v2::derivation::{DerivationDag, DerivationId, InferenceRuleId};
-use crate::response_plan_v2::discourse::ClaimId;
-use crate::response_plan_v2::evidence::EvidenceCertifiedPlan;
-use crate::response_plan_v2::proposition::{PropositionId, PropositionNode, QualifierId};
+use crate::derivation::{DerivationDag, DerivationId, InferenceRuleId};
+use crate::discourse::ClaimId;
+use crate::evidence::EvidenceCertifiedPlan;
+use crate::proposition::{PropositionId, PropositionNode, QualifierId};
+use qxfx0_semantic::{FactId, FactRegistry, FactStatus};
 
 /// Domain separation tag for the policy digest.
 pub const ASSERTION_POLICY_DOMAIN: &str = "qxfx0:assertion-policy:v1";
@@ -476,15 +476,15 @@ fn absorb(hasher: &mut Sha256, bytes: &[u8]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::active_pack_set;
-    use crate::argued_topics::argued_topic_registry;
-    use crate::response_plan::{Confidence, NonEmptyVec, SemanticId};
-    use crate::response_plan_v2::admission::LeafAdmittedPlan;
-    use crate::response_plan_v2::candidate::CandidateResponsePlan;
-    use crate::response_plan_v2::derivation::{DerivationDagBuilder, DerivationNode, EvidenceRef};
-    use crate::response_plan_v2::discourse::{DiscoursePlan, DiscourseTree};
-    use crate::response_plan_v2::evidence::EvidenceEvaluationContext;
-    use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
+    use crate::admission::LeafAdmittedPlan;
+    use crate::candidate::CandidateResponsePlan;
+    use crate::derivation::{DerivationDagBuilder, DerivationNode, EvidenceRef};
+    use crate::discourse::{DiscoursePlan, DiscourseTree};
+    use crate::evidence::EvidenceEvaluationContext;
+    use crate::proposition::{PropositionDagBuilder, PropositionNode};
+    use qxfx0_semantic::active_pack_set;
+    use qxfx0_semantic::argued_topic_registry;
+    use qxfx0_semantic::{Confidence, NonEmptyVec, SemanticId};
 
     fn v1_context() -> EvidenceEvaluationContext {
         EvidenceEvaluationContext::new(42, None)

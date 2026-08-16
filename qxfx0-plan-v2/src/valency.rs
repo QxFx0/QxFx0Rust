@@ -19,7 +19,7 @@ use std::sync::OnceLock;
 
 use qxfx0_morphology::{Case, Gender, Number};
 
-const VALENCY_FRAMES_TSV: &str = include_str!("../../assets/valency_frames.tsv");
+const VALENCY_FRAMES_TSV: &str = include_str!("../assets/valency_frames.tsv");
 
 /// The agreement features a head needs from its subject.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -358,7 +358,7 @@ mod tests {
     #[test]
     fn realization_reference_vectors_are_executable() {
         let vectors: RealizationVectors = serde_json::from_str(include_str!(
-            "../../../docs/reference-vectors/response-plan-v2-realization-v1.json"
+            "../../docs/reference-vectors/response-plan-v2-realization-v1.json"
         ))
         .expect("realization vectors parse");
         assert_eq!(vectors.schema, "qxfx0.response-plan-v2.realization.v1");

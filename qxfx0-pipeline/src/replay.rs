@@ -1,6 +1,6 @@
 //! Verification-only replay boundary. It never reads host assets or reruns a turn.
 
-pub use qxfx0_semantic::response_plan_v2::{
+pub use qxfx0_plan_v2::{
     CapturedRealizationNode, ExactReplayBundle, ReplayInputEnvelope, ReplayLevel, ReplayMaterials,
     ReplayVerification, SnapshotError, TurnRecord,
 };
@@ -10,13 +10,13 @@ pub fn verify_turn_record_replay(
     level: ReplayLevel,
     materials: ReplayMaterials<'_>,
 ) -> Result<ReplayVerification, SnapshotError> {
-    qxfx0_semantic::response_plan_v2::verify_replay(record, level, materials)
+    qxfx0_plan_v2::verify_replay(record, level, materials)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use qxfx0_semantic::response_plan_v2::*;
+    use qxfx0_plan_v2::*;
 
     #[test]
     fn replay_api_fails_closed_without_materials() {

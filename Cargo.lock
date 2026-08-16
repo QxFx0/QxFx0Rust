@@ -524,6 +524,7 @@ dependencies = [
  "qxfx0-morphology",
  "qxfx0-persistence",
  "qxfx0-pipeline",
+ "qxfx0-plan-v2",
  "qxfx0-render",
  "qxfx0-self",
  "qxfx0-semantic",
@@ -606,6 +607,7 @@ dependencies = [
  "qxfx0-guard",
  "qxfx0-morphology",
  "qxfx0-persistence",
+ "qxfx0-plan-v2",
  "qxfx0-render",
  "qxfx0-self",
  "qxfx0-semantic",
@@ -615,6 +617,19 @@ dependencies = [
  "sha2",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "qxfx0-plan-v2"
+version = "0.1.1"
+dependencies = [
+ "qxfx0-morphology",
+ "qxfx0-semantic",
+ "qxfx0-types",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
 ]
 
 [[package]]

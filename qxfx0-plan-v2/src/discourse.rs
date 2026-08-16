@@ -24,7 +24,7 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 use super::proposition::PropositionId;
-use crate::response_plan::ClaimRole;
+use qxfx0_semantic::ClaimRole;
 
 pub const CLAIM_DOMAIN: &str = "qxfx0:claim:v1";
 pub const DISCOURSE_DOMAIN: &str = "qxfx0:discourse:v1";
@@ -329,8 +329,8 @@ fn collect_claims(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan::SemanticId;
-    use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
+    use crate::proposition::{PropositionDagBuilder, PropositionNode};
+    use qxfx0_semantic::SemanticId;
 
     fn predicate(subject: &str) -> PropositionNode {
         PropositionNode::Predicate {

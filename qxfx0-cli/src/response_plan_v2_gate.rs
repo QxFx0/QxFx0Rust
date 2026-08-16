@@ -31,8 +31,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use qxfx0_semantic::response_plan_v2::valency::{valency_lexicon, HeadKind};
-use qxfx0_semantic::response_plan_v2::{
+use qxfx0_plan_v2::valency::{valency_lexicon, HeadKind};
+use qxfx0_plan_v2::{
     build_audited_topic, execute_audited_topic_at, AssertionPolicy, AuthoritySnapshot,
     PlanningPolicySnapshot, RealizationSnapshot, SelectionPolicy, SelectionPolicySnapshot,
     SelfSelectionContext, TurnContractSnapshot, V2Attempt, V2BudgetPolicy, V2ExecutionResult,
@@ -311,7 +311,7 @@ fn run_zero_downgrade_gate() -> GateReport {
     let mut downgrades = 0usize;
     for topic in topics {
         let policy = SelectionPolicy {
-            response_plan_v2_mode: qxfx0_semantic::response_plan_v2::ResponsePlanV2Mode::Canary,
+            response_plan_v2_mode: qxfx0_plan_v2::ResponsePlanV2Mode::Canary,
             ..SelectionPolicy::default()
         };
         let budgets = V2BudgetPolicy::default();
@@ -325,13 +325,13 @@ fn run_zero_downgrade_gate() -> GateReport {
                 valency_lexicon().fingerprint(),
                 "clause-grammar-v1",
                 qxfx0_morphology::get_runtime().lexemes_sha256(),
-                qxfx0_semantic::response_plan_v2::preposition_allomorphs().fingerprint(),
+                qxfx0_plan_v2::preposition_allomorphs().fingerprint(),
             ),
             SelectionPolicySnapshot::new(policy),
         );
         let execution = execute_audited_topic_at(
             topic,
-            qxfx0_semantic::response_plan_v2::EvidenceEvaluationContext::new(0, None),
+            qxfx0_plan_v2::EvidenceEvaluationContext::new(0, None),
             &budgets,
             &contract,
             SelfSelectionContext::quantize(0.0, 0.0, 0.0),
@@ -749,9 +749,7 @@ fn run_replay_gate() -> GateReport {
     if manifest.turn_record_fixture_sha256 != sha256_hex(EMBEDDED_TURN_RECORD_V2.as_bytes()) {
         violations.push("TurnRecord v2 fixture bytes drifted".into());
     }
-    match serde_json::from_str::<qxfx0_semantic::response_plan_v2::TurnRecord>(
-        EMBEDDED_TURN_RECORD_V2,
-    ) {
+    match serde_json::from_str::<qxfx0_plan_v2::TurnRecord>(EMBEDDED_TURN_RECORD_V2) {
         Ok(record) => {
             if record.stage_digest != manifest.turn_record_stage_digest
                 || record.exact_replay.bundle_digest != manifest.turn_record_bundle_digest
@@ -759,14 +757,14 @@ fn run_replay_gate() -> GateReport {
             {
                 violations.push("TurnRecord v2 fixture metadata drifted".into());
             }
-            let materials = qxfx0_semantic::response_plan_v2::ReplayMaterials {
+            let materials = qxfx0_plan_v2::ReplayMaterials {
                 authority: Some(&record.contract.authority),
                 contract: Some(&record.contract),
                 binary_digest: Some(&manifest.reference_binary_digest),
             };
             match qxfx0_pipeline::replay::verify_turn_record_replay(
                 &record,
-                qxfx0_semantic::response_plan_v2::ReplayLevel::Reproduction,
+                qxfx0_plan_v2::ReplayLevel::Reproduction,
                 materials,
             ) {
                 Ok(verified)
@@ -1015,7 +1013,7 @@ fn run_phase_c() -> GateReport {
     let mut fixed_surface_claims = 0usize;
 
     let policy = SelectionPolicy {
-        response_plan_v2_mode: qxfx0_semantic::response_plan_v2::ResponsePlanV2Mode::Shadow,
+        response_plan_v2_mode: qxfx0_plan_v2::ResponsePlanV2Mode::Shadow,
         ..SelectionPolicy::default()
     };
     let budgets = V2BudgetPolicy::default();
@@ -1029,7 +1027,7 @@ fn run_phase_c() -> GateReport {
             valency_lexicon().fingerprint(),
             "clause-grammar-v1",
             qxfx0_morphology::get_runtime().lexemes_sha256(),
-            qxfx0_semantic::response_plan_v2::preposition_allomorphs().fingerprint(),
+            qxfx0_plan_v2::preposition_allomorphs().fingerprint(),
         ),
         SelectionPolicySnapshot::new(policy),
     );
@@ -1037,7 +1035,7 @@ fn run_phase_c() -> GateReport {
     for (topic_name, topic_manifest) in &manifest.topics {
         let execution = execute_audited_topic_at(
             topic_name,
-            qxfx0_semantic::response_plan_v2::EvidenceEvaluationContext::new(0, None),
+            qxfx0_plan_v2::EvidenceEvaluationContext::new(0, None),
             &budgets,
             &contract,
             SelfSelectionContext::quantize(0.0, 0.0, 0.0),
@@ -1178,7 +1176,7 @@ fn run_phase_c() -> GateReport {
         let resolved = plan.resolved_syn_tree();
         if !matches!(
             resolved.nodes().first(),
-            Some(qxfx0_semantic::response_plan_v2::ResolvedSynNode::Clause(_))
+            Some(qxfx0_plan_v2::ResolvedSynNode::Clause(_))
         ) {
             violations.push(format!("{}: thesis is not compositional", topic_name));
             continue;

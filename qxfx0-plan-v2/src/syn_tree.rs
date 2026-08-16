@@ -559,10 +559,10 @@ pub fn by_occurrence(tree: &ResolvedSynTree) -> BTreeMap<&DiscourseOccurrenceId,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan::SemanticId;
-    use crate::response_plan_v2::discourse::{DiscoursePlan, DiscourseTree};
-    use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
-    use crate::response_plan_v2::valency::valency_lexicon;
+    use crate::discourse::{DiscoursePlan, DiscourseTree};
+    use crate::proposition::{PropositionDagBuilder, PropositionNode};
+    use crate::valency::valency_lexicon;
+    use qxfx0_semantic::SemanticId;
 
     fn occurrence() -> DiscourseOccurrenceId {
         let mut builder = PropositionDagBuilder::new();

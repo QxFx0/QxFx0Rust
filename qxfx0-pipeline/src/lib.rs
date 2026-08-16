@@ -116,7 +116,7 @@ pub enum AnomalyShadowMode {
 
 /// Selects the ADR-0034 V2 rollout population. V1 remains the renderer and
 /// the V2 result never enters turn state in any mode.
-pub use qxfx0_semantic::response_plan_v2::ResponsePlanV2Mode;
+pub use qxfx0_plan_v2::ResponsePlanV2Mode;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AuthorityDecisionReceipt {
@@ -124,7 +124,7 @@ pub struct AuthorityDecisionReceipt {
     pub requested_mode: ResponsePlanV2Mode,
     pub effective_mode: ResponsePlanV2Mode,
     pub authority: ResponsePlanV2Authority,
-    pub outcome: qxfx0_semantic::response_plan_v2::V2AuthorityOutcome,
+    pub outcome: qxfx0_plan_v2::V2AuthorityOutcome,
     pub output_digest: Option<String>,
     pub artifact_digest: String,
     pub contract_digest: String,
@@ -142,8 +142,8 @@ impl AuthorityDecisionReceipt {
             && self.topic_is_canary()
             && matches!(
                 self.outcome,
-                qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::Compositional { .. }
-                    | qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::AuditedVerbatim { .. }
+                qxfx0_plan_v2::V2AuthorityOutcome::Compositional { .. }
+                    | qxfx0_plan_v2::V2AuthorityOutcome::AuditedVerbatim { .. }
             )
     }
 
@@ -1049,12 +1049,12 @@ fn finish_pipeline_trace(
 #[derive(Debug, Serialize)]
 struct ResponsePlanV2Artifact {
     schema: &'static str,
-    contract: qxfx0_semantic::response_plan_v2::TurnContractSnapshot,
-    record: Option<qxfx0_semantic::response_plan_v2::TurnRecord>,
-    result: qxfx0_semantic::response_plan_v2::V2ExecutionResult,
-    realized: Option<qxfx0_semantic::response_plan_v2::RealizedSurface>,
-    fallback: qxfx0_semantic::response_plan_v2::FallbackAction,
-    authority_outcome: qxfx0_semantic::response_plan_v2::V2AuthorityOutcome,
+    contract: qxfx0_plan_v2::TurnContractSnapshot,
+    record: Option<qxfx0_plan_v2::TurnRecord>,
+    result: qxfx0_plan_v2::V2ExecutionResult,
+    realized: Option<qxfx0_plan_v2::RealizedSurface>,
+    fallback: qxfx0_plan_v2::FallbackAction,
+    authority_outcome: qxfx0_plan_v2::V2AuthorityOutcome,
 }
 
 /// SHA-256 of the running executable. The binary never changes while the
@@ -1100,7 +1100,7 @@ fn record_response_plan_v2(
     requested_mode: ResponsePlanV2Mode,
     authority: ResponsePlanV2Authority,
 ) -> Option<AuthorityDecisionReceipt> {
-    use qxfx0_semantic::response_plan_v2::{
+    use qxfx0_plan_v2::{
         execute_audited_topic_at, AssertionPolicy, AuthoritySnapshot, PlanningPolicySnapshot,
         RealizationSnapshot, SelectionPolicy, SelectionPolicySnapshot, SelfSelectionContext,
         TurnContractSnapshot, TurnRecord, V2BudgetPolicy,
@@ -1176,10 +1176,10 @@ fn record_response_plan_v2(
         ),
         PlanningPolicySnapshot::new(budgets.digest(), "proposition-canon-v1"),
         RealizationSnapshot::new(
-            qxfx0_semantic::response_plan_v2::valency_lexicon().fingerprint(),
+            qxfx0_plan_v2::valency_lexicon().fingerprint(),
             "clause-grammar-v1",
             qxfx0_morphology::get_runtime().lexemes_sha256(),
-            qxfx0_semantic::response_plan_v2::preposition_allomorphs().fingerprint(),
+            qxfx0_plan_v2::preposition_allomorphs().fingerprint(),
         ),
         SelectionPolicySnapshot::new(policy),
     );
@@ -1234,12 +1234,12 @@ fn record_response_plan_v2(
     );
     let execution = execute_audited_topic_at(
         routed.prepared().input().subject(),
-        qxfx0_semantic::response_plan_v2::EvidenceEvaluationContext::new(logical_turn, None),
+        qxfx0_plan_v2::EvidenceEvaluationContext::new(logical_turn, None),
         &budgets,
         &contract,
         context,
         policy,
-        qxfx0_semantic::response_plan_v2::valency_lexicon(),
+        qxfx0_plan_v2::valency_lexicon(),
         qxfx0_morphology::get_runtime(),
     );
     let record =
@@ -1263,30 +1263,28 @@ fn record_response_plan_v2(
             });
     let result = execution.result;
     let realized_surface = execution.realized;
-    let fallback = qxfx0_semantic::response_plan_v2::fallback_action_for_result(&result);
-    let expected_source_digest = qxfx0_semantic::response_plan_v2::audited_surface_source_digest(
-        topic,
-    )
-    .unwrap_or_else(|error| {
-        tracing::warn!("audited surface digest unavailable for '{topic}': {error}");
-        String::new()
-    });
+    let fallback = qxfx0_plan_v2::fallback_action_for_result(&result);
+    let expected_source_digest = qxfx0_plan_v2::audited_surface_source_digest(topic)
+        .unwrap_or_else(|error| {
+            tracing::warn!("audited surface digest unavailable for '{topic}': {error}");
+            String::new()
+        });
     let authority_outcome = match realized_surface.clone() {
-        Some(surface) => qxfx0_semantic::response_plan_v2::authority_outcome(
+        Some(surface) => qxfx0_plan_v2::authority_outcome(
             topic,
-            qxfx0_semantic::response_plan_v2::AuthoritySurfaceStrategy::Compositional,
+            qxfx0_plan_v2::AuthoritySurfaceStrategy::Compositional,
             Ok(surface),
             &expected_source_digest,
         ),
-        None if fallback == qxfx0_semantic::response_plan_v2::FallbackAction::AuditedV1Renderer => {
-            qxfx0_semantic::response_plan_v2::authority_outcome(
+        None if fallback == qxfx0_plan_v2::FallbackAction::AuditedV1Renderer => {
+            qxfx0_plan_v2::authority_outcome(
                 topic,
-                qxfx0_semantic::response_plan_v2::AuthoritySurfaceStrategy::Compositional,
+                qxfx0_plan_v2::AuthoritySurfaceStrategy::Compositional,
                 Err(format!("V2 realization failed: {result:?}")),
                 &expected_source_digest,
             )
         }
-        None => qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::TypedNonDeclarative {
+        None => qxfx0_plan_v2::V2AuthorityOutcome::TypedNonDeclarative {
             reason: format!("no V2 realized surface: {result:?}"),
         },
     };
@@ -1297,9 +1295,7 @@ fn record_response_plan_v2(
         semantic_parity,
         authority_parity,
     ) = match &result {
-        qxfx0_semantic::response_plan_v2::V2ExecutionResult::Attempt(
-            qxfx0_semantic::response_plan_v2::V2Attempt::Realizable(plan),
-        ) => {
+        qxfx0_plan_v2::V2ExecutionResult::Attempt(qxfx0_plan_v2::V2Attempt::Realizable(plan)) => {
             let authorized = plan.authorized();
             let projected = authorized.certified().candidate().projected_claims();
             let claim_identity_digest = execution_trace::calculate_stable_digest(&projected)
@@ -1380,14 +1376,12 @@ fn record_response_plan_v2(
     };
     let execution_downgrade = !matches!(
         &artifact.result,
-        qxfx0_semantic::response_plan_v2::V2ExecutionResult::Attempt(
-            qxfx0_semantic::response_plan_v2::V2Attempt::Realizable(_)
-        )
+        qxfx0_plan_v2::V2ExecutionResult::Attempt(qxfx0_plan_v2::V2Attempt::Realizable(_))
     );
     let authority_kind = artifact.authority_outcome.kind();
     let authority_downgrade = matches!(
         &artifact.authority_outcome,
-        qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::RealizationDowngrade { .. }
+        qxfx0_plan_v2::V2AuthorityOutcome::RealizationDowngrade { .. }
     );
     let downgrade_count =
         scope_downgrade_count + usize::from(execution_downgrade) + usize::from(authority_downgrade);
@@ -1402,7 +1396,7 @@ fn record_response_plan_v2(
     };
     let realization_parity = matches!(
         &artifact.authority_outcome,
-        qxfx0_semantic::response_plan_v2::V2AuthorityOutcome::Compositional { output }
+        qxfx0_plan_v2::V2AuthorityOutcome::Compositional { output }
             if !output.clauses.is_empty()
     );
     let replay_parity = artifact.record.is_some();

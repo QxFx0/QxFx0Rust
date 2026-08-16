@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 use qxfx0_morphology::{Case, MorphologyLookup, MorphologyRuntime, Number};
 
-const PREPOSITION_ALLOMORPHS_TSV: &str = include_str!("../../assets/preposition_allomorphs.tsv");
+const PREPOSITION_ALLOMORPHS_TSV: &str = include_str!("../assets/preposition_allomorphs.tsv");
 
 /// Strength of the generate/analyze round-trip promised for one morphology
 /// triple. Non-bijective classes retain the wanted analysis instead of

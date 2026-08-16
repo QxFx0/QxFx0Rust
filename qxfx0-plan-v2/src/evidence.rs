@@ -18,10 +18,10 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
-use crate::fact_model::{FactId, FactRegistry, FactRegistryError, FactStatus};
-use crate::response_plan_v2::admission::{LeafAdmissionProof, LeafAdmittedPlan, ADMISSION_DOMAIN};
-use crate::response_plan_v2::discourse::ClaimId;
-use crate::response_plan_v2::proposition::PropositionId;
+use crate::admission::{LeafAdmissionProof, LeafAdmittedPlan, ADMISSION_DOMAIN};
+use crate::discourse::ClaimId;
+use crate::proposition::PropositionId;
+use qxfx0_semantic::{FactId, FactRegistry, FactRegistryError, FactStatus};
 
 /// Domain separation tag for the evidence certificate.
 pub const EVIDENCE_DOMAIN: &str = "qxfx0:evidence-authority:v1";
@@ -244,7 +244,7 @@ impl EvidenceCertifiedPlan {
         &self.admitted
     }
 
-    pub fn candidate(&self) -> &crate::response_plan_v2::candidate::CandidateResponsePlan {
+    pub fn candidate(&self) -> &crate::candidate::CandidateResponsePlan {
         self.admitted.candidate()
     }
 
@@ -286,13 +286,13 @@ pub const ADMISSION_DOMAIN_TAG: &str = ADMISSION_DOMAIN;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::active_pack_set;
-    use crate::argued_topics::{argued_topic_registry, ArguedTopic};
-    use crate::response_plan::SemanticId;
-    use crate::response_plan::SemanticProposition;
-    use crate::response_plan_v2::admission::prove_leaf_admission;
-    use crate::response_plan_v2::discourse::{DiscoursePlan, DiscourseTree};
-    use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
+    use crate::admission::prove_leaf_admission;
+    use crate::discourse::{DiscoursePlan, DiscourseTree};
+    use crate::proposition::{PropositionDagBuilder, PropositionNode};
+    use qxfx0_semantic::active_pack_set;
+    use qxfx0_semantic::SemanticId;
+    use qxfx0_semantic::SemanticProposition;
+    use qxfx0_semantic::{argued_topic_registry, ArguedTopic};
 
     fn v1_context() -> EvidenceEvaluationContext {
         EvidenceEvaluationContext::new(42, None)
@@ -440,11 +440,11 @@ mod tests {
     fn a_temporal_fact_fails_closed_without_as_of() {
         // Build a temporal record through the registry so the evidence
         // boundary sees the window.
-        use crate::fact_model::{FactKind, TypedRelationModel};
-        use crate::get_resolver;
+        use qxfx0_semantic::get_resolver;
+        use qxfx0_semantic::{FactKind, TypedRelationModel};
         use qxfx0_types::ConceptId;
 
-        let temporal = crate::fact_model::FactRecord {
+        let temporal = qxfx0_semantic::FactRecord {
             id: FactId::try_new("fact.temporal.probe").unwrap(),
             subject: ConceptId("concept.свобода".into()),
             relation: SemanticId::try_new("RelPresupposes").unwrap(),
@@ -456,7 +456,7 @@ mod tests {
             source_ref: "test:fact".into(),
             valid_from: Some("2026-01-01".into()),
             valid_to: Some("2026-02-01".into()),
-            status: crate::fact_model::FactStatus::Curated,
+            status: qxfx0_semantic::FactStatus::Curated,
         };
         let registry = FactRegistry::load(
             [temporal.clone()],

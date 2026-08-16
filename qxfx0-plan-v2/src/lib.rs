@@ -11,10 +11,12 @@
 //! → RealizedSurface           execution receipt
 //! ```
 //!
-//! This module implements the candidate stratum and the first three
-//! certificates of the chain. Nothing here is wired into the runtime — the V1
-//! audited renderer remains authoritative until `doctor --gate
-//! response-plan-v2-phase-b` is implemented and flipped.
+//! Extracted from `qxfx0-semantic` so the V2 chain depends on the V1 core
+//! instead of living inside it (ADR-0041); the dependency stays one-directional:
+//! this crate → `qxfx0-semantic` (registries and V1 plan types) → morphology.
+//! V1 remains the authoritative renderer everywhere except the audited canary
+//! path (`turn --response-plan-v2-authority`), which requires a V2 authority
+//! receipt before any V2 surface can reach the user.
 
 pub mod admission;
 pub mod assertion;

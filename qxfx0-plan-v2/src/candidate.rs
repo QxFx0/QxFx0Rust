@@ -23,7 +23,7 @@ use super::discourse::{
     projected_roles, ClaimId, DiscourseInvariantError, DiscoursePlan, ProjectedClaim,
 };
 use super::proposition::{PropositionDag, PropositionId, PropositionInvariantError};
-use crate::response_plan::ClaimRole;
+use qxfx0_semantic::ClaimRole;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CandidateInvariantError {
@@ -144,12 +144,10 @@ impl CandidateResponsePlan {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response_plan::{Confidence, NonEmptyVec, SemanticId};
-    use crate::response_plan_v2::derivation::{
-        DerivationDagBuilder, DerivationNode, EvidenceRef, InferenceRuleId,
-    };
-    use crate::response_plan_v2::discourse::DiscourseTree;
-    use crate::response_plan_v2::proposition::{PropositionDagBuilder, PropositionNode};
+    use crate::derivation::{DerivationDagBuilder, DerivationNode, EvidenceRef, InferenceRuleId};
+    use crate::discourse::DiscourseTree;
+    use crate::proposition::{PropositionDagBuilder, PropositionNode};
+    use qxfx0_semantic::{Confidence, NonEmptyVec, SemanticId};
 
     fn predicate(subject: &str) -> PropositionNode {
         PropositionNode::Predicate {
