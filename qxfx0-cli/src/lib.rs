@@ -3,6 +3,7 @@
 //! Exposes the same entry point used by `main.rs` so integration tests can
 //! drive the turn / chat flow without spawning a subprocess.
 
+pub mod codex;
 pub mod measurement;
 pub mod response_plan_v2_gate;
 

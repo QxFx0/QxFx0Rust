@@ -157,6 +157,21 @@ enum Commands {
     },
     /// List sessions
     Sessions,
+    /// Кодекс: deterministic reflection prompt — topic of the day (or a
+    /// given audited topic) with thesis, counterpoint and questions
+    Reflect {
+        /// Optional explicit audited topic; defaults to the topic of the day
+        topic: Option<String>,
+    },
+    /// Кодекс: reflection protocol report over the session state
+    Report {
+        /// Emit Markdown (the journal artifact) instead of console text
+        #[arg(long)]
+        markdown: bool,
+        /// Write the report to a new file; existing files are never overwritten
+        #[arg(long, value_name = "PATH")]
+        out: Option<PathBuf>,
+    },
     /// Show version
     Version,
     /// Code orchestration — find functions by natural language description
@@ -742,6 +757,77 @@ fn main() -> anyhow::Result<()> {
                     println!("  {}", s);
                 }
                 println!("\n{} session(s)", sessions.len());
+            }
+            Ok(())
+        }
+        Commands::Reflect { topic } => {
+            // Reflection never opens the database: the daily topic comes from
+            // the embedded audited corpus, so no file is created on a typo.
+            let unix_seconds = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|duration| duration.as_secs())
+                .unwrap_or(0);
+            let day = qxfx0_cli::codex::epoch_day(unix_seconds);
+            let topic_name = match topic {
+                Some(name) => name,
+                None => qxfx0_cli::codex::daily_topic_name(day),
+            };
+            let card = match qxfx0_cli::codex::build_reflection_card(&topic_name, day) {
+                Some(card) => card,
+                None => {
+                    return Err(anyhow::anyhow!(
+                        "тема «{topic_name}» не входит в 30 аудированных тем; вызовите `qxfx0 reflect` без аргумента для темы дня"
+                    ))
+                }
+            };
+            print!("{}", qxfx0_cli::codex::render_reflection_card(&card));
+            Ok(())
+        }
+        Commands::Report { markdown, out } => {
+            // Read-only product surface: refuse to create a database on a
+            // mistyped path instead of reporting on an empty fresh one.
+            if !std::path::Path::new(&cli.db).exists() {
+                return Err(anyhow::anyhow!(
+                    "база данных не найдена: {} (report не создаёт новую базу)",
+                    cli.db
+                ));
+            }
+            let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+            let state = match db.load_state(&cli.session_id)? {
+                Some(state) => state,
+                None => {
+                    return Err(anyhow::anyhow!(
+                    "сессия «{}» не найдена в {}; начните с `qxfx0 --session-id {} turn \"...\"`",
+                    cli.session_id,
+                    cli.db,
+                    cli.session_id
+                ))
+                }
+            };
+            let report = qxfx0_cli::codex::build_reflection_report(&state);
+            let content = if markdown {
+                qxfx0_cli::codex::render_report_markdown(&report)
+            } else {
+                qxfx0_cli::codex::render_report_console(&report)
+            };
+            match out {
+                Some(path) => {
+                    // Journal artifacts are never silently overwritten.
+                    let mut file = std::fs::OpenOptions::new()
+                        .write(true)
+                        .create_new(true)
+                        .open(&path)
+                        .map_err(|error| {
+                            anyhow::anyhow!(
+                                "не удалось создать {}: {error} (существующие файлы не перезаписываются)",
+                                path.display()
+                            )
+                        })?;
+                    use std::io::Write;
+                    file.write_all(content.as_bytes())?;
+                    println!("Отчёт записан: {}", path.display());
+                }
+                None => print!("{content}"),
             }
             Ok(())
         }
