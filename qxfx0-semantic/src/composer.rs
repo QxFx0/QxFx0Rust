@@ -247,6 +247,21 @@ impl PropositionParser {
             }
         }
 
+        // Reflect: first-person journaling phrases — "я думал о X",
+        // "размышляю про X", "вспомнил о X". The preposition must govern a
+        // prepositional or accusative about-reading (checked against the
+        // morphology government map), and the topic is the first word
+        // after it; the pipeline normalizes it to a lemma.
+        if let Some(topic) = Self::extract_reflection_about(trimmed) {
+            return ParsedProposition {
+                subject_resolution: Self::resolve_phrase(&topic),
+                subject: topic,
+                object: None,
+                object_resolution: None,
+                mode: PropositionMode::Reflect,
+            };
+        }
+
         // Connect: "как X связан/связана с Y?", "связь между X и Y"
         if trimmed.contains("связан")
             || trimmed.contains("связана")
@@ -318,6 +333,7 @@ impl PropositionParser {
             .trim_end_matches('?')
             .trim_end_matches(',')
             .trim_end_matches('!')
+            .trim_end_matches('.')
             .trim()
             .to_string()
     }
@@ -401,6 +417,57 @@ impl PropositionParser {
             .into_iter()
             .next_back()
             .unwrap_or_else(|| "неизвестный".to_string())
+    }
+
+    /// Extract the topic word from a first-person reflection phrase
+    /// ("я думал о свободе", "размышляю про долг"). The verb stem must be
+    /// a reflection/writing verb, the next word must be an about-preposition
+    /// whose government (per the morphology map) includes the prepositional
+    /// or accusative about-reading, and the word after it is the topic.
+    /// Anything else returns `None`.
+    fn extract_reflection_about(text: &str) -> Option<String> {
+        const REFLECTION_STEMS: &[&str] = &[
+            "дума",
+            "размышля",
+            "вспомина",
+            "мечта",
+            "задумал",
+            "написал",
+            "записал",
+            "прочитал",
+            "расскажи",
+        ];
+        const ABOUT_PREPOSITIONS: &[&str] = &["о", "об", "про", "насчёт"];
+
+        let words: Vec<&str> = text.split_whitespace().collect();
+        for index in 0..words.len().saturating_sub(2) {
+            let verb = words[index];
+            let preposition = words[index + 1];
+            if !REFLECTION_STEMS.iter().any(|stem| verb.starts_with(stem)) {
+                continue;
+            }
+            if !ABOUT_PREPOSITIONS.contains(&preposition) {
+                continue;
+            }
+            let Some(cases) = qxfx0_morphology::government::governing_cases(preposition) else {
+                continue;
+            };
+            let governs_about = cases.iter().any(|case| {
+                matches!(
+                    case,
+                    qxfx0_types::morphology::Case::Prepositional
+                        | qxfx0_types::morphology::Case::Accusative
+                )
+            });
+            if !governs_about {
+                continue;
+            }
+            let topic = Self::clean_topic(words[index + 2]);
+            if topic.chars().count() > 1 {
+                return Some(topic);
+            }
+        }
+        None
     }
 
     fn content_words(text: &str) -> Vec<String> {

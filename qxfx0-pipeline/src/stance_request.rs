@@ -83,7 +83,38 @@ pub(crate) fn parse_and_normalize_topic(raw_text: &str, graph: &AtomGraph) -> Pa
         }
     }
     proposition.subject = PropositionParser::normalize_topic(&proposition.subject, graph);
+    // Unknown topics arrive in whatever case form the user typed them in
+    // ("думал о поступке"); resolve them to the nominative lemma through
+    // the runtime lexicon so the graph is not polluted with oblique forms.
+    // Purpose mode keeps its oblique form: it is grammatically required
+    // after «функция/назначение/роль».
+    if proposition.mode != PropositionMode::Purpose {
+        proposition.subject = normalize_unknown_topic_to_lemma(&proposition.subject, graph);
+    }
     proposition
+}
+
+/// Lemma fallback for subjects that did not match any graph atom: strip
+/// leftover sentence punctuation, then resolve through the embedded
+/// lexicon. Ambiguous surfaces keep their (cleaned) form.
+pub(crate) fn normalize_unknown_topic_to_lemma(topic: &str, graph: &AtomGraph) -> String {
+    use qxfx0_types::morphology::MorphologyLookup;
+
+    let cleaned = topic.trim().trim_end_matches(['.', '?', '!', ',']).trim();
+    if cleaned.is_empty() {
+        return topic.to_string();
+    }
+    let lower = cleaned.to_lowercase();
+    if graph
+        .atoms
+        .contains_key(&qxfx0_types::AtomId::new(lower.clone()))
+    {
+        return lower;
+    }
+    match qxfx0_morphology::get_runtime().lemmatize(&lower) {
+        MorphologyLookup::Resolved(resolution) if !resolution.lemma.is_empty() => resolution.lemma,
+        _ => lower,
+    }
 }
 
 fn validate_input_session(session_id: &str) -> Result<(), StanceRequestPreparationError> {
@@ -99,6 +130,49 @@ fn validate_input_session(session_id: &str) -> Result<(), StanceRequestPreparati
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reflection_phrases_extract_the_governed_topic() {
+        let graph = qxfx0_semantic::seed_graph();
+        let parsed = parse_and_normalize_topic("я думал о свободе", &graph);
+        assert_eq!(parsed.subject, "свобода");
+        let parsed = parse_and_normalize_topic("размышляю про долг", &graph);
+        assert_eq!(parsed.subject, "долг");
+    }
+
+    #[test]
+    fn unknown_topics_resolve_to_nominative_lemmas() {
+        let graph = qxfx0_semantic::seed_graph();
+        // «поступке» is oblique and not a graph atom; the lexicon resolves
+        // it to the lemma instead of registering an oblique topic.
+        let parsed = parse_and_normalize_topic("я думал о поступке", &graph);
+        assert_eq!(parsed.subject, "поступок");
+    }
+
+    #[test]
+    fn sentence_punctuation_is_stripped_from_subjects() {
+        let graph = qxfx0_semantic::seed_graph();
+        let parsed = parse_and_normalize_topic("я ценю порядок.", &graph);
+        assert_eq!(parsed.subject, "порядок");
+    }
+
+    #[test]
+    fn purpose_mode_keeps_its_grammatical_oblique_form() {
+        let graph = qxfx0_semantic::seed_graph();
+        let parsed = parse_and_normalize_topic("в чём функция стола?", &graph);
+        assert_eq!(
+            parsed.subject, "стола",
+            "genitive is required after «функция»"
+        );
+    }
+
+    #[test]
+    fn graph_ambient_noise_is_not_normalized_away() {
+        let graph = qxfx0_semantic::seed_graph();
+        // Unknown gibberish keeps its cleaned form.
+        let parsed = parse_and_normalize_topic("я думал о флюгегехаймен", &graph);
+        assert_eq!(parsed.subject, "флюгегехаймен");
+    }
+
     use super::*;
     use crate::{execution_trace::calculate_stable_digest, process_turn};
 

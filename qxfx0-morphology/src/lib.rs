@@ -441,6 +441,18 @@ impl MorphologyData {
             Case::Prepositional => &self.prepositional,
         };
 
+        // The embedded paradigm lexicon is authoritative, ahead of both the
+        // hand-curated seed tables and the ending heuristics: it carries
+        // verified stems with fleeting vowels and alternations the rules
+        // cannot know («поступок» → «о поступке», not «поступоке»).
+        if let Some(form) = crate::runtime::get_runtime().inflect(
+            &lower,
+            case,
+            qxfx0_types::morphology::Number::Singular,
+        ) {
+            return form;
+        }
+
         if let Some(form) = table.get(&lower) {
             return form.clone();
         }
