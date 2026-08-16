@@ -1,0 +1,15 @@
+{
+ "schema_version": 1,
+ "asset": "qxfx0:adjective-lexicon:v1",
+ "source_tool": "pymorphy3 (bundled OpenCorpora dictionary)",
+ "generated_at": "2026-08-16",
+ "lemma_count": 42239,
+ "files": {
+  "adjective_lexemes.json": "52e204deaa2566712a0588f04b58d02a0252d17ddbaa15e14af3066904fe692c"
+ },
+ "notes": [
+  "wordfreq ranking unavailable at generation time; the lexicon is complete rather than frequency-capped",
+  "qualitative adjectives additionally carry short_{m,f,n,pl} and comp cells; relational adjectives carry the full-form grid only",
+  "when one cell has two spellings (ё/е), the ё spelling wins and remaining ties break lexicographically"
+ ]
+}

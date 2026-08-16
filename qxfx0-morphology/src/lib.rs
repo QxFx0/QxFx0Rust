@@ -1,5 +1,7 @@
+pub mod adjective_lexicon;
 pub mod government;
 pub mod inference;
+pub mod pronoun_lexicon;
 pub mod runtime;
 pub mod verb_lexicon;
 pub mod verbs;
@@ -11,6 +13,29 @@ pub use runtime::{
 
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
+
+/// Resolve a surface to its lemma across every embedded lexicon: nouns
+/// first, then the pronoun and adjective tables. Ambiguous surfaces keep
+/// their (lowercased) form — picking one lemma would fabricate a reading.
+pub fn lemmatize_surface(word: &str) -> String {
+    let lower = word.to_lowercase();
+    if let qxfx0_types::morphology::MorphologyLookup::Resolved(resolution) =
+        crate::runtime::get_runtime().lemmatize(&lower)
+    {
+        if !resolution.lemma.is_empty() {
+            return resolution.lemma;
+        }
+    }
+    if let crate::pronoun_lexicon::PronounSurface::Unique(lemma) =
+        crate::pronoun_lexicon::resolve_surface(&lower)
+    {
+        return lemma.to_string();
+    }
+    match crate::adjective_lexicon::resolve_surface(&lower) {
+        crate::adjective_lexicon::SurfaceLemma::Unique(lemma) => lemma.to_string(),
+        _ => lower,
+    }
+}
 
 /// Russian morphology engine — replaces GF (Grammatical Framework).
 /// Handles 6-case inflection for philosophical dialogue.
@@ -75,6 +100,28 @@ impl MorphologyData {
         match crate::runtime::get_runtime().lemmatize(&lower) {
             qxfx0_types::morphology::MorphologyLookup::Resolved(resolution) => resolution.lemma,
             _ => lower,
+        }
+    }
+
+    /// Lemmatize across every part of speech the embedded lexicons carry.
+    ///
+    /// The noun-only `lemmatize` stays for callers that mean nouns; this
+    /// wrapper additionally consults the pronoun and adjective tables, so
+    /// surfaces like «собой» or «внутреннего» resolve instead of passing
+    /// through as their own lemma. Ambiguity anywhere keeps the surface.
+    pub fn lemmatize_any(&self, word: &str) -> String {
+        let resolved = self.lemmatize(word);
+        if resolved != word.to_lowercase() {
+            return resolved;
+        }
+        if let crate::pronoun_lexicon::PronounSurface::Unique(lemma) =
+            crate::pronoun_lexicon::resolve_surface(word)
+        {
+            return lemma.to_string();
+        }
+        match crate::adjective_lexicon::resolve_surface(word) {
+            crate::adjective_lexicon::SurfaceLemma::Unique(lemma) => lemma.to_string(),
+            _ => resolved,
         }
     }
 

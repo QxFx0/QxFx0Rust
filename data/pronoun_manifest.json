@@ -1,0 +1,14 @@
+{
+ "schema_version": 1,
+ "asset": "qxfx0:pronoun-lexicon:v1",
+ "source_tool": "pymorphy3 (bundled OpenCorpora dictionary)",
+ "generated_at": "2026-08-16",
+ "lemma_count": 68,
+ "files": {
+  "pronoun_lexemes.json": "84818c2d3a87c8abf24cc8f5963eb6cd40a8af1b0c9a543141831d6e07415990"
+ },
+ "notes": [
+  "closed class materialized from the dictionary instead of hand-maintained tables, so Rust and Python share one source",
+  "possessive его/её/их are invariable and carry a single form"
+ ]
+}

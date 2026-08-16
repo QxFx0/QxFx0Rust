@@ -28,7 +28,12 @@ REPO = Path(__file__).resolve().parents[1]
 HASKELL_DEFAULT = REPO.parent / "my-haskell-project" / "QxFx0"
 
 ACTIVE_CONCEPTS = REPO / "data/packs/philosophy-core-v1/concepts.json"
-LEXICON = REPO / "data/lexemes.json"
+LEXICONS = [
+    REPO / "data/lexemes.json",
+    REPO / "data/verb_lexemes.json",
+    REPO / "data/adjective_lexemes.json",
+    REPO / "data/pronoun_lexemes.json",
+]
 CORPUS = None  # set from args
 QUARANTINE = REPO / "data/imports/haskell-curated-pilot-v1/quarantine.jsonl"
 OUT_DIR = REPO / "data/packs/corpus-candidate-v1"
@@ -75,13 +80,23 @@ def source_is_dirty(repository):
     return bool(result.stdout.strip())
 
 
-def morphology_surfaces(lexicon_path):
+def lexicon_entries(path):
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        return payload
+    return payload.get("lemmas", [])
+
+
+def morphology_surfaces(lexicon_paths):
+    """Surface set across every embedded lexicon (nouns, verbs, adjectives,
+    pronouns) — must mirror scripts/import_haskell_corpus.py."""
     surfaces = set()
-    for lexeme in json.loads(lexicon_path.read_text(encoding="utf-8")):
-        surfaces.add(normalize(lexeme["lemma"]))
-        for surface in lexeme.get("forms", {}).values():
-            if surface:
-                surfaces.add(normalize(surface))
+    for path in lexicon_paths:
+        for lexeme in lexicon_entries(path):
+            surfaces.add(normalize(lexeme["lemma"]))
+            for surface in lexeme.get("forms", {}).values():
+                if surface:
+                    surfaces.add(normalize(surface))
     return surfaces
 
 
@@ -98,7 +113,7 @@ def active_lemmas(concepts_path):
 def build_pack(repo, haskell_repo, corpus_path):
     quarantine = load_jsonl(QUARANTINE)
     corpus = load_jsonl(corpus_path)
-    surfaces = morphology_surfaces(LEXICON)
+    surfaces = morphology_surfaces(LEXICONS)
     known = active_lemmas(ACTIVE_CONCEPTS)
 
     # Topic -> first source line, for stable candidate ordering.
@@ -189,7 +204,8 @@ def write_pack(out_dir, concepts, review, lexicon_gaps, haskell_repo):
     (out_dir / "lexicon_gaps.json").write_text(
         json.dumps(
             {
-                "note": "tokens of quarantined topics absent from data/lexemes.json; "
+                "note": "tokens of quarantined topics absent from every embedded lexicon "
+                "(nouns, verbs, adjectives, pronouns); "
                 "count = number of affected topics",
                 "gaps": dict(sorted(lexicon_gaps.items(), key=lambda item: (-item[1], item[0]))),
             },
@@ -212,11 +228,10 @@ def main():
 
     repo = args.repo.resolve()
     haskell_repo = args.haskell_repo.resolve()
-    global CORPUS, QUARANTINE, ACTIVE_CONCEPTS, LEXICON
+    global CORPUS, QUARANTINE, ACTIVE_CONCEPTS
     CORPUS = haskell_repo / "resources/knowledge/curated_predicates.jsonl"
     QUARANTINE = repo / "data/imports/haskell-curated-pilot-v1/quarantine.jsonl"
     ACTIVE_CONCEPTS = repo / "data/packs/philosophy-core-v1/concepts.json"
-    LEXICON = repo / "data/lexemes.json"
 
     concepts, review, lexicon_gaps, candidate_topics = build_pack(repo, haskell_repo, CORPUS)
 

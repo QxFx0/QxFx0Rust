@@ -71,14 +71,24 @@ FUNCTION_WORDS = frozenset(
 )
 
 
-def morphology_surfaces(lexemes_path):
-    lexemes = json.loads(lexemes_path.read_text(encoding="utf-8"))
+def lexicon_entries(path):
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        return payload
+    return payload.get("lemmas", [])
+
+
+def morphology_surfaces(lexicon_paths):
+    """Surface set across every embedded lexicon: nouns, verbs, adjectives,
+    pronouns. A topic token absent from all of them (and not a function
+    word) is a real lexical gap."""
     surfaces = set()
-    for lexeme in lexemes:
-        surfaces.add(normalize(lexeme["lemma"]))
-        for surface in lexeme.get("forms", {}).values():
-            if surface:
-                surfaces.add(normalize(surface))
+    for path in lexicon_paths:
+        for lexeme in lexicon_entries(path):
+            surfaces.add(normalize(lexeme["lemma"]))
+            for surface in lexeme.get("forms", {}).values():
+                if surface:
+                    surfaces.add(normalize(surface))
     return surfaces
 
 
@@ -168,7 +178,12 @@ def main():
     corpus_path = haskell_repo / "resources/knowledge/curated_predicates.jsonl"
     ontology_path = haskell_repo / "resources/knowledge/ontology.jsonl"
     concepts_path = repo / "data/packs/philosophy-core-v1/concepts.json"
-    lexemes_path = repo / "data/lexemes.json"
+    lexicon_paths = [
+        repo / "data/lexemes.json",
+        repo / "data/verb_lexemes.json",
+        repo / "data/adjective_lexemes.json",
+        repo / "data/pronoun_lexemes.json",
+    ]
     tsv_path = repo / "qxfx0-semantic/assets/argued_topics.tsv"
 
     corpus = load_jsonl(corpus_path)
@@ -181,7 +196,7 @@ def main():
         for normalized, matches in extra_index.items():
             if normalized not in aliases:
                 aliases[normalized] = matches
-    surfaces = morphology_surfaces(lexemes_path)
+    surfaces = morphology_surfaces(lexicon_paths)
     audited = audited_topics(tsv_path)
 
     grouped = defaultdict(list)

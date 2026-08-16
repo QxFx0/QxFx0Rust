@@ -96,10 +96,9 @@ pub(crate) fn parse_and_normalize_topic(raw_text: &str, graph: &AtomGraph) -> Pa
 
 /// Lemma fallback for subjects that did not match any graph atom: strip
 /// leftover sentence punctuation, then resolve through the embedded
-/// lexicon. Ambiguous surfaces keep their (cleaned) form.
+/// lexicons (nouns, pronouns, adjectives). Ambiguous surfaces keep their
+/// (cleaned) form.
 pub(crate) fn normalize_unknown_topic_to_lemma(topic: &str, graph: &AtomGraph) -> String {
-    use qxfx0_types::morphology::MorphologyLookup;
-
     let cleaned = topic.trim().trim_end_matches(['.', '?', '!', ',']).trim();
     if cleaned.is_empty() {
         return topic.to_string();
@@ -111,10 +110,7 @@ pub(crate) fn normalize_unknown_topic_to_lemma(topic: &str, graph: &AtomGraph) -
     {
         return lower;
     }
-    match qxfx0_morphology::get_runtime().lemmatize(&lower) {
-        MorphologyLookup::Resolved(resolution) if !resolution.lemma.is_empty() => resolution.lemma,
-        _ => lower,
-    }
+    qxfx0_morphology::lemmatize_surface(&lower)
 }
 
 fn validate_input_session(session_id: &str) -> Result<(), StanceRequestPreparationError> {

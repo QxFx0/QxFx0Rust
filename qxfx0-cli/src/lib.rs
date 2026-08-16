@@ -956,6 +956,45 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
+    let adjective_count = qxfx0_morphology::adjective_lexicon::lemma_count();
+    let adjective_probe = qxfx0_morphology::lemmatize_surface("внутреннего") == "внутренний"
+        && qxfx0_morphology::adjective_lexicon::lookup("необратимый").and_then(|entry| {
+            entry.short_form(
+                qxfx0_types::morphology::Gender::Neuter,
+                qxfx0_types::morphology::Number::Singular,
+            )
+        }) == Some("необратимо");
+    let adjectives_passed = adjective_count >= 20_000 && adjective_probe;
+    report.checks.push(DoctorCheck {
+        name: "Adjective lexicon",
+        passed: adjectives_passed,
+        details: if adjectives_passed {
+            format!("{adjective_count} digest-pinned adjective paradigms; probes operational")
+        } else {
+            format!(
+                "adjective lexicon degraded: {adjective_count} lemmas, probes {}",
+                if adjective_probe { "ok" } else { "failed" }
+            )
+        },
+    });
+
+    let pronoun_count = qxfx0_morphology::pronoun_lexicon::lemma_count();
+    let pronoun_probe = qxfx0_morphology::lemmatize_surface("собой") == "себя"
+        && qxfx0_morphology::lemmatize_surface("мной") == "я";
+    let pronouns_passed = pronoun_count >= 40 && pronoun_probe;
+    report.checks.push(DoctorCheck {
+        name: "Pronoun lexicon",
+        passed: pronouns_passed,
+        details: if pronouns_passed {
+            format!("{pronoun_count} digest-pinned closed-class paradigms")
+        } else {
+            format!(
+                "pronoun lexicon degraded: {pronoun_count} lemmas, probes {}",
+                if pronoun_probe { "ok" } else { "failed" }
+            )
+        },
+    });
+
     let code_graph = build_full_registry();
     let mut code_violations = code_graph.validate();
     let type_edges = code_graph
@@ -1845,7 +1884,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 12);
+        assert_eq!(report.checks.len(), 14);
         assert!(report
             .checks
             .iter()
