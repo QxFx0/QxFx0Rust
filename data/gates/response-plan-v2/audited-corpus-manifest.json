@@ -6,7 +6,7 @@
     "governed_clause_surfaces": 18,
     "topics_total": 30
   },
-  "manifest_digest": "9e982cda565c435d7a273393e9934e3d5e030babac3e74e1b8cd1d2e8c070d6c",
+  "manifest_digest": "b65d9c591d469f22ea9bd2810ba4e8f0d477e4c57442747feab8678d424996eb",
   "manifest_id": "response-plan-v2-audited-corpus-v2",
   "schema_version": 2,
   "source_files": {
@@ -15,7 +15,7 @@
     "facts.json": "3b12492e0462efda35f67fb3bc8541f3ae3ffd872c3cfcbaef02d5654b1955bd",
     "manifest.json": "742bc65882172528a0760ca6a53bc53699c8e1d5b2f342b06133bb6bd4698f2f",
     "relations.json": "21d25e498259051f911e11d8e09a750dbdf9dbdb3398b9ed396f74c8a74dba22",
-    "valency_frames.tsv": "ee2737d82c84ba7030cf370659dc3a3bae1b4c10d8d0d92e2b243b4aa4589d37"
+    "valency_frames.tsv": "93e16eaba616578e8db2586de4a49efac932163e01206a9441116dbdde1edc94"
   },
   "topics": {
     "бытие": {

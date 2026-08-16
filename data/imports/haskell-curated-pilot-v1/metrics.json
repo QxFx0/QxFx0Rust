@@ -21,7 +21,7 @@
   "quarantine_reason_counts": {
     "audited_surface_not_in_source_row": 20,
     "duplicate_topic_records": 54,
-    "missing_morphology_surface": 73,
+    "missing_morphology_surface": 30,
     "missing_typed_slots": 271,
     "ungrounded_russian_surface": 2,
     "unknown_concept": 259

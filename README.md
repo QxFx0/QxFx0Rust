@@ -11,8 +11,10 @@ The CLI is the supported production surface. It includes:
 - atomic SQLite persistence and automatic compatibility migration to schema v10;
 - six-stage turn processing with guard rollback and governance events;
 - 107 recognized topics, of which 30 have audited declarative content;
-- 20k-lemma noun morphology plus 19,314 digest-pinned verb paradigms,
-  rule-based out-of-vocabulary declension and preposition government;
+- 20k-lemma noun morphology plus 30,809 digest-pinned verb paradigms
+  (reflexive included), 42,239 adjective and 68 closed-class pronoun
+  paradigms, rule-based out-of-vocabulary declension and preposition
+  government;
 - 172 seed atoms, 276 semantic relations and 69 curated `FactRecord` values;
 - bounded FactId-grounded positions and replay-stable semantic episodes;
 - a manifest-validated active knowledge pack with a replay-visible SHA-256 fingerprint;

@@ -9,7 +9,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GATE_DIR = ROOT / "data" / "gates" / "response-plan-v2"
 TSV = ROOT / "qxfx0-semantic" / "assets" / "argued_topics.tsv"
-VALENCY = ROOT / "qxfx0-semantic" / "assets" / "valency_frames.tsv"
+VALENCY = ROOT / "qxfx0-plan-v2" / "assets" / "valency_frames.tsv"
+VERB_LEXICON = ROOT / "data" / "verb_lexemes.json"
+ADJECTIVE_LEXICON = ROOT / "data" / "adjective_lexemes.json"
 PACK = ROOT / "data" / "packs" / "philosophy-core-v1"
 OUT = GATE_DIR / "audited-corpus-manifest.json"
 
@@ -50,18 +52,104 @@ def sha256_bytes(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def valency_fingerprint(path: Path) -> str:
-    return hashlib.sha256(b"qxfx0:valency-lexicon:v1" + path.read_bytes()).hexdigest()
+def valency_fingerprint(path: Path, frames: list[dict]) -> str:
+    """Mirror of `qxfx0_plan_v2::valency` fingerprinting (v2 domain): the
+    TSV bytes plus the digest over every frame's derived paradigm."""
+    digest = frames_conjugation_digest(frames)
+    hasher = hashlib.sha256()
+    hasher.update(b"qxfx0:valency-lexicon:v2")
+    hasher.update(path.read_bytes())
+    hasher.update(digest.encode())
+    return hasher.hexdigest()
 
 
-def valency_heads(path: Path) -> dict[str, list[str]]:
-    heads = {}
+def absorb_into(hasher, value: str) -> None:
+    data = value.encode("utf-8")
+    hasher.update(struct.pack(">Q", len(data)))
+    hasher.update(data)
+
+
+FINITE_KEYS = ["f1sg", "f2sg", "f3sg", "f1pl", "f2pl", "f3pl", "pm", "pf", "pn", "ppl"]
+SHORT_KEYS = ["short_m", "short_f", "short_n", "short_pl"]
+
+
+def frame_paradigm_digest(frame: dict, verb_forms, adjective_forms) -> str:
+    hasher = hashlib.sha256()
+    hasher.update(b"qxfx0:valency-conjugation:v1")
+    absorb_into(hasher, frame["relation_id"])
+    absorb_into(hasher, frame["conjugation"])
+    # Only paradigm strategies carry a lemma in the Rust ConjugationStrategy;
+    # a pinned row's head_lemma is documentation and stays out of the digest.
+    if frame["conjugation"] in ("finite3", "agreeing_short") and frame["head_lemma"]:
+        absorb_into(hasher, frame["head_lemma"])
+    if frame["conjugation"] == "finite3":
+        entry = verb_forms.get(frame["head_lemma"])
+        if entry is not None:
+            for key in FINITE_KEYS:
+                absorb_into(hasher, key)
+                absorb_into(hasher, entry.get(key, ""))
+    elif frame["conjugation"] == "agreeing_short":
+        entry = adjective_forms.get(frame["head_lemma"])
+        if entry is not None:
+            for key in SHORT_KEYS:
+                absorb_into(hasher, key)
+                absorb_into(hasher, entry.get(key, ""))
+    return hasher.hexdigest()
+
+
+def frames_conjugation_digest(frames: list[dict]) -> str:
+    hasher = hashlib.sha256()
+    hasher.update(b"qxfx0:valency-conjugations:v1")
+    hasher.update(struct.pack(">Q", len(frames)))
+    for frame in sorted(frames, key=lambda item: item["relation_id"]):
+        absorb_into(hasher, frame["relation_id"])
+        absorb_into(hasher, frame["paradigm_digest"])
+    return hasher.hexdigest()
+
+
+def valency_frames(path: Path, verb_forms, adjective_forms) -> list[dict]:
+    """Parsed + paradigm-verified frames, mirroring the Rust loader.
+
+    Verification included: a finite3 surface that disagrees with the verb
+    lexicon's f3sg fails the tool, exactly like the embedded loader fails
+    the release build.
+    """
+    frames = []
     for line in path.read_text().splitlines():
         if not line.strip() or line.startswith("#") or line.startswith("relation_id\t"):
             continue
-        relation_id, head_kind, forms, _ = line.split("\t")
-        heads[relation_id] = forms.split(",") if head_kind == "agreeing" else [forms]
-    return heads
+        relation_id, head_kind, forms, _complement, head_lemma, strategy = line.split("\t")
+        frame = {
+            "relation_id": relation_id,
+            "head_kind": head_kind,
+            "head_forms": forms.split(",") if head_kind == "agreeing" else [forms],
+            "head_lemma": None if head_lemma == "—" else head_lemma,
+            "conjugation": strategy,
+        }
+        if strategy == "finite3":
+            derived = verb_forms.get(head_lemma, {}).get("f3sg")
+            if derived != forms:
+                raise SystemExit(
+                    f"valency row {relation_id}: pinned '{forms}' but "
+                    f"{head_lemma} conjugates to '{derived}'"
+                )
+        if strategy == "agreeing_short":
+            for key, pinned in zip(SHORT_KEYS, frame["head_forms"]):
+                derived = adjective_forms.get(head_lemma, {}).get(key)
+                if derived != pinned:
+                    raise SystemExit(
+                        f"valency row {relation_id}: pinned '{pinned}' but "
+                        f"{head_lemma} carries '{derived}' in {key}"
+                    )
+        frames.append(frame)
+    for frame in frames:
+        frame["paradigm_digest"] = frame_paradigm_digest(frame, verb_forms, adjective_forms)
+    return frames
+
+
+def lexicon_forms(path: Path) -> dict:
+    payload = json.loads(path.read_text())
+    return {entry["lemma"]: entry["forms"] for entry in payload["lemmas"]}
 
 
 def whole_word(surface: str, candidate: str) -> bool:
@@ -98,7 +186,10 @@ facts = {
     item["record"]["id"]: item["record"]
     for item in json.loads((PACK / "facts.json").read_text())
 }
-heads = valency_heads(VALENCY)
+verb_forms = lexicon_forms(VERB_LEXICON)
+adjective_forms = lexicon_forms(ADJECTIVE_LEXICON)
+frames = valency_frames(VALENCY, verb_forms, adjective_forms)
+heads = {frame["relation_id"]: frame["head_forms"] for frame in frames}
 lines = [
     line for line in TSV.read_text().splitlines()
     if line.strip() and not line.startswith("#")
@@ -155,7 +246,7 @@ manifest = {
     "manifest_id": MANIFEST_ID,
     "source_files": {
         "argued_topics.tsv": sha256_bytes(TSV),
-        "valency_frames.tsv": valency_fingerprint(VALENCY),
+        "valency_frames.tsv": valency_fingerprint(VALENCY, frames),
         "manifest.json": sha256_bytes(PACK / "manifest.json"),
         "concepts.json": sha256_bytes(PACK / "concepts.json"),
         "facts.json": sha256_bytes(PACK / "facts.json"),

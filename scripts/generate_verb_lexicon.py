@@ -51,11 +51,16 @@ IMPERATIVE_CELLS = {
 
 
 def infinitive_lemmas(morph):
-    """All verb infinitive lemmas from the dictionary DAWG."""
+    """All verb infinitive lemmas from the dictionary DAWG.
+
+    The ending filter must include reflexives (-ться/-тись/-чься): V2
+    valency heads like «строится»/«отличается» conjugate from reflexive
+    infinitives, and an earlier revision silently omitted the whole class.
+    """
     lemmas = set()
     for entry in morph.dictionary.words.keys():
         token = entry.split()[0]
-        if not token.endswith(("ть", "ти", "чь")):
+        if not token.endswith(("ть", "ти", "чь", "ться", "тись", "чься")):
             continue
         for parse in morph.parse(token):
             tag = parse.tag

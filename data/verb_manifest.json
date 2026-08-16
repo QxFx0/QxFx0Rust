@@ -3,9 +3,9 @@
  "asset": "qxfx0:verb-lexicon:v1",
  "source_tool": "pymorphy3 (bundled OpenCorpora dictionary)",
  "generated_at": "2026-08-16",
- "lemma_count": 19314,
+ "lemma_count": 30809,
  "files": {
-  "verb_lexemes.json": "3645e2379d8dab5b7fb0a09268d4b7116dcf93e7eacf0b7819dcf9457f8ed387"
+  "verb_lexemes.json": "2e8e80ff0219f7a2def77e01d41cee13a3de408642cdb48ed289fe6e6e411ac1"
  },
  "notes": [
   "wordfreq ranking unavailable at generation time; the lexicon is complete rather than frequency-capped",

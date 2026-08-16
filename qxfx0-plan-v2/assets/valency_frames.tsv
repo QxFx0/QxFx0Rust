@@ -19,29 +19,41 @@
 #   uninflected   an infinitive phrase or predicate      (может + inf)
 #                 nominal, carried verbatim
 #
+# head_lemma + conjugation:
+#   finite3         the surface must equal the f3sg derived from head_lemma
+#                   through the embedded verb lexicon; every person of the
+#                   paradigm is addressable via conjugated_head().
+#   agreeing_short  the four forms must equal the short cells of head_lemma in
+#                   the embedded adjective lexicon.
+#   pinned          no derivable paradigm: copulas («это»), and short
+#                   participles («направлен», «связана») — passive participles
+#                   of направить/связать that the lexicons do not materialize
+#                   as adjective short cells. Honestly labeled rather than
+#                   silently trusted.
+#
 # Three legacy relation ids — napravlena, svyazan, neobratimo — encode a
 # subject gender in the identifier itself, which is why the same relation could
 # not be reused for a subject of another gender. The lemma and its four forms
 # live here instead; the identifiers are kept for corpus compatibility.
-relation_id	head_kind	head_forms	complement
-eto	finite	это	direct:nom
-eto_neobhodimost	finite	— это необходимость	uninflected
-kontrastiruet	finite	контрастирует	prep:с:ins
-mozhet	finite	может	uninflected
-napravlena	agreeing	направлен,направлена,направлено,направлены	prep:на:acc
-napravlyaet	finite	направляет	direct:acc
-neobratimo	agreeing	необратим,необратима,необратимо,необратимы	none
-oboznachaet	finite	обозначает	direct:acc
-otlichaetsya	finite	отличается	prep:от:gen
-oznachaet	finite	означает	direct:acc
-podderzhivaet	finite	поддерживает	direct:acc
-predpisyvaet	finite	предписывает	direct:acc
-predpolagaet	finite	предполагает	direct:acc
-pretenduet	finite	претендует	prep:на:acc
-stroitsya	finite	строится	prep:через:acc
-svyazan	agreeing	связан,связана,связано,связаны	prep:с:ins
-trebuet	finite	требует	direct:gen
-vosstanavlivaet	finite	восстанавливает	direct:acc
-vyrazhaet	finite	выражает	direct:acc
-vyzyvaet	finite	вызывает	direct:acc
-zavisit	finite	зависит	prep:от:gen
+relation_id	head_kind	head_forms	complement	head_lemma	conjugation
+eto	finite	это	direct:nom	—	pinned
+eto_neobhodimost	finite	— это необходимость	uninflected	—	pinned
+kontrastiruet	finite	контрастирует	prep:с:ins	контрастировать	finite3
+mozhet	finite	может	uninflected	мочь	finite3
+napravlena	agreeing	направлен,направлена,направлено,направлены	prep:на:acc	направить	pinned
+napravlyaet	finite	направляет	direct:acc	направлять	finite3
+neobratimo	agreeing	необратим,необратима,необратимо,необратимы	none	необратимый	agreeing_short
+oboznachaet	finite	обозначает	direct:acc	обозначать	finite3
+otlichaetsya	finite	отличается	prep:от:gen	отличаться	finite3
+oznachaet	finite	означает	direct:acc	означать	finite3
+podderzhivaet	finite	поддерживает	direct:acc	поддерживать	finite3
+predpisyvaet	finite	предписывает	direct:acc	предписывать	finite3
+predpolagaet	finite	предполагает	direct:acc	предполагать	finite3
+pretenduet	finite	претендует	prep:на:acc	претендовать	finite3
+stroitsya	finite	строится	prep:через:acc	строиться	finite3
+svyazan	agreeing	связан,связана,связано,связаны	prep:с:ins	связать	pinned
+trebuet	finite	требует	direct:gen	требовать	finite3
+vosstanavlivaet	finite	восстанавливает	direct:acc	восстанавливать	finite3
+vyrazhaet	finite	выражает	direct:acc	выражать	finite3
+vyzyvaet	finite	вызывает	direct:acc	вызывать	finite3
+zavisit	finite	зависит	prep:от:gen	зависеть	finite3

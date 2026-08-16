@@ -11,15 +11,47 @@
 //! *gender is baked into the identifier*, so the same relation could not be
 //! reused for a subject of another gender. The lemma and its four forms live
 //! here instead.
+//!
+//! The head surface is no longer trusted prose. Each row carries
+//! `head_lemma` plus a `conjugation` strategy:
+//!
+//! * `finite3` — the head is a finite verb; the pinned surface must equal the
+//!   3rd-person singular derived from `head_lemma` through the embedded verb
+//!   lexicon, and every person of the paradigm becomes addressable
+//!   (`conjugated_head`), so a future discourse can vary person without a new
+//!   pinned string.
+//! * `agreeing_short` — the head is a short adjective/participle; all four
+//!   pinned forms must equal the short cells of `head_lemma` in the embedded
+//!   adjective lexicon.
+//! * `pinned` — no paradigm exists to derive from (copulas, participles the
+//!   lexicons do not materialize). The surface stays pinned and honestly
+//!   labeled.
+//!
+//! A mismatch between a pinned surface and its derivation is a load error:
+//! the embedded asset is release-validated, and a drifted TSV must fail loud,
+//! not realize a fabricated form.
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
+use qxfx0_morphology::verbs::VerbPerson;
 use qxfx0_morphology::{Case, Gender, Number};
 
 const VALENCY_FRAMES_TSV: &str = include_str!("../assets/valency_frames.tsv");
+
+const FINITE_PERSON_KEYS: [(VerbPerson, &str); 6] = [
+    (VerbPerson::FirstSingular, "f1sg"),
+    (VerbPerson::SecondSingular, "f2sg"),
+    (VerbPerson::ThirdSingular, "f3sg"),
+    (VerbPerson::FirstPlural, "f1pl"),
+    (VerbPerson::SecondPlural, "f2pl"),
+    (VerbPerson::ThirdPlural, "f3pl"),
+];
+
+const PAST_KEYS: [&str; 4] = ["pm", "pf", "pn", "ppl"];
+const SHORT_KEYS: [&str; 4] = ["short_m", "short_f", "short_n", "short_pl"];
 
 /// The agreement features a head needs from its subject.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +108,57 @@ pub fn starts_with_word(text: &str, word: &str) -> bool {
         .is_some_and(|rest| rest.chars().next().is_some_and(char::is_whitespace))
 }
 
+/// How the head surface is derived, and from which lemma.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "strategy")]
+pub enum ConjugationStrategy {
+    /// A finite verb; the pinned surface is the f3sg of `lemma` in the
+    /// embedded verb lexicon, verified at load time.
+    Finite3 { lemma: String },
+    /// A short adjective or participle; the four pinned forms are the short
+    /// cells of `lemma` in the embedded adjective lexicon, verified at load
+    /// time.
+    AgreeingShort { lemma: String },
+    /// No derivable paradigm (copulas, unmaterialized participles). The
+    /// surface stays pinned.
+    Pinned,
+}
+
+impl ConjugationStrategy {
+    fn tag(&self) -> &'static str {
+        match self {
+            Self::Finite3 { .. } => "finite3",
+            Self::AgreeingShort { .. } => "agreeing_short",
+            Self::Pinned => "pinned",
+        }
+    }
+
+    fn lemma(&self) -> Option<&str> {
+        match self {
+            Self::Finite3 { lemma } | Self::AgreeingShort { lemma } => Some(lemma),
+            Self::Pinned => None,
+        }
+    }
+}
+
+/// The derived paradigm certificate for one head.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HeadConjugation {
+    strategy: ConjugationStrategy,
+    paradigm_digest: String,
+}
+
+impl HeadConjugation {
+    pub fn strategy(&self) -> &ConjugationStrategy {
+        &self.strategy
+    }
+
+    /// SHA-256 over the materialized cells of this head's paradigm.
+    pub fn paradigm_digest(&self) -> &str {
+        &self.paradigm_digest
+    }
+}
+
 /// How the head realizes itself.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -130,6 +213,7 @@ pub struct ValencyFrame {
     relation_id: String,
     head: HeadKind,
     complement: Complement,
+    conjugation: HeadConjugation,
 }
 
 impl ValencyFrame {
@@ -144,11 +228,15 @@ impl ValencyFrame {
     pub fn complement(&self) -> &Complement {
         &self.complement
     }
+
+    pub fn conjugation(&self) -> &HeadConjugation {
+        &self.conjugation
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ValencyError {
-    #[error("valency row {line}: expected 4 columns, got {columns}")]
+    #[error("valency row {line}: expected 6 columns, got {columns}")]
     MalformedRow { line: usize, columns: usize },
     #[error("valency row {line}: unknown head_kind '{value}'")]
     UnknownHeadKind { line: usize, value: String },
@@ -158,6 +246,30 @@ pub enum ValencyError {
     UnknownComplement { line: usize, value: String },
     #[error("valency row {line}: unknown case '{value}'")]
     UnknownCase { line: usize, value: String },
+    #[error("valency row {line}: unknown conjugation strategy '{value}'")]
+    UnknownConjugation { line: usize, value: String },
+    #[error("valency row {line}: strategy '{strategy}' requires a head_lemma")]
+    MissingHeadLemma { line: usize, strategy: String },
+    #[error(
+        "valency row {line}: relation '{relation}' pins head '{pinned}' but '{lemma}' conjugates to '{derived}'"
+    )]
+    ConjugationMismatch {
+        line: usize,
+        relation: String,
+        pinned: String,
+        lemma: String,
+        derived: String,
+    },
+    #[error(
+        "valency row {line}: relation '{relation}' pins head '{pinned}' but '{lemma}' has no {cell} cell"
+    )]
+    MissingDerivationCell {
+        line: usize,
+        relation: String,
+        pinned: String,
+        lemma: String,
+        cell: String,
+    },
     #[error("duplicate relation id '{0}'")]
     DuplicateRelation(String),
     #[error("no valency frame for relation '{0}'")]
@@ -184,7 +296,7 @@ impl ValencyLexicon {
             if columns.first() == Some(&"relation_id") {
                 continue;
             }
-            if columns.len() != 4 {
+            if columns.len() != 6 {
                 return Err(ValencyError::MalformedRow {
                     line,
                     columns: columns.len(),
@@ -193,6 +305,8 @@ impl ValencyLexicon {
             let relation_id = columns[0].trim().to_string();
             let head = parse_head(line, columns[1].trim(), columns[2].trim())?;
             let complement = parse_complement(line, columns[3].trim())?;
+            let strategy = parse_conjugation(line, columns[4].trim(), columns[5].trim())?;
+            let conjugation = verify_conjugation(line, &relation_id, &head, strategy)?;
             if frames.contains_key(&relation_id) {
                 return Err(ValencyError::DuplicateRelation(relation_id));
             }
@@ -202,13 +316,16 @@ impl ValencyLexicon {
                     relation_id,
                     head,
                     complement,
+                    conjugation,
                 },
             );
         }
 
+        let conjugation_digest = frames_conjugation_digest(&frames);
         let mut hasher = Sha256::new();
-        hasher.update(b"qxfx0:valency-lexicon:v1");
+        hasher.update(b"qxfx0:valency-lexicon:v2");
         hasher.update(source.as_bytes());
+        hasher.update(conjugation_digest.as_bytes());
         Ok(Self {
             frames,
             fingerprint: format!("{:x}", hasher.finalize()),
@@ -237,7 +354,8 @@ impl ValencyLexicon {
         self.frames.iter()
     }
 
-    /// Part of the realization snapshot: a changed lexicon is a changed
+    /// Part of the realization snapshot: a changed lexicon — including a
+    /// changed derivation behind an unchanged surface — is a changed
     /// realization contract, not a changed authority (ADR-0034 §8).
     pub fn fingerprint(&self) -> &str {
         &self.fingerprint
@@ -249,6 +367,28 @@ impl ValencyLexicon {
             .filter(|frame| frame.head.agrees_with_subject())
             .map(|frame| frame.relation_id.as_str())
             .collect()
+    }
+
+    /// Conjugate a finite head for an arbitrary person, deriving the form
+    /// from the embedded verb lexicon instead of the pinned 3rd-person
+    /// surface. Returns `Ok(None)` when the head carries no verb paradigm or
+    /// the lexicon has no cell for that person — never a fabricated form.
+    pub fn conjugated_head(
+        &self,
+        relation_id: &str,
+        person: VerbPerson,
+    ) -> Result<Option<String>, ValencyError> {
+        let frame = self.get(relation_id)?;
+        let ConjugationStrategy::Finite3 { lemma } = frame.conjugation.strategy() else {
+            return Ok(None);
+        };
+        let entry = qxfx0_morphology::verb_lexicon::lookup(lemma);
+        let key = FINITE_PERSON_KEYS
+            .iter()
+            .find(|(candidate, _)| *candidate == person)
+            .expect("person table is total")
+            .1;
+        Ok(entry.and_then(|entry| entry.form(key)).map(str::to_string))
     }
 }
 
@@ -325,6 +465,203 @@ fn parse_case(line: usize, value: &str) -> Result<Case, ValencyError> {
     }
 }
 
+fn parse_conjugation(
+    line: usize,
+    lemma: &str,
+    strategy: &str,
+) -> Result<ConjugationStrategy, ValencyError> {
+    let lemma = lemma.trim();
+    let strategy = strategy.trim();
+    match strategy {
+        "finite3" => {
+            if lemma.is_empty() || lemma == "—" {
+                return Err(ValencyError::MissingHeadLemma {
+                    line,
+                    strategy: strategy.to_string(),
+                });
+            }
+            Ok(ConjugationStrategy::Finite3 {
+                lemma: lemma.to_string(),
+            })
+        }
+        "agreeing_short" => {
+            if lemma.is_empty() || lemma == "—" {
+                return Err(ValencyError::MissingHeadLemma {
+                    line,
+                    strategy: strategy.to_string(),
+                });
+            }
+            Ok(ConjugationStrategy::AgreeingShort {
+                lemma: lemma.to_string(),
+            })
+        }
+        "pinned" => Ok(ConjugationStrategy::Pinned),
+        other => Err(ValencyError::UnknownConjugation {
+            line,
+            value: other.to_string(),
+        }),
+    }
+}
+
+/// Derive the paradigm behind a strategy and cross-check it against the
+/// pinned surface. Fail-closed: a drifted asset is a release invariant, not
+/// a turn-level error.
+fn verify_conjugation(
+    line: usize,
+    relation_id: &str,
+    head: &HeadKind,
+    strategy: ConjugationStrategy,
+) -> Result<HeadConjugation, ValencyError> {
+    match (&strategy, head) {
+        (ConjugationStrategy::Finite3 { lemma }, HeadKind::Finite { surface }) => {
+            let Some(entry) = qxfx0_morphology::verb_lexicon::lookup(lemma) else {
+                return Err(ValencyError::MissingDerivationCell {
+                    line,
+                    relation: relation_id.to_string(),
+                    pinned: surface.clone(),
+                    lemma: lemma.clone(),
+                    cell: "verb_lexicon".into(),
+                });
+            };
+            match entry.form("f3sg") {
+                Some(derived) if derived == surface => {}
+                Some(derived) => {
+                    return Err(ValencyError::ConjugationMismatch {
+                        line,
+                        relation: relation_id.to_string(),
+                        pinned: surface.clone(),
+                        lemma: lemma.clone(),
+                        derived: derived.to_string(),
+                    })
+                }
+                None => {
+                    return Err(ValencyError::MissingDerivationCell {
+                        line,
+                        relation: relation_id.to_string(),
+                        pinned: surface.clone(),
+                        lemma: lemma.clone(),
+                        cell: "f3sg".into(),
+                    })
+                }
+            }
+        }
+        (
+            ConjugationStrategy::AgreeingShort { lemma },
+            HeadKind::Agreeing {
+                masculine,
+                feminine,
+                neuter,
+                plural,
+            },
+        ) => {
+            let Some(entry) = qxfx0_morphology::adjective_lexicon::lookup(lemma) else {
+                return Err(ValencyError::MissingDerivationCell {
+                    line,
+                    relation: relation_id.to_string(),
+                    pinned: masculine.clone(),
+                    lemma: lemma.clone(),
+                    cell: "adjective_lexicon".into(),
+                });
+            };
+            for (cell, pinned) in [
+                ("short_m", masculine),
+                ("short_f", feminine),
+                ("short_n", neuter),
+                ("short_pl", plural),
+            ] {
+                match entry.form(cell) {
+                    Some(derived) if derived == pinned => {}
+                    Some(derived) => {
+                        return Err(ValencyError::ConjugationMismatch {
+                            line,
+                            relation: relation_id.to_string(),
+                            pinned: pinned.clone(),
+                            lemma: lemma.clone(),
+                            derived: derived.to_string(),
+                        })
+                    }
+                    None => {
+                        return Err(ValencyError::MissingDerivationCell {
+                            line,
+                            relation: relation_id.to_string(),
+                            pinned: pinned.clone(),
+                            lemma: lemma.clone(),
+                            cell: cell.to_string(),
+                        })
+                    }
+                }
+            }
+        }
+        // A pinned strategy makes no claim about the surface.
+        (ConjugationStrategy::Pinned, _) => {}
+        // A paradigm strategy on the wrong head shape is a TSV authoring
+        // error: there is no pinned surface to check against.
+        (strategy, _) => {
+            return Err(ValencyError::MissingHeadLemma {
+                line,
+                strategy: strategy.tag().to_string(),
+            })
+        }
+    }
+    let paradigm_digest = frame_paradigm_digest(relation_id, &strategy);
+    Ok(HeadConjugation {
+        strategy,
+        paradigm_digest,
+    })
+}
+
+fn absorb(hasher: &mut Sha256, value: &str) {
+    hasher.update((value.len() as u64).to_be_bytes());
+    hasher.update(value.as_bytes());
+}
+
+fn frame_paradigm_digest(relation_id: &str, strategy: &ConjugationStrategy) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"qxfx0:valency-conjugation:v1");
+    absorb(&mut hasher, relation_id);
+    absorb(&mut hasher, strategy.tag());
+    if let Some(lemma) = strategy.lemma() {
+        absorb(&mut hasher, lemma);
+    }
+    match strategy {
+        ConjugationStrategy::Finite3 { lemma } => {
+            if let Some(entry) = qxfx0_morphology::verb_lexicon::lookup(lemma) {
+                for (_, key) in FINITE_PERSON_KEYS {
+                    absorb(&mut hasher, key);
+                    absorb(&mut hasher, entry.form(key).unwrap_or(""));
+                }
+                for key in PAST_KEYS {
+                    absorb(&mut hasher, key);
+                    absorb(&mut hasher, entry.form(key).unwrap_or(""));
+                }
+            }
+        }
+        ConjugationStrategy::AgreeingShort { lemma } => {
+            if let Some(entry) = qxfx0_morphology::adjective_lexicon::lookup(lemma) {
+                for key in SHORT_KEYS {
+                    absorb(&mut hasher, key);
+                    absorb(&mut hasher, entry.form(key).unwrap_or(""));
+                }
+            }
+        }
+        ConjugationStrategy::Pinned => {}
+    }
+    format!("{:x}", hasher.finalize())
+}
+
+/// Digest over every frame's derived paradigm, in relation-id order. Part of
+/// the lexicon fingerprint, mirrored by `tools/gen_audited_corpus_manifest.py`.
+fn frames_conjugation_digest(frames: &BTreeMap<String, ValencyFrame>) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"qxfx0:valency-conjugations:v1");
+    hasher.update((frames.len() as u64).to_be_bytes());
+    for (relation_id, frame) in frames {
+        absorb(&mut hasher, relation_id);
+        absorb(&mut hasher, frame.conjugation.paradigm_digest());
+    }
+    format!("{:x}", hasher.finalize())
+}
+
 /// The embedded lexicon, parsed once.
 pub fn valency_lexicon() -> &'static ValencyLexicon {
     static LEXICON: OnceLock<ValencyLexicon> = OnceLock::new();
@@ -392,6 +729,72 @@ mod tests {
         let lexicon = valency_lexicon();
         assert_eq!(lexicon.len(), 21, "one frame per admitted relation");
         assert!(!lexicon.fingerprint().is_empty());
+    }
+
+    /// Every non-copula finite head is derived, not trusted: the pinned
+    /// surface equals the paradigm table's cell for it.
+    #[test]
+    fn finite_heads_are_derived_from_the_verb_lexicon() {
+        let lexicon = valency_lexicon();
+        for (id, frame) in lexicon.iter() {
+            let HeadKind::Finite { surface } = frame.head() else {
+                continue;
+            };
+            match frame.conjugation().strategy() {
+                ConjugationStrategy::Finite3 { lemma } => {
+                    let derived = lexicon
+                        .conjugated_head(id, VerbPerson::ThirdSingular)
+                        .expect("relation exists")
+                        .expect("f3sg cell exists");
+                    assert_eq!(
+                        &derived, surface,
+                        "{id}: pinned surface disagrees with {lemma} paradigm"
+                    );
+                }
+                ConjugationStrategy::Pinned => {}
+                ConjugationStrategy::AgreeingShort { .. } => {
+                    panic!("{id}: short-form strategy on a finite head")
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn conjugation_reaches_every_person_of_the_paradigm() {
+        let lexicon = valency_lexicon();
+        assert_eq!(
+            lexicon
+                .conjugated_head("predpolagaet", VerbPerson::FirstSingular)
+                .unwrap(),
+            Some("предполагаю".into())
+        );
+        assert_eq!(
+            lexicon
+                .conjugated_head("predpolagaet", VerbPerson::ThirdPlural)
+                .unwrap(),
+            Some("предполагают".into())
+        );
+        // Reflexive heads conjugate too — the class the verb lexicon
+        // generator had silently omitted.
+        assert_eq!(
+            lexicon
+                .conjugated_head("stroitsya", VerbPerson::ThirdSingular)
+                .unwrap(),
+            Some("строится".into())
+        );
+        assert_eq!(
+            lexicon
+                .conjugated_head("otlichaetsya", VerbPerson::ThirdPlural)
+                .unwrap(),
+            Some("отличаются".into())
+        );
+        // Heads without a verb paradigm return None, never a fabrication.
+        assert_eq!(
+            lexicon
+                .conjugated_head("eto", VerbPerson::FirstSingular)
+                .unwrap(),
+            None
+        );
     }
 
     /// The example ADR-0034 §7 names directly.
@@ -477,8 +880,8 @@ mod tests {
 
     #[test]
     fn an_agreeing_head_missing_a_form_is_rejected() {
-        let source = "relation_id\thead_kind\thead_forms\tcomplement\n\
-                      broken\tagreeing\tсвязан,связана\tnone\n";
+        let source = "relation_id\thead_kind\thead_forms\tcomplement\thead_lemma\tconjugation\n\
+                      broken\tagreeing\tсвязан,связана\tnone\t—\tpinned\n";
         assert!(matches!(
             ValencyLexicon::load_from_str(source),
             Err(ValencyError::IncompleteAgreement { .. })
@@ -487,9 +890,9 @@ mod tests {
 
     #[test]
     fn duplicate_relations_are_rejected() {
-        let source = "relation_id\thead_kind\thead_forms\tcomplement\n\
-                      x\tfinite\tа\tnone\n\
-                      x\tfinite\tб\tnone\n";
+        let source = "relation_id\thead_kind\thead_forms\tcomplement\thead_lemma\tconjugation\n\
+                      x\tfinite\tа\tnone\t—\tpinned\n\
+                      x\tfinite\tб\tnone\t—\tpinned\n";
         assert!(matches!(
             ValencyLexicon::load_from_str(source),
             Err(ValencyError::DuplicateRelation(_))
@@ -498,8 +901,8 @@ mod tests {
 
     #[test]
     fn unknown_case_is_rejected() {
-        let source = "relation_id\thead_kind\thead_forms\tcomplement\n\
-                      x\tfinite\tа\tdirect:vocative\n";
+        let source = "relation_id\thead_kind\thead_forms\tcomplement\thead_lemma\tconjugation\n\
+                      x\tfinite\tа\tdirect:vocative\t—\tpinned\n";
         assert!(matches!(
             ValencyLexicon::load_from_str(source),
             Err(ValencyError::UnknownCase { .. })
@@ -507,13 +910,42 @@ mod tests {
     }
 
     #[test]
-    fn fingerprint_tracks_the_source() {
-        let base = "relation_id\thead_kind\thead_forms\tcomplement\n\
-                    x\tfinite\tа\tdirect:acc\n";
-        let changed = "relation_id\thead_kind\thead_forms\tcomplement\n\
-                       x\tfinite\tа\tdirect:gen\n";
+    fn a_drifted_pinned_surface_fails_loud() {
+        // The lemma conjugates to «делает», not the pinned «делает бы».
+        let source = "relation_id\thead_kind\thead_forms\tcomplement\thead_lemma\tconjugation\n\
+                      x\tfinite\tделает бы\tnone\tделать\tfinite3\n";
+        assert!(matches!(
+            ValencyLexicon::load_from_str(source),
+            Err(ValencyError::ConjugationMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn a_missing_lemma_for_a_strategy_is_rejected() {
+        let source = "relation_id\thead_kind\thead_forms\tcomplement\thead_lemma\tconjugation\n\
+                      x\tfinite\tа\tnone\t—\tfinite3\n";
+        assert!(matches!(
+            ValencyLexicon::load_from_str(source),
+            Err(ValencyError::MissingHeadLemma { .. })
+        ));
+    }
+
+    #[test]
+    fn fingerprint_tracks_the_source_and_the_derivation() {
+        let base = "relation_id\thead_kind\thead_forms\tcomplement\thead_lemma\tconjugation\n\
+                    x\tfinite\tделает\tnone\tделать\tfinite3\n";
+        let changed_complement =
+            "relation_id\thead_kind\thead_forms\tcomplement\thead_lemma\tconjugation\n\
+                                  x\tfinite\tделает\tdirect:gen\tделать\tfinite3\n";
+        // Same surface, but the derivation contract is gone: pinned heads
+        // carry no paradigm digest, so the fingerprint must still change.
+        let changed_strategy =
+            "relation_id\thead_kind\thead_forms\tcomplement\thead_lemma\tconjugation\n\
+                                x\tfinite\tделает\tnone\t—\tpinned\n";
         let left = ValencyLexicon::load_from_str(base).expect("lexicon");
-        let right = ValencyLexicon::load_from_str(changed).expect("lexicon");
+        let middle = ValencyLexicon::load_from_str(changed_complement).expect("lexicon");
+        let right = ValencyLexicon::load_from_str(changed_strategy).expect("lexicon");
+        assert_ne!(left.fingerprint(), middle.fingerprint());
         assert_ne!(left.fingerprint(), right.fingerprint());
     }
 

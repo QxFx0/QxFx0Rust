@@ -5,3 +5,7 @@ data/** text eol=lf
 
 # Embedded digest-pinned assets must stay byte-identical on checkout.
 qxfx0-semantic/assets/*.json text eol=lf
+
+# The V2 valency fingerprint hashes these bytes; a CRLF checkout would
+# desync the audited corpus manifest.
+qxfx0-plan-v2/assets/* text eol=lf
