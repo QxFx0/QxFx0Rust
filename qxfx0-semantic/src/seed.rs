@@ -1,6 +1,6 @@
 //! Seed knowledge graph — an embedded, digest-pinned data asset.
 //!
-//! The graph data (172 atoms, 276 relations) lives in
+//! The graph data (207 atoms, 346 relations) lives in
 //! `assets/seed_graph.json` and is pinned by SHA-256 at load, matching the
 //! digest-pinning policy of the morphology bundle and knowledge packs.
 //! Regenerate the asset with:
@@ -27,7 +27,7 @@ const SEED_GRAPH_JSON: &str = include_str!(concat!(
 ));
 
 /// SHA-256 of `assets/seed_graph.json`, printed by `gen_seed_asset`.
-const SEED_GRAPH_SHA256: &str = "5900547aa7ade522adff42052c999f8f02d94628a518545f8ba1e423ad774f9f";
+const SEED_GRAPH_SHA256: &str = "03fc952d6269239c16d5eaf947b1305d021a43989051413d374d0e8d33ccc814";
 
 const SEED_GRAPH_SCHEMA: &str = "qxfx0:seed-graph:v1";
 
@@ -64,7 +64,6 @@ pub const COVERED_TOPICS: &[&str] = &[
     "власть",
     "правда",
     "молчание",
-    // New domains:
     "знание",
     "понимание",
     "сомнение",
@@ -88,7 +87,6 @@ pub const COVERED_TOPICS: &[&str] = &[
     "прогресс",
     "искусство",
     "гармония",
-    // Bridge atoms:
     "человек",
     "жизнь",
     "смысл",
@@ -96,7 +94,6 @@ pub const COVERED_TOPICS: &[&str] = &[
     "страдание",
     "природа",
     "игра",
-    // Everyday:
     "работа",
     "деньги",
     "здоровье",
@@ -108,7 +105,6 @@ pub const COVERED_TOPICS: &[&str] = &[
     "технология",
     "дом",
     "путешествие",
-    // Psychology, politics, economics:
     "личность",
     "мотивация",
     "стресс",
@@ -121,7 +117,6 @@ pub const COVERED_TOPICS: &[&str] = &[
     "ресурс",
     "ценность",
     "обмен",
-    // Relationships, career, modern life:
     "отношения",
     "уважение",
     "ревность",
@@ -133,7 +128,6 @@ pub const COVERED_TOPICS: &[&str] = &[
     "информация",
     "внимание",
     "скорость",
-    // Emotions, ethics, systems, communication:
     "радость",
     "грусть",
     "гнев",
@@ -223,8 +217,8 @@ mod tests {
     #[test]
     fn seed_graph_counts_match_the_documented_census() {
         let graph = seed_graph();
-        assert_eq!(graph.atoms.len(), 172, "seed atom census");
-        assert_eq!(graph.edges.len(), 276, "seed edge census");
+        assert_eq!(graph.atoms.len(), 207, "seed atom census");
+        assert_eq!(graph.edges.len(), 346, "seed edge census");
         assert_eq!(COVERED_TOPICS.len(), 107, "topic census");
     }
 

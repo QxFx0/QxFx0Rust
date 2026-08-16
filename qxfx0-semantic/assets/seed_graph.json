@@ -151,6 +151,26 @@
       "display": "возможность выбора",
       "category": "CatConcept"
     },
+    "аксиома": {
+      "id": "аксиома",
+      "display": "аксиома",
+      "category": "CatConcept"
+    },
+    "алгоритм": {
+      "id": "алгоритм",
+      "display": "алгоритм",
+      "category": "CatConcept"
+    },
+    "беспристрастность": {
+      "id": "беспристрастность",
+      "display": "беспристрастность",
+      "category": "CatConcept"
+    },
+    "благодарность": {
+      "id": "благодарность",
+      "display": "благодарность",
+      "category": "CatConcept"
+    },
     "будущее": {
       "id": "будущее",
       "display": "будущее",
@@ -165,6 +185,11 @@
       "id": "вера",
       "display": "вера",
       "category": "CatTopic"
+    },
+    "верность": {
+      "id": "верность",
+      "display": "верность",
+      "category": "CatConcept"
     },
     "власть": {
       "id": "власть",
@@ -231,10 +256,20 @@
       "display": "государство",
       "category": "CatTopic"
     },
+    "граница": {
+      "id": "граница",
+      "display": "граница",
+      "category": "CatConcept"
+    },
     "грусть": {
       "id": "грусть",
       "display": "грусть",
       "category": "CatTopic"
+    },
+    "данные": {
+      "id": "данные",
+      "display": "данные",
+      "category": "CatConcept"
     },
     "действие": {
       "id": "действие",
@@ -261,6 +296,11 @@
       "display": "дисциплина",
       "category": "CatTopic"
     },
+    "длительность": {
+      "id": "длительность",
+      "display": "длительность",
+      "category": "CatConcept"
+    },
     "добро": {
       "id": "добро",
       "display": "добро",
@@ -276,6 +316,11 @@
       "display": "доверие",
       "category": "CatTopic"
     },
+    "договор": {
+      "id": "договор",
+      "display": "договор",
+      "category": "CatConcept"
+    },
     "доказательство": {
       "id": "доказательство",
       "display": "доказательство",
@@ -286,6 +331,11 @@
       "display": "долг",
       "category": "CatTopic"
     },
+    "долженствование": {
+      "id": "долженствование",
+      "display": "долженствование",
+      "category": "CatConcept"
+    },
     "дом": {
       "id": "дом",
       "display": "дом",
@@ -295,6 +345,16 @@
       "id": "дружба",
       "display": "дружба",
       "category": "CatTopic"
+    },
+    "дух": {
+      "id": "дух",
+      "display": "дух",
+      "category": "CatConcept"
+    },
+    "душа": {
+      "id": "душа",
+      "display": "душа",
+      "category": "CatConcept"
     },
     "еда": {
       "id": "еда",
@@ -351,6 +411,16 @@
       "display": "игра",
       "category": "CatTopic"
     },
+    "идентичность": {
+      "id": "идентичность",
+      "display": "идентичность",
+      "category": "CatConcept"
+    },
+    "инстинкт": {
+      "id": "инстинкт",
+      "display": "инстинкт",
+      "category": "CatConcept"
+    },
     "интерес": {
       "id": "интерес",
       "display": "интерес",
@@ -391,6 +461,16 @@
       "display": "качество",
       "category": "CatConcept"
     },
+    "когерентность": {
+      "id": "когерентность",
+      "display": "когерентность",
+      "category": "CatConcept"
+    },
+    "код": {
+      "id": "код",
+      "display": "код",
+      "category": "CatConcept"
+    },
     "коммуникация": {
       "id": "коммуникация",
       "display": "коммуникация",
@@ -415,6 +495,11 @@
       "id": "личность",
       "display": "личность",
       "category": "CatTopic"
+    },
+    "логика": {
+      "id": "логика",
+      "display": "логика",
+      "category": "CatConcept"
     },
     "любовь": {
       "id": "любовь",
@@ -471,6 +556,16 @@
       "display": "наука",
       "category": "CatTopic"
     },
+    "нация": {
+      "id": "нация",
+      "display": "нация",
+      "category": "CatConcept"
+    },
+    "нейрон": {
+      "id": "нейрон",
+      "display": "нейрон",
+      "category": "CatConcept"
+    },
     "необходимость": {
       "id": "необходимость",
       "display": "необходимость",
@@ -489,6 +584,11 @@
     "общество": {
       "id": "общество",
       "display": "общество",
+      "category": "CatConcept"
+    },
+    "объективность": {
+      "id": "объективность",
+      "display": "объективность",
       "category": "CatConcept"
     },
     "одиночество": {
@@ -551,6 +651,11 @@
       "display": "поступок",
       "category": "CatTopic"
     },
+    "поэзия": {
+      "id": "поэзия",
+      "display": "поэзия",
+      "category": "CatConcept"
+    },
     "права": {
       "id": "права",
       "display": "права",
@@ -560,6 +665,11 @@
       "id": "правда",
       "display": "правда",
       "category": "CatTopic"
+    },
+    "право": {
+      "id": "право",
+      "display": "право",
+      "category": "CatConcept"
     },
     "прекрасное": {
       "id": "прекрасное",
@@ -586,6 +696,11 @@
       "display": "природа",
       "category": "CatTopic"
     },
+    "присутствие": {
+      "id": "присутствие",
+      "display": "присутствие",
+      "category": "CatConcept"
+    },
     "причина": {
       "id": "причина",
       "display": "причина",
@@ -605,6 +720,11 @@
       "id": "процесс",
       "display": "процесс",
       "category": "CatTopic"
+    },
+    "психика": {
+      "id": "психика",
+      "display": "психика",
+      "category": "CatConcept"
     },
     "путешествие": {
       "id": "путешествие",
@@ -646,25 +766,60 @@
       "display": "ревность",
       "category": "CatTopic"
     },
+    "революция": {
+      "id": "революция",
+      "display": "революция",
+      "category": "CatConcept"
+    },
     "результат": {
       "id": "результат",
       "display": "результат",
       "category": "CatTopic"
+    },
+    "ремонт": {
+      "id": "ремонт",
+      "display": "ремонт",
+      "category": "CatConcept"
     },
     "ресурс": {
       "id": "ресурс",
       "display": "ресурс",
       "category": "CatTopic"
     },
+    "решимость": {
+      "id": "решимость",
+      "display": "решимость",
+      "category": "CatConcept"
+    },
+    "рынок": {
+      "id": "рынок",
+      "display": "рынок",
+      "category": "CatConcept"
+    },
+    "самоопределение": {
+      "id": "самоопределение",
+      "display": "самоопределение",
+      "category": "CatConcept"
+    },
     "самоотчёт": {
       "id": "самоотчёт",
       "display": "самоотчёт",
+      "category": "CatConcept"
+    },
+    "самооценка": {
+      "id": "самооценка",
+      "display": "самооценка",
       "category": "CatConcept"
     },
     "самосознание": {
       "id": "самосознание",
       "display": "самосознание",
       "category": "CatTopic"
+    },
+    "свидетельство": {
+      "id": "свидетельство",
+      "display": "свидетельство",
+      "category": "CatConcept"
     },
     "свобода": {
       "id": "свобода",
@@ -701,6 +856,11 @@
       "display": "случайность",
       "category": "CatConcept"
     },
+    "слушание": {
+      "id": "слушание",
+      "display": "слушание",
+      "category": "CatConcept"
+    },
     "смерть": {
       "id": "смерть",
       "display": "смерть",
@@ -710,6 +870,11 @@
       "id": "смысл",
       "display": "смысл",
       "category": "CatTopic"
+    },
+    "собственность": {
+      "id": "собственность",
+      "display": "собственность",
+      "category": "CatConcept"
     },
     "совесть": {
       "id": "совесть",
@@ -745,6 +910,11 @@
       "id": "справедливость",
       "display": "справедливость",
       "category": "CatTopic"
+    },
+    "становление": {
+      "id": "становление",
+      "display": "становление",
+      "category": "CatConcept"
     },
     "страдание": {
       "id": "страдание",
@@ -830,6 +1000,11 @@
       "id": "ценность",
       "display": "ценность",
       "category": "CatTopic"
+    },
+    "цифра": {
+      "id": "цифра",
+      "display": "цифра",
+      "category": "CatConcept"
     },
     "человек": {
       "id": "человек",
@@ -4999,6 +5174,1056 @@
       "en_original": "argument contrasts with respect",
       "source": "SeedFromPredicate",
       "topic": "спор",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "аксиома",
+      "to": "доказательство",
+      "rel_type": "RelDiffersFrom",
+      "object_case": "CaseGenitive",
+      "object_text": "доказательства",
+      "verb_override": null,
+      "ru_original": "аксиома принимается без доказательства",
+      "en_original": "an axiom is accepted without proof",
+      "source": "SeedFromPredicate",
+      "topic": "аксиома",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "аксиома",
+      "to": "мышление",
+      "rel_type": "RelSupports",
+      "object_case": "CaseAccusative",
+      "object_text": "основание для вывода",
+      "verb_override": null,
+      "ru_original": "аксиома служит основанием для вывода",
+      "en_original": "an axiom serves as a foundation for inference",
+      "source": "SeedFromPredicate",
+      "topic": "аксиома",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "алгоритм",
+      "to": "действие",
+      "rel_type": "RelDetermines",
+      "object_case": "CaseAccusative",
+      "object_text": "последовательность действий",
+      "verb_override": null,
+      "ru_original": "алгоритм определяет последовательность действий",
+      "en_original": "an algorithm defines a sequence of actions",
+      "source": "SeedFromPredicate",
+      "topic": "алгоритм",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "алгоритм",
+      "to": "результат",
+      "rel_type": "RelGives",
+      "object_case": "CaseAccusative",
+      "object_text": "результат при корректном исполнении",
+      "verb_override": null,
+      "ru_original": "алгоритм гарантирует результат при корректном исполнении",
+      "en_original": "an algorithm guarantees a result with correct execution",
+      "source": "SeedFromPredicate",
+      "topic": "алгоритм",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "беспристрастность",
+      "to": "интерес",
+      "rel_type": "RelRequires",
+      "object_case": "CaseAccusative",
+      "object_text": "дистанцию от предмета",
+      "verb_override": null,
+      "ru_original": "беспристрастность требует дистанции от предмета",
+      "en_original": "impartiality requires distance from the subject",
+      "source": "SeedFromPredicate",
+      "topic": "беспристрастность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "беспристрастность",
+      "to": "объективность",
+      "rel_type": "RelSupports",
+      "object_case": "CaseAccusative",
+      "object_text": "объективную оценку",
+      "verb_override": null,
+      "ru_original": "беспристрастность способствует объективной оценке",
+      "en_original": "impartiality contributes to objective evaluation",
+      "source": "SeedFromPredicate",
+      "topic": "беспристрастность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "благодарность",
+      "to": "добро",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "признание полученного добра",
+      "verb_override": null,
+      "ru_original": "благодарность выражает признание полученного добра",
+      "en_original": "gratitude expresses recognition of received good",
+      "source": "SeedFromPredicate",
+      "topic": "благодарность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "благодарность",
+      "to": "отношения",
+      "rel_type": "RelSupports",
+      "object_case": "CaseAccusative",
+      "object_text": "связи между людьми",
+      "verb_override": null,
+      "ru_original": "благодарность укрепляет связи между людьми",
+      "en_original": "gratitude strengthens bonds between people",
+      "source": "SeedFromPredicate",
+      "topic": "благодарность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "верность",
+      "to": "отношения",
+      "rel_type": "RelPresupposes",
+      "object_case": "CaseAccusative",
+      "object_text": "постоянство в отношениях",
+      "verb_override": null,
+      "ru_original": "верность предполагает постоянство в отношениях",
+      "en_original": "faithfulness presupposes constancy in relationships",
+      "source": "SeedFromPredicate",
+      "topic": "верность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "верность",
+      "to": "опыт",
+      "rel_type": "RelVerifiedBy",
+      "object_case": "CaseAccusative",
+      "object_text": "испытания",
+      "verb_override": null,
+      "ru_original": "верность проверяется в испытаниях",
+      "en_original": "faithfulness is tested in trials",
+      "source": "SeedFromPredicate",
+      "topic": "верность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "граница",
+      "to": "порядок",
+      "rel_type": "RelDiffersFrom",
+      "object_case": "CaseGenitive",
+      "object_text": "внутреннего и внешнего",
+      "verb_override": null,
+      "ru_original": "граница различает внутреннее и внешнее",
+      "en_original": "a boundary distinguishes inner and outer",
+      "source": "SeedFromPredicate",
+      "topic": "граница",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "граница",
+      "to": "порядок",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "условие формы",
+      "verb_override": null,
+      "ru_original": "граница устанавливает условие формы",
+      "en_original": "a boundary establishes the condition of form",
+      "source": "SeedFromPredicate",
+      "topic": "граница",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "данные",
+      "to": "знание",
+      "rel_type": "RelSupports",
+      "object_case": "CaseAccusative",
+      "object_text": "основу для суждения",
+      "verb_override": null,
+      "ru_original": "данные служат основой для суждения",
+      "en_original": "data serve as the basis for judgement",
+      "source": "SeedFromPredicate",
+      "topic": "данные",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "данные",
+      "to": "интерпретация",
+      "rel_type": "RelRequires",
+      "object_case": "CaseAccusative",
+      "object_text": "интерпретации",
+      "verb_override": null,
+      "ru_original": "данные требуют интерпретации",
+      "en_original": "data require interpretation",
+      "source": "SeedFromPredicate",
+      "topic": "данные",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "длительность",
+      "to": "время",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "временное измерение существования",
+      "verb_override": null,
+      "ru_original": "длительность выражает временное измерение существования",
+      "en_original": "duration expresses the temporal dimension of existence",
+      "source": "SeedFromPredicate",
+      "topic": "длительность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "длительность",
+      "to": "процесс",
+      "rel_type": "RelDiffersFrom",
+      "object_case": "CaseGenitive",
+      "object_text": "события",
+      "verb_override": null,
+      "ru_original": "длительность отличает процесс от события",
+      "en_original": "duration distinguishes process from event",
+      "source": "SeedFromPredicate",
+      "topic": "длительность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "договор",
+      "to": "закон",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "взаимные обязательства",
+      "verb_override": null,
+      "ru_original": "договор устанавливает взаимные обязательства",
+      "en_original": "an agreement establishes mutual obligations",
+      "source": "SeedFromPredicate",
+      "topic": "договор",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "договор",
+      "to": "доверие",
+      "rel_type": "RelRequires",
+      "object_case": "CaseGenitive",
+      "object_text": "доверия к исполнению",
+      "verb_override": null,
+      "ru_original": "договор требует доверия к исполнению",
+      "en_original": "an agreement requires trust in execution",
+      "source": "SeedFromPredicate",
+      "topic": "договор",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "долженствование",
+      "to": "мораль",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "моральное требование",
+      "verb_override": null,
+      "ru_original": "долженствование выражает моральное требование",
+      "en_original": "obligation expresses a moral demand",
+      "source": "SeedFromPredicate",
+      "topic": "долженствование",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "долженствование",
+      "to": "желание",
+      "rel_type": "RelDiffersFrom",
+      "object_case": "CaseGenitive",
+      "object_text": "желания",
+      "verb_override": null,
+      "ru_original": "долженствование отличается от желания",
+      "en_original": "obligation differs from desire",
+      "source": "SeedFromPredicate",
+      "topic": "долженствование",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "дух",
+      "to": "сущность",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "нематериальную сущность",
+      "verb_override": null,
+      "ru_original": "дух выражает нематериальную сущность",
+      "en_original": "spirit expresses an immaterial essence",
+      "source": "SeedFromPredicate",
+      "topic": "дух",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "дух",
+      "to": "человек",
+      "rel_type": "RelDiffersFrom",
+      "object_case": "CaseGenitive",
+      "object_text": "тела",
+      "verb_override": null,
+      "ru_original": "дух отличается от тела",
+      "en_original": "spirit differs from body",
+      "source": "SeedFromPredicate",
+      "topic": "дух",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "душа",
+      "to": "опыт",
+      "rel_type": "RelIsA",
+      "object_case": "CaseInstrumental",
+      "object_text": "глубиной личного опыта",
+      "verb_override": null,
+      "ru_original": "душа есть глубина личного опыта",
+      "en_original": "soul is the depth of personal experience",
+      "source": "SeedFromPredicate",
+      "topic": "душа",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "душа",
+      "to": "жизнь",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "единство внутренней жизни",
+      "verb_override": null,
+      "ru_original": "душа выражает единство внутренней жизни",
+      "en_original": "soul expresses the unity of inner life",
+      "source": "SeedFromPredicate",
+      "topic": "душа",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "идентичность",
+      "to": "время",
+      "rel_type": "RelPresupposes",
+      "object_case": "CaseAccusative",
+      "object_text": "преемственность во времени",
+      "verb_override": null,
+      "ru_original": "идентичность предполагает преемственность во времени",
+      "en_original": "identity presupposes continuity over time",
+      "source": "SeedFromPredicate",
+      "topic": "идентичность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "идентичность",
+      "to": "самоопределение",
+      "rel_type": "RelBuiltThrough",
+      "object_case": "CaseAccusative",
+      "object_text": "самоопределение",
+      "verb_override": null,
+      "ru_original": "идентичность различается через самоопределение",
+      "en_original": "identity is differentiated through self-determination",
+      "source": "SeedFromPredicate",
+      "topic": "идентичность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "инстинкт",
+      "to": "действие",
+      "rel_type": "RelOrientsToward",
+      "object_case": "CaseAccusative",
+      "object_text": "действия без осознания",
+      "verb_override": null,
+      "ru_original": "инстинкт направляет действия без осознания",
+      "en_original": "instinct directs actions without awareness",
+      "source": "SeedFromPredicate",
+      "topic": "инстинкт",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "инстинкт",
+      "to": "воля",
+      "rel_type": "RelDiffersFrom",
+      "object_case": "CaseGenitive",
+      "object_text": "воли",
+      "verb_override": null,
+      "ru_original": "инстинкт отличается от воли",
+      "en_original": "instinct differs from will",
+      "source": "SeedFromPredicate",
+      "topic": "инстинкт",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "когерентность",
+      "to": "система",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "согласованность частей",
+      "verb_override": null,
+      "ru_original": "когерентность выражает согласованность частей",
+      "en_original": "coherence expresses the consistency of parts",
+      "source": "SeedFromPredicate",
+      "topic": "когерентность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "когерентность",
+      "to": "гармония",
+      "rel_type": "RelGives",
+      "object_case": "CaseAccusative",
+      "object_text": "цельность",
+      "verb_override": null,
+      "ru_original": "когерентность обеспечивает цельность",
+      "en_original": "coherence ensures integrity",
+      "source": "SeedFromPredicate",
+      "topic": "когерентность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "код",
+      "to": "информация",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "информацию в компактной форме",
+      "verb_override": null,
+      "ru_original": "код передаёт информацию в компактной форме",
+      "en_original": "code conveys information in a compact form",
+      "source": "SeedFromPredicate",
+      "topic": "код",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "код",
+      "to": "знак",
+      "rel_type": "RelRequires",
+      "object_case": "CaseGenitive",
+      "object_text": "декодирования",
+      "verb_override": null,
+      "ru_original": "код требует декодирования",
+      "en_original": "code requires decoding",
+      "source": "SeedFromPredicate",
+      "topic": "код",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "логика",
+      "to": "мышление",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "правила мышления",
+      "verb_override": null,
+      "ru_original": "логика устанавливает правила мышления",
+      "en_original": "logic establishes the rules of thinking",
+      "source": "SeedFromPredicate",
+      "topic": "логика",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "логика",
+      "to": "разум",
+      "rel_type": "RelSupports",
+      "object_case": "CaseAccusative",
+      "object_text": "последовательность рассуждений",
+      "verb_override": null,
+      "ru_original": "логика обеспечивает последовательность рассуждений",
+      "en_original": "logic ensures the consistency of reasoning",
+      "source": "SeedFromPredicate",
+      "topic": "логика",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "нация",
+      "to": "идентичность",
+      "rel_type": "RelTransforms",
+      "object_case": "CaseAccusative",
+      "object_text": "коллективную идентичность",
+      "verb_override": null,
+      "ru_original": "нация формирует коллективную идентичность",
+      "en_original": "a nation forms collective identity",
+      "source": "SeedFromPredicate",
+      "topic": "нация",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "нация",
+      "to": "культура",
+      "rel_type": "RelReliesOn",
+      "object_case": "CaseAccusative",
+      "object_text": "общую историю и культуру",
+      "verb_override": null,
+      "ru_original": "нация основана на общей истории и культуре",
+      "en_original": "a nation is based on shared history and culture",
+      "source": "SeedFromPredicate",
+      "topic": "нация",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "нейрон",
+      "to": "система",
+      "rel_type": "RelIsA",
+      "object_case": "CaseInstrumental",
+      "object_text": "единицей нервной системы",
+      "verb_override": null,
+      "ru_original": "нейрон является основной единицей нервной системы",
+      "en_original": "a neuron is the basic unit of the nervous system",
+      "source": "SeedFromPredicate",
+      "topic": "нейрон",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "нейрон",
+      "to": "информация",
+      "rel_type": "RelTransforms",
+      "object_case": "CaseAccusative",
+      "object_text": "информацию",
+      "verb_override": null,
+      "ru_original": "нейрон обрабатывает и передаёт информацию",
+      "en_original": "a neuron processes and transmits information",
+      "source": "SeedFromPredicate",
+      "topic": "нейрон",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "объективность",
+      "to": "мнение",
+      "rel_type": "RelRequires",
+      "object_case": "CaseGenitive",
+      "object_text": "независимости от перспективы",
+      "verb_override": null,
+      "ru_original": "объективность требует независимости от перспективы",
+      "en_original": "objectivity requires independence from perspective",
+      "source": "SeedFromPredicate",
+      "topic": "объективность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "объективность",
+      "to": "диалог",
+      "rel_type": "RelVerifiedBy",
+      "object_case": "CaseAccusative",
+      "object_text": "межсубъектное согласие",
+      "verb_override": null,
+      "ru_original": "объективность проверяется межсубъектным согласием",
+      "en_original": "objectivity is verified by intersubjective agreement",
+      "source": "SeedFromPredicate",
+      "topic": "объективность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "поэзия",
+      "to": "красота",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "красоту через язык",
+      "verb_override": null,
+      "ru_original": "поэзия выражает красоту через язык",
+      "en_original": "poetry expresses beauty through language",
+      "source": "SeedFromPredicate",
+      "topic": "поэзия",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "поэзия",
+      "to": "граница",
+      "rel_type": "RelTransforms",
+      "object_case": "CaseAccusative",
+      "object_text": "границы выразимого",
+      "verb_override": null,
+      "ru_original": "поэзия преодолевает границы выразимого",
+      "en_original": "poetry overcomes the boundaries of the expressible",
+      "source": "SeedFromPredicate",
+      "topic": "поэзия",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "право",
+      "to": "закон",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "нормативные границы",
+      "verb_override": null,
+      "ru_original": "право устанавливает нормативные границы",
+      "en_original": "right establishes normative boundaries",
+      "source": "SeedFromPredicate",
+      "topic": "право",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "право",
+      "to": "справедливость",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "притязание на справедливость",
+      "verb_override": null,
+      "ru_original": "право выражает притязание на справедливость",
+      "en_original": "right expresses a claim to justice",
+      "source": "SeedFromPredicate",
+      "topic": "право",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "присутствие",
+      "to": "время",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "включённость в момент",
+      "verb_override": null,
+      "ru_original": "присутствие выражает включённость в момент",
+      "en_original": "presence expresses inclusion in the moment",
+      "source": "SeedFromPredicate",
+      "topic": "присутствие",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "присутствие",
+      "to": "покой",
+      "rel_type": "RelDiffersFrom",
+      "object_case": "CaseGenitive",
+      "object_text": "бездействия",
+      "verb_override": null,
+      "ru_original": "присутствие отличается от бездействия осознанностью",
+      "en_original": "presence differs from inaction by awareness",
+      "source": "SeedFromPredicate",
+      "topic": "присутствие",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "психика",
+      "to": "жизнь",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "внутреннюю жизнь субъекта",
+      "verb_override": null,
+      "ru_original": "психика выражает внутреннюю жизнь субъекта",
+      "en_original": "psyche expresses the inner life of the subject",
+      "source": "SeedFromPredicate",
+      "topic": "психика",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "психика",
+      "to": "человек",
+      "rel_type": "RelDiffersFrom",
+      "object_case": "CaseGenitive",
+      "object_text": "тела",
+      "verb_override": null,
+      "ru_original": "психика отличается от тела нематериальностью",
+      "en_original": "psyche differs from body by immateriality",
+      "source": "SeedFromPredicate",
+      "topic": "психика",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "революция",
+      "to": "традиция",
+      "rel_type": "RelDestroys",
+      "object_case": "CaseAccusative",
+      "object_text": "непрерывность",
+      "verb_override": null,
+      "ru_original": "революция прерывает непрерывность",
+      "en_original": "revolution interrupts continuity",
+      "source": "SeedFromPredicate",
+      "topic": "революция",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "революция",
+      "to": "будущее",
+      "rel_type": "RelReveals",
+      "object_case": "CaseAccusative",
+      "object_text": "новые горизонты",
+      "verb_override": null,
+      "ru_original": "революция открывает новые горизонты",
+      "en_original": "revolution opens new horizons",
+      "source": "SeedFromPredicate",
+      "topic": "революция",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "ремонт",
+      "to": "система",
+      "rel_type": "RelReconstructs",
+      "object_case": "CaseAccusative",
+      "object_text": "функцию",
+      "verb_override": null,
+      "ru_original": "ремонт восстанавливает функцию",
+      "en_original": "repair restores function",
+      "source": "SeedFromPredicate",
+      "topic": "ремонт",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "ремонт",
+      "to": "причина",
+      "rel_type": "RelPresupposes",
+      "object_case": "CaseAccusative",
+      "object_text": "диагностику поломки",
+      "verb_override": null,
+      "ru_original": "ремонт предполагает диагностику поломки",
+      "en_original": "repair presupposes diagnosis of breakage",
+      "source": "SeedFromPredicate",
+      "topic": "ремонт",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "решимость",
+      "to": "сомнение",
+      "rel_type": "RelTransforms",
+      "object_case": "CaseAccusative",
+      "object_text": "колебания",
+      "verb_override": null,
+      "ru_original": "решимость преодолевает колебания",
+      "en_original": "determination overcomes hesitation",
+      "source": "SeedFromPredicate",
+      "topic": "решимость",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "решимость",
+      "to": "воля",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "силу воли",
+      "verb_override": null,
+      "ru_original": "решимость выражает силу воли",
+      "en_original": "determination expresses the strength of will",
+      "source": "SeedFromPredicate",
+      "topic": "решимость",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "рынок",
+      "to": "обмен",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "баланс спроса и предложения",
+      "verb_override": null,
+      "ru_original": "рынок балансирует спрос и предложение",
+      "en_original": "market balances supply and demand",
+      "source": "SeedFromPredicate",
+      "topic": "рынок",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "рынок",
+      "to": "ценность",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "экономическую рациональность",
+      "verb_override": null,
+      "ru_original": "рынок выражает экономическую рациональность",
+      "en_original": "market expresses economic rationality",
+      "source": "SeedFromPredicate",
+      "topic": "рынок",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "самоопределение",
+      "to": "идентичность",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "идентичность",
+      "verb_override": null,
+      "ru_original": "самоопределение выражает идентичность",
+      "en_original": "self-determination expresses identity",
+      "source": "SeedFromPredicate",
+      "topic": "самоопределение",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "самоопределение",
+      "to": "граница",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "границы я",
+      "verb_override": null,
+      "ru_original": "самоопределение формирует границы я",
+      "en_original": "self-determination forms the boundaries of the self",
+      "source": "SeedFromPredicate",
+      "topic": "самоопределение",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "самооценка",
+      "to": "личность",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "отношение к себе",
+      "verb_override": null,
+      "ru_original": "самооценка устанавливает отношение к себе",
+      "en_original": "self-assessment establishes the attitude toward oneself",
+      "source": "SeedFromPredicate",
+      "topic": "самооценка",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "самооценка",
+      "to": "развитие",
+      "rel_type": "RelCanBe",
+      "object_case": "CaseInstrumental",
+      "object_text": "источником роста или ограничения",
+      "verb_override": null,
+      "ru_original": "самооценка может быть источником роста или ограничения",
+      "en_original": "self-assessment can be a source of growth or limitation",
+      "source": "SeedFromPredicate",
+      "topic": "самооценка",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "свидетельство",
+      "to": "правда",
+      "rel_type": "RelSupports",
+      "object_case": "CaseAccusative",
+      "object_text": "факты",
+      "verb_override": null,
+      "ru_original": "свидетельство подтверждает факты",
+      "en_original": "testimony confirms facts",
+      "source": "SeedFromPredicate",
+      "topic": "свидетельство",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "свидетельство",
+      "to": "истина",
+      "rel_type": "RelRequires",
+      "object_case": "CaseGenitive",
+      "object_text": "достоверности",
+      "verb_override": null,
+      "ru_original": "свидетельство требует достоверности",
+      "en_original": "testimony requires authenticity",
+      "source": "SeedFromPredicate",
+      "topic": "свидетельство",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "слушание",
+      "to": "человек",
+      "rel_type": "RelReveals",
+      "object_case": "CaseAccusative",
+      "object_text": "доступ к другому",
+      "verb_override": null,
+      "ru_original": "слушание открывает доступ к другому",
+      "en_original": "listening opens access to the other",
+      "source": "SeedFromPredicate",
+      "topic": "слушание",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "слушание",
+      "to": "внимание",
+      "rel_type": "RelRequires",
+      "object_case": "CaseGenitive",
+      "object_text": "внимательности",
+      "verb_override": null,
+      "ru_original": "слушание требует внимательности",
+      "en_original": "listening requires attentiveness",
+      "source": "SeedFromPredicate",
+      "topic": "слушание",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "собственность",
+      "to": "ценность",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "отношение к вещам",
+      "verb_override": null,
+      "ru_original": "собственность выражает отношение к вещам",
+      "en_original": "ownership expresses the relationship to things",
+      "source": "SeedFromPredicate",
+      "topic": "собственность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "собственность",
+      "to": "граница",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "границы",
+      "verb_override": null,
+      "ru_original": "собственность устанавливает границы",
+      "en_original": "ownership establishes boundaries",
+      "source": "SeedFromPredicate",
+      "topic": "собственность",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "становление",
+      "to": "действие",
+      "rel_type": "RelTransformsInto",
+      "object_case": "CaseAccusative",
+      "object_text": "актуальность",
+      "verb_override": null,
+      "ru_original": "становление — это процесс перехода из потенции в актуальность",
+      "en_original": "becoming is the process of transitioning from potentiality to actuality",
+      "source": "SeedFromPredicate",
+      "topic": "становление",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "становление",
+      "to": "развитие",
+      "rel_type": "RelRelatedTo",
+      "object_case": "CaseInstrumental",
+      "object_text": "развитием во времени",
+      "verb_override": null,
+      "ru_original": "становление связано с развитием во времени",
+      "en_original": "becoming is related to development over time",
+      "source": "SeedFromPredicate",
+      "topic": "становление",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "цифра",
+      "to": "наука",
+      "rel_type": "RelExpresses",
+      "object_case": "CaseAccusative",
+      "object_text": "дискретность и точность",
+      "verb_override": null,
+      "ru_original": "цифра выражает дискретность и точность",
+      "en_original": "a digit expresses discreteness and precision",
+      "source": "SeedFromPredicate",
+      "topic": "цифра",
+      "rationale": null,
+      "counter": null,
+      "synthesis": null
+    },
+    {
+      "from": "цифра",
+      "to": "опыт",
+      "rel_type": "RelSets",
+      "object_case": "CaseAccusative",
+      "object_text": "опыт счёта",
+      "verb_override": null,
+      "ru_original": "цифра формализует опыт счёта",
+      "en_original": "a digit formalizes the experience of counting",
+      "source": "SeedFromPredicate",
+      "topic": "цифра",
       "rationale": null,
       "counter": null,
       "synthesis": null

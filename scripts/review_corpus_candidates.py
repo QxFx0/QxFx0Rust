@@ -11,10 +11,11 @@ checked. A candidate is `ready_for_slot_typing` only when every check holds:
   graph_atom_in_seed      graph_atom_id exists in the seed graph asset
   source_row_present      source_ref points at a real quarantine row
 
-The graph check is the one that bites: of the original 39 candidates only
-воспроизводимость, выбор, доказательство and закон are real seed atoms — the
-other 35 stamped atom ids that do not exist and stay blocked until the graph
-is extended or the id is explicitly nulled.
+The graph check is the one that bites: it found that 35 of the original 39
+candidates stamped atom ids that do not exist. The seed graph was then
+extended editorially (scripts/extend_seed_graph.py: 35 CatConcept atoms with
+two verbatim-curated edges each), so all 39 now ground and the verdicts
+regenerate from ground truth on every run.
 
 Verdicts are recomputed from ground truth on every run; `--check` fails on
 any byte drift of verdicts.json. The script also validates the editorial
@@ -113,8 +114,9 @@ def build_verdicts():
             "verdicts are recomputed from the seed graph, the noun lexicon "
             "and the quarantine rows on every run; edit ground truth, not "
             "this file",
-            "ready_for_slot_typing candidates must be covered by exactly the "
-            "rows of typed_slots.tsv",
+            "every ready_for_slot_typing candidate must be covered by "
+            "typed_slots.tsv; the file may additionally cover non-candidate "
+            "quarantined topics",
         ],
         "verdicts": verdicts,
     }
@@ -139,10 +141,10 @@ def validate_typed_slots(verdicts):
             "object_id": object_id,
             "thesis_surface": surface,
         }
-    if set(rows) != ready:
+    if not ready.issubset(set(rows)):
         sys.exit(
-            f"typed_slots covers {sorted(set(rows) ^ ready)} beyond/besides the "
-            f"ready set {sorted(ready)}"
+            f"typed_slots must cover every ready candidate; missing: "
+            f"{sorted(ready - set(rows))}"
         )
     quarantine_by_topic = {entry["topic"]: entry for entry in load_jsonl(QUARANTINE)}
     for topic, row in sorted(rows.items()):
@@ -187,21 +189,37 @@ def measure_importer(haskell_repo):
             check=True,
         )
         inventory = load_jsonl(output / "inventory.jsonl")
-        covered = {entry["topic"]: entry for entry in inventory if entry["topic"] in
-                   {row for row in load_typed_topics()}}
-        still_missing = [
-            topic
-            for topic, entry in covered.items()
-            if "missing_typed_slots" in entry["reasons"]
-        ]
+        metrics = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
+        typed_topics = load_typed_topics()
+        canonical_reasons = {
+            entry["topic"]: set(entry["reasons"])
+            for entry in load_jsonl(QUARANTINE)
+        }
+        still_missing = []
+        status_flips = []
+        for entry in inventory:
+            topic = entry["topic"]
+            if topic not in typed_topics:
+                continue
+            if "missing_typed_slots" in entry["reasons"]:
+                still_missing.append(topic)
+            # A typed topic may legitimately leave quarantine when typing was
+            # its ONLY blocker; a topic that sheds other reasons too, or one
+            # that was never quarantined, is an anomaly worth failing on.
+            if entry["status"] != "quarantined":
+                before = canonical_reasons.get(topic)
+                if before is not None and before - {"missing_typed_slots"}:
+                    status_flips.append(topic)
         if still_missing:
             sys.exit(f"measurement failed: {still_missing} still miss typed slots")
-        promoted_status = [t for t, e in covered.items() if e["status"] != "quarantined"]
-        if promoted_status:
-            sys.exit(f"measurement must not promote anything, promoted: {promoted_status}")
+        if status_flips:
+            sys.exit(f"measurement shed unexpected blockers for {status_flips}")
+        if metrics.get("promotion_enabled") is not False or metrics.get("status") != "audit_only":
+            sys.exit("measurement must stay audit_only with promotion disabled")
+        admitted = sum(1 for e in inventory if e["status"] != "quarantined")
         print(
-            f"measurement: {len(covered)} topics left missing_typed_slots, "
-            "none promoted (audit_only holds)",
+            f"measurement: missing_typed_slots cleared for typed topics, "
+            f"{admitted} topics meet admission criteria, audit_only holds",
             file=sys.stderr,
         )
         print(result.stderr.strip(), file=sys.stderr)

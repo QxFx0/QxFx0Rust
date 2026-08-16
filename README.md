@@ -15,7 +15,7 @@ The CLI is the supported production surface. It includes:
   (reflexive included), 42,239 adjective and 68 closed-class pronoun
   paradigms, rule-based out-of-vocabulary declension and preposition
   government;
-- 172 seed atoms, 276 semantic relations and 69 curated `FactRecord` values;
+- 207 seed atoms, 346 semantic relations and 69 curated `FactRecord` values;
 - bounded FactId-grounded positions and replay-stable semantic episodes;
 - a manifest-validated active knowledge pack with a replay-visible SHA-256 fingerprint;
 - 127 Russian surface templates and six-case morphology;
