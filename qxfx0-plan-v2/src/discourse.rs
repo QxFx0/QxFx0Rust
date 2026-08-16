@@ -24,7 +24,7 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 use super::proposition::PropositionId;
-use qxfx0_semantic::ClaimRole;
+use qxfx0_types::plan::ClaimRole;
 
 pub const CLAIM_DOMAIN: &str = "qxfx0:claim:v1";
 pub const DISCOURSE_DOMAIN: &str = "qxfx0:discourse:v1";
@@ -330,7 +330,7 @@ fn collect_claims(
 mod tests {
     use super::*;
     use crate::proposition::{PropositionDagBuilder, PropositionNode};
-    use qxfx0_semantic::SemanticId;
+    use qxfx0_types::plan::SemanticId;
 
     fn predicate(subject: &str) -> PropositionNode {
         PropositionNode::Predicate {

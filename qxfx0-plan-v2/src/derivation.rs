@@ -384,7 +384,7 @@ impl DerivationDagBuilder {
 mod tests {
     use super::*;
     use crate::proposition::PropositionDagBuilder;
-    use qxfx0_semantic::SemanticId;
+    use qxfx0_types::plan::SemanticId;
 
     fn sem(value: &str) -> SemanticId {
         SemanticId::try_new(value).expect("semantic id")

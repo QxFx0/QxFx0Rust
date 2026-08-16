@@ -4,6 +4,7 @@ use qxfx0_types::AtomId;
 use serde::{Deserialize, Serialize};
 
 use crate::FactId;
+pub use qxfx0_types::plan::{ClaimRole, Confidence, NonEmptyVec, SemanticId};
 
 /// Version of the response-plan contract. `ShadowV1` remains for replaying
 /// historical fallback traces; `ContentV1` is renderer-authoritative.
@@ -129,26 +130,6 @@ impl FallbackSubject {
     }
 }
 
-/// Stable identifier used by response-plan contracts. Semantic content is
-/// carried by identifiers; surface strings remain in audited renderer assets.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct SemanticId(String);
-
-impl SemanticId {
-    pub fn try_new(value: impl Into<String>) -> Result<Self, String> {
-        let value = value.into();
-        if value.trim().is_empty() {
-            Err("semantic id must not be empty".into())
-        } else {
-            Ok(Self(value))
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ClaimId(String);
 
@@ -182,65 +163,6 @@ impl PredicateRef {
 
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-}
-
-/// Structurally non-empty ordered collection used for claims and predicate
-/// references. Empty ready plans cannot be represented through constructors.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NonEmptyVec<T> {
-    first: T,
-    additional: Vec<T>,
-}
-
-impl<T> NonEmptyVec<T> {
-    pub fn one(first: T) -> Self {
-        Self {
-            first,
-            additional: Vec::new(),
-        }
-    }
-
-    pub fn push(&mut self, value: T) {
-        self.additional.push(value);
-    }
-
-    pub fn len(&self) -> usize {
-        1 + self.additional.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        false
-    }
-
-    pub fn first(&self) -> &T {
-        &self.first
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        std::iter::once(&self.first).chain(self.additional.iter())
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ClaimRole {
-    Thesis,
-    Support,
-    Counterpoint,
-    Consequence,
-    DialogueAct,
-}
-
-impl ClaimRole {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Thesis => "thesis",
-            Self::Support => "support",
-            Self::Counterpoint => "counterpoint",
-            Self::Consequence => "consequence",
-            Self::DialogueAct => "dialogue_act",
-        }
     }
 }
 
@@ -312,30 +234,6 @@ impl ClaimEvidence {
 
     pub fn record(&self) -> Option<u16> {
         self.record
-    }
-}
-
-/// Confidence represented as basis points to exclude NaN and platform-level
-/// floating-point drift from replay-visible plans.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Confidence(u16);
-
-impl Confidence {
-    pub const MAX_BASIS_POINTS: u16 = 10_000;
-
-    pub fn from_basis_points(value: u16) -> Result<Self, String> {
-        if value <= Self::MAX_BASIS_POINTS {
-            Ok(Self(value))
-        } else {
-            Err(format!(
-                "confidence {value} exceeds {} basis points",
-                Self::MAX_BASIS_POINTS
-            ))
-        }
-    }
-
-    pub fn basis_points(self) -> u16 {
-        self.0
     }
 }
 

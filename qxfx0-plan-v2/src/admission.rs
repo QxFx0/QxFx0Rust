@@ -290,8 +290,8 @@ mod tests {
     #[test]
     fn is_curated_distinguishes_status() {
         use qxfx0_semantic::get_resolver;
-        use qxfx0_semantic::SemanticId;
         use qxfx0_semantic::{FactKind, TypedRelationModel};
+        use qxfx0_types::plan::SemanticId;
         use qxfx0_types::ConceptId;
 
         let curated = qxfx0_semantic::FactRecord {
@@ -348,9 +348,9 @@ mod tests {
         assert_eq!(left.digest(), right.digest());
         let _ = PropositionDagBuilder::new();
         let _ = PropositionNode::Predicate {
-            subject: qxfx0_semantic::SemanticId::try_new("x").unwrap(),
-            relation: qxfx0_semantic::SemanticId::try_new("y").unwrap(),
-            object: qxfx0_semantic::SemanticId::try_new("z").unwrap(),
+            subject: qxfx0_types::plan::SemanticId::try_new("x").unwrap(),
+            relation: qxfx0_types::plan::SemanticId::try_new("y").unwrap(),
+            object: qxfx0_types::plan::SemanticId::try_new("z").unwrap(),
         };
     }
 }

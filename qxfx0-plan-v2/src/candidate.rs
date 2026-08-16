@@ -23,7 +23,7 @@ use super::discourse::{
     projected_roles, ClaimId, DiscourseInvariantError, DiscoursePlan, ProjectedClaim,
 };
 use super::proposition::{PropositionDag, PropositionId, PropositionInvariantError};
-use qxfx0_semantic::ClaimRole;
+use qxfx0_types::plan::ClaimRole;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CandidateInvariantError {

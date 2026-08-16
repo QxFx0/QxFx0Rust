@@ -290,9 +290,9 @@ mod tests {
     use crate::discourse::{DiscoursePlan, DiscourseTree};
     use crate::proposition::{PropositionDagBuilder, PropositionNode};
     use qxfx0_semantic::active_pack_set;
-    use qxfx0_semantic::SemanticId;
     use qxfx0_semantic::SemanticProposition;
     use qxfx0_semantic::{argued_topic_registry, ArguedTopic};
+    use qxfx0_types::plan::SemanticId;
 
     fn v1_context() -> EvidenceEvaluationContext {
         EvidenceEvaluationContext::new(42, None)

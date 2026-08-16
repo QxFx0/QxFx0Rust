@@ -39,8 +39,8 @@ use crate::{
 use qxfx0_morphology::MorphologyRuntime;
 use qxfx0_semantic::active_pack_set;
 use qxfx0_semantic::FactId;
-use qxfx0_semantic::SemanticId;
 use qxfx0_semantic::{argued_topic_registry, ArguedTopicRegistry};
+use qxfx0_types::plan::SemanticId;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum AuditedCorpusError {

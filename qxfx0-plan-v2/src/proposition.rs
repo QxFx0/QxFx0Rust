@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
-use qxfx0_semantic::SemanticId;
+use qxfx0_types::plan::SemanticId;
 
 /// Domain separation tag. Any change to the encoding below must change this
 /// string, because replay compares digests and a silent re-encoding would make

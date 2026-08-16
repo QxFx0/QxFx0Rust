@@ -13,6 +13,7 @@ pub mod morphology;
 pub mod move_family;
 pub mod network;
 pub mod perspective;
+pub mod plan;
 pub mod proposition_type;
 pub mod relation_type;
 pub mod semantic_intent;

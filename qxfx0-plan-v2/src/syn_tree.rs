@@ -562,7 +562,7 @@ mod tests {
     use crate::discourse::{DiscoursePlan, DiscourseTree};
     use crate::proposition::{PropositionDagBuilder, PropositionNode};
     use crate::valency::valency_lexicon;
-    use qxfx0_semantic::SemanticId;
+    use qxfx0_types::plan::SemanticId;
 
     fn occurrence() -> DiscourseOccurrenceId {
         let mut builder = PropositionDagBuilder::new();
