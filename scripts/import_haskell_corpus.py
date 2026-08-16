@@ -60,6 +60,17 @@ def source_is_dirty(repository, paths):
     return result.returncode != 0 or bool(result.stdout.strip())
 
 
+# Uninflected function words (conjunctions, particles, prepositions) never
+# carry paradigms, and the noun lexicon rightly omits them; requiring a
+# morphology surface for them blocked 86 multi-word pilot topics on tokens
+# like «и», «к», «на» alone.
+FUNCTION_WORDS = frozenset(
+    """и к как или на с не для от перед но а же бы ли в по за из у о об при
+    без до через про между под над то что чтобы если когда даже уже еще ещё
+    все всё их его ее её мой твой наш ваш свой этот эта эти нас них себе""".split()
+)
+
+
 def morphology_surfaces(lexemes_path):
     lexemes = json.loads(lexemes_path.read_text(encoding="utf-8"))
     surfaces = set()
@@ -141,6 +152,13 @@ def main():
         type=Path,
         default=repo_default / "data/imports/haskell-curated-pilot-v1",
     )
+    parser.add_argument(
+        "--extra-concepts",
+        type=Path,
+        default=None,
+        help="additional candidate concepts.json merged into the alias index "
+        "(review measurement only; matches are recorded, never admitted)",
+    )
     args = parser.parse_args()
     if args.limit <= 0:
         parser.error("--limit must be positive")
@@ -156,6 +174,13 @@ def main():
     corpus = load_jsonl(corpus_path)
     ontology = load_jsonl(ontology_path)
     aliases = concept_index(concepts_path)
+    extra_concepts = []
+    if args.extra_concepts is not None:
+        extra_concepts = json.loads(args.extra_concepts.read_text(encoding="utf-8"))
+        extra_index = concept_index(args.extra_concepts)
+        for normalized, matches in extra_index.items():
+            if normalized not in aliases:
+                aliases[normalized] = matches
     surfaces = morphology_surfaces(lexemes_path)
     audited = audited_topics(tsv_path)
 
@@ -187,8 +212,14 @@ def main():
         matches = aliases.get(topic, [])
         concept_id = None
         graph_atom_id = None
+        concept_source = None
         if not matches:
             reasons.append("unknown_concept")
+        elif args.extra_concepts is not None and any(
+            match in extra_concepts for match in matches
+        ):
+            concept_source = "candidate"
+            reasons.append("candidate_concept_only")
         elif len(matches) > 1:
             reasons.append("ambiguous_concept")
         else:
@@ -196,7 +227,9 @@ def main():
             graph_atom_id = matches[0]["graph_atom_id"]
 
         topic_tokens = topic.split()
-        if topic_tokens and not all(token in surfaces for token in topic_tokens):
+        if topic_tokens and not all(
+            token in surfaces or token in FUNCTION_WORDS for token in topic_tokens
+        ):
             reasons.append("missing_morphology_surface")
         reasons.extend(validate_predicates(topic, record.get("predicates")))
 
@@ -220,6 +253,7 @@ def main():
             "source_line": first_line[topic],
             "topic": topic,
             "concept_id": concept_id,
+            "concept_source": concept_source,
             "graph_atom_id": graph_atom_id,
             "source_record_count": len(records),
             "status": status,

@@ -1,0 +1,259 @@
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.идентичность", "source_line": 2, "topic": "идентичность"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.граница", "source_line": 3, "topic": "граница"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.ремонт", "source_line": 4, "topic": "ремонт"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.цифра", "source_line": 5, "topic": "цифра"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.доказательство", "source_line": 6, "topic": "доказательство"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.становление", "source_line": 7, "topic": "становление"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 9, "topic": "целостность жизни"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 10, "topic": "соотнесённость с целым"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 11, "topic": "различение внутри и снаружи"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 12, "topic": "условие формы"}
+{"blockers": ["duplicate_topic_records", "missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 13, "topic": "дискретность и точность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 14, "topic": "формализация опыта"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 15, "topic": "преемственность я"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 16, "topic": "нарратив о себе"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 17, "topic": "восстановление функции"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 18, "topic": "диагностика поломки"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 19, "topic": "осознанность выбора"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.самоопределение", "source_line": 20, "topic": "самоопределение"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 21, "topic": "автономия суждения"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.аксиома", "source_line": 22, "topic": "аксиома"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 23, "topic": "акт доверия"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 24, "topic": "акт обращения к личному прошлому"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 25, "topic": "актуализация прошлого"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.алгоритм", "source_line": 26, "topic": "алгоритм"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 27, "topic": "асимметрия отношений"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 28, "topic": "аспект от первого лица"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.беспристрастность", "source_line": 29, "topic": "беспристрастность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 30, "topic": "будущее как возможность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.верность", "source_line": 31, "topic": "верность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 32, "topic": "вечность в мгновении"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 33, "topic": "вина и заслуга"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 34, "topic": "внутренний закон"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 35, "topic": "возвращение к работоспособности"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 36, "topic": "воздаяние по заслугам"}
+{"blockers": ["missing_typed_slots", "ungrounded_russian_surface", "unknown_concept"], "concept_candidate": null, "source_line": 37, "topic": "восприятие и рефлексию"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.воспроизводимость", "source_line": 38, "topic": "воспроизводимость"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 39, "topic": "встреча с собой"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.выбор", "source_line": 40, "topic": "выбор"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 41, "topic": "выбор цели"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 42, "topic": "выражение позиции"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 43, "topic": "гармония формы"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 44, "topic": "глубина невыразимого"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 45, "topic": "глубина тишины"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 47, "topic": "готовность к ответу"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 48, "topic": "готовность к риску"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 49, "topic": "граница выразимого"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.благодарность", "source_line": 50, "topic": "благодарность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 51, "topic": "актом отказа или знаком присутствия"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 52, "topic": "граница смысла"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 53, "topic": "границу между я и другими"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 54, "topic": "границу через которую жизнь обретает конечную форму"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.данные", "source_line": 55, "topic": "данные"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 56, "topic": "дар без расчёта"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 58, "topic": "действие к выбранной цели"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 60, "topic": "делегирование и контроль"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 61, "topic": "доверие между субъектами"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 62, "topic": "доверием к источнику или опыту"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 63, "topic": "доверием к тому что не может быть проверено"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.договор", "source_line": 64, "topic": "договор"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 65, "topic": "долг памяти"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.долженствование", "source_line": 66, "topic": "долженствование"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 67, "topic": "достоверность и искажение"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.дух", "source_line": 68, "topic": "дух"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.душа", "source_line": 69, "topic": "душа"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 70, "topic": "единство поля опыта"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 71, "topic": "жизни неотменимость"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 73, "topic": "забывание как условие"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.закон", "source_line": 74, "topic": "закон"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 75, "topic": "защита и ограничение"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 76, "topic": "защитная реакция"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 77, "topic": "игнорирование последствий"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 78, "topic": "идентификация с собой"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 79, "topic": "идентичность через время"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 80, "topic": "из событий и их интерпретации"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 81, "topic": "избрано или навязано обстоятельствами"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 82, "topic": "изоляция или уединение"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.инстинкт", "source_line": 83, "topic": "инстинкт"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 84, "topic": "интенциональность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 85, "topic": "интерпретация прошлого"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 86, "topic": "искренность рассказа"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 88, "topic": "исполнение обещания"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 89, "topic": "к обобщению и абстракции"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 90, "topic": "к полезности"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 91, "topic": "как условие возможности любого суждения"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.длительность", "source_line": 92, "topic": "длительность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 93, "topic": "для восстановления и интеграции опыта"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 94, "topic": "избирательность и реконструкция"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 99, "topic": "каприз и случайность"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 100, "topic": "качественность опыта"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.когерентность", "source_line": 101, "topic": "когерентность"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.код", "source_line": 102, "topic": "код"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 103, "topic": "конвенция и произвол"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 104, "topic": "контактная поверхность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 105, "topic": "критика и сомнение"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 106, "topic": "легитимности для устойчивости"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.логика", "source_line": 107, "topic": "логика"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 108, "topic": "логическое умозаключение"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 109, "topic": "маскировка качества количеством"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 110, "topic": "материал через целенаправленное усилие"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 111, "topic": "мгновение и вечность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 112, "topic": "мера и соразмерность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 113, "topic": "метафора и буква"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 114, "topic": "мир и самого трудящегося"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "ungrounded_russian_surface", "unknown_concept"], "concept_candidate": null, "source_line": 117, "topic": "мышлением он не только выражает но и формирует мысль"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 118, "topic": "на возможность будущего"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 119, "topic": "на моральные или социальные обязательства"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 120, "topic": "на соответствие тому что произошло"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 121, "topic": "на то что имеет значение"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 122, "topic": "наблюдение за состояниями"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 123, "topic": "навык и мастерство"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 124, "topic": "наличие сознания как своего основания"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 125, "topic": "наперекор очевидности"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 126, "topic": "направление вектора жизни"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 127, "topic": "направленность усилия"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 128, "topic": "нарратив и факт"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 129, "topic": "насилие или забота"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 130, "topic": "настоящее как точка"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.нация", "source_line": 131, "topic": "нация"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 132, "topic": "независимость от наблюдателя"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.нейрон", "source_line": 133, "topic": "нейрон"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 134, "topic": "необратимо и неравномерно"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 135, "topic": "необратимо прошлое недоступно для изменения"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 136, "topic": "необратимое прекращение существования"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 137, "topic": "необходимость и случайность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 138, "topic": "об угрозе целостности"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 139, "topic": "об угрозе целостности субъекта"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 140, "topic": "обещание себе"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 141, "topic": "обоснованность и вес"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 142, "topic": "обоснованность не доказательством"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.объективность", "source_line": 143, "topic": "объективность"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 159, "topic": "обязательства перед другими"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 161, "topic": "ожидание угрозы"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 162, "topic": "опора на другого"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 163, "topic": "опыт через различение и именование"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 164, "topic": "ориентация на будущее"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 165, "topic": "осмысление конечности"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 166, "topic": "основание всего"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 167, "topic": "осознание последствий"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 168, "topic": "остановка и осмысление"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 169, "topic": "от воспринимающего и культурной рамки"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 170, "topic": "от интуиции потребностью в доказательстве"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 171, "topic": "от точки зрения рассказчика"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 172, "topic": "ответ на вопрос кто я"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 173, "topic": "ответ перед другими"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 175, "topic": "ответственность власти"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 176, "topic": "открытость пересмотру"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 177, "topic": "открытость проверке"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 178, "topic": "отсутствие движения и напряжения"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 179, "topic": "отсутствие значимого другого"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 180, "topic": "отсутствие контакта"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 181, "topic": "отсутствие основания"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 182, "topic": "отсутствие принуждения"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 183, "topic": "отсутствием движения"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 184, "topic": "отсутствием слов"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 186, "topic": "память коллектива"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 187, "topic": "паралич или действие"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 188, "topic": "пауза в действии"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 189, "topic": "пауза и смысл"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 190, "topic": "переводимость и непереводимость"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 191, "topic": "перед неизвестным"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 192, "topic": "переживание значимости"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 194, "topic": "перспектива наблюдателя"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 195, "topic": "повторное переживание"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 198, "topic": "порядок мысли"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 199, "topic": "порядок следования событий"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 200, "topic": "поток переживаний"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 201, "topic": "потребность в другом"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 202, "topic": "потребностью и распределением ресурсов"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 203, "topic": "почему а не зачем"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.поэзия", "source_line": 204, "topic": "поэзия"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.право", "source_line": 206, "topic": "право"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 207, "topic": "праздность созерцания"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 208, "topic": "превосходство над полезным"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 209, "topic": "предел действия"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 210, "topic": "предел слова"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 211, "topic": "предел существования"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 212, "topic": "пределы контроля"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 213, "topic": "преобразование материи"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 214, "topic": "преодоление сопротивления"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 215, "topic": "преодоление эгоцентризма"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 216, "topic": "преодоления препятствий и конкурирующих мотивов"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 217, "topic": "привычка и рутина"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 218, "topic": "признание прав другого"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 219, "topic": "признание ценности другого"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 220, "topic": "принуждение и авторитет"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 221, "topic": "принятия без полного доказательства"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 222, "topic": "приоритет над желанием"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.присутствие", "source_line": 223, "topic": "присутствие"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 224, "topic": "присутствие без выражения"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 225, "topic": "причина и следствие"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 226, "topic": "проверка опытом"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 227, "topic": "прозрачность намерений"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 229, "topic": "пространство возможностей"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 230, "topic": "против забвения"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 231, "topic": "процедура и результат"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 232, "topic": "прошлое для настоящего"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 233, "topic": "прошлое с настоящим через интерпретацию"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 234, "topic": "прыжок за горизонт"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 235, "topic": "псевдосвобода"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.психика", "source_line": 236, "topic": "психика"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 237, "topic": "пустота или вектор"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 238, "topic": "пустота как полнота"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 239, "topic": "равенство перед правилом"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 240, "topic": "разделение и кооперация"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 241, "topic": "различение истинного и ложного"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 242, "topic": "различение починить и заменить"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 243, "topic": "различение с истиной"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 244, "topic": "различение сущего и ничто"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 245, "topic": "различение я и не я"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 246, "topic": "разрушение порядка"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 247, "topic": "разрыв и восстановление"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 248, "topic": "разрыв и восстановление доверия"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 250, "topic": "рамка критериев"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.революция", "source_line": 251, "topic": "революция"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 252, "topic": "рефлексия над собой"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.решимость", "source_line": 253, "topic": "решимость"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 254, "topic": "риск уязвимости"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.рынок", "source_line": 255, "topic": "рынок"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 256, "topic": "с речью но не тождественно пустоте"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 257, "topic": "сам факт существования"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 258, "topic": "самокоррекция"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.самооценка", "source_line": 259, "topic": "самооценка"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.свидетельство", "source_line": 261, "topic": "свидетельство"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 263, "topic": "свобода и необходимость"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 264, "topic": "свобода как условие"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 265, "topic": "связь времён"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 266, "topic": "сжимает мир до значения"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 267, "topic": "сигнал опасности"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 268, "topic": "след прошлого"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.слушание", "source_line": 269, "topic": "слушание"}
+{"blockers": ["duplicate_topic_records", "missing_typed_slots", "unknown_concept"], "concept_candidate": "concept.собственность", "source_line": 271, "topic": "собственность"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 272, "topic": "собственные состояния субъекта"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 273, "topic": "совесть как свидетель"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 274, "topic": "совпадение с собой"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 275, "topic": "созерцание и присутствие"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 278, "topic": "соразмерности между деянием и воздаянием"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 279, "topic": "соразмерность частей"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 280, "topic": "способность влиять на действия других"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 281, "topic": "способность к обобщению"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 282, "topic": "способность к самоотчёту"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 285, "topic": "страх и принятие"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 286, "topic": "структура значения"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 287, "topic": "субъекта объектом для самого себя"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 288, "topic": "темп и ритм"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 289, "topic": "тишина и пустота"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 291, "topic": "узнавание"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 292, "topic": "уравнивание всех"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 293, "topic": "урок и предупреждение"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 294, "topic": "усилие и результат"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 295, "topic": "усилие против энтропии"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 296, "topic": "усталость и удовлетворение"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 297, "topic": "утешение и мотив"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 298, "topic": "утрата контекста"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 299, "topic": "уязвимость и близость"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 300, "topic": "уязвимость и риск потери"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 301, "topic": "уязвимость перед другим"}
+{"blockers": ["missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 302, "topic": "факт присутствия"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 303, "topic": "ценность другого как несводимую"}
+{"blockers": ["missing_morphology_surface", "missing_typed_slots", "unknown_concept"], "concept_candidate": null, "source_line": 304, "topic": "цикличность и линейность"}

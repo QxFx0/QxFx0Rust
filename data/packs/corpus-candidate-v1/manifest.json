@@ -1,0 +1,18 @@
+{
+  "pack_id": "corpus-candidate-v1",
+  "pack_version": 1,
+  "schema_version": 1,
+  "source_repository": "QxFx0 (Haskell)",
+  "source_commit": "b67f9efd1c39a81ff0998a3e6e21cbf94ea0ec2b",
+  "source_worktree_dirty": true,
+  "license": "MIT",
+  "files": {
+    "concepts.json": "59da62d7d176e5f72c36460c93a6a51ce77c8dcc0f2847f5740f415460f60cdd"
+  },
+  "concept_count": 39,
+  "notes": [
+    "status=candidate concepts mechanically derived from the Haskell curated corpus for the quarantined import pilot",
+    "never authoritative: activation requires catalog lifecycle approval, digest allowlisting and audited typed slots (ADR-0039)",
+    "multi-token topics and topics with lexicon gaps are listed in review.jsonl without concept candidates"
+  ]
+}
