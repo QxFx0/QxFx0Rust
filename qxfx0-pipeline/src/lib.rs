@@ -17,6 +17,8 @@ pub mod turn_context;
 #[cfg(test)]
 mod vector_pipeline;
 
+pub use stages::{MAX_RUNTIME_ATOMS, MAX_RUNTIME_EDGES};
+
 pub use conversation_fsm::{
     fsm_state_discriminant, fsm_state_from_discriminant, initial_state, is_active,
     proposition_to_event, transition as fsm_transition, ConversationEvent, ConversationState,
@@ -166,7 +168,19 @@ pub fn response_plan_v2_canary_digest() -> String {
 /// behind an aggregate digest.
 pub fn response_plan_v2_state_parity(left: &SystemState, right: &SystemState) -> bool {
     fn equal<T: Serialize>(left: &T, right: &T) -> bool {
-        serde_json::to_vec(left).ok() == serde_json::to_vec(right).ok()
+        match (serde_json::to_vec(left), serde_json::to_vec(right)) {
+            (Ok(left_bytes), Ok(right_bytes)) => left_bytes == right_bytes,
+            // Two serialization failures are an error, not evidence of
+            // parity: report the failure and compare unequal.
+            (left_result, right_result) => {
+                tracing::error!(
+                    "state parity comparison hit a serialization failure: {:?} vs {:?}",
+                    left_result.err(),
+                    right_result.err()
+                );
+                false
+            }
+        }
     }
 
     left.session_id == right.session_id
@@ -367,6 +381,56 @@ fn recovery_output(state: &SystemState, recovery: &RecoverySnapshot) -> TurnOutp
         path_depth: recovery.path_depth.unwrap_or(0),
         holistic_dominant: state.semantic.adjunction.holistic_dominant,
         conversation_state,
+    }
+}
+
+/// Early rejection of oversized input, mirroring guard-blocked bookkeeping
+/// (governance event, turn and history advance, recovery surface) without
+/// paying for parse, routing, activation and render of a multi-megabyte
+/// turn. The guard stage keeps its own bound check for direct stage callers.
+fn oversized_input_blocked_output(state: &mut SystemState) -> TurnOutput {
+    let turn = state.dialogue.turn_count + 1;
+    state.last_turn_decision = Some(TurnDecision {
+        family: CanonicalMoveFamily::CMRepair,
+        force: IllocutionaryForce::IFAssert,
+        guard_status: GuardStatus::InvariantBlock("слишком длинный ввод".into()),
+        legitimacy: 0.0,
+    });
+    state
+        .governance_log
+        .append(qxfx0_types::governance::GovernanceEvent {
+            turn,
+            event_type: qxfx0_types::governance::GovernanceEventType::GuardBlocked,
+            family: CanonicalMoveFamily::CMRepair,
+            guard_status: GuardStatus::InvariantBlock("слишком длинный ввод".into()),
+            timestamp: format!("turn-{turn}"),
+        });
+    state.governance_log.trim(10_000);
+
+    let response = "QxFx0: ответ отклонён системой безопасности.".to_string();
+    state.dialogue.turn_count = turn;
+    state.dialogue.last_family = CanonicalMoveFamily::CMRepair;
+    state.dialogue.history.push(response.clone());
+    if state.dialogue.history.len() > 10_000 {
+        let excess = state.dialogue.history.len() - 10_000;
+        state.dialogue.history.drain(0..excess);
+    }
+
+    TurnOutput {
+        response,
+        family: CanonicalMoveFamily::CMRepair,
+        guard_status: GuardStatus::InvariantBlock("слишком длинный ввод".into()),
+        blocked: true,
+        commitment_engaged: false,
+        governance_events: state.governance_log.len(),
+        conatus_energy: 0.0,
+        path_depth: 0,
+        holistic_dominant: state.semantic.adjunction.holistic_dominant,
+        conversation_state: state
+            .dialogue
+            .conversation_state
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "Idle".into()),
     }
 }
 
@@ -993,7 +1057,14 @@ struct ResponsePlanV2Artifact {
     authority_outcome: qxfx0_semantic::response_plan_v2::V2AuthorityOutcome,
 }
 
+/// SHA-256 of the running executable. The binary never changes while the
+/// process lives, so the digest is computed once and cached; hashing
+/// megabytes on every traced turn was pure per-turn I/O cost.
 pub fn current_binary_digest() -> Result<String, String> {
+    static BINARY_DIGEST: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    if let Some(cached) = BINARY_DIGEST.get() {
+        return Ok(cached.clone());
+    }
     let path = std::env::current_exe().map_err(|error| error.to_string())?;
     let mut file = File::open(path).map_err(|error| error.to_string())?;
     let mut hasher = Sha256::new();
@@ -1005,7 +1076,10 @@ pub fn current_binary_digest() -> Result<String, String> {
         }
         hasher.update(&buffer[..read]);
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    // Failure stays uncached: an unreadable binary is reported on every use
+    // instead of being remembered as a permanent condition.
+    let digest = format!("{:x}", hasher.finalize());
+    Ok(BINARY_DIGEST.get_or_init(|| digest).clone())
 }
 
 fn response_plan_v2_is_eligible(mode: ResponsePlanV2Mode, topic: &str) -> bool {
@@ -1173,7 +1247,13 @@ fn record_response_plan_v2(
             .selection
             .zip(execution.exact_replay)
             .and_then(|(selection, exact_replay)| {
-                let binary_digest = current_binary_digest().ok()?;
+                let binary_digest = match current_binary_digest() {
+                    Ok(digest) => digest,
+                    Err(error) => {
+                        tracing::warn!("V2 turn record dropped: binary digest failed: {error}");
+                        return None;
+                    }
+                };
                 Some(TurnRecord::new(
                     contract.clone(),
                     selection,
@@ -1184,8 +1264,13 @@ fn record_response_plan_v2(
     let result = execution.result;
     let realized_surface = execution.realized;
     let fallback = qxfx0_semantic::response_plan_v2::fallback_action_for_result(&result);
-    let expected_source_digest =
-        qxfx0_semantic::response_plan_v2::audited_surface_source_digest(topic).unwrap_or_default();
+    let expected_source_digest = qxfx0_semantic::response_plan_v2::audited_surface_source_digest(
+        topic,
+    )
+    .unwrap_or_else(|error| {
+        tracing::warn!("audited surface digest unavailable for '{topic}': {error}");
+        String::new()
+    });
     let authority_outcome = match realized_surface.clone() {
         Some(surface) => qxfx0_semantic::response_plan_v2::authority_outcome(
             topic,
@@ -1430,6 +1515,16 @@ fn process_turn_internal(
         state.session_id = input.session_id.clone();
     } else if state.session_id != input.session_id {
         return session_invariant_output(state, "session_id does not match loaded state");
+    }
+    // Reject oversized input before any parse, routing, activation or render
+    // work: the guard stage keeps the same bound for direct stage callers.
+    let guard_limits = qxfx0_guard::GuardConfig::default();
+    if input.raw_text.chars().count() > guard_limits.max_input_length {
+        tracing::warn!(
+            "input exceeds the {}-character bound and was rejected before staging",
+            guard_limits.max_input_length
+        );
+        return oversized_input_blocked_output(state);
     }
     let state_violations = state.validate();
     if !state_violations.is_empty() {

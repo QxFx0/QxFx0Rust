@@ -571,6 +571,34 @@ pub fn finalize_stage(
         state.semantic.essence.angst,
     );
     let derived = derive_atoms(&tags);
+
+    // Register the topic and world atoms before deriving edges: derived
+    // edges reference the subject atom, and the edge bound below must never
+    // leave an orphan edge pointing at an atom that was never admitted.
+    if subject.chars().count() > 2 && !topic_in_graph && can_register_topic {
+        let atom = qxfx0_types::atom::Atom {
+            id: subject_id.clone(),
+            display: subject.clone(),
+            category: qxfx0_types::atom::AtomCategory::CatTopic,
+        };
+        state
+            .semantic
+            .runtime_graph
+            .atoms
+            .insert(subject_id.clone(), atom);
+        // Register the "мир" atom if not already present.
+        state
+            .semantic
+            .runtime_graph
+            .atoms
+            .entry(world_id.clone())
+            .or_insert(qxfx0_types::atom::Atom {
+                id: world_id.clone(),
+                display: "мир".into(),
+                category: qxfx0_types::atom::AtomCategory::CatTopic,
+            });
+    }
+
     for da in &derived {
         let id = da.id.clone();
         let derived_atom_limit = MAX_RUNTIME_ATOMS.saturating_sub(reserved_atoms);
@@ -614,29 +642,15 @@ pub fn finalize_stage(
         collapse_essence(turn, &mut state.semantic.essence);
     }
 
-    // Graph growth for new topics
-    if subject.chars().count() > 2 && !topic_in_graph && can_register_topic {
-        let atom = qxfx0_types::atom::Atom {
-            id: subject_id.clone(),
-            display: subject.clone(),
-            category: qxfx0_types::atom::AtomCategory::CatTopic,
-        };
-        state
-            .semantic
-            .runtime_graph
-            .atoms
-            .insert(subject_id.clone(), atom);
-        // Register the "мир" atom if not already present.
-        state
-            .semantic
-            .runtime_graph
-            .atoms
-            .entry(world_id.clone())
-            .or_insert(qxfx0_types::atom::Atom {
-                id: world_id.clone(),
-                display: "мир".into(),
-                category: qxfx0_types::atom::AtomCategory::CatTopic,
-            });
+    // Graph growth for new topics. The edge bound is re-checked here: the
+    // derived-atom loop above may have consumed the last edge slot after
+    // `can_register_topic` was evaluated, and one more insert would push the
+    // graph past MAX_RUNTIME_EDGES, permanently failing state validation.
+    if subject.chars().count() > 2
+        && !topic_in_graph
+        && can_register_topic
+        && state.semantic.runtime_graph.edges.len() < MAX_RUNTIME_EDGES
+    {
         let rel = qxfx0_types::atom::Relation {
             from: world_id,
             to: subject_id,
@@ -670,8 +684,34 @@ pub fn finalize_stage(
             .semantic_commitments
             .get_or_insert_with(SemanticCommitmentStore::default);
         let (new_store, result) = CommitmentOps::commit_observation(payload, store);
-        if let CommitResult::Duplicate(_) = result {
-            tracing::info!("commitment duplicate detected for topic {subject}");
+        match result {
+            CommitResult::Duplicate(_) => {
+                tracing::info!("commitment duplicate detected for topic {subject}");
+            }
+            CommitResult::CapacityReached => {
+                // A full store must stay visible instead of silently dropping
+                // the observation. No eviction: commitments are held semantic
+                // positions, and silent eviction would corrupt lineage.
+                tracing::warn!(
+                    "commitment store at capacity; observation for topic {subject} dropped"
+                );
+                let family = state
+                    .last_turn_decision
+                    .as_ref()
+                    .map(|decision| decision.family)
+                    .unwrap_or(CanonicalMoveFamily::CMGround);
+                state
+                    .governance_log
+                    .append(qxfx0_types::governance::GovernanceEvent {
+                        turn,
+                        event_type:
+                            qxfx0_types::governance::GovernanceEventType::CommitmentCapacityReached,
+                        family,
+                        guard_status: GuardStatus::Allowed,
+                        timestamp: format!("turn-{turn}"),
+                    });
+            }
+            CommitResult::New(_) => {}
         }
         *store = new_store;
     }
@@ -905,5 +945,97 @@ mod tests {
         assert!(guarded.blocked(), "guard should block empty input");
         assert_eq!(guarded.family(), CanonicalMoveFamily::CMRepair);
         assert!(guarded.rejection().is_some());
+    }
+
+    /// Regression test for the runtime-edge off-by-one: the derived-atom loop
+    /// can consume the last edge slot after `can_register_topic` was
+    /// evaluated, and the following unconditional "мир → topic" insert used to
+    /// push the graph past MAX_RUNTIME_EDGES, permanently failing state
+    /// validation for the session.
+    #[test]
+    fn novel_topic_registration_respects_edge_bound_after_derived_atoms() {
+        fn filler(from: AtomId, to: AtomId) -> qxfx0_types::atom::Relation {
+            qxfx0_types::atom::Relation {
+                from,
+                to,
+                rel_type: qxfx0_types::relation_type::RelationType::RelRelatedTo,
+                object_case: qxfx0_types::atom::ObjectCase::CaseAccusative,
+                object_text: "заполнитель".into(),
+                verb_override: None,
+                ru_original: "заполнитель".into(),
+                en_original: "filler".into(),
+                source: qxfx0_types::atom::RelationSource::SeedFromPredicate,
+                topic: "заполнитель".into(),
+                rationale: None,
+                counter: None,
+                synthesis: None,
+            }
+        }
+
+        for remaining in [0usize, 1, 2] {
+            let mut state = SystemState {
+                session_id: format!("edge-bound-unit-{remaining}"),
+                ..SystemState::default()
+            };
+            // A flat field keeps tag derivation deterministic: conatus drops
+            // below 0.3, so a novel topic yields Searching + AgencyLost +
+            // Exhaustion + NeedContact and the derived-atom loop registers
+            // two edges before the "мир" insert runs.
+            state.semantic.field = qxfx0_types::field::Field {
+                resonance: 0.0,
+                atmosphere: qxfx0_types::field::Atmosphere {
+                    valence: 0.0,
+                    arousal: 0.0,
+                },
+                confidence: 0.0,
+                consolidation: 0.0,
+                counterfactual: 0.3,
+            };
+            state.semantic.runtime_graph = qxfx0_semantic::seed_graph();
+            state.semantic.cached_network = None;
+
+            let raw_text = "что такое флюгегехаймен?".to_string();
+            let input = TurnInputContext::new(
+                state.session_id.clone(),
+                raw_text,
+                PropositionParser::parse("что такое флюгегехаймен?"),
+                false,
+            );
+            let prepared = prepare_stage(&mut state, input).unwrap();
+            let routed = route_stage(&mut state, prepared, false).unwrap();
+            let planned = plan_shadow_stage(&mut state, routed).unwrap();
+            let rendered =
+                render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();
+
+            // Fill the graph between two existing seed atoms so every
+            // endpoint stays valid, leaving `remaining` edge slots.
+            let endpoints: Vec<AtomId> =
+                state.semantic.runtime_graph.atoms.keys().cloned().collect();
+            let (from, to) = (endpoints[0].clone(), endpoints[1].clone());
+            let target = MAX_RUNTIME_EDGES - remaining;
+            while state.semantic.runtime_graph.edges.len() < target {
+                state
+                    .semantic
+                    .runtime_graph
+                    .add_relation(filler(from.clone(), to.clone()));
+            }
+            assert_eq!(state.semantic.runtime_graph.edges.len(), target);
+            // Filler inserts bypass the cache: drop it like persistence does
+            // so validation stays clean and finalize rebuilds on demand.
+            state.semantic.cached_network = None;
+
+            let finalized = finalize_stage(&mut state, rendered).unwrap();
+            assert!(!finalized.rendered().response().is_empty());
+            assert!(
+                state.semantic.runtime_graph.edges.len() <= MAX_RUNTIME_EDGES,
+                "edge bound exceeded at remaining={remaining}: {}",
+                state.semantic.runtime_graph.edges.len()
+            );
+            assert!(
+                state.validate().is_empty(),
+                "state invalid after bounded finalize at remaining={remaining}: {:?}",
+                state.validate()
+            );
+        }
     }
 }

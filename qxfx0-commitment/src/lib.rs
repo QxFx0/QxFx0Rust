@@ -109,17 +109,30 @@ impl CommitmentOps {
     }
 
     /// Quarantine an observation (suppressed claim).
+    /// Honors the same combined `MAX_COMMITMENTS` bound as commit paths:
+    /// `Duplicate` when the content already exists, `CapacityReached` when
+    /// the store is full (state unchanged), `New` otherwise.
     pub fn quarantine_observation(
         payload: FactualClaimPayload,
         store: &SemanticCommitmentStore,
-    ) -> (SemanticCommitmentStore, CommitmentId) {
+    ) -> (SemanticCommitmentStore, CommitResult) {
+        if let Some(existing) = Self::find_duplicate(&payload, store) {
+            return (store.clone(), CommitResult::Duplicate(existing));
+        }
+        if store.active.len() + store.quarantine.len() >= MAX_COMMITMENTS {
+            return (store.clone(), CommitResult::CapacityReached);
+        }
         let cid = CommitmentId(store.next_id);
         let turn = payload.turn_seq;
+
+        if store.active.contains_key(&cid) || store.quarantine.contains_key(&cid) {
+            return (store.clone(), CommitResult::Duplicate(cid));
+        }
+
         let mut new_store = store.clone();
         new_store.next_id = store.next_id + 1;
-
         new_store.quarantine.insert(cid.clone(), (payload, turn));
-        (new_store, cid)
+        (new_store, CommitResult::New(cid))
     }
 
     /// Revise a commitment — replace payload, record lineage.
@@ -288,6 +301,12 @@ impl CommitmentOps {
             .collect();
 
         for cid in to_promote {
+            // Promotion moves an entry between maps, so the combined bound
+            // is preserved; the active guard only protects legacy states
+            // that already exceed MAX_COMMITMENTS.
+            if new_store.active.len() >= MAX_COMMITMENTS {
+                break;
+            }
             if let Some((payload, _)) = new_store.quarantine.remove(&cid) {
                 new_store.active.insert(cid.clone(), (payload, turn));
                 let lineage = new_store.lineage.entry(cid).or_default();
@@ -515,5 +534,83 @@ mod tests {
         let ids1: Vec<_> = store.active.keys().collect();
         let ids2: Vec<_> = store.active.keys().collect();
         assert_eq!(ids1, ids2, "BTreeMap iteration should be deterministic");
+    }
+
+    #[test]
+    fn test_quarantine_enforces_capacity() {
+        let mut store = SemanticCommitmentStore::default();
+        for index in 0..MAX_COMMITMENTS {
+            store.active.insert(
+                CommitmentId(index),
+                (make_payload(&format!("topic-{index}"), "statement"), index),
+            );
+        }
+        store.next_id = MAX_COMMITMENTS;
+        let (unchanged, result) = CommitmentOps::quarantine_observation(
+            make_payload("overflow", "new statement"),
+            &store,
+        );
+        assert_eq!(result, CommitResult::CapacityReached);
+        assert_eq!(unchanged.active.len(), MAX_COMMITMENTS);
+        assert!(unchanged.quarantine.is_empty());
+        assert_eq!(unchanged.next_id, MAX_COMMITMENTS);
+    }
+
+    #[test]
+    fn test_quarantine_deduplicates_content() {
+        let store = SemanticCommitmentStore::default();
+        let payload = make_payload("свобода", "свобода предполагает выбор");
+        let (store, first) = CommitmentOps::quarantine_observation(payload.clone(), &store);
+        assert!(matches!(first, CommitResult::New(_)));
+
+        let (store, second) = CommitmentOps::quarantine_observation(payload, &store);
+        assert!(matches!(second, CommitResult::Duplicate(_)));
+        assert_eq!(store.quarantine.len(), 1);
+    }
+
+    #[test]
+    fn test_promote_respects_active_bound_for_legacy_states() {
+        // A legacy state may already exceed the bound via the previously
+        // uncapped quarantine path; promotion must not grow active further.
+        let mut store = SemanticCommitmentStore::default();
+        for index in 0..MAX_COMMITMENTS {
+            store.active.insert(
+                CommitmentId(index),
+                (make_payload(&format!("active-{index}"), "statement"), index),
+            );
+        }
+        store.quarantine.insert(
+            CommitmentId(MAX_COMMITMENTS),
+            (make_payload("legacy", "legacy stmt"), 1),
+        );
+        store.next_id = MAX_COMMITMENTS + 1;
+
+        let promoted = CommitmentOps::promote_matching_quarantine(&store, "legacy", 2);
+        assert_eq!(promoted.active.len(), MAX_COMMITMENTS);
+        assert_eq!(
+            promoted.quarantine.len(),
+            1,
+            "legacy quarantine entry must stay put"
+        );
+    }
+
+    #[test]
+    fn test_promote_moves_matching_entries_within_bound() {
+        let store = SemanticCommitmentStore::default();
+        let (store, first) =
+            CommitmentOps::quarantine_observation(make_payload("тема", "заявление"), &store);
+        let CommitResult::New(cid) = first else {
+            panic!("expected New")
+        };
+        let (store, _) = CommitmentOps::quarantine_observation(
+            make_payload("другое", "другое заявление"),
+            &store,
+        );
+
+        let promoted = CommitmentOps::promote_matching_quarantine(&store, "тема", 5);
+        assert!(promoted.active.contains_key(&cid));
+        assert!(!promoted.quarantine.contains_key(&cid));
+        assert_eq!(promoted.quarantine.len(), 1);
+        assert_eq!(promoted.active.len() + promoted.quarantine.len(), 2);
     }
 }

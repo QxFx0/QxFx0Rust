@@ -222,6 +222,8 @@ pub enum RealizationError {
         expected: Vec<String>,
         actual: Vec<String>,
     },
+    #[error("audited-corpus asset drift: {0}")]
+    AuditedAsset(String),
 }
 
 /// A clause whose every slot is filled.

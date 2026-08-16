@@ -166,7 +166,17 @@ impl PipelineTrace {
 /// persistent maps use ordered containers, so equal state serializes to the
 /// same bytes across fresh processes and Rust releases.
 pub fn calculate_stable_digest<T: Serialize + ?Sized>(data: &T) -> Result<String, String> {
-    let encoded = serde_json::to_vec(data).map_err(|error| error.to_string())?;
+    let encoded = match serde_json::to_vec(data) {
+        Ok(encoded) => encoded,
+        Err(error) => {
+            // Digest failures degrade replay evidence to placeholders. They
+            // are not expected for the deterministic types that reach this
+            // function, so they are logged loudly instead of passing
+            // silently through every trace step.
+            tracing::error!("stable digest serialization failed: {error}");
+            return Err(error.to_string());
+        }
+    };
     let digest = Sha256::digest(encoded);
     Ok(format!("{digest:x}"))
 }

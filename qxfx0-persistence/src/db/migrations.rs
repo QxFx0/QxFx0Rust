@@ -9,6 +9,38 @@ use rusqlite::{Connection, Result};
 /// rewriting session rows, so databases from either lineage upgrade safely.
 pub const CURRENT_SCHEMA_VERSION: i64 = 10;
 
+/// Error type for schema compatibility failures.
+#[derive(Debug)]
+pub enum MigrationError {
+    /// The database was written by a newer build (`user_version` above the
+    /// version this binary understands). Failing closed here prevents an
+    /// older binary from silently loading a partially compatible state.
+    NewerSchema(i64),
+    Sqlite(rusqlite::Error),
+}
+
+impl std::fmt::Display for MigrationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NewerSchema(version) => write!(
+                formatter,
+                "database schema version {version} is newer than this build supports \
+                 ({}); upgrade the binary before opening this database",
+                CURRENT_SCHEMA_VERSION
+            ),
+            Self::Sqlite(error) => write!(formatter, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for MigrationError {}
+
+impl From<rusqlite::Error> for MigrationError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Sqlite(error)
+    }
+}
+
 const SCHEMA_V8: &str = r#"
 CREATE TABLE IF NOT EXISTS runtime_sessions (
     id TEXT PRIMARY KEY,
@@ -44,9 +76,12 @@ CREATE TABLE IF NOT EXISTS session_semantic (
 /// table (including its historical `started_at` column) and all session rows.
 /// We intentionally leave the old `schema_version` table untouched because
 /// its shape differs between released database generations.
-pub fn apply_migrations(conn: &mut Connection) -> Result<()> {
+pub fn apply_migrations(conn: &mut Connection) -> Result<(), MigrationError> {
     let current_version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    if current_version >= CURRENT_SCHEMA_VERSION {
+    if current_version > CURRENT_SCHEMA_VERSION {
+        return Err(MigrationError::NewerSchema(current_version));
+    }
+    if current_version == CURRENT_SCHEMA_VERSION {
         return Ok(());
     }
 

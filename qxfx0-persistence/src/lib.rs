@@ -62,6 +62,8 @@ fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
 pub enum PersistenceError {
     #[error("SQLite error: {0}")]
     SQLite(#[from] rusqlite::Error),
+    #[error("Migration error: {0}")]
+    Migration(#[from] db::migrations::MigrationError),
     #[error("Serialization error: {0}")]
     Serialization(String),
     #[error("State not found: {0}")]
@@ -450,9 +452,23 @@ impl Persistence {
     /// If those are absent, falls back to the legacy `state_json` blob for backward
     /// compatibility with databases created before the v6 migration.
     pub fn load_state(&self, session_id: &str) -> Result<Option<SystemState>, PersistenceError> {
+        // All reads share one snapshot: a concurrent writer must not be able
+        // to tear the normalized tables, the session row and the legacy blob
+        // apart mid-load. BEGIN DEFERRED takes the snapshot at the first read
+        // and WAL readers never block writers.
+        let tx = self.conn.unchecked_transaction()?;
+        let state = Self::load_state_snapshot(&tx, session_id)?;
+        tx.commit()?;
+        Ok(state)
+    }
+
+    /// Single-snapshot state load, executed inside the caller's transaction.
+    fn load_state_snapshot(
+        conn: &Connection,
+        session_id: &str,
+    ) -> Result<Option<SystemState>, PersistenceError> {
         // Try normalized tables first.
-        let graph = self
-            .conn
+        let graph = conn
             .query_row(
                 "SELECT atoms_json, edges_json FROM session_graphs WHERE session_id = ?1",
                 params![session_id],
@@ -460,8 +476,7 @@ impl Persistence {
             )
             .optional()?;
 
-        let semantic = self
-            .conn
+        let semantic = conn
             .query_row(
                 "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json
                  FROM session_semantic WHERE session_id = ?1",
@@ -493,8 +508,7 @@ impl Persistence {
             )),
         ) = (graph, semantic)
         {
-            let session = self
-                .conn
+            let session = conn
                 .query_row(
                     "SELECT state_json FROM runtime_sessions WHERE id = ?1",
                     params![session_id],
@@ -588,9 +602,8 @@ impl Persistence {
         }
 
         // Legacy fallback.
-        let mut stmt = self
-            .conn
-            .prepare_cached("SELECT state_json FROM runtime_sessions WHERE id = ?1")?;
+        let mut stmt =
+            conn.prepare_cached("SELECT state_json FROM runtime_sessions WHERE id = ?1")?;
 
         let result = stmt.query_row(params![session_id], |row| {
             let json: String = row.get(0)?;
@@ -1442,6 +1455,50 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM schema_version", [], |row| row.get(0))
             .unwrap();
         assert_eq!(legacy_versions, 2);
+    }
+
+    #[test]
+    fn newer_schema_version_fails_closed_instead_of_opening() {
+        let path =
+            std::env::temp_dir().join(format!("qxfx0-newer-schema-{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        // Create a current-version database, then simulate a newer build
+        // having written it by bumping user_version past what this binary
+        // understands.
+        {
+            let persistence = Persistence::open(path.to_str().unwrap()).unwrap();
+            persistence
+                .save_state(
+                    "newer",
+                    &SystemState {
+                        session_id: "newer".into(),
+                        ..SystemState::default()
+                    },
+                )
+                .unwrap();
+        }
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.pragma_update(
+                None,
+                "user_version",
+                db::migrations::CURRENT_SCHEMA_VERSION + 1,
+            )
+            .unwrap();
+        }
+        let error = match Persistence::open(path.to_str().unwrap()) {
+            Ok(_) => panic!("a newer schema must fail closed at open"),
+            Err(error) => error,
+        };
+        assert!(
+            matches!(
+                &error,
+                PersistenceError::Migration(db::migrations::MigrationError::NewerSchema(version))
+                    if *version == db::migrations::CURRENT_SCHEMA_VERSION + 1
+            ),
+            "a newer schema must fail closed at open, got: {error}"
+        );
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

@@ -481,7 +481,7 @@ fn run_phase_a() -> GateReport {
             details: format!(
                 "matrix={}, templates={} across {} relation types, \
                  parity byte/semantic={}/{}, rows byte/semantic={}/{}",
-                &matrix.matrix_digest[..16],
+                short_digest(&matrix.matrix_digest),
                 matrix.diagnostics.templates_total,
                 matrix.diagnostics.relation_types,
                 matrix.diagnostics.templates_parity_byte,
@@ -526,6 +526,17 @@ fn parse_relation_type(name: &str) -> Option<qxfx0_types::RelationType> {
         .iter()
         .copied()
         .find(|candidate| format!("{candidate:?}") == name)
+}
+
+/// First 16 characters of a digest for compact gate reporting. Digests
+/// shorter than 16 characters are shown in full instead of panicking —
+/// the manifest itself, not the report formatter, is the authority on
+/// digest validity. Char-index based, so it is safe on any UTF-8 input.
+fn short_digest(digest: &str) -> &str {
+    match digest.char_indices().nth(16) {
+        Some((index, _)) => &digest[..index],
+        None => digest,
+    }
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -776,7 +787,7 @@ fn run_replay_gate() -> GateReport {
             passed: true,
             details: format!(
                 "manifest={}, corpus=30 topics/69 claims, legacy_graph=false",
-                &manifest.manifest_digest[..16]
+                short_digest(&manifest.manifest_digest)
             ),
             violations,
         }
@@ -969,7 +980,7 @@ fn run_phase_b() -> GateReport {
             details: format!(
                 "manifest={}, topics={}, claims={}, claims_authorized={}, \
                  realization exact/fixed/governed={}/{}/{}",
-                &manifest.manifest_digest[..16],
+                short_digest(&manifest.manifest_digest),
                 manifest.diagnostics.topics_total,
                 manifest.diagnostics.claims_total,
                 claims_authorized,
@@ -1258,7 +1269,7 @@ fn run_phase_c() -> GateReport {
             passed: true,
             details: format!(
                 "manifest={}, claims realized {claims_realized}/69 (exact/governed/fixed={exact_clauses}/{governed_clauses}/{fixed_surface_claims})",
-                &manifest.manifest_digest[..16],
+                short_digest(&manifest.manifest_digest),
             ),
             violations,
         }

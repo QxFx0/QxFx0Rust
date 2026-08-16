@@ -19,7 +19,14 @@ pub enum GovernanceEventType {
     GuardWarning,
     CommitmentRevised,
     CommitmentContradicted,
-    GraphEnriched { new_relations: usize },
+    /// The bounded commitment store rejected a new observation because it is
+    /// full. Recorded instead of silently dropping the commitment; the store
+    /// is deliberately not evicted — commitments are semantic positions and
+    /// silent eviction would corrupt lineage guarantees.
+    CommitmentCapacityReached,
+    GraphEnriched {
+        new_relations: usize,
+    },
 }
 
 /// Governance log — append-only history of governance events.

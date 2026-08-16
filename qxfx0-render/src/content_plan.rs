@@ -181,3 +181,267 @@ fn sentence(label: &str, surface: &str) -> String {
     let surface = surface.trim_end_matches(['.', '!', '?']);
     format!("{label}: {surface}{terminal}")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use qxfx0_semantic::{
+        ArguedTopic, ClaimEvidence, ClaimId, ClaimRole, Confidence, DerivationRule, DerivationStep,
+        DialogueObligation, DiscoursePlan, DiscourseRelation, NonEmptyVec, PlannedClaim,
+        ResponseGoal, SentenceBudget,
+    };
+
+    fn claim_for(topic: &ArguedTopic, role: ClaimRole) -> PlannedClaim {
+        let primary_ref = topic.primary_predicate_ref().clone();
+        let evidence = ClaimEvidence::curated(topic.evidence_record());
+        match role {
+            ClaimRole::Thesis => PlannedClaim::new(
+                ClaimId::try_new(format!("{}.thesis", primary_ref.as_str())).unwrap(),
+                ClaimRole::Thesis,
+                Some(topic.thesis().fact_id().clone()),
+                topic.primary_proposition().clone(),
+                NonEmptyVec::one(primary_ref.clone()),
+                evidence,
+                Confidence::from_basis_points(9_500).unwrap(),
+            ),
+            ClaimRole::Counterpoint => {
+                let counter_ref = topic.counterpoint().predicate_ref().clone();
+                let mut refs = NonEmptyVec::one(counter_ref.clone());
+                refs.push(primary_ref.clone());
+                PlannedClaim::new(
+                    ClaimId::try_new(format!("{}.counterpoint", primary_ref.as_str())).unwrap(),
+                    ClaimRole::Counterpoint,
+                    Some(topic.counterpoint().fact_id().clone()),
+                    SemanticProposition::Counterpoint {
+                        statement: counter_ref,
+                        counters: primary_ref,
+                    },
+                    refs,
+                    evidence,
+                    Confidence::from_basis_points(9_000).unwrap(),
+                )
+            }
+            ClaimRole::Consequence => {
+                let consequence = topic.consequence().expect("topic has a consequence");
+                let consequence_ref = consequence.predicate_ref().clone();
+                let mut refs = NonEmptyVec::one(consequence_ref.clone());
+                refs.push(primary_ref.clone());
+                PlannedClaim::new(
+                    ClaimId::try_new(format!("{}.consequence", primary_ref.as_str())).unwrap(),
+                    ClaimRole::Consequence,
+                    Some(consequence.fact_id().clone()),
+                    SemanticProposition::Consequence {
+                        statement: consequence_ref,
+                        follows_from: primary_ref,
+                    },
+                    refs,
+                    evidence,
+                    Confidence::from_basis_points(9_000).unwrap(),
+                )
+            }
+            other => panic!("unexpected claim role {other:?}"),
+        }
+    }
+
+    fn correct_plan(topic: &ArguedTopic) -> qxfx0_semantic::ReadyResponsePlan {
+        let primary_ref = topic.primary_predicate_ref().clone();
+        let thesis_id = ClaimId::try_new(format!("{}.thesis", primary_ref.as_str())).unwrap();
+        let mut claims = NonEmptyVec::one(claim_for(topic, ClaimRole::Thesis));
+        claims.push(claim_for(topic, ClaimRole::Counterpoint));
+
+        let mut derivation = vec![
+            DerivationStep::new(
+                ClaimId::try_new(format!("{}.thesis", primary_ref.as_str())).unwrap(),
+                NonEmptyVec::one(primary_ref.clone()),
+                DerivationRule::SelectedAdmittedPredicate,
+            ),
+            DerivationStep::new(
+                ClaimId::try_new(format!("{}.counterpoint", primary_ref.as_str())).unwrap(),
+                NonEmptyVec::one(topic.counterpoint().predicate_ref().clone()),
+                DerivationRule::AddedCounterpoint,
+            ),
+        ];
+        let sentence_budget = if topic.consequence().is_some() {
+            claims.push(claim_for(topic, ClaimRole::Consequence));
+            derivation.push(DerivationStep::new(
+                ClaimId::try_new(format!("{}.consequence", primary_ref.as_str())).unwrap(),
+                NonEmptyVec::one(topic.consequence().unwrap().predicate_ref().clone()),
+                DerivationRule::AddedConsequence,
+            ));
+            SentenceBudget::Three
+        } else {
+            SentenceBudget::Two
+        };
+
+        qxfx0_semantic::ReadyResponsePlan::new(
+            ResponseGoal::Define,
+            PlanSubject::Topic(topic.topic().clone()),
+            claims,
+            DiscoursePlan::new(DiscourseRelation::Counterpoint, sentence_budget),
+            Some(DialogueObligation::CheckAgreement {
+                claim_id: thesis_id,
+            }),
+            derivation,
+        )
+        .expect("correct audited plan must construct")
+    }
+
+    fn registry_topic(name: &str) -> ArguedTopic {
+        argued_topic_registry()
+            .unwrap()
+            .get(name)
+            .cloned()
+            .expect("audited topic must exist")
+    }
+
+    #[test]
+    fn renders_the_admitted_surfaces_with_labels_for_a_three_claim_topic() {
+        let topic = registry_topic("свобода");
+        let plan = correct_plan(&topic);
+        let rendered = render_audited_plan(&plan).expect("correct plan renders");
+        assert!(rendered.starts_with("Тезис: "));
+        assert!(rendered.contains("Контрпункт: "));
+        assert!(rendered.contains("Следствие: "));
+        assert!(rendered.ends_with("Проверка: верно ли это?"));
+    }
+
+    #[test]
+    fn renders_a_two_claim_topic_without_a_consequence_label() {
+        let registry = argued_topic_registry().unwrap();
+        let topic = registry
+            .topics()
+            .find(|topic| topic.consequence().is_none())
+            .cloned()
+            .expect("corpus contains two-claim topics");
+        let plan = correct_plan(&topic);
+        let rendered = render_audited_plan(&plan).expect("correct plan renders");
+        assert!(rendered.contains("Тезис: "));
+        assert!(rendered.contains("Контрпункт: "));
+        assert!(!rendered.contains("Следствие: "));
+    }
+
+    #[test]
+    fn a_non_topic_subject_is_rejected() {
+        let topic = registry_topic("свобода");
+        let thesis = claim_for(&topic, ClaimRole::Thesis);
+        let external = qxfx0_semantic::ReadyResponsePlan::new(
+            ResponseGoal::Define,
+            PlanSubject::External(qxfx0_semantic::ExternalSubject::new(
+                qxfx0_semantic::ExternalSubjectKind::Entity,
+                "что-то",
+            )),
+            NonEmptyVec::one(thesis.clone()),
+            DiscoursePlan::new(DiscourseRelation::None, SentenceBudget::One),
+            None,
+            vec![DerivationStep::new(
+                thesis.id().clone(),
+                NonEmptyVec::one(topic.primary_predicate_ref().clone()),
+                DerivationRule::SelectedAdmittedPredicate,
+            )],
+        )
+        .expect("plan with external subject must construct");
+        let error = render_audited_plan(&external).unwrap_err();
+        assert!(error.contains("requires a topic subject"), "got: {error}");
+    }
+
+    #[test]
+    fn an_unknown_topic_is_rejected() {
+        let topic = registry_topic("свобода");
+        let thesis = claim_for(&topic, ClaimRole::Thesis);
+        let counterpoint = claim_for(&topic, ClaimRole::Counterpoint);
+        let unknown = qxfx0_semantic::ReadyResponsePlan::new(
+            ResponseGoal::Define,
+            PlanSubject::Topic(qxfx0_types::AtomId::new("не-аудированная-тема")),
+            {
+                let mut claims = NonEmptyVec::one(thesis.clone());
+                claims.push(counterpoint.clone());
+                claims
+            },
+            DiscoursePlan::new(DiscourseRelation::Counterpoint, SentenceBudget::Two),
+            None,
+            vec![
+                DerivationStep::new(
+                    thesis.id().clone(),
+                    NonEmptyVec::one(topic.primary_predicate_ref().clone()),
+                    DerivationRule::SelectedAdmittedPredicate,
+                ),
+                DerivationStep::new(
+                    counterpoint.id().clone(),
+                    NonEmptyVec::one(topic.counterpoint().predicate_ref().clone()),
+                    DerivationRule::AddedCounterpoint,
+                ),
+            ],
+        );
+        match unknown {
+            Ok(plan) => {
+                let error = render_audited_plan(&plan).unwrap_err();
+                assert!(error.contains("not admitted"), "got: {error}");
+            }
+            Err(error) => panic!("plan must construct, got: {error}"),
+        }
+    }
+
+    #[test]
+    fn a_missing_thesis_or_counterpoint_is_rejected() {
+        let topic = registry_topic("свобода");
+        // Build a plan with only the counterpoint claim.
+        let counterpoint = claim_for(&topic, ClaimRole::Counterpoint);
+        let counterpoint_only = qxfx0_semantic::ReadyResponsePlan::new(
+            ResponseGoal::Define,
+            PlanSubject::Topic(topic.topic().clone()),
+            NonEmptyVec::one(counterpoint.clone()),
+            DiscoursePlan::new(DiscourseRelation::Counterpoint, SentenceBudget::One),
+            None,
+            vec![DerivationStep::new(
+                counterpoint.id().clone(),
+                NonEmptyVec::one(topic.counterpoint().predicate_ref().clone()),
+                DerivationRule::AddedCounterpoint,
+            )],
+        );
+        match counterpoint_only {
+            Ok(plan) => {
+                let error = render_audited_plan(&plan).unwrap_err();
+                assert!(error.contains("missing"), "got: {error}");
+            }
+            Err(error) => panic!("plan must construct, got: {error}"),
+        }
+    }
+
+    #[test]
+    fn a_consequence_on_a_two_claim_topic_is_rejected() {
+        let registry = argued_topic_registry().unwrap();
+        let topic = registry
+            .topics()
+            .find(|topic| topic.consequence().is_none())
+            .cloned()
+            .expect("corpus contains two-claim topics");
+        // Take a consequence claim from another topic and attach it.
+        let donor = registry_topic("свобода");
+        let donor_consequence = claim_for(&donor, ClaimRole::Consequence);
+        let primary_ref = topic.primary_predicate_ref().clone();
+        let thesis_id = ClaimId::try_new(format!("{}.thesis", primary_ref.as_str())).unwrap();
+        let mut claims = NonEmptyVec::one(claim_for(&topic, ClaimRole::Thesis));
+        claims.push(claim_for(&topic, ClaimRole::Counterpoint));
+        claims.push(donor_consequence);
+        let plan = qxfx0_semantic::ReadyResponsePlan::new(
+            ResponseGoal::Define,
+            PlanSubject::Topic(topic.topic().clone()),
+            claims,
+            DiscoursePlan::new(DiscourseRelation::Counterpoint, SentenceBudget::Three),
+            Some(DialogueObligation::CheckAgreement {
+                claim_id: thesis_id.clone(),
+            }),
+            vec![DerivationStep::new(
+                thesis_id,
+                NonEmptyVec::one(primary_ref),
+                DerivationRule::SelectedAdmittedPredicate,
+            )],
+        )
+        .expect("plan with foreign consequence must construct");
+        let error = render_audited_plan(&plan).unwrap_err();
+        assert!(
+            error.contains("no admitted consequence") || error.contains("does not match"),
+            "got: {error}"
+        );
+    }
+}

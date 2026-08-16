@@ -39,10 +39,10 @@ use crate::response_plan_v2::selection::{
     SelectionReceipt, SelfSelectionContext,
 };
 use crate::response_plan_v2::snapshot::TurnContractSnapshot;
-use crate::response_plan_v2::syn_tree::{Clause, NounPhrase, SynTree, VerbPhrase};
-use crate::response_plan_v2::valency::{
-    starts_with_word, Complement, ValencyError, ValencyLexicon,
+use crate::response_plan_v2::syn_tree::{
+    Clause, NounPhrase, RealizationError, SynTree, VerbPhrase,
 };
+use crate::response_plan_v2::valency::{starts_with_word, Complement, ValencyLexicon};
 use crate::response_plan_v2::{
     attempt_input_digest, enforce_work_budget, BoundedRejectedArtifact, BudgetPhase,
     BudgetResource, BudgetWorkItem, CertifiedPrefix, V2Attempt, V2BudgetPolicy, V2ExecutionResult,
@@ -328,16 +328,22 @@ fn prepare_audited_candidate(topic: &str) -> Result<AuditedCandidate, AuditedCor
         .build()
         .map_err(|error| AuditedCorpusError::Startup(error.to_string()))?;
 
-    let sequence = match leaves.len() {
-        2 => vec![
-            DiscourseTree::Thesis(leaves[0].clone()),
-            DiscourseTree::Counterpoint(leaves[1].clone()),
+    let sequence = match leaves.as_slice() {
+        [thesis, counterpoint] => vec![
+            DiscourseTree::Thesis(thesis.clone()),
+            DiscourseTree::Counterpoint(counterpoint.clone()),
         ],
-        _ => vec![
-            DiscourseTree::Thesis(leaves[0].clone()),
-            DiscourseTree::Counterpoint(leaves[1].clone()),
-            DiscourseTree::Consequence(leaves[2].clone()),
+        [thesis, counterpoint, consequence] => vec![
+            DiscourseTree::Thesis(thesis.clone()),
+            DiscourseTree::Counterpoint(counterpoint.clone()),
+            DiscourseTree::Consequence(consequence.clone()),
         ],
+        _ => {
+            return Err(AuditedCorpusError::Startup(format!(
+                "audited topic '{topic}' must state two or three claims, found {}",
+                leaves.len()
+            )))
+        }
     };
     let candidate = CandidateResponsePlan::try_new(
         propositions,
@@ -459,8 +465,14 @@ pub fn execute_audited_topic_at(
     }
 
     let pack = active_pack_set();
-    let argued =
-        argued_topic_registry().expect("registry was available during candidate preparation");
+    let argued = match argued_topic_registry() {
+        Ok(registry) => registry,
+        Err(error) => {
+            return pre_candidate(V2PreCandidateOutcome::Startup {
+                reason: format!("registry unavailable: {error}"),
+            })
+        }
+    };
     let candidate_prefix = candidate.clone();
     let admitted = match LeafAdmittedPlan::try_admit(candidate, prepared.bindings, pack, argued) {
         Ok(admitted) => admitted,
@@ -520,7 +532,7 @@ pub fn execute_audited_topic_at(
         Err(error) => {
             return rejected(
                 CertifiedPrefix::AssertionAuthorized(authorized),
-                V2Failure::Realization(error.into()),
+                V2Failure::Realization(error),
             )
         }
     };
@@ -549,15 +561,24 @@ pub fn execute_audited_topic_at(
             rejection.witness,
         );
     }
-    let selected = select_candidate(
+    let selected = match select_candidate(
         vec![SelectionCandidate::new(
             authorized.certified().candidate().clone(),
             CandidateSelectionSignals::neutral(),
         )],
         selection_context,
         selection_policy,
-    )
-    .expect("one immutable candidate is selectable");
+    ) {
+        Ok(selected) => selected,
+        Err(error) => {
+            return rejected(
+                CertifiedPrefix::AssertionAuthorized(authorized),
+                V2Failure::Realization(RealizationError::AuditedAsset(format!(
+                    "selection of the single audited candidate failed: {error}"
+                ))),
+            )
+        }
+    };
     let selection = selected.receipt().clone();
     let realizable = match try_realize(
         authorized.clone(),
@@ -728,45 +749,87 @@ impl AuditedTopicPlan {
     /// Build one occurrence-addressed syntax node for every authorized claim.
     /// The audited thesis is compositional; the remaining approved corpus
     /// surfaces stay explicit fixed nodes until their own syntax is admitted.
-    pub fn syn_tree(&self, lexicon: &ValencyLexicon) -> Result<SynTree, ValencyError> {
+    ///
+    /// Every asset lookup is a typed error, never a panic: this runs on the
+    /// live turn path, and registry/pack drift must surface as a rejected
+    /// attempt instead of aborting the process.
+    pub fn syn_tree(&self, lexicon: &ValencyLexicon) -> Result<SynTree, RealizationError> {
+        let audited_asset = |reason: String| RealizationError::AuditedAsset(reason);
         let claims = self.authorized.certified().candidate().projected_claims();
         let argued = argued_topic_registry()
-            .expect("audited registry is available")
-            .get(&self.topic)
-            .expect("audited topic remains available");
-        let mut statements = argued.statements();
-        let claim = claims.first().expect("audited topic has a thesis");
-        statements.next().expect("audited topic has a thesis");
+            .map_err(|error| audited_asset(format!("registry unavailable: {error}")))?;
+        let entry = argued.get(&self.topic).ok_or_else(|| {
+            audited_asset(format!(
+                "audited topic '{}' is no longer registered",
+                self.topic
+            ))
+        })?;
+        let mut statements = entry.statements();
+        let claim = claims.first().ok_or_else(|| {
+            audited_asset(format!(
+                "audited topic '{}' has no thesis claim",
+                self.topic
+            ))
+        })?;
+        statements.next().ok_or_else(|| {
+            audited_asset(format!(
+                "audited topic '{}' has no thesis statement",
+                self.topic
+            ))
+        })?;
         let fact_id = self
             .authorized
             .certified()
             .bindings()
             .get(&claim.claim_id)
-            .expect("thesis is bound");
-        let record = active_pack_set()
-            .facts()
-            .get(fact_id)
-            .expect("audited fact exists");
+            .ok_or_else(|| {
+                audited_asset(format!(
+                    "thesis claim of topic '{}' is not bound to a fact",
+                    self.topic
+                ))
+            })?;
+        let record = active_pack_set().facts().get(fact_id).ok_or_else(|| {
+            audited_asset(format!(
+                "audited fact '{}' is absent from the active pack",
+                fact_id.as_str()
+            ))
+        })?;
         let pack = active_pack_set();
         let lemma = |concept_id: &qxfx0_types::ConceptId| {
             pack.resolver()
                 .records()
                 .find(|entry| &entry.concept_id == concept_id)
                 .map(|entry| entry.canonical_lemma.clone())
-                .expect("audited fact concept has a canonical lemma")
+                .ok_or_else(|| {
+                    audited_asset(format!(
+                        "concept '{}' of fact '{}' has no canonical lemma",
+                        concept_id.0,
+                        fact_id.as_str()
+                    ))
+                })
         };
-        let relation_id = argued
+        let relation_id = entry
             .primary_proposition()
             .canonical_slots()
             .map(|(_, relation, _)| relation.as_str())
-            .expect("audited primary proposition has canonical slots");
+            .ok_or_else(|| {
+                audited_asset(format!(
+                    "audited topic '{}' has no canonical primary proposition",
+                    self.topic
+                ))
+            })?;
         let frame = lexicon.get(relation_id)?;
-        let object = lemma(&record.object);
+        let object = lemma(&record.object)?;
         let complement = match frame.complement() {
             Complement::None => None,
             Complement::Uninflected => Some(NounPhrase::fixed(object, None)),
             governing if object.contains(' ') => {
-                let required = governing.required_case().expect("government names a case");
+                let required = governing.required_case().ok_or_else(|| {
+                    audited_asset(format!(
+                        "valency frame '{relation_id}' governs a prepositional \
+                         multi-word object without a case"
+                    ))
+                })?;
                 if governing
                     .preposition()
                     .is_some_and(|preposition| starts_with_word(&object, preposition))
@@ -782,7 +845,7 @@ impl AuditedTopicPlan {
         tree.push(
             claim.occurrence.clone(),
             Clause::new(
-                NounPhrase::lexical(lemma(&record.subject)),
+                NounPhrase::lexical(lemma(&record.subject)?),
                 VerbPhrase::new(relation_id, complement),
             ),
         );
@@ -1035,6 +1098,21 @@ mod tests {
                 && output.clauses == approved
                 && source_digest == digest
         ));
+    }
+
+    #[test]
+    fn syntax_adapter_fails_typed_on_valency_drift_instead_of_panicking() {
+        use crate::response_plan_v2::valency::ValencyError;
+        let plan = build_audited_topic("свобода").expect("topic chain");
+        let empty_lexicon = ValencyLexicon::load_from_str("").expect("empty lexicon parses");
+        let result = plan.syn_tree(&empty_lexicon);
+        assert!(
+            matches!(
+                result,
+                Err(RealizationError::Valency(ValencyError::UnknownRelation(_)))
+            ),
+            "a missing valency frame must be a typed realization error"
+        );
     }
 
     #[test]

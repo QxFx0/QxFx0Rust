@@ -2004,3 +2004,194 @@ fn thesis_shadow_does_not_compose_with_v2_authority() {
     assert!(receipt.thesis_id().is_none());
     assert!(receipt.fact_id().is_none());
 }
+
+/// Regression test for the runtime-edge off-by-one: the derived-atom loop in
+/// the finalize stage may consume the last edge slot after `can_register_topic`
+/// was evaluated, and the subsequent unconditional "мир → topic" insert used to
+/// push the graph past MAX_RUNTIME_EDGES. A state persisted with 20 001 edges
+/// fails `SystemState::validate` on every later turn, permanently bricking the
+/// session. The bound must hold at every fill level around the boundary.
+#[test]
+fn novel_topic_at_runtime_edge_bound_does_not_brick_session() {
+    use qxfx0_pipeline::MAX_RUNTIME_EDGES;
+    use qxfx0_types::atom::{ObjectCase, Relation, RelationSource};
+    use qxfx0_types::relation_type::RelationType;
+    use qxfx0_types::system_state::GuardStatus;
+    use qxfx0_types::AtomId;
+
+    fn filler_relation(from: AtomId, to: AtomId) -> Relation {
+        Relation {
+            from,
+            to,
+            rel_type: RelationType::RelRelatedTo,
+            object_case: ObjectCase::CaseAccusative,
+            object_text: "заполнитель".into(),
+            verb_override: None,
+            ru_original: "заполнитель".into(),
+            en_original: "filler".into(),
+            source: RelationSource::SeedFromPredicate,
+            topic: "заполнитель".into(),
+            rationale: None,
+            counter: None,
+            synthesis: None,
+        }
+    }
+
+    for remaining in [0usize, 1, 2, 3] {
+        let session = format!("edge-bound-{remaining}");
+        let mut state = test_state(&session);
+
+        let seed = TurnInput {
+            session_id: session.clone(),
+            raw_text: "что такое свобода?".into(),
+        };
+        process_turn(&seed, &mut state);
+
+        // Fill the graph to just below the bound using edges between two
+        // existing seed atoms so every endpoint stays valid.
+        let endpoints: Vec<AtomId> = state.semantic.runtime_graph.atoms.keys().cloned().collect();
+        let (from, to) = (endpoints[0].clone(), endpoints[1].clone());
+        let target = MAX_RUNTIME_EDGES - remaining;
+        while state.semantic.runtime_graph.edges.len() < target {
+            state
+                .semantic
+                .runtime_graph
+                .add_relation(filler_relation(from.clone(), to.clone()));
+        }
+        assert_eq!(state.semantic.runtime_graph.edges.len(), target);
+
+        // Filler inserts bypass the cache: drop it like persistence does
+        // so validation stays clean and the pipeline rebuilds it next turn.
+        state.semantic.cached_network = None;
+
+        let novel = TurnInput {
+            session_id: session.clone(),
+            raw_text: "что такое флюгегехаймен?".into(),
+        };
+        let bounded = process_turn(&novel, &mut state);
+        assert!(!bounded.response.is_empty());
+        assert!(
+            state.semantic.runtime_graph.edges.len() <= MAX_RUNTIME_EDGES,
+            "edge bound exceeded at remaining={remaining}: {}",
+            state.semantic.runtime_graph.edges.len()
+        );
+        assert!(
+            state.validate().is_empty(),
+            "state invalid after bounded novel-topic turn at remaining={remaining}: {:?}",
+            state.validate()
+        );
+
+        // The session must keep accepting turns instead of being bricked by a
+        // persisted invariant violation.
+        let follow = process_turn(&novel, &mut state);
+        assert!(
+            !matches!(follow.guard_status, GuardStatus::InvariantBlock(_)),
+            "session bricked at remaining={remaining}: {:?}",
+            follow.guard_status
+        );
+        assert!(state.validate().is_empty());
+    }
+}
+
+/// A full commitment store must reject the new observation visibly: the
+/// governance log records `CommitmentCapacityReached`, the store stays at the
+/// bound, and the session keeps processing turns.
+#[test]
+fn commitment_capacity_is_recorded_not_silent() {
+    use qxfx0_types::system_state::SemanticCommitmentStore;
+
+    let mut state = test_state("commit-capacity");
+    let seed = TurnInput {
+        session_id: "commit-capacity".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    process_turn(&seed, &mut state);
+
+    let mut store = SemanticCommitmentStore::default();
+    for index in 0..qxfx0_commitment::MAX_COMMITMENTS {
+        store.active.insert(
+            qxfx0_types::system_state::CommitmentId(index),
+            (
+                qxfx0_types::system_state::FactualClaimPayload {
+                    statement: format!("statement {index}"),
+                    confidence: 0.5,
+                    origin: qxfx0_types::system_state::CommitmentOrigin::OriginDialogueOutcome,
+                    turn_seq: index,
+                    deps: Vec::new(),
+                    topic: format!("topic-{index}"),
+                },
+                index,
+            ),
+        );
+    }
+    store.next_id = qxfx0_commitment::MAX_COMMITMENTS;
+    state.semantic.semantic_commitments = Some(store);
+
+    let turn = TurnInput {
+        session_id: "commit-capacity".into(),
+        raw_text: "что такое флюгегехаймен?".into(),
+    };
+    let output = process_turn(&turn, &mut state);
+    assert!(!output.response.is_empty());
+
+    let store = state.semantic.semantic_commitments.as_ref().unwrap();
+    assert_eq!(
+        store.active.len() + store.quarantine.len(),
+        qxfx0_commitment::MAX_COMMITMENTS,
+        "store must stay at the bound"
+    );
+    assert_eq!(store.next_id, qxfx0_commitment::MAX_COMMITMENTS);
+    assert!(
+        state.governance_log.events.iter().any(|event| matches!(
+            event.event_type,
+            qxfx0_types::governance::GovernanceEventType::CommitmentCapacityReached
+        )),
+        "capacity rejection must be visible in the governance log"
+    );
+    assert!(state.governance_log.replay_check().is_empty());
+    assert!(state.validate().is_empty());
+
+    // The session keeps accepting turns instead of degrading.
+    let follow = process_turn(&turn, &mut state);
+    assert!(!follow.response.is_empty());
+    assert!(state.validate().is_empty());
+}
+
+/// Oversized input is rejected before any stage work: semantic state is
+/// untouched, the turn advances like any guard-blocked turn, and the
+/// governance log records the block.
+#[test]
+fn oversized_input_is_rejected_before_stage_work() {
+    let mut state = test_state("oversized");
+    let seed = TurnInput {
+        session_id: "oversized".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    process_turn(&seed, &mut state);
+    let semantic_before = serde_json::to_value(&state.semantic).unwrap();
+
+    let oversized = "а".repeat(8193);
+    let input = TurnInput {
+        session_id: "oversized".into(),
+        raw_text: oversized,
+    };
+    let output = process_turn(&input, &mut state);
+
+    assert!(output.blocked);
+    assert_eq!(
+        serde_json::to_value(&state.semantic).unwrap(),
+        semantic_before,
+        "oversized input must not touch semantic state"
+    );
+    assert_eq!(state.dialogue.turn_count, 2);
+    assert_eq!(state.dialogue.history.len(), 2);
+    assert!(
+        state.governance_log.events.iter().any(|event| matches!(
+            event.event_type,
+            qxfx0_types::governance::GovernanceEventType::GuardBlocked
+        )),
+        "oversized rejection must be visible in the governance log"
+    );
+    assert!(state.validate().is_empty());
+    assert!(state.governance_log.replay_check().is_empty());
+}
