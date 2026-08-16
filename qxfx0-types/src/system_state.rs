@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::atom::AtomGraph;
 use crate::field::Field;
@@ -21,6 +21,12 @@ pub struct DialogueState {
     /// Persisted FSM conversation state (None = initial).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation_state: Option<u8>,
+    /// UTC epoch days on which the session saw a turn — the practice
+    /// calendar of the reflection journal. Stamped by the CLI boundary from
+    /// the caller's clock, never sampled inside the pipeline, so
+    /// determinism is preserved: the day is part of the recorded input.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub practice_days: BTreeSet<u64>,
 }
 
 impl Default for DialogueState {
@@ -31,6 +37,7 @@ impl Default for DialogueState {
             last_family: CanonicalMoveFamily::CMGround,
             last_topic: None,
             conversation_state: None,
+            practice_days: BTreeSet::new(),
         }
     }
 }

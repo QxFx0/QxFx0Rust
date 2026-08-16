@@ -39,6 +39,56 @@ pub fn daily_topic_name(day: u64) -> String {
     names[(day % names.len() as u64) as usize].to_string()
 }
 
+/// State-aware topic of the day — the revisit policy of the practice.
+///
+/// Deterministic in `(day, state)`, never random:
+/// 1. topics the journal has never reflected on come first (sorted, indexed
+///    by day) — the first month walks the whole audited corpus;
+/// 2. once everything has a position, the topic whose last position is the
+///    oldest returns (ties break lexicographically, then by day) — every
+///    topic comes back, oldest first, carrying its history in the card.
+pub fn select_topic_of_day(day: u64, state: Option<&SystemState>) -> String {
+    let Some(state) = state else {
+        return daily_topic_name(day);
+    };
+    let registry = argued_topic_registry().expect("embedded audited registry is available");
+    let mut names: Vec<&str> = registry
+        .topics()
+        .map(|topic| topic.topic().as_str())
+        .collect();
+    names.sort_unstable();
+
+    // Newest turn per topic: several positions on one topic keep the latest.
+    let mut last_turn_by_topic: BTreeMap<String, usize> = BTreeMap::new();
+    if let Some(store) = state.semantic.semantic_commitments.as_ref() {
+        for (payload, turn) in store.active.values() {
+            let entry = last_turn_by_topic.entry(payload.topic.clone()).or_insert(0);
+            *entry = (*entry).max(*turn);
+        }
+    }
+
+    let never: Vec<&str> = names
+        .iter()
+        .copied()
+        .filter(|name| !last_turn_by_topic.contains_key(*name))
+        .collect();
+    if !never.is_empty() {
+        return never[(day % never.len() as u64) as usize].to_string();
+    }
+
+    let oldest_turn = names
+        .iter()
+        .map(|name| last_turn_by_topic[*name])
+        .min()
+        .expect("every topic has a position here");
+    let oldest: Vec<&str> = names
+        .iter()
+        .copied()
+        .filter(|name| last_turn_by_topic[*name] == oldest_turn)
+        .collect();
+    oldest[(day % oldest.len() as u64) as usize].to_string()
+}
+
 /// A reflection card: audited material plus questions for one topic.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReflectionCard {
@@ -96,6 +146,112 @@ pub fn render_reflection_card(card: &ReflectionCard) -> String {
     out
 }
 
+/// A prior position on the card's topic, echoed into the card.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PriorPosition {
+    pub statement: String,
+    pub turn: usize,
+}
+
+/// The last recorded contradiction, as the practice sees it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContradictionEcho {
+    pub left: String,
+    pub right: String,
+    pub turn: usize,
+}
+
+/// How many prior positions the card echoes.
+const CARD_CALLBACK_LIMIT: usize = 2;
+
+/// A reflection card with the journal's memory attached.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemoryCard {
+    pub card: ReflectionCard,
+    /// True when the topic was chosen by the revisit policy.
+    pub revisited: bool,
+    pub prior_positions: Vec<PriorPosition>,
+    pub contradiction: Option<ContradictionEcho>,
+    pub practice_days: usize,
+}
+
+/// Attach the journal's memory to a reflection card: prior positions on the
+/// topic (newest first, bounded), the last unresolved contradiction and the
+/// practice calendar. A pure function of the state.
+pub fn build_memory_card(card: ReflectionCard, state: &SystemState) -> MemoryCard {
+    let mut prior_positions: Vec<PriorPosition> = state
+        .semantic
+        .semantic_commitments
+        .as_ref()
+        .map(|store| {
+            let mut positions: Vec<PriorPosition> = store
+                .active
+                .values()
+                .filter(|(payload, _)| payload.topic == card.topic)
+                .map(|(payload, turn)| PriorPosition {
+                    statement: payload.statement.clone(),
+                    turn: *turn,
+                })
+                .collect();
+            positions.sort_by_key(|position| std::cmp::Reverse(position.turn));
+            positions
+        })
+        .unwrap_or_default();
+    prior_positions.truncate(CARD_CALLBACK_LIMIT);
+
+    let contradiction = state
+        .semantic
+        .semantic_commitments
+        .as_ref()
+        .and_then(|store| {
+            let event = store.contradictions.last()?;
+            let statement_of = |id: &qxfx0_types::system_state::CommitmentId| {
+                store
+                    .active
+                    .get(id)
+                    .map(|(payload, _)| payload.statement.clone())
+            };
+            Some(ContradictionEcho {
+                left: statement_of(&event.left)?,
+                right: statement_of(&event.right)?,
+                turn: event.turn,
+            })
+        });
+
+    MemoryCard {
+        revisited: !prior_positions.is_empty(),
+        card,
+        prior_positions,
+        contradiction,
+        practice_days: state.dialogue.practice_days.len(),
+    }
+}
+
+/// Console rendering of the memory card.
+pub fn render_memory_card(memory: &MemoryCard) -> String {
+    let mut out = render_reflection_card(&memory.card);
+    if memory.revisited {
+        out.push_str("\n— В прошлый раз ты писал об этом:\n");
+        for position in &memory.prior_positions {
+            out.push_str(&format!("  [ход {}] {}\n", position.turn, position.statement));
+        }
+        out.push_str("Вернись к прежней мысли: она всё ещё твоя — или уже нет?\n");
+    }
+    if let Some(contradiction) = &memory.contradiction {
+        out.push_str("\n— Событие практики: твои мысли столкнулись.\n");
+        out.push_str(&format!("  новая:   {}\n", contradiction.left));
+        out.push_str(&format!("  прежняя: {}\n", contradiction.right));
+        out.push_str("  Противоречие не ошибка — это точка роста. Разберись, что именно изменилось.\n");
+    }
+    if memory.practice_days > 0 {
+        out.push_str(&format!(
+            "\nДней практики: {}\n",
+            memory.practice_days
+        ));
+    }
+    out
+}
+
 /// One held position, in report form.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct RecentCommitment {
@@ -111,6 +267,10 @@ pub struct ReflectionReport {
     pub session_id: String,
     pub turns: usize,
     pub history_entries: usize,
+    /// Distinct UTC days on which the session saw a turn.
+    pub practice_days: usize,
+    /// Longest run of consecutive practice days ending on the last one.
+    pub practice_streak: usize,
     pub pack_fingerprint: String,
     pub witnesses: usize,
     pub witness_capacity: usize,
@@ -127,10 +287,31 @@ pub struct ReflectionReport {
     pub governance_completed: usize,
     pub governance_blocked: usize,
     pub governance_capacity_reached: usize,
+    pub governance_commitment_contradicted: usize,
 }
 
 /// How many recent positions the report lists.
 const RECENT_COMMITMENT_LIMIT: usize = 5;
+
+/// Longest run of consecutive days ending at the last practiced day.
+/// The streak lives in the journal's own calendar — it does not know
+/// "today", so a gap simply ends the run at the last entry.
+fn practice_streak(days: &std::collections::BTreeSet<u64>) -> usize {
+    let mut streak = 0usize;
+    let mut previous: Option<u64> = None;
+    for day in days.iter().rev() {
+        match previous {
+            Some(expected) if expected == *day => streak += 1,
+            Some(_) => break,
+            None => streak = 1,
+        }
+        previous = day.checked_sub(1);
+        if previous.is_none() {
+            break;
+        }
+    }
+    streak
+}
 
 /// Build the report as a pure function of the persisted state.
 pub fn build_reflection_report(state: &SystemState) -> ReflectionReport {
@@ -169,6 +350,8 @@ pub fn build_reflection_report(state: &SystemState) -> ReflectionReport {
         session_id: state.session_id.clone(),
         turns: state.dialogue.turn_count,
         history_entries: state.dialogue.history.len(),
+        practice_days: state.dialogue.practice_days.len(),
+        practice_streak: practice_streak(&state.dialogue.practice_days),
         pack_fingerprint: state.semantic.pack_set_fingerprint.clone(),
         witnesses: state.semantic.essence.witnesses.len(),
         witness_capacity: state.semantic.essence.capacity,
@@ -183,6 +366,7 @@ pub fn build_reflection_report(state: &SystemState) -> ReflectionReport {
         governance_completed: log.count_by_type(&Event::TurnCompleted),
         governance_blocked: log.count_by_type(&Event::GuardBlocked),
         governance_capacity_reached: log.count_by_type(&Event::CommitmentCapacityReached),
+        governance_commitment_contradicted: log.count_by_type(&Event::CommitmentContradicted),
     }
 }
 
@@ -191,8 +375,12 @@ pub fn render_report_console(report: &ReflectionReport) -> String {
     let mut out = String::new();
     out.push_str("Кодекс — протокол размышлений\n");
     out.push_str(&format!(
-        "Сессия: {} | ходов: {} | записей истории: {}\n",
-        report.session_id, report.turns, report.history_entries
+        "Сессия: {} | ходов: {} | записей истории: {} | дней практики: {} (серия {})\n",
+        report.session_id,
+        report.turns,
+        report.history_entries,
+        report.practice_days,
+        report.practice_streak
     ));
     if !report.pack_fingerprint.is_empty() {
         let short: String = report.pack_fingerprint.chars().take(12).collect();
@@ -248,6 +436,7 @@ pub fn render_report_markdown(report: &ReflectionReport) -> String {
     out.push_str("# Кодекс — протокол размышлений\n\n");
     out.push_str(&format!("- **Сессия**: {}\n", report.session_id));
     out.push_str(&format!("- **Ходов**: {}\n", report.turns));
+    out.push_str(&format!("- **Дней практики**: {} (серия {})\n", report.practice_days, report.practice_streak));
     out.push_str(&format!(
         "- **Записей истории**: {}\n",
         report.history_entries
@@ -500,5 +689,104 @@ mod tests {
         assert_eq!(epoch_day(0), 0);
         assert_eq!(epoch_day(SECONDS_PER_DAY), 1);
         assert_eq!(epoch_day(SECONDS_PER_DAY * 7 + 123), 7);
+    }
+
+    fn state_with_topic_positions(positions: &[(&str, usize)]) -> SystemState {
+        let mut state = SystemState {
+            session_id: "diary".into(),
+            ..SystemState::default()
+        };
+        let mut store = SemanticCommitmentStore::default();
+        for (index, (topic, turn)) in positions.iter().enumerate() {
+            store.active.insert(
+                CommitmentId(index),
+                (
+                    FactualClaimPayload {
+                        statement: format!("позиция по теме {topic}"),
+                        confidence: 0.7,
+                        origin: CommitmentOrigin::OriginDialogueOutcome,
+                        turn_seq: *turn,
+                        deps: Vec::new(),
+                        topic: topic.to_string(),
+                    },
+                    *turn,
+                ),
+            );
+        }
+        state.semantic.semantic_commitments = Some(store);
+        state
+    }
+
+    #[test]
+    fn selection_prefers_never_reflected_topics() {
+        let state = state_with_topic_positions(&[("свобода", 1), ("долг", 5)]);
+        for day in 0..50u64 {
+            let chosen = select_topic_of_day(day, Some(&state));
+            assert!(
+                chosen != "свобода" && chosen != "долг",
+                "day {day}: unreflected topics must come first, got {chosen}"
+            );
+        }
+        // Without state the choice degenerates to the stateless daily topic.
+        assert_eq!(select_topic_of_day(7, None), daily_topic_name(7));
+    }
+
+    #[test]
+    fn selection_revisits_the_oldest_position_deterministically() {
+        let registry = argued_topic_registry().unwrap();
+        let positions: Vec<(String, usize)> = registry
+            .topics()
+            .enumerate()
+            .map(|(index, topic)| (topic.topic().as_str().to_string(), index + 1))
+            .collect();
+        let refs: Vec<(&str, usize)> = positions
+            .iter()
+            .map(|(topic, turn)| (topic.as_str(), *turn))
+            .collect();
+        let state = state_with_topic_positions(&refs);
+
+        // Oldest position is the topic with turn 1.
+        let registry_names: Vec<String> = {
+            let mut names: Vec<String> = registry
+                .topics()
+                .map(|topic| topic.topic().as_str().to_string())
+                .collect();
+            names.sort();
+            names
+        };
+        let oldest = &registry_names[0];
+        assert_eq!(select_topic_of_day(0, Some(&state)), *oldest);
+        assert_eq!(
+            select_topic_of_day(0, Some(&state)),
+            select_topic_of_day(0, Some(&state)),
+            "deterministic in (day, state)"
+        );
+    }
+
+    #[test]
+    fn practice_streak_counts_only_the_trailing_run() {
+        let days: std::collections::BTreeSet<u64> = [5u64, 6, 7, 10, 11].into_iter().collect();
+        assert_eq!(practice_streak(&days), 2);
+        let contiguous: std::collections::BTreeSet<u64> = (1..=9).collect();
+        assert_eq!(practice_streak(&contiguous), 9);
+        let empty: std::collections::BTreeSet<u64> = Default::default();
+        assert_eq!(practice_streak(&empty), 0);
+    }
+
+    #[test]
+    fn memory_card_echoes_positions_contradiction_and_days() {
+        let mut state = state_with_commitments();
+        state.dialogue.practice_days = [100u64, 101, 102].into_iter().collect();
+        let card = build_reflection_card("свобода", 20_000).unwrap();
+        let memory = build_memory_card(card, &state);
+        assert!(memory.revisited);
+        assert_eq!(memory.prior_positions.len(), 2, "bounded to two echoes");
+        assert_eq!(memory.prior_positions[0].turn, 3, "newest first");
+        assert!(memory.contradiction.is_some());
+        assert_eq!(memory.practice_days, 3);
+        let rendered = render_memory_card(&memory);
+        assert!(rendered.contains("В прошлый раз"));
+        assert!(rendered.contains("Событие практики"));
+        assert!(rendered.contains("Дней практики: 3"));
     }
 }

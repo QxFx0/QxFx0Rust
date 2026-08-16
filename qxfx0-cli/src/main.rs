@@ -4,7 +4,7 @@ use qxfx0_cli::{
     append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
     create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
     create_response_plan_v2_shadow_trace_sink, load_or_create_state, run_doctor,
-    run_operational_metrics, run_turn_with_renderer, run_turn_with_renderer_and_stance_provenance,
+    run_operational_metrics, run_turn_with_renderer_and_stance_provenance,
     run_turn_with_renderer_anomaly_shadow_trace, run_turn_with_renderer_cognitive_pilot,
     run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
@@ -446,6 +446,11 @@ fn main() -> anyhow::Result<()> {
                     traced.response
                 }
                 (None, None) => {
+                    let unix_seconds = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|duration| duration.as_secs())
+                        .unwrap_or(0);
+                    let day = qxfx0_cli::codex::epoch_day(unix_seconds);
                     if record_stance_provenance {
                         run_turn_with_renderer_and_stance_provenance(
                             &db,
@@ -454,7 +459,13 @@ fn main() -> anyhow::Result<()> {
                             renderer_authority,
                         )?
                     } else {
-                        run_turn_with_renderer(&db, &cli.session_id, &text, renderer_authority)?
+                        qxfx0_cli::run_journal_turn(
+                            &db,
+                            &cli.session_id,
+                            &text,
+                            day,
+                            renderer_authority,
+                        )?
                     }
                 }
             };
@@ -488,7 +499,7 @@ fn main() -> anyhow::Result<()> {
             loop {
                 if SHUTDOWN.load(Ordering::SeqCst) {
                     info!("Shutdown signal received, saving state and exiting chat");
-                    db.save_state(&cli.session_id, &state)?;
+                    qxfx0_cli::save_journal_state(&db, &cli.session_id, &mut state)?;
                     println!("\nState saved. Bye.");
                     break;
                 }
@@ -503,7 +514,7 @@ fn main() -> anyhow::Result<()> {
                 let line = line.trim();
                 if line == ":quit" || line == ":q" {
                     debug!("Quit command received");
-                    db.save_state(&cli.session_id, &state)?;
+                    qxfx0_cli::save_journal_state(&db, &cli.session_id, &mut state)?;
                     println!("State saved. Bye.");
                     break;
                 }
@@ -519,12 +530,12 @@ fn main() -> anyhow::Result<()> {
                 let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
 
                 debug!("Saving state for session: {}", cli.session_id);
-                db.save_state(&cli.session_id, &state)?;
+                qxfx0_cli::save_journal_state(&db, &cli.session_id, &mut state)?;
                 println!("{}\n", output.response);
             }
 
             debug!("Final state persistence for session: {}", cli.session_id);
-            db.save_state(&cli.session_id, &state)?;
+            qxfx0_cli::save_journal_state(&db, &cli.session_id, &mut state)?;
             Ok(())
         }
         Commands::Selfplay { iterations } => {
@@ -559,7 +570,7 @@ fn main() -> anyhow::Result<()> {
                         "Shutdown signal received during self-play at iteration {}, saving state",
                         i
                     );
-                    db.save_state(&cli.session_id, &state)?;
+                    qxfx0_cli::save_journal_state(&db, &cli.session_id, &mut state)?;
                     println!("\nSelf-play interrupted. State saved.");
                     break;
                 }
@@ -577,7 +588,7 @@ fn main() -> anyhow::Result<()> {
                     session_id: cli.session_id.clone(),
                 };
                 let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
-                db.save_state(&cli.session_id, &state)?;
+                qxfx0_cli::save_journal_state(&db, &cli.session_id, &mut state)?;
                 println!("[{}/{}] {} → {}", i + 1, iterations, topic, output.response);
                 println!();
             }
@@ -761,26 +772,49 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Reflect { topic } => {
-            // Reflection never opens the database: the daily topic comes from
-            // the embedded audited corpus, so no file is created on a typo.
+            // Reflection degrades gracefully: with a database and a session
+            // it remembers the journal; without them it stays stateless and
+            // never creates a file on a typo.
             let unix_seconds = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|duration| duration.as_secs())
                 .unwrap_or(0);
             let day = qxfx0_cli::codex::epoch_day(unix_seconds);
+            let journal_state = if std::path::Path::new(&cli.db).exists() {
+                qxfx0_persistence::Persistence::open(&cli.db)
+                    .ok()
+                    .and_then(|db| db.load_state(&cli.session_id).ok().flatten())
+            } else {
+                None
+            };
+            let first_run = journal_state.is_none();
             let topic_name = match topic {
                 Some(name) => name,
-                None => qxfx0_cli::codex::daily_topic_name(day),
+                None => qxfx0_cli::codex::select_topic_of_day(day, journal_state.as_ref()),
             };
             let card = match qxfx0_cli::codex::build_reflection_card(&topic_name, day) {
                 Some(card) => card,
                 None => {
                     return Err(anyhow::anyhow!(
-                        "тема «{topic_name}» не входит в 30 аудированных тем; вызовите `qxfx0 reflect` без аргумента для темы дня"
+                        "тема «{topic_name}» не входит в аудированные темы; вызовите `qxfx0 reflect` без аргумента для темы дня"
                     ))
                 }
             };
-            print!("{}", qxfx0_cli::codex::render_reflection_card(&card));
+            match journal_state {
+                Some(state) => {
+                    let memory = qxfx0_cli::codex::build_memory_card(card, &state);
+                    print!("{}", qxfx0_cli::codex::render_memory_card(&memory));
+                }
+                None => {
+                    print!("{}", qxfx0_cli::codex::render_reflection_card(&card));
+                    if first_run {
+                        print!(
+                            "\nЭто может быть первая запись твоего дневника. Ответь одним предложением:\n  qxfx0 turn \"я думал о {}: ...\"\nЗавтра тема вернётся другой — а через месяц эта же, с памятью о твоём ответе.\n",
+                            topic_name
+                        );
+                    }
+                }
+            }
             Ok(())
         }
         Commands::Report { markdown, out } => {

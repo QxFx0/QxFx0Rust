@@ -330,10 +330,7 @@ impl PropositionParser {
 
     fn clean_topic(s: &str) -> String {
         s.trim()
-            .trim_end_matches('?')
-            .trim_end_matches(',')
-            .trim_end_matches('!')
-            .trim_end_matches('.')
+            .trim_end_matches(['?', ',', '!', '.', ':', ';', '—'])
             .trim()
             .to_string()
     }

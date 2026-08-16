@@ -99,7 +99,10 @@ pub(crate) fn parse_and_normalize_topic(raw_text: &str, graph: &AtomGraph) -> Pa
 /// lexicons (nouns, pronouns, adjectives). Ambiguous surfaces keep their
 /// (cleaned) form.
 pub(crate) fn normalize_unknown_topic_to_lemma(topic: &str, graph: &AtomGraph) -> String {
-    let cleaned = topic.trim().trim_end_matches(['.', '?', '!', ',']).trim();
+    let cleaned = topic
+            .trim()
+            .trim_end_matches(['.', '?', '!', ',', ':', ';'])
+            .trim();
     if cleaned.is_empty() {
         return topic.to_string();
     }

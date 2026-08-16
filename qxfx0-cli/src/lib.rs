@@ -170,7 +170,7 @@ pub fn run_turn_with_v2_authority_trace(
         &mut state,
         qxfx0_pipeline::TurnOptions::new().with_response_plan_v2_authority(authority),
     );
-    db.save_state(session_id, &state)?;
+    save_journal_state(db, session_id, &mut state)?;
     Ok(AuthorityTracedTurn {
         response: output.response,
         trace,
@@ -1158,7 +1158,8 @@ impl DialogueSession {
             output.response
         };
 
-        self.db.save_state(&self.state.session_id, &self.state)?;
+        let session_id = self.state.session_id.clone();
+        save_journal_state(&self.db, &session_id, &mut self.state)?;
         Ok(final_response)
     }
 }
@@ -1174,6 +1175,37 @@ pub fn run_turn(
 }
 
 /// Run one turn with explicit authority for admitted content-plan rendering.
+/// Current UTC epoch day, read once per call at the CLI boundary. The
+/// pipeline never samples the clock itself: the day is part of the
+/// recorded input, keeping the deterministic core intact.
+pub fn today_epoch_day() -> u64 {
+    let unix_seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    crate::codex::epoch_day(unix_seconds)
+}
+
+/// Stamp the practice calendar with today and persist. Every CLI turn path
+/// funnels its saves through here, so the journal calendar stays consistent
+/// regardless of which trace flags accompanied the turn.
+pub fn save_journal_state(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    state: &mut qxfx0_types::system_state::SystemState,
+) -> anyhow::Result<()> {
+    stamp_practice_today(state);
+    db.save_state(session_id, state)?;
+    Ok(())
+}
+
+/// Stamp today onto the practice calendar in place. The timings-measuring
+/// runners call this before `save_state_with_timings` so their sessions
+/// share the journal calendar too.
+fn stamp_practice_today(state: &mut qxfx0_types::system_state::SystemState) {
+    state.dialogue.practice_days.insert(today_epoch_day());
+}
+
 pub fn run_turn_with_renderer(
     db: &qxfx0_persistence::Persistence,
     session_id: &str,
@@ -1186,6 +1218,29 @@ pub fn run_turn_with_renderer(
         session_id: session_id.to_string(),
     };
     let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
+    save_journal_state(db, session_id, &mut state)?;
+    Ok(output.response)
+}
+
+/// Run a journal turn: like [`run_turn_with_renderer`], plus the practice
+/// calendar. The epoch day comes from the caller's clock — the CLI passes
+/// "today", tests pass synthetic days — and is stamped onto the persisted
+/// state at the boundary, never sampled inside the pipeline, so the
+/// deterministic core (same input + same state → same output) is intact.
+pub fn run_journal_turn(
+    db: &qxfx0_persistence::Persistence,
+    session_id: &str,
+    text: &str,
+    epoch_day: u64,
+    renderer_authority: RendererAuthority,
+) -> anyhow::Result<String> {
+    let mut state = load_or_create_state(db, session_id)?;
+    let input = TurnInput {
+        raw_text: text.to_string(),
+        session_id: session_id.to_string(),
+    };
+    let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
+    state.dialogue.practice_days.insert(epoch_day);
     db.save_state(session_id, &state)?;
     Ok(output.response)
 }
@@ -1208,7 +1263,7 @@ pub fn run_turn_with_renderer_and_stance_provenance(
         renderer_authority,
         qxfx0_pipeline::StanceProvenanceMode::RecordAffirmedSystemDecision,
     );
-    db.save_state(session_id, &state)?;
+    save_journal_state(db, session_id, &mut state)?;
     Ok(output.response)
 }
 
@@ -1231,7 +1286,7 @@ pub fn run_turn_with_renderer_doubt_shadow_trace(
         renderer_authority,
         DoubtShadowMode::TraceOnly,
     );
-    db.save_state(session_id, &state)?;
+    save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
         response: output.response,
         trace,
@@ -1257,7 +1312,7 @@ pub fn run_turn_with_renderer_anomaly_shadow_trace(
         renderer_authority,
         AnomalyShadowMode::TraceOnly,
     );
-    db.save_state(session_id, &state)?;
+    save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
         response: output.response,
         trace,
@@ -1285,7 +1340,7 @@ pub fn run_turn_with_renderer_cognitive_pilot(
         clarification,
         suppression,
     );
-    db.save_state(session_id, &state)?;
+    save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
         response: output.response,
         trace,
@@ -1314,6 +1369,7 @@ pub fn run_turn_with_renderer_diagnostics(
     };
     let (output, pipeline) =
         process_turn_with_timing_and_renderer(&input, &mut state, renderer_authority);
+    stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
     Ok(build_diagnosed_turn(
         &state,
@@ -1351,6 +1407,7 @@ pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
         renderer_authority,
         DoubtShadowMode::TraceOnly,
     );
+    stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
     Ok((
         build_diagnosed_turn(
@@ -1391,6 +1448,7 @@ pub fn run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace(
         renderer_authority,
         AnomalyShadowMode::TraceOnly,
     );
+    stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
     Ok((
         build_diagnosed_turn(
@@ -1433,6 +1491,7 @@ pub fn run_turn_with_renderer_diagnostics_and_cognitive_pilot(
         clarification,
         suppression,
     );
+    stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
     Ok((
         build_diagnosed_turn(

@@ -683,7 +683,20 @@ pub fn finalize_stage(
             .semantic
             .semantic_commitments
             .get_or_insert_with(SemanticCommitmentStore::default);
-        let (new_store, result) = CommitmentOps::commit_observation(payload, store);
+        // Engagement is read from the store BEFORE the commit so the new
+        // position cannot match itself, and the contradiction signals come
+        // from the full text the user wrote — the bare topic never carries
+        // them. This is the live half of the belief protocol: a challenged
+        // position becomes a recorded contradiction, visible in reports and
+        // on the next reflection card, not a silent flag.
+        let raw_text = rendered
+            .routed()
+            .prepared()
+            .input()
+            .raw_text()
+            .to_lowercase();
+        let engagement = qxfx0_commitment::CommitmentOps::detect_engagement(store, &raw_text);
+        let (mut new_store, result) = CommitmentOps::commit_observation(payload, store);
         match result {
             CommitResult::Duplicate(_) => {
                 tracing::info!("commitment duplicate detected for topic {subject}");
@@ -711,7 +724,44 @@ pub fn finalize_stage(
                         timestamp: format!("turn-{turn}"),
                     });
             }
-            CommitResult::New(_) => {}
+            CommitResult::New(new_id) => {
+                if matches!(
+                    engagement.match_kind,
+                    qxfx0_commitment::MatchKind::ContradictedStrong
+                ) {
+                    if let Some(counterpart) = engagement
+                        .engaged_ids
+                        .iter()
+                        .filter(|cid| **cid != new_id)
+                        .cloned()
+                        .max_by_key(|cid| {
+                            new_store.active.get(cid).map(|(_, turn)| *turn).unwrap_or(0)
+                        })
+                    {
+                        new_store = CommitmentOps::contradict(
+                            &new_id,
+                            &counterpart,
+                            qxfx0_types::system_state::ContradictionKind::ContradictionStatement,
+                            turn,
+                            &new_store,
+                        );
+                        let family = state
+                            .last_turn_decision
+                            .as_ref()
+                            .map(|decision| decision.family)
+                            .unwrap_or(CanonicalMoveFamily::CMGround);
+                        state
+                            .governance_log
+                            .append(qxfx0_types::governance::GovernanceEvent {
+                                turn,
+                                event_type: qxfx0_types::governance::GovernanceEventType::CommitmentContradicted,
+                                family,
+                                guard_status: GuardStatus::Allowed,
+                                timestamp: format!("turn-{turn}"),
+                            });
+                    }
+                }
+            }
         }
         *store = new_store;
     }

@@ -192,23 +192,7 @@ impl CommitmentOps {
                     .filter(|w| w.len() >= 3)
                     .collect();
                 let exact = query_words.intersection(&stmt_words).count();
-                // Stem-based match: first 5 characters, char-safe for UTF-8.
-                let stem_overlap: usize = query_words
-                    .iter()
-                    .filter(|qw| qw.chars().count() >= 5)
-                    .map(|qw| {
-                        let qw_chars: Vec<char> = qw.chars().collect();
-                        let stem: String = qw_chars[..5].iter().collect();
-                        stmt_words
-                            .iter()
-                            .filter(|sw| {
-                                let sw_chars: Vec<char> = sw.chars().collect();
-                                sw_chars.len() >= 5
-                                    && sw_chars[..5].iter().collect::<String>() == stem
-                            })
-                            .count()
-                    })
-                    .sum();
+                let stem_overlap = stem_overlap_count(&query_words, &stmt_words);
                 (exact * 2 + stem_overlap, payload.clone())
             })
             .filter(|(overlap, _)| *overlap > 0)
@@ -235,7 +219,10 @@ impl CommitmentOps {
             };
         }
 
-        // Find which commitment IDs are engaged
+        // Find which commitment IDs are engaged. Stem-aware: Russian
+        // inflection means the user's «о свободе» must match a stored
+        // «свобода» — an exact-word filter here would go blind on every
+        // oblique form the journal actually receives.
         let query_words: BTreeSet<&str> = input_topic
             .split_whitespace()
             .filter(|w| w.len() >= 3)
@@ -250,10 +237,8 @@ impl CommitmentOps {
                     .split_whitespace()
                     .filter(|w| w.len() >= 3)
                     .collect();
-                !query_words
-                    .intersection(&stmt_words)
-                    .collect::<Vec<_>>()
-                    .is_empty()
+                !query_words.intersection(&stmt_words).collect::<Vec<_>>().is_empty()
+                    || stem_overlap_count(&query_words, &stmt_words) > 0
             })
             .map(|(cid, _)| cid.clone())
             .collect();
@@ -316,6 +301,27 @@ impl CommitmentOps {
 
         new_store
     }
+}
+
+/// Stem-based overlap between two word sets: first 5 characters, char-safe
+/// for UTF-8. Shared by retrieval and engagement so both see the same
+/// Russian inflection.
+fn stem_overlap_count(query: &BTreeSet<&str>, statement: &BTreeSet<&str>) -> usize {
+    query
+        .iter()
+        .filter(|qw| qw.chars().count() >= 5)
+        .map(|qw| {
+            let qw_chars: Vec<char> = qw.chars().collect();
+            let stem: String = qw_chars[..5].iter().collect();
+            statement
+                .iter()
+                .filter(|sw| {
+                    let sw_chars: Vec<char> = sw.chars().collect();
+                    sw_chars.len() >= 5 && sw_chars[..5].iter().collect::<String>() == stem
+                })
+                .count()
+        })
+        .sum()
 }
 
 /// Engagement result — whether the turn engages or contradicts held commitments.
