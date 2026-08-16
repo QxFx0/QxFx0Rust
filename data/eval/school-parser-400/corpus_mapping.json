@@ -1,0 +1,34 @@
+{
+  "dialogue.invite": {
+    "proposition_type": "DialogueInvitationQ",
+    "family": "CMDeepen"
+  },
+  "qa.knowledge": {
+    "proposition_type": "ConceptKnowledgeQ",
+    "family": "CMDefine"
+  },
+  "qa.self": {
+    "proposition_type": "SelfKnowledgeQ",
+    "family": "CMDescribe"
+  },
+  "logic.cause_result": {
+    "proposition_type": "WorldCauseQ",
+    "family": "CMGround"
+  },
+  "logic.comparison": {
+    "proposition_type": "ComparisonPlausibilityQ",
+    "family": "CMDistinguish"
+  },
+  "ellipsis.fragment": {
+    "proposition_type": "ClarifyQ",
+    "family": "CMClarify"
+  },
+  "single_word": {
+    "proposition_type": "ContemplativeTopic",
+    "family": "CMDeepen"
+  },
+  "ambiguity.challenge": {
+    "proposition_type": "ClarifyQ",
+    "family": "CMClarify"
+  }
+}

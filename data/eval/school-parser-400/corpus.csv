@@ -1,0 +1,401 @@
+﻿id,category,raw_text,target_part_of_speech_highlights,target_semantic_structure,expected_speech_act,expected_route_family_hint,ambiguity_risk
+R001,существительные_падежи,Стол стоит у окна.,NOUN[им]: стол; NOUN[род]: окна; PREP: у,"exist(obj=стол, loc=у окна)",assertion,morphology.noun_case,low
+R002,существительные_падежи,У брата нет ключа.,"NOUN[род]: брата, ключа; PREP: у; NEG: нет","neg_possession(holder=брат, theme=ключ)",assertion_negative,morphology.noun_case,medium: родительный отрицания + possession
+R003,существительные_падежи,Помоги сестре.,VERB[imp]: помоги; NOUN[дат]: сестре,request_help(recipient=сестра),request,morphology.noun_case,low
+R004,существительные_падежи,Вижу дом.,VERB[1sg]: вижу; NOUN[вин]: дом,"perception(agent=я, object=дом)",assertion,morphology.noun_case,low
+R005,существительные_падежи,Пишу ручкой.,VERB[1sg]: пишу; NOUN[твор]: ручкой,"write(agent=я, instrument=ручка)",assertion,morphology.noun_case,low
+R006,существительные_падежи,Думаю о задаче.,VERB[1sg]: думаю; PREP: о; NOUN[предл]: задаче,cognition(topic=задача),assertion,morphology.noun_case,low
+R007,существительные_падежи,К врачу очередь.,PREP: к; NOUN[дат]: врачу; NOUN[им]: очередь,queue(destination/service=врач),assertion_fragment,morphology.noun_case,medium: эллипсис сказуемого
+R008,существительные_падежи,Нет документов.,NEG: нет; NOUN[род.мн]: документов,absence(theme=документы),assertion_negative,morphology.noun_case,low
+R009,существительные_падежи,Детям холодно.,NOUN[дат.мн]: детям; PREDICATIVE: холодно,"state(experiencer=дети, state=cold)",assertion,morphology.noun_case,low
+R010,существительные_падежи,Открой дверь.,VERB[imp]: открой; NOUN[вин]: дверь,"open(agent=you, object=дверь)",command,morphology.noun_case,low
+R011,существительные_падежи,С командой проще.,PREP: с; NOUN[твор]: командой; ADV/PRED: проще,"state(condition=с командой, eval=проще)",assertion,morphology.noun_case,medium: с=accompaniment/condition
+R012,существительные_падежи,На столах пыль.,PREP: на; NOUN[предл.мн]: столах; NOUN[им]: пыль,"exist(obj=пыль, loc=на столах)",assertion,morphology.noun_case,low
+R013,существительные_падежи,Купи хлеба.,VERB[imp]: купи; NOUN[род]: хлеба,buy(theme=some bread),command,morphology.noun_case,medium: partitive genitive
+R014,существительные_падежи,Купи хлеб.,VERB[imp]: купи; NOUN[вин]: хлеб,buy(theme=хлеб),command,morphology.noun_case,low
+R015,существительные_падежи,Я горжусь братом.,PRON: я; VERB[1sg]: горжусь; NOUN[твор]: братом,"emotion(agent=я, object=брат)",assertion,morphology.noun_case,low
+R016,существительные_падежи,Мы ждём ответа.,PRON: мы; VERB[1pl]: ждём; NOUN[род]: ответа,"wait_for(agent=мы, theme=ответ)",assertion,morphology.noun_case,low
+R017,существительные_падежи,Перед домом сад.,PREP: перед; NOUN[твор]: домом; NOUN[им]: сад,"exist(obj=сад, loc=перед домом)",assertion,morphology.noun_case,low
+R018,существительные_падежи,От учителя пришло письмо.,PREP: от; NOUN[род]: учителя; NOUN[им]: письмо,"message(source=учитель, theme=письмо)",assertion,morphology.noun_case,medium: source vs author
+R019,существительные_падежи,Без пароля вход закрыт.,PREP: без; NOUN[род]: пароля; NOUN[им]: вход; ADJ.short: закрыт,"access(condition=without password, state=closed)",assertion,morphology.noun_case,medium: без introduces negative condition
+R020,существительные_падежи,По дороге идёт мальчик.,PREP: по; NOUN[дат]: дороге; NOUN[им]: мальчик,"motion(actor=мальчик, path=дорога)",assertion,morphology.noun_case,low
+R021,существительные_падежи,Для мамы подарок.,PREP: для; NOUN[род]: мамы; NOUN[им]: подарок,"beneficiary(theme=подарок, recipient=мама)",assertion_fragment,morphology.noun_case,low
+R022,существительные_падежи,С утра идёт снег.,PREP: с; NOUN[род]: утра; NOUN[им]: снег,"weather(event=снег, start_time=утро)",assertion,morphology.noun_case,medium: с=source/time
+R023,существительные_падежи,За час всё готово.,PREP: за; NOUN[вин]: час; PRON: всё; ADJ.short: готово,"completion(duration=час, theme=всё)",assertion,morphology.noun_case,medium: за=duration/price/goal
+R024,существительные_падежи,За домом река.,PREP: за; NOUN[твор]: домом; NOUN[им]: река,"exist(obj=река, loc=behind house)",assertion,morphology.noun_case,medium: за + твор = location
+R025,существительные_падежи,У окна сидит кошка.,PREP: у; NOUN[род]: окна; NOUN[им]: кошка,"position(actor=кошка, loc=у окна)",assertion,morphology.noun_case,low
+R026,существительные_падежи,К пятнице нужен отчёт.,PREP: к; NOUN[дат]: пятнице; ADJ.short: нужен; NOUN[им]: отчёт,"requirement(theme=отчёт, deadline=пятница)",request_indirect,morphology.noun_case,medium: к=deadline
+R027,существительные_падежи,Из города вышла колонна.,PREP: из; NOUN[род]: города; NOUN[им]: колонна,"motion(actor=колонна, source=город)",assertion,morphology.noun_case,low
+R028,существительные_падежи,Между домами двор.,PREP: между; NOUN[твор.мн]: домами; NOUN[им]: двор,"exist(obj=двор, loc=between houses)",assertion,morphology.noun_case,low
+R029,существительные_падежи,После урока домой.,PREP: после; NOUN[род]: урока; ADV: домой,"plan(action=go_home, time=after lesson)",fragment_plan,morphology.noun_case,medium: omitted verb
+R030,существительные_падежи,Рядом с парком школа.,ADV/PREP: рядом с; NOUN[твор]: парком; NOUN[им]: школа,"exist(obj=школа, loc=near park)",assertion,morphology.noun_case,low
+R031,глагольные_формы,Я читаю сообщение.,"VERB[наст,1sg,несов]: читаю; NOUN[вин]: сообщение","read(agent=я, object=сообщение)",assertion,morphology.verb_form,low
+R032,глагольные_формы,Она писала письмо.,"VERB[прош,ж,несов]: писала; NOUN[вин]: письмо","write(agent=она, object=письмо, aspect=process)",assertion,morphology.verb_form,low
+R033,глагольные_формы,Он написал ответ.,"VERB[прош,м,сов]: написал; NOUN[вин]: ответ","write(agent=он, object=ответ, aspect=complete)",assertion,morphology.verb_form,low
+R034,глагольные_формы,Они пришли рано.,"VERB[прош,мн,сов]: пришли; ADV: рано","arrive(agent=они, time=early)",assertion,morphology.verb_form,low
+R035,глагольные_формы,Я буду ждать.,AUX[буду]; INF[несов]: ждать,"wait(agent=я, tense=future)",assertion,morphology.verb_form,low
+R036,глагольные_формы,Мы проверим файл.,"VERB[буд,1pl,сов]: проверим; NOUN[вин]: файл","check(agent=мы, object=файл, future=complete)",commitment,morphology.verb_form,low
+R037,глагольные_формы,Открой окно.,"VERB[повел,2sg,сов]: открой; NOUN[вин]: окно","open(agent=you, object=окно)",command,morphology.verb_form,low
+R038,глагольные_формы,Не шумите.,"NEG: не; VERB[повел,2pl,несов]: шумите",prohibit(action=make_noise),prohibition,morphology.verb_form,low
+R039,глагольные_формы,Можно войти?,MODAL/PRED: можно; INF[сов]: войти,permission_request(action=enter),permission_question,morphology.verb_form,medium: ability vs permission
+R040,глагольные_формы,Хочу спать.,VERB[1sg]: хочу; INF[несов]: спать,"desire(agent=я, action=sleep)",self_report,morphology.verb_form,low
+R041,глагольные_формы,Пусть он подождёт.,PART: пусть; VERB[буд/повел-3sg]: подождёт,"directive(target=он, action=wait)",directive,morphology.verb_form,medium: пусть=permission/directive
+R042,глагольные_формы,Давай начнём.,"PART/VERB: давай; VERB[1pl,буд/повел]: начнём","proposal(action=start, participants=we)",proposal,morphology.verb_form,low
+R043,глагольные_формы,Я бы помог.,"PART: бы; VERB[прош,м]: помог",hypothetical_help(agent=я),conditional_offer,morphology.verb_form,medium: irrealis
+R044,глагольные_формы,"Если бы знал, сказал бы.","CONJ: если; PART: бы; VERB[прош]: знал, сказал","counterfactual(condition=know, result=say)",assertion_counterfactual,morphology.verb_form,high: omitted subjects
+R045,глагольные_формы,"Проверив ответ, он ушёл.",GERUND[сов]: проверив; VERB[прош]: ушёл,sequence(check_before_leave),assertion,morphology.verb_form,medium: деепричастный оборот
+R046,глагольные_формы,"Читая текст, она улыбалась.","GERUND[несов]: читая; VERB[прош,несов]: улыбалась","simultaneous(read, smile)",assertion,morphology.verb_form,low
+R047,глагольные_формы,Открытый файл лежит здесь.,PARTICIPLE/ADJ: открытый; VERB: лежит; ADV: здесь,"state(file=open, loc=here)",assertion,morphology.verb_form,medium: причастие vs adjective
+R048,глагольные_формы,Потерянный ключ нашли.,"PARTICIPLE: потерянный; VERB[прош,мн]: нашли",find(object=lost key),assertion,morphology.verb_form,medium: passive participle
+R049,глагольные_формы,Файл был удалён.,AUX[прош]: был; PART.short.passive: удалён,passive_delete(theme=файл),assertion,morphology.verb_form,low
+R050,глагольные_формы,Книга прочитана.,PART.short.passive[ж]: прочитана; NOUN[им]: книга,state(book=read_done),assertion,morphology.verb_form,low
+R051,глагольные_формы,Он смеётся.,"VERB[возвр,наст]: смеётся",laugh(agent=он),assertion,morphology.verb_form,low
+R052,глагольные_формы,Дверь открывается медленно.,"VERB[возвр,наст]: открывается; ADV: медленно","open_process(theme=дверь, manner=slow)",assertion,morphology.verb_form,medium: reflexive passive/middle
+R053,глагольные_формы,Я пойду завтра.,"VERB[буд,1sg,сов]: пойду; ADV: завтра","go(agent=я, time=tomorrow)",commitment,morphology.verb_form,low
+R054,глагольные_формы,Он ходит каждый день.,"VERB[наст,несов]: ходит; ADV: каждый день","habitual_motion(agent=он, frequency=daily)",assertion,morphology.verb_form,low
+R055,глагольные_формы,Скажи правду.,"VERB[imp,сов]: скажи; NOUN[вин]: правду",request_say(content=truth),command,morphology.verb_form,low
+R056,глагольные_формы,Говори тише.,"VERB[imp,несов]: говори; ADV.comp: тише",command_speech(manner=quieter),command,morphology.verb_form,low
+R057,глагольные_формы,Я не успел ответить.,NEG: не; VERB[прош]: успел; INF: ответить,failure_to_answer(agent=я),self_report,morphology.verb_form,medium: negation over успеть
+R058,глагольные_формы,Он начал читать.,VERB[прош]: начал; INF: читать,phase_begin(action=read),assertion,morphology.verb_form,low
+R059,глагольные_формы,Она перестала спорить.,VERB[прош]: перестала; INF: спорить,phase_stop(action=argue),assertion,morphology.verb_form,low
+R060,глагольные_формы,Надо проверить.,MODAL/PRED: надо; INF: проверить,obligation(action=check),directive_indirect,morphology.verb_form,medium: no explicit agent
+R061,прилагательные_краткие_формы,Красная папка лежит справа.,"ADJ[полн,ж,им]: красная; NOUN: папка; ADV: справа","locate(object=red folder, loc=right)",assertion,morphology.adjective,low
+R062,прилагательные_краткие_формы,Старый пароль не подходит.,"ADJ[полн,м,им]: старый; NEG: не; VERB: подходит",invalid_credential(theme=old password),assertion_negative,morphology.adjective,low
+R063,прилагательные_краткие_формы,Ответ готов.,NOUN[им]: ответ; ADJ.short[м]: готов,"state(theme=ответ, ready=true)",assertion,morphology.adjective,low
+R064,прилагательные_краткие_формы,Задача сложна.,NOUN[им]: задача; ADJ.short[ж]: сложна,"attribute(theme=задача, quality=complex)",assertion,morphology.adjective,low
+R065,прилагательные_краткие_формы,Окно открыто.,NOUN[им]: окно; ADJ/PART.short[ср]: открыто,"state(theme=окно, open=true)",assertion,morphology.adjective,medium: adjective vs passive participle
+R066,прилагательные_краткие_формы,Комнаты чисты.,NOUN[им.мн]: комнаты; ADJ.short[мн]: чисты,"attribute(theme=комнаты, clean=true)",assertion,morphology.adjective,low
+R067,прилагательные_краткие_формы,Этот вариант лучше.,PRON.dem: этот; NOUN: вариант; ADJ.comp: лучше,"comparison(option=this, rank=better)",assertion,morphology.adjective,low
+R068,прилагательные_краткие_формы,Это самый простой путь.,PRON: это; ADJ.superlative: самый простой; NOUN: путь,classification(path=simplest),assertion,morphology.adjective,low
+R069,прилагательные_краткие_формы,Нужен новый ключ.,ADJ.short[м]: нужен; ADJ[полн]: новый; NOUN: ключ,requirement(theme=new key),request_indirect,morphology.adjective,low
+R070,прилагательные_краткие_формы,Мне нужен доступ.,PRON[дат]: мне; ADJ.short[м]: нужен; NOUN: доступ,"need(experiencer=я, theme=access)",request_indirect,morphology.adjective,low
+R071,прилагательные_краткие_формы,Файл пустой.,NOUN: файл; ADJ[полн]: пустой,"attribute(file, empty)",assertion,morphology.adjective,low
+R072,прилагательные_краткие_формы,Файл пуст.,NOUN: файл; ADJ.short: пуст,"attribute(file, empty)",assertion,morphology.adjective,low
+R073,прилагательные_краткие_формы,Мне грустно.,PRON[дат]: мне; PRED/ADV: грустно,"state(experiencer=я, emotion=sad)",self_report,morphology.adjective,low
+R074,прилагательные_краткие_формы,Решение верное.,NOUN: решение; ADJ[полн]: верное,"evaluation(solution, correct)",assertion,morphology.adjective,low
+R075,прилагательные_краткие_формы,Решение верно.,NOUN: решение; ADJ.short/ADV: верно,"evaluation(solution, correct)",assertion,morphology.adjective,medium: short adjective vs adverb
+R076,прилагательные_краткие_формы,Дверь закрыта.,NOUN: дверь; ADJ/PART.short[ж]: закрыта,"state(door, closed)",assertion,morphology.adjective,medium: passive participle
+R077,прилагательные_краткие_формы,Синий карандаш сломан.,ADJ: синий; NOUN: карандаш; ADJ.short/PART: сломан,"state(pencil=blue, broken=true)",assertion,morphology.adjective,low
+R078,прилагательные_краткие_формы,Погода хорошая.,NOUN: погода; ADJ[полн]: хорошая,weather_attribute(good),assertion,morphology.adjective,low
+R079,прилагательные_краткие_формы,Погода хороша.,NOUN: погода; ADJ.short: хороша,weather_attribute(good),assertion,morphology.adjective,low
+R080,прилагательные_краткие_формы,Он сильнее меня.,PRON: он; ADJ.comp: сильнее; PRON[род]: меня,"comparison(strength, он > я)",assertion,morphology.adjective,low
+R081,прилагательные_краткие_формы,Здесь тихое место.,ADV: здесь; ADJ: тихое; NOUN: место,"attribute(location=here, quality=quiet)",assertion,morphology.adjective,low
+R082,прилагательные_краткие_формы,Команда готова.,NOUN: команда; ADJ.short[ж]: готова,"state(team, ready)",assertion,morphology.adjective,low
+R083,прилагательные_краткие_формы,Ответы неверны.,NOUN[мн]: ответы; ADJ.short[мн]: неверны,"evaluation(answers, incorrect)",assertion,morphology.adjective,low
+R084,прилагательные_краткие_формы,План ясен.,NOUN: план; ADJ.short[м]: ясен,"state(plan, clear)",assertion,morphology.adjective,low
+R085,прилагательные_краткие_формы,Вопрос понятен.,NOUN: вопрос; ADJ.short[м]: понятен,"state(question, understandable)",assertion,morphology.adjective,low
+R086,местоимения,Я это сделаю.,PRON[личн]: я; PRON[указ]: это; VERB: сделаю,"commit(agent=я, action=do, object=this)",commitment,reference.pronoun,medium: это needs antecedent
+R087,местоимения,Ты меня слышишь?,"PRON: ты, меня; VERB: слышишь","perception_question(agent=ты, object=я)",question_yes_no,reference.pronoun,low
+R088,местоимения,Он её не видел.,"PRON: он, её; NEG: не; VERB: видел","neg_perception(agent=он, object=она/её)",assertion_negative,reference.pronoun,medium: её=personal/possessive in other contexts
+R089,местоимения,Мы сами проверим.,PRON: мы; PRON.intensifier: сами; VERB: проверим,"check(agent=мы, emphasis=self)",commitment,reference.pronoun,low
+R090,местоимения,Кто пришёл?,PRON.interrogative: кто; VERB: пришёл,ask_identity(role=arriver),question_info,reference.pronoun,low
+R091,местоимения,Что случилось?,PRON.interrogative: что; VERB: случилось,ask_event(event=unknown),question_info,reference.pronoun,low
+R092,местоимения,Какой файл открыть?,PRON.interrogative: какой; NOUN: файл; INF: открыть,ask_selection(object=file),question_choice,reference.pronoun,low
+R093,местоимения,Этот файл мой.,PRON.dem: этот; PRON.possessive: мой; NOUN: файл,"ownership(file=this, owner=я)",assertion,reference.pronoun,low
+R094,местоимения,Та папка пустая.,PRON.dem: та; NOUN: папка; ADJ: пустая,"attribute(folder=that, empty)",assertion,reference.pronoun,low
+R095,местоимения,Никто не ответил.,PRON.neg: никто; NEG: не; VERB: ответил,negative_concord(no_person_answered),assertion_negative,reference.pronoun,low
+R096,местоимения,Ничего не найдено.,PRON.neg: ничего; NEG: не; PART.short: найдено,negative_result(nothing_found),assertion_negative,reference.pronoun,low
+R097,местоимения,Кое-кто уже пришёл.,PRON.indef: кое-кто; ADV: уже; VERB: пришёл,arrival(agent=some_known_person),assertion,reference.pronoun,medium: indefinite known to speaker
+R098,местоимения,Кто-то стучит.,PRON.indef: кто-то; VERB: стучит,"event(knock, agent=unknown_person)",assertion,reference.pronoun,low
+R099,местоимения,Себя не обманывай.,PRON.reflexive: себя; NEG: не; VERB.imp: обманывай,prohibit(deceive_self),prohibition,reference.pronoun,low
+R100,местоимения,Каждый выбрал тему.,PRON.universal: каждый; VERB: выбрал; NOUN: тему,"forall(person, choose(topic))",assertion,reference.pronoun,low
+R101,местоимения,Все ушли домой.,PRON.quant: все; VERB: ушли; ADV: домой,"departure(agent=all, destination=home)",assertion,reference.pronoun,low
+R102,местоимения,Некоторые молчали.,PRON.indef.quant: некоторые; VERB: молчали,"state(some_people, silent)",assertion,reference.pronoun,low
+R103,местоимения,Тебе помочь?,PRON[дат]: тебе; INF: помочь,offer_help(recipient=you),offer_question,reference.pronoun,medium: ellipsis of можно/мне
+R104,местоимения,Мне это не нравится.,PRON[дат]: мне; PRON: это; NEG: не; VERB: нравится,"preference_negative(experiencer=я, stimulus=this)",self_report,reference.pronoun,medium: это antecedent
+R105,местоимения,С ним трудно спорить.,PREP: с; PRON[твор]: ним; ADV/PRED: трудно; INF: спорить,"difficulty(action=argue, counterpart=him)",assertion,reference.pronoun,low
+R106,местоимения,У кого ключ?,PREP: у; PRON.interrog[род]: кого; NOUN: ключ,ask_possessor(theme=key),question_info,reference.pronoun,low
+R107,местоимения,Кому отправить ответ?,PRON.interrog[дат]: кому; INF: отправить; NOUN: ответ,"ask_recipient(action=send, theme=answer)",question_info,reference.pronoun,low
+R108,местоимения,Чей это телефон?,PRON.poss.interrog: чей; PRON: это; NOUN: телефон,ask_owner(theme=phone),question_info,reference.pronoun,low
+R109,местоимения,Нам пора.,PRON[дат]: нам; PRED: пора,time_to_act(group=we),assertion_indirect,reference.pronoun,medium: omitted action
+R110,местоимения,Сам сказал.,PRON.intensifier: сам; VERB: сказал,assert_speech(agent=he/she self),assertion_fragment,reference.pronoun,medium: omitted subject/antecedent
+R111,наречия,Здесь тихо.,ADV.loc: здесь; ADV/PRED: тихо,"state(location=here, quiet)",assertion,modifier.adverb,low
+R112,наречия,Там шумно.,ADV.loc: там; ADV/PRED: шумно,"state(location=there, noisy)",assertion,modifier.adverb,low
+R113,наречия,Сегодня холодно.,ADV.time: сегодня; ADV/PRED: холодно,"weather(time=today, cold)",assertion,modifier.adverb,low
+R114,наречия,Вчера я опоздал.,ADV.time: вчера; PRON: я; VERB: опоздал,"late(agent=я, time=yesterday)",self_report,modifier.adverb,low
+R115,наречия,Он быстро ответил.,ADV.manner: быстро; VERB: ответил,"answer(agent=он, manner=fast)",assertion,modifier.adverb,low
+R116,наречия,Говори медленно.,VERB.imp: говори; ADV.manner: медленно,command_speech(manner=slow),command,modifier.adverb,low
+R117,наречия,Слишком громко.,ADV.degree: слишком; ADV/PRED: громко,evaluation(volume=too_loud),fragment_evaluation,modifier.adverb,low
+R118,наречия,Очень странно.,ADV.degree: очень; ADV/PRED: странно,"evaluation(strange, degree=high)",reaction,modifier.adverb,low
+R119,наречия,Почти готово.,ADV.degree: почти; ADJ.short: готово,state(almost_ready),assertion_fragment,modifier.adverb,medium: no subject
+R120,наречия,Совсем не ясно.,ADV.degree: совсем; NEG: не; ADJ.short: ясно,unclear(degree=complete),assertion_negative,modifier.adverb,low
+R121,наречия,Он часто звонит.,ADV.freq: часто; VERB: звонит,"call(agent=он, frequency=often)",assertion,modifier.adverb,low
+R122,наречия,Мы редко встречаемся.,ADV.freq: редко; VERB.refl: встречаемся,"meet(agent=we, frequency=rarely)",assertion,modifier.adverb,low
+R123,наречия,Иногда помогает.,ADV.freq: иногда; VERB: помогает,"help(event, frequency=sometimes)",assertion_fragment,modifier.adverb,medium: omitted subject
+R124,наречия,Нигде нет света.,ADV.neg.loc: нигде; NEG: нет; NOUN: света,"absence(light, location=anywhere)",assertion_negative,modifier.adverb,low
+R125,наречия,Отсюда видно реку.,ADV.source: отсюда; PRED: видно; NOUN[вин]: реку,"visibility(object=river, viewpoint=here)",assertion,modifier.adverb,low
+R126,наречия,Сверху капает вода.,ADV.source/loc: сверху; VERB: капает; NOUN: вода,"event(drip, source=above, theme=water)",assertion,modifier.adverb,low
+R127,наречия,Домой пора.,ADV.direction: домой; PRED: пора,time_to_go(destination=home),statement_indirect,modifier.adverb,medium: omitted subject
+R128,наречия,По-русски понятно?,ADV.manner/lang: по-русски; ADJ.short: понятно,ask_comprehensibility(language=Russian),question_yes_no,modifier.adverb,low
+R129,наречия,Зря ты споришь.,ADV.eval: зря; PRON: ты; VERB: споришь,"evaluation(action=argue, pointless)",assertion_reproach,modifier.adverb,low
+R130,наречия,Нарочно не отвечал?,ADV.intent: нарочно; NEG: не; VERB: отвечал,ask_intentional_nonresponse,accusatory_question,modifier.adverb,medium: rhetorical possible
+R131,наречия,Сначала проверь текст.,ADV.sequence: сначала; VERB.imp: проверь,"command(action=check, order=first)",command,modifier.adverb,low
+R132,наречия,Потом отправь письмо.,ADV.sequence: потом; VERB.imp: отправь,"command(action=send, order=after)",command,modifier.adverb,low
+R133,наречия,Сразу не открывай.,ADV.time: сразу; NEG: не; VERB.imp: открывай,prohibit(action=open_immediately),prohibition,modifier.adverb,medium: negation scope over timing/action
+R134,наречия,"Наверное, он дома.",ADV.modal: наверное; PRON: он; ADV/PRED: дома,"hypothesis(location=home, confidence=probable)",assertion_uncertain,modifier.adverb,low
+R135,наречия,"Возможно, это ошибка.",ADV.modal: возможно; PRON: это; NOUN: ошибка,hypothesis(classification=error),assertion_uncertain,modifier.adverb,low
+R136,отрицание,Я не знаю ответ.,PRON: я; NEG: не; VERB: знаю; NOUN: ответ,"neg_knowledge(agent=я, content=answer)",self_report_negative,logic.negation,low
+R137,отрицание,Не открывай файл.,NEG: не; VERB.imp: открывай; NOUN: файл,"prohibit(action=open, object=file)",prohibition,logic.negation,low
+R138,отрицание,Он не пришёл.,PRON: он; NEG: не; VERB: пришёл,neg_event(arrive),assertion_negative,logic.negation,low
+R139,отрицание,Никто не звонил.,PRON.neg: никто; NEG: не; VERB: звонил,negative_concord(no_caller),assertion_negative,logic.negation,low
+R140,отрицание,Ничего не понятно.,PRON.neg: ничего; NEG: не; ADJ.short: понятно,negative_comprehension(nothing_clear),assertion_negative,logic.negation,low
+R141,отрицание,Ни одного письма нет.,PART: ни; NUM: одного; NOUN[род]: письма; NEG: нет,"absence(count=zero, theme=letter)",assertion_negative,logic.negation,low
+R142,отрицание,"Ни шуму, ни света.","PART/CONJ: ни...ни; NOUN[род]: шуму, света","negative_series(no_noise, no_light)",fragment_negative,logic.negation,medium: omitted predicate
+R143,отрицание,Без тебя не начнём.,PREP: без; PRON[род]: тебя; NEG: не; VERB: начнём,condition_negative(start only with you),commitment_negative,logic.negation,medium: без as negative condition
+R144,отрицание,"Это не ошибка, а предупреждение.",PRON: это; NEG: не; NOUN: ошибка; CONJ: а; NOUN: предупреждение,correction(classification error->warning),correction,logic.negation,high: contrastive negation
+R145,отрицание,"Не только прочитай, но и проверь.","NEG: не; PART: только; CONJ: но и; VERB.imp: прочитай, проверь",additive_escalation(actions=read+check),command,logic.negation,high: not simple negation
+R146,отрицание,Я не могу не согласиться.,NEG: не; MODAL: могу; NEG: не; INF: согласиться,double_negation(agreement unavoidable),assertion_affirmative,logic.negation,high: double negation
+R147,отрицание,Он едва ли придёт.,PART: ли; ADV: едва; VERB: придёт,"doubt(arrive, negative_bias)",assertion_uncertain,logic.negation,medium: near-negation
+R148,отрицание,Вряд ли это поможет.,PARTICLE: вряд ли; PRON: это; VERB: поможет,"doubt(help, negative_bias)",assertion_uncertain,logic.negation,medium: modal negative bias
+R149,отрицание,Не все согласны.,NEG: не; PRON.quant: все; ADJ.short: согласны,partial_negation(not all agree),assertion_negative,logic.negation,high: not_all vs none
+R150,отрицание,Все не согласны.,PRON.quant: все; NEG: не; ADJ.short: согласны,universal_negation(all disagree),assertion_negative,logic.negation,high: scope differs from не все
+R151,отрицание,Мне нечего сказать.,PRON.neg: нечего; INF: сказать,absence(content_to_say),self_report_negative,logic.negation,low
+R152,отрицание,Тут не с кем спорить.,NEG pronoun: не с кем; INF: спорить,absence(opponent),assertion_negative,logic.negation,low
+R153,отрицание,Нельзя входить.,PRED.neg.modal: нельзя; INF: входить,prohibition(action=enter),prohibition,logic.negation,low
+R154,отрицание,Не надо спорить.,NEG: не; MODAL: надо; INF: спорить,advice/prohibition(action=argue),soft_prohibition,logic.negation,medium: advice vs command
+R155,отрицание,"Нет, я дома.",PART/INTJ: нет; PRON: я; ADV/PRED: дома,deny_previous + assert(location=home),answer_negative,logic.negation,medium: answers prior context
+R156,отрицание,"Не завтра, а сегодня.",NEG: не; ADV: завтра; CONJ: а; ADV: сегодня,correction(time tomorrow->today),correction,logic.negation,high: fragment correction
+R157,отрицание,Ни за что не соглашайся.,PART: ни; NEG: не; VERB.imp: соглашайся,strong_prohibition(action=agree),prohibition,logic.negation,medium: idiom
+R158,отрицание,Он не обязан отвечать.,NEG: не; MODAL/ADJ.short: обязан; INF: отвечать,absence_obligation(answer),assertion_negative,logic.negation,medium: not_obliged != forbidden
+R159,отрицание,Я не против.,NEG: не; PREP/PRED: против,permission/acceptance(no objection),answer_acceptance,logic.negation,high: negative form means positive stance
+R160,отрицание,Пока не ясно.,ADV: пока; NEG: не; ADJ.short: ясно,"state(unclear, temporal=for_now)",assertion_uncertain,logic.negation,low
+R161,причинность,"Я опоздал, потому что автобус задержался.","CONJ: потому что; VERB: опоздал, задержался","cause(effect=late, cause=bus_delayed)",explanation,logic.cause_result,low
+R162,причинность,"Так как дождь, идём домой.",CONJ: так как; NOUN: дождь; VERB: идём,"cause(cause=rain, result=go_home)",proposal_explanation,logic.cause_result,medium: fragment cause clause
+R163,причинность,Из-за ошибки сборка упала.,PREP: из-за; NOUN[род]: ошибки; VERB: упала,"cause(cause=error, result=build_failed)",assertion,logic.cause_result,low
+R164,причинность,Благодаря тебе мы успели.,PREP: благодаря; PRON[дат]: тебе; VERB: успели,"positive_cause(cause=you, result=we_made_it)",gratitude_assertion,logic.cause_result,low
+R165,причинность,"Сервер упал, поэтому сайт недоступен.",CONJ/ADV: поэтому; VERB: упал; ADJ.short: недоступен,"result(cause=server_down, effect=site_unavailable)",assertion,logic.cause_result,low
+R166,причинность,"Он устал, так что пошёл спать.","CONJ: так что; VERB: устал, пошёл","result(cause=tired, action=sleep)",assertion,logic.cause_result,low
+R167,причинность,"Раз ты здесь, помоги.",CONJ: раз; VERB: здесь; VERB.imp: помоги,condition/cause(presence -> request help),request,logic.cause_result,medium: раз=since/if
+R168,причинность,От холода стекло треснуло.,PREP: от; NOUN[род]: холода; VERB: треснуло,cause(cold -> glass_crack),assertion,logic.cause_result,low
+R169,причинность,Вследствие аварии поезд задержали.,PREP: вследствие; NOUN[род]: аварии; VERB: задержали,cause(accident -> train_delayed),assertion,logic.cause_result,low
+R170,причинность,Поэтому не трогай провод.,ADV.connector: поэтому; NEG: не; VERB.imp: трогай,result_reason(previous -> prohibition),prohibition,logic.cause_result,medium: cause in previous discourse
+R171,причинность,"Свет горит, значит, кто-то дома.",CONNECTOR: значит; PRON.indef: кто-то; ADV/PRED: дома,"inference(evidence=light_on, conclusion=someone_home)",inference,logic.cause_result,low
+R172,причинность,"Я молчу, потому что не уверен.",CONJ: потому что; NEG: не; ADJ.short: уверен,"reason_for_speech_act(silence, uncertainty)",explanation,logic.cause_result,low
+R173,причинность,"Не запускай, потому что база занята.",NEG.imp: не запускай; CONJ: потому что; ADJ.short: занята,reason_for_prohibition(database_busy),prohibition,logic.cause_result,medium: cause attaches to command
+R174,причинность,Он ушёл от усталости.,PREP: от; NOUN[род]: усталости; VERB: ушёл,"cause(cause=fatigue, event=leave)",assertion,logic.cause_result,medium: от source/cause
+R175,причинность,Дорога закрыта из-за снега.,ADJ.short: закрыта; PREP: из-за; NOUN[род]: снега,cause(snow -> road_closed),assertion,logic.cause_result,low
+R176,причинность,"Мы выиграли, потому что тренировались.","CONJ: потому что; VERB: выиграли, тренировались",cause(training -> win),assertion,logic.cause_result,low
+R177,причинность,"Он заболел, поэтому пропустил урок.","ADV.connector: поэтому; VERB: заболел, пропустил",result(illness -> missed_lesson),assertion,logic.cause_result,low
+R178,причинность,Снег растаял от солнца.,PREP: от; NOUN[род]: солнца; VERB: растаял,cause(sun -> snow_melt),assertion,logic.cause_result,low
+R179,причинность,Из-за тебя я волнуюсь.,PREP: из-за; PRON[род]: тебя; VERB: волнуюсь,cause(you -> worry),self_report,logic.cause_result,medium: blame/affect
+R180,причинность,"Поскольку поздно, перенесём встречу.",CONJ: поскольку; ADV: поздно; VERB: перенесём,cause(time_late -> reschedule),proposal,logic.cause_result,low
+R181,сравнение,Этот текст длиннее того.,"PRON.dem: этот, того; ADJ.comp: длиннее","compare(length, this_text > that_text)",assertion,logic.comparison,low
+R182,сравнение,Она говорит быстрее меня.,ADV.comp: быстрее; PRON[род]: меня,"compare(speed_speech, she > me)",assertion,logic.comparison,low
+R183,сравнение,Дом выше школы.,ADJ.comp: выше; NOUN[род]: школы,"compare(height, house > school)",assertion,logic.comparison,low
+R184,сравнение,Он как брат.,CONJ/PREP: как; NOUN[им/вин]: брат,"similarity(he, brother)",assertion,logic.comparison,medium: role vs comparison
+R185,сравнение,Работает как часы.,CONJ: как; NOUN[вин/им мн]: часы,comparison(functioning=regular),assertion,logic.comparison,medium: idiom
+R186,сравнение,Будто во сне.,CONJ: будто; PREP: во; NOUN[предл]: сне,comparison(state=dreamlike),fragment_evaluation,logic.comparison,medium: no subject
+R187,сравнение,Он как будто устал.,CONJ: как будто; VERB: устал,conjecture(state=tired),assertion_uncertain,logic.comparison,medium: comparison vs uncertainty
+R188,сравнение,Это такой же файл.,PRON: это; PRON/ADJ: такой же; NOUN: файл,identity_similarity(file=same_kind),assertion,logic.comparison,low
+R189,сравнение,"План лучше, чем вчера.",ADJ.comp: лучше; CONJ: чем; ADV: вчера,compare(plan_quality_now > yesterday),assertion,logic.comparison,medium: omitted second predicate
+R190,сравнение,Я меньше тебя устал.,ADV.comp: меньше; PRON[род]: тебя; VERB: устал,"compare(fatigue, I < you)",self_report,logic.comparison,low
+R191,сравнение,"Чем тише, тем лучше.","CONJ pair: чем...тем; ADJ.comp: тише, лучше",correlative_comparison(quietness -> better),assertion_general,logic.comparison,low
+R192,сравнение,Он похож на учителя.,ADJ.short: похож; PREP: на; NOUN[вин]: учителя,"similarity(he, teacher)",assertion,logic.comparison,medium: identity confusion
+R193,сравнение,Эта версия новее.,PRON.dem: эта; NOUN: версия; ADJ.comp: новее,"compare(version, newer_than_context)",assertion,logic.comparison,medium: missing comparison target
+R194,сравнение,Собака больше кошки.,ADJ.comp: больше; NOUN[род]: кошки,"compare(size, dog > cat)",assertion,logic.comparison,low
+R195,сравнение,Ответ короче вопроса.,ADJ.comp: короче; NOUN[род]: вопроса,"compare(length, answer < question)",assertion,logic.comparison,low
+R196,сравнение,"Как отец, он строг.",CONJ: как; NOUN: отец; ADJ.short: строг,"role_comparison(role=father, quality=strict)",assertion,logic.comparison,medium: as-role vs like
+R197,сравнение,"Он строг, как отец.",CONJ: как; NOUN: отец; ADJ.short: строг,"similarity(strictness, he like father)",assertion,logic.comparison,medium: clause attachment
+R198,сравнение,"Лучше поздно, чем никогда.",ADJ.comp: лучше; ADV: поздно; CONJ: чем; ADV.neg: никогда,proverbial_comparison(prefer late over never),assertion_general,logic.comparison,medium: idiom
+R199,сравнение,Мне легче одному.,PRON[дат]: мне; ADJ.comp/PRED: легче; NUM/PRON: одному,state_preference(alone easier),self_report,logic.comparison,medium: одному=dative/singular state
+R200,сравнение,Он старше брата на год.,ADJ.comp: старше; NOUN[род]: брата; PREP: на; NOUN[вин]: год,"compare(age, he = brother + 1 year)",assertion,logic.comparison,low
+R201,вопрос_о_знании,Ты знаешь ответ?,PRON: ты; VERB: знаешь; NOUN: ответ,"ask_knowledge(addressee, answer)",question_knowledge,qa.knowledge,low
+R202,вопрос_о_знании,"Кто знает, где файл?","PRON.interrog: кто, где; VERB: знает; NOUN: файл",ask_knower(content=file_location),question_knowledge,qa.knowledge,low
+R203,вопрос_о_знании,Ты помнишь пароль?,VERB: помнишь; NOUN: пароль,ask_memory(content=password),question_knowledge,qa.knowledge,low
+R204,вопрос_о_знании,Известно ли время встречи?,ADJ.short: известно; PART: ли; NOUN: время встречи,ask_known(fact=meeting_time),question_knowledge,qa.knowledge,low
+R205,вопрос_о_знании,Ты понял условие?,VERB: понял; NOUN: условие,ask_comprehension(content=condition),question_knowledge,qa.knowledge,low
+R206,вопрос_о_знании,"Понятно, что делать?",ADJ.short/PRED: понятно; PRON: что; INF: делать,ask_understanding(action_unknown),question_knowledge,qa.knowledge,low
+R207,вопрос_о_знании,"Скажешь, где выход?",VERB: скажешь; ADV.interrog: где; NOUN: выход,request_information(location=exit),question_request,qa.knowledge,medium: future vs request
+R208,вопрос_о_знании,"Не знаешь, как пройти?",NEG: не; VERB: знаешь; ADV.interrog: как; INF: пройти,polite_info_request(route),question_knowledge,qa.knowledge,medium: negative question polite
+R209,вопрос_о_знании,Ты в курсе изменений?,PRON: ты; PREP phrase: в курсе; NOUN[род]: изменений,ask_awareness(topic=changes),question_knowledge,qa.knowledge,low
+R210,вопрос_о_знании,Кто-нибудь знает правила?,PRON.indef: кто-нибудь; VERB: знает; NOUN: правила,ask_any_knower(topic=rules),question_knowledge,qa.knowledge,low
+R211,вопрос_о_знании,Ты слышал новость?,VERB: слышал; NOUN: новость,ask_awareness(news),question_knowledge,qa.knowledge,medium: perception vs knowledge
+R212,вопрос_о_знании,Можно узнать результат?,MODAL: можно; INF: узнать; NOUN: результат,request_information(result),permission_request_info,qa.knowledge,medium: permission vs request
+R213,вопрос_о_знании,Что известно о задаче?,PRON: что; ADJ.short: известно; PREP: о; NOUN: задаче,ask_known_facts(topic=task),question_knowledge,qa.knowledge,low
+R214,вопрос_о_знании,Ты уверен в ответе?,ADJ.short: уверен; PREP: в; NOUN: ответе,ask_confidence(content=answer),question_knowledge,qa.knowledge,low
+R215,вопрос_о_знании,Откуда ты это знаешь?,"ADV.interrog: откуда; PRON: ты, это; VERB: знаешь",ask_source_of_knowledge,question_knowledge,qa.knowledge,low
+R216,вопрос_о_знании,Почему ты так решил?,ADV.interrog: почему; PRON: ты; VERB: решил,ask_reason_for_belief,question_knowledge,qa.knowledge,low
+R217,вопрос_о_знании,Ты видел расписание?,VERB: видел; NOUN: расписание,ask_seen/known(schedule),question_knowledge,qa.knowledge,medium: visual event vs knowledge
+R218,вопрос_о_знании,Нам известно место?,PRON[дат]: нам; ADJ.short: известно; NOUN: место,ask_group_knowledge(location),question_knowledge,qa.knowledge,low
+R219,вопрос_о_знании,Кто объяснит правило?,PRON: кто; VERB: объяснит; NOUN: правило,ask_for_explainer(topic=rule),question_request,qa.knowledge,medium: future vs invitation
+R220,вопрос_о_знании,Есть информация по заявке?,VERB/exist: есть; NOUN: информация; PREP: по; NOUN: заявке,ask_existence(info_about_request),question_knowledge,qa.knowledge,low
+R221,вопрос_о_себе,Я правильно понял?,PRON: я; ADV: правильно; VERB: понял,ask_self_understanding(correct?),question_self_check,qa.self,low
+R222,вопрос_о_себе,Мне идти?,PRON[дат]: мне; INF: идти,ask_obligation_for_self(action=go),question_self,qa.self,medium: obligation vs permission
+R223,вопрос_о_себе,Мне можно войти?,PRON[дат]: мне; MODAL: можно; INF: войти,ask_permission_self(action=enter),permission_question,qa.self,low
+R224,вопрос_о_себе,Я виноват?,PRON: я; ADJ.short: виноват,ask_self_attribute(guilty?),question_self,qa.self,low
+R225,вопрос_о_себе,Что со мной?,PRON: что; PREP: со; PRON[твор]: мной,ask_self_state/problem,question_self,qa.self,low
+R226,вопрос_о_себе,Я всё сделал?,PRON: я; PRON.quant: всё; VERB: сделал,ask_completion_self,question_self_check,qa.self,low
+R227,вопрос_о_себе,Мне это нужно?,PRON[дат]: мне; PRON: это; ADJ.short: нужно,ask_need_self(theme=this),question_self,qa.self,medium: this antecedent
+R228,вопрос_о_себе,Я могу помочь?,PRON: я; MODAL: могу; INF: помочь,offer_help / ask_ability_self,offer_question,qa.self,medium: ability vs offer
+R229,вопрос_о_себе,Мне ждать здесь?,PRON[дат]: мне; INF: ждать; ADV: здесь,ask_instruction_self(wait here?),question_self,qa.self,low
+R230,вопрос_о_себе,Я мешаю?,PRON: я; VERB: мешаю,ask_self_effect(disturb?),question_self,qa.self,low
+R231,вопрос_о_себе,Я не ошибся?,PRON: я; NEG: не; VERB: ошибся,ask_confirmation_self(no mistake?),question_self_check,qa.self,medium: negative question bias
+R232,вопрос_о_себе,Мне продолжать?,PRON[дат]: мне; INF: продолжать,ask_permission/instruction_continue,question_self,qa.self,low
+R233,вопрос_о_себе,Я туда попал?,PRON: я; ADV: туда; VERB: попал,ask_arrival_self(target?),question_self_check,qa.self,medium: туда antecedent
+R234,вопрос_о_себе,Я должен ответить?,PRON: я; MODAL: должен; INF: ответить,ask_obligation_self(answer),question_self,qa.self,low
+R235,вопрос_о_себе,Мне лучше уйти?,PRON[дат]: мне; ADJ.comp/PRED: лучше; INF: уйти,ask_advice_self(leave?),question_self,qa.self,low
+R236,вопрос_о_себе,Я правильно говорю?,PRON: я; ADV: правильно; VERB: говорю,ask_correctness_self(speech),question_self_check,qa.self,low
+R237,вопрос_о_себе,Я вас не отвлекаю?,"PRON: я, вас; NEG: не; VERB: отвлекаю",polite_check(disturb?),question_self,qa.self,medium: negative politeness
+R238,вопрос_о_себе,Мне есть куда идти?,PRON[дат]: мне; VERB: есть; ADV: куда; INF: идти,ask_available_destination_self,question_self,qa.self,medium: existential + wh
+R239,вопрос_о_себе,Я ещё нужен?,PRON: я; ADV: ещё; ADJ.short: нужен,ask_relevance_self,question_self,qa.self,low
+R240,вопрос_о_себе,Мне самому решить?,PRON[дат]: мне; PRON.intensifier: самому; INF: решить,ask_instruction_self_decide,question_self,qa.self,low
+R241,приглашение_к_разговору,Давай обсудим.,PART/VERB: давай; VERB[1pl]: обсудим,invite_discuss(topic=implicit),invitation,dialogue.invite,low
+R242,приглашение_к_разговору,Поговорим?,VERB[1pl/fut]: поговорим,invite_talk,invitation_question,dialogue.invite,low
+R243,приглашение_к_разговору,Можем поговорить минуту?,MODAL: можем; INF: поговорить; NOUN: минуту,request_conversation(duration=minute),invitation_request,dialogue.invite,low
+R244,приглашение_к_разговору,"Слушай, есть вопрос.",CONTACT: слушай; VERB: есть; NOUN: вопрос,open_dialogue(topic=question),contact_open,dialogue.invite,low
+R245,приглашение_к_разговору,Давай я объясню.,PART: давай; PRON: я; VERB: объясню,offer_explanation,offer,dialogue.invite,medium: давай + я
+R246,приглашение_к_разговору,Можно тебя спросить?,MODAL: можно; PRON[вин]: тебя; INF: спросить,permission_request_to_ask,invitation_request,dialogue.invite,low
+R247,приглашение_к_разговору,Есть минутка?,VERB/exist: есть; NOUN.dim: минутка,ask_availability_for_talk,contact_open,dialogue.invite,low
+R248,приглашение_к_разговору,Давай созвонимся.,PART: давай; VERB.refl[1pl]: созвонимся,invite_call,invitation,dialogue.invite,low
+R249,приглашение_к_разговору,Нужно поговорить.,MODAL/PRED: нужно; INF: поговорить,request_serious_talk,conversation_request,dialogue.invite,medium: urgency/obligation
+R250,приглашение_к_разговору,Обсудим после урока?,VERB[1pl]: обсудим; PREP: после; NOUN: урока,propose_discussion(time=after lesson),invitation_question,dialogue.invite,low
+R251,приглашение_к_разговору,Хочу уточнить.,VERB: хочу; INF: уточнить,open_clarification,conversation_open,dialogue.invite,low
+R252,приглашение_к_разговору,"Скажи, пожалуйста, пару слов.",VERB.imp: скажи; POLITE: пожалуйста; NOUN: слов,request_brief_comment,request,dialogue.invite,low
+R253,приглашение_к_разговору,Давай без спора.,PART: давай; PREP: без; NOUN: спора,set_conversation_mode(no_argument),proposal,dialogue.invite,medium: ellipsis
+R254,приглашение_к_разговору,Я бы хотел поговорить.,PRON: я; PART: бы; VERB: хотел; INF: поговорить,polite_conversation_request,request,dialogue.invite,low
+R255,приглашение_к_разговору,Можно обсудить это позже?,MODAL: можно; INF: обсудить; PRON: это; ADV: позже,propose_discussion_later,request_question,dialogue.invite,low
+R256,приглашение_к_разговору,Давайте разберём пример.,PART/VERB.polite: давайте; VERB[1pl]: разберём; NOUN: пример,invite_joint_analysis,invitation,dialogue.invite,low
+R257,приглашение_к_разговору,Есть что обсудить.,VERB: есть; PRON: что; INF: обсудить,announce_topic_exists,conversation_open,dialogue.invite,medium: no explicit addressee
+R258,приглашение_к_разговору,Пойдём поговорим на улице?,VERB[1pl/imp]: пойдём; VERB[1pl]: поговорим; PREP: на улице,invite_move_and_talk(location=outside),invitation_question,dialogue.invite,low
+R259,приглашение_к_разговору,"Расскажи, как дела.",VERB.imp: расскажи; ADV.interrog: как; NOUN: дела,invite_share_status,request,dialogue.invite,low
+R260,приглашение_к_разговору,Давай начнём с главного.,PART: давай; VERB: начнём; PREP: с; ADJ/NOUN: главного,open_discussion(sequence=main first),invitation,dialogue.invite,low
+R261,неполные_реплики,Если завтра...,CONJ: если; ADV: завтра,"open_condition(time=tomorrow, missing_main)",fragment,ellipsis.fragment,high: unfinished condition
+R262,неполные_реплики,А потом?,CONJ/DISCOURSE: а; ADV: потом,ask_next_step,fragment_question,ellipsis.fragment,medium: context-dependent
+R263,неполные_реплики,Без меня.,PREP: без; PRON[род]: меня,condition/exclusion(without me),fragment,ellipsis.fragment,medium: omitted predicate
+R264,неполные_реплики,В файл.,PREP: в; NOUN[вин]: файл,destination/container(file),fragment,ellipsis.fragment,high: missing verb
+R265,неполные_реплики,Сначала отчёт.,ADV: сначала; NOUN: отчёт,priority(item=report),fragment_directive,ellipsis.fragment,medium: command implied
+R266,неполные_реплики,Не сейчас.,NEG: не; ADV: сейчас,reject_time(now),rejection,ellipsis.fragment,medium: omitted action
+R267,неполные_реплики,Только после урока.,PART: только; PREP: после; NOUN: урока,restriction(time=after lesson only),answer_fragment,ellipsis.fragment,medium: scope from context
+R268,неполные_реплики,Ну и что?,PART: ну; CONJ: и; PRON: что,challenge/relevance_question,challenge_question,ellipsis.fragment,medium: idiomatic
+R269,неполные_реплики,К врачу?,PREP: к; NOUN[дат]: врачу,confirm_destination/recipient=doctor,confirmation_question,ellipsis.fragment,medium: missing predicate
+R270,неполные_реплики,С кем?,PREP: с; PRON.interrog[твор]: кем,ask_companion/opponent,fragment_question,ellipsis.fragment,low
+R271,неполные_реплики,Про меня?,PREP: про; PRON[вин]: меня,ask_topic_is_me,confirmation_question,ellipsis.fragment,low
+R272,неполные_реплики,И что дальше?,CONJ: и; PRON: что; ADV: дальше,ask_next_step,fragment_question,ellipsis.fragment,low
+R273,неполные_реплики,Хотя нет.,CONJ: хотя; PART: нет,self_correction(negate_previous),correction,ellipsis.fragment,medium: concessive vs repair
+R274,неполные_реплики,Потому что поздно.,CONJ: потому что; ADV: поздно,reason_fragment(late),explanation_fragment,ellipsis.fragment,medium: cause of previous
+R275,неполные_реплики,Для кого?,PREP: для; PRON.interrog[род]: кого,ask_beneficiary,fragment_question,ellipsis.fragment,low
+R276,неполные_реплики,Не он.,NEG: не; PRON: он,correct_entity(not him),correction_fragment,ellipsis.fragment,medium: needs replacement
+R277,неполные_реплики,Вот так.,PART: вот; ADV: так,demonstrate_manner(this way),answer_fragment,ellipsis.fragment,medium: deictic context
+R278,неполные_реплики,Ещё раз.,ADV: ещё; NOUN: раз,repeat_request,request_fragment,ellipsis.fragment,low
+R279,неполные_реплики,До завтра.,PREP: до; ADV/NOUN: завтра,farewell(until tomorrow),farewell,ellipsis.fragment,low
+R280,неполные_реплики,Или позже.,CONJ: или; ADV: позже,alternative(time=later),fragment_option,ellipsis.fragment,medium: alternative to context
+R281,однословные_реплики,Да.,PART: да,affirm(previous),answer_yes,single_word,low
+R282,однословные_реплики,Нет.,PART: нет,deny(previous),answer_no,single_word,low
+R283,однословные_реплики,Можно?,MODAL/PRED: можно,ask_permission(context_action),permission_question,single_word,medium: action omitted
+R284,однословные_реплики,Нельзя.,MODAL/PRED.neg: нельзя,prohibit/deny_permission(context_action),answer_prohibition,single_word,medium: context action omitted
+R285,однословные_реплики,Почему?,ADV.interrog: почему,ask_reason,question_reason,single_word,low
+R286,однословные_реплики,Когда?,ADV.interrog: когда,ask_time,question_time,single_word,low
+R287,однословные_реплики,Где?,ADV.interrog: где,ask_location,question_location,single_word,low
+R288,однословные_реплики,Кто?,PRON.interrog: кто,ask_person,question_identity,single_word,low
+R289,однословные_реплики,Что?,PRON.interrog: что,ask_object/event or disbelief,question,single_word,medium: info vs reaction
+R290,однословные_реплики,Спасибо.,INTJ/NOUN-like: спасибо,gratitude,thanks,single_word,low
+R291,однословные_реплики,Пожалуйста.,PART/POLITE: пожалуйста,politeness/you_are_welcome/request_softener,polite_formula,single_word,medium: thanks response vs request marker
+R292,однословные_реплики,Стоп.,INTJ/imperative: стоп,stop_action,command,single_word,low
+R293,однословные_реплики,Тише.,ADV.comp: тише,command_reduce_volume,command,single_word,low
+R294,однословные_реплики,Увы.,INTJ: увы,regret(reaction),emotional_reaction,single_word,low
+R295,однословные_реплики,Ой.,INTJ: ой,surprise/pain/reaction,emotional_reaction,single_word,medium: affect type context-dependent
+R296,однословные_реплики,Эй.,INTJ: эй,contact_signal,contact,single_word,low
+R297,однословные_реплики,Ладно.,PART/ADV: ладно,acceptance/closure,answer_acceptance,single_word,medium: can mean okay/stop
+R298,однословные_реплики,Наверное.,ADV.modal: наверное,uncertain_answer(probably),answer_uncertain,single_word,low
+R299,однословные_реплики,Конечно.,ADV.modal: конечно,affirm_strongly,answer_yes,single_word,low
+R300,однословные_реплики,Позже.,ADV.time: позже,time_answer(later),answer_fragment,single_word,medium: can be postponement
+R301,ошибки_ввода,"Првет, где файл?",TYPO: првет->привет; ADV.interrog: где; NOUN: файл,greeting + ask_location(file),question_info,normalization.input_error,medium: typo normalization
+R302,ошибки_ввода,Непонял вопрос.,SPELL: непонял->не понял; NEG+VERB; NOUN: вопрос,not_understand(question),self_report_negative,normalization.input_error,medium: fused negation
+R303,ошибки_ввода,Скоько стоит билет?,TYPO: скоько->сколько; VERB: стоит; NOUN: билет,ask_price(ticket),question_info,normalization.input_error,low
+R304,ошибки_ввода,почему неработает сайт,NO_CAP/PUNCT; SPELL: неработает->не работает; NOUN: сайт,ask_cause(site_not_working),question_reason,normalization.input_error,medium: missing punctuation
+R305,ошибки_ввода,Гдк мой телефон?,TYPO: гдк->где; PRON.poss: мой; NOUN: телефон,ask_location(phone),question_info,normalization.input_error,low
+R306,ошибки_ввода,Я н езнаю.,SPLIT ERROR: н е знаю->не знаю; PRON: я,not_know,self_report_negative,normalization.input_error,medium: tokenization error
+R307,ошибки_ввода,Памаги мне.,TYPO: памаги->помоги; PRON[дат]: мне,request_help(me),request,normalization.input_error,low
+R308,ошибки_ввода,Отправь фаил.,TYPO: фаил->файл; VERB.imp: отправь,send(file),command,normalization.input_error,low
+R309,ошибки_ввода,Можно вапрос?,TYPO: вапрос->вопрос; MODAL: можно,permission_to_ask,conversation_open,normalization.input_error,low
+R310,ошибки_ввода,Я щас приду.,COLLOQ/SPELL: щас->сейчас; VERB: приду,commit_arrive(soon/now),commitment,normalization.input_error,medium: colloquial time
+R311,ошибки_ввода,Че делать?,COLLOQ: че->что; INF: делать,ask_action,question_info,normalization.input_error,low
+R312,ошибки_ввода,Нада проверить.,TYPO/COLLOQ: нада->надо; INF: проверить,obligation(check),directive_indirect,normalization.input_error,low
+R313,ошибки_ввода,Ты здес?,TYPO: здес->здесь; PRON: ты,ask_location_presence(you here?),question_yes_no,normalization.input_error,low
+R314,ошибки_ввода,Кагда встреча?,TYPO: кагда->когда; NOUN: встреча,ask_time(meeting),question_time,normalization.input_error,low
+R315,ошибки_ввода,Спс за помощь.,ABBR: спс->спасибо; PREP: за; NOUN: помощь,gratitude(reason=help),thanks,normalization.input_error,low
+R316,ошибки_ввода,Пж открой дверь.,ABBR: пж->пожалуйста; VERB.imp: открой; NOUN: дверь,polite_command(open door),request,normalization.input_error,low
+R317,ошибки_ввода,Ничо не понял.,COLLOQ: ничо->ничего; NEG: не; VERB: понял,not_understand(anything),self_report_negative,normalization.input_error,medium: colloquial negative concord
+R318,ошибки_ввода,Где мой рюкзаг?,TYPO: рюкзаг->рюкзак; PRON.poss: мой,ask_location(backpack),question_info,normalization.input_error,low
+R319,ошибки_ввода,Перезвони пожалуста.,TYPO: пожалуста->пожалуйста; VERB.imp: перезвони,request_call_back,request,normalization.input_error,low
+R320,ошибки_ввода,Я прийду позже.,SPELL: прийду->приду; ADV: позже,commit_arrive_later,commitment,normalization.input_error,low
+R321,разговорные_реплики,"Ну, погнали.",PART: ну; VERB.colloq: погнали,start_action,proposal,register.colloquial,low
+R322,разговорные_реплики,Да ладно?,PART: да; PRED/PART: ладно,surprise/disbelief,reaction_question,register.colloquial,medium: disbelief vs acceptance
+R323,разговорные_реплики,Типа понятно.,PART.colloq: типа; ADJ.short: понятно,weak_understanding,assertion_uncertain,register.colloquial,medium: hedge
+R324,разговорные_реплики,"Короче, я ушёл.",DISCOURSE: короче; PRON: я; VERB: ушёл,summary + departure,assertion,register.colloquial,low
+R325,разговорные_реплики,"Слушай, ну хватит.",CONTACT: слушай; PART: ну; PRED: хватит,stop_request,request,register.colloquial,low
+R326,разговорные_реплики,"Ага, понял.",PART: ага; VERB: понял,acknowledge_understanding,acknowledgement,register.colloquial,low
+R327,разговорные_реплики,"Угу, сделаю.",PART: угу; VERB: сделаю,acknowledge + commitment,acknowledgement_commitment,register.colloquial,low
+R328,разговорные_реплики,"Не, я пас.",COLLOQ NEG: не; PRON: я; PRED: пас,refuse_participation,refusal,register.colloquial,medium: не=нет
+R329,разговорные_реплики,"Ладно, забей.",PART: ладно; VERB.imp.colloq: забей,drop_topic,directive,register.colloquial,medium: idiom
+R330,разговорные_реплики,Чё там у тебя?,PRON.colloq: чё; ADV: там; PRON[род]: тебя,ask_status/addressee,question_info,register.colloquial,medium: colloquial что
+R331,разговорные_реплики,Ну как ты?,PART: ну; ADV.interrog: как; PRON: ты,ask_wellbeing,question_social,register.colloquial,low
+R332,разговорные_реплики,Вообще не понял.,ADV.intensifier: вообще; NEG: не; VERB: понял,complete_nonunderstanding,self_report_negative,register.colloquial,low
+R333,разговорные_реплики,Прямо сейчас?,ADV: прямо; ADV: сейчас,confirm_time(immediate),confirmation_question,register.colloquial,low
+R334,разговорные_реплики,Так себе.,ADV/PRON phrase: так себе,mediocre_evaluation,answer_evaluation,register.colloquial,medium: no target
+R335,разговорные_реплики,Нормально всё.,ADV/PRED: нормально; PRON: всё,status_ok,answer_status,register.colloquial,low
+R336,разговорные_реплики,Без понятия.,PREP: без; NOUN[род]: понятия,not_know,answer_no_knowledge,register.colloquial,low
+R337,разговорные_реплики,Ну ты даёшь.,PART: ну; PRON: ты; VERB: даёшь,surprise/reproach,reaction,register.colloquial,medium: idiom
+R338,разговорные_реплики,Вот это да!,PART: вот; PRON: это; PART: да,strong_surprise,emotional_reaction,register.colloquial,low
+R339,разговорные_реплики,Пойдёт.,VERB: пойдёт,acceptance(sufficient),answer_acceptance,register.colloquial,medium: future go vs okay
+R340,разговорные_реплики,Без проблем.,PREP: без; NOUN[род.мн]: проблем,agreement/no_difficulty,answer_acceptance,register.colloquial,low
+R341,базовые_синтаксические_конструкции,Мальчик читает книгу.,NOUN[им]: мальчик; VERB: читает; NOUN[вин]: книгу,"SVO(read, agent=boy, object=book)",assertion,syntax.basic,low
+R342,базовые_синтаксические_конструкции,Книгу читает мальчик.,NOUN[вин]: книгу; VERB: читает; NOUN[им]: мальчик,"OSV(read, focus=book)",assertion,syntax.basic,medium: word order focus
+R343,базовые_синтаксические_конструкции,На столе лежит книга.,PP[loc]: на столе; VERB: лежит; NOUN[им]: книга,locative_exist(book on table),assertion,syntax.basic,low
+R344,базовые_синтаксические_конструкции,Я дал другу ручку.,PRON: я; VERB: дал; NOUN[дат]: другу; NOUN[вин]: ручку,"transfer(agent=я, recipient=friend, theme=pen)",assertion,syntax.basic,low
+R345,базовые_синтаксические_конструкции,Другу я дал ручку.,NOUN[дат]: другу; PRON: я; VERB: дал; NOUN[вин]: ручку,transfer(focus=recipient),assertion,syntax.basic,medium: fronted dative
+R346,базовые_синтаксические_конструкции,Птицы летят и поют.,"NOUN[им.мн]: птицы; VERB: летят, поют; CONJ: и",coord_predicates(fly + sing),assertion,syntax.basic,low
+R347,базовые_синтаксические_конструкции,"Я пришёл, но дверь закрыта.",CONJ: но; VERB: пришёл; ADJ.short: закрыта,"contrast(arrival, door_closed)",assertion,syntax.basic,low
+R348,базовые_синтаксические_конструкции,"Если будет дождь, мы останемся.",CONJ: если; VERB: будет; VERB: останемся,condition(rain -> stay),conditional_statement,syntax.basic,low
+R349,базовые_синтаксические_конструкции,"Когда стемнело, мы ушли.","CONJ: когда; VERB: стемнело, ушли",temporal_subordination(dark -> leave),assertion,syntax.basic,low
+R350,базовые_синтаксические_конструкции,"Я знаю, что он дома.",VERB: знаю; CONJ: что; PRON: он; ADV/PRED: дома,"content_clause(know, proposition=he_home)",assertion,syntax.basic,low
+R351,базовые_синтаксические_конструкции,"Он спросил, где ключ.",VERB: спросил; ADV.interrog: где; NOUN: ключ,embedded_question(ask key_location),assertion,syntax.basic,low
+R352,базовые_синтаксические_конструкции,"Открой дверь, пожалуйста.",VERB.imp: открой; NOUN: дверь; POLITE: пожалуйста,polite_command(open door),request,syntax.basic,low
+R353,базовые_синтаксические_конструкции,Дверь открыта кем-то.,NOUN: дверь; ADJ/PART.short: открыта; PRON.indef[твор]: кем-то,"passive(state=open, agent=unknown)",assertion,syntax.basic,medium: passive vs adjective
+R354,базовые_синтаксические_конструкции,Мне холодно.,PRON[дат]: мне; PRED: холодно,dative_experiencer(state=cold),self_report,syntax.basic,low
+R355,базовые_синтаксические_конструкции,У меня есть билет.,PREP: у; PRON[род]: меня; VERB: есть; NOUN: билет,"possession(holder=я, theme=ticket)",assertion,syntax.basic,low
+R356,базовые_синтаксические_конструкции,У меня нет билета.,PREP: у; PRON[род]: меня; NEG: нет; NOUN[род]: билета,"neg_possession(holder=я, theme=ticket)",assertion_negative,syntax.basic,low
+R357,базовые_синтаксические_конструкции,В комнате темно.,PP: в комнате; PRED: темно,"impersonal_state(location=room, dark)",assertion,syntax.basic,low
+R358,базовые_синтаксические_конструкции,Пусть дети играют.,PART: пусть; NOUN: дети; VERB: играют,permission/directive(children play),directive,syntax.basic,medium: allow vs command
+R359,базовые_синтаксические_конструкции,"Мне кажется, он прав.",PRON[дат]: мне; VERB: кажется; PRON: он; ADJ.short: прав,epistemic_opinion(he right),assertion_uncertain,syntax.basic,low
+R360,базовые_синтаксические_конструкции,Вот почему я молчу.,PART: вот; ADV.interrog/rel: почему; PRON: я; VERB: молчу,explanation_pointer(reason for silence),explanation,syntax.basic,medium: вот as deictic/discourse
+R361,базовые_semantic_classes,Иван открыл дверь.,PROPN: Иван; VERB: открыл; NOUN: дверь,"action(agent=Иван, patient=door)",assertion,semantics.basic_class,low
+R362,базовые_semantic_classes,Дверь открылась.,NOUN: дверь; VERB.refl: открылась,"change_state(theme=door, state=open)",assertion,semantics.basic_class,medium: no external agent
+R363,базовые_semantic_classes,В комнате ребёнок.,PP.loc: в комнате; NOUN: ребёнок,"existence(entity=child, location=room)",assertion,semantics.basic_class,low
+R364,базовые_semantic_classes,У Маши две книги.,PREP: у; PROPN[род]: Маши; NUM: две; NOUN: книги,"possession(owner=Маша, theme=books, count=2)",assertion,semantics.basic_class,low
+R365,базовые_semantic_classes,Поезд прибыл в шесть.,NOUN: поезд; VERB: прибыл; PREP: в; NUM: шесть,"event(arrival, actor=train, time=6)",assertion,semantics.basic_class,low
+R366,базовые_semantic_classes,Кошка под столом.,NOUN: кошка; PREP: под; NOUN[твор]: столом,"location(entity=cat, under table)",assertion,semantics.basic_class,low
+R367,базовые_semantic_classes,Мама дала сыну яблоко.,NOUN: мама; VERB: дала; NOUN[дат]: сыну; NOUN[вин]: яблоко,"transfer(giver=mother, recipient=son, theme=apple)",assertion,semantics.basic_class,low
+R368,базовые_semantic_classes,Я вижу красный свет.,PRON: я; VERB: вижу; ADJ: красный; NOUN: свет,"perception(agent=I, object=red light)",assertion,semantics.basic_class,low
+R369,базовые_semantic_classes,Он сказал правду.,PRON: он; VERB: сказал; NOUN: правду,"communication(speaker=he, content=truth)",assertion,semantics.basic_class,low
+R370,базовые_semantic_classes,Мы купили билет за сто рублей.,VERB: купили; NOUN: билет; PREP: за; NUM: сто; NOUN: рублей,"transaction(buy, item=ticket, price=100rub)",assertion,semantics.basic_class,low
+R371,базовые_semantic_classes,Вода стала тёплой.,NOUN: вода; VERB.copula: стала; ADJ[твор]: тёплой,"change_attribute(water, warm)",assertion,semantics.basic_class,low
+R372,базовые_semantic_classes,Ребёнок боится собаки.,NOUN: ребёнок; VERB: боится; NOUN[род]: собаки,"emotion(experiencer=child, stimulus=dog)",assertion,semantics.basic_class,low
+R373,базовые_semantic_classes,Учитель объяснил правило.,NOUN: учитель; VERB: объяснил; NOUN: правило,"teaching/communication(agent=teacher, content=rule)",assertion,semantics.basic_class,low
+R374,базовые_semantic_classes,Самолёт летит над городом.,NOUN: самолёт; VERB: летит; PREP: над; NOUN[твор]: городом,"motion(actor=plane, path/location=over city)",assertion,semantics.basic_class,low
+R375,базовые_semantic_classes,Стакан разбился.,NOUN: стакан; VERB.refl: разбился,"change_state(theme=glass, state=broken)",assertion,semantics.basic_class,medium: spontaneous/passive
+R376,базовые_semantic_classes,Папа чинит велосипед.,NOUN: папа; VERB: чинит; NOUN: велосипед,"repair(agent=father, object=bicycle)",assertion,semantics.basic_class,low
+R377,базовые_semantic_classes,У дома крыша красная.,PREP: у; NOUN[род]: дома; NOUN: крыша; ADJ: красная,"part_whole(owner=house, part=roof, attribute=red)",assertion,semantics.basic_class,medium: у=near/possession
+R378,базовые_semantic_classes,Собака лает громко.,NOUN: собака; VERB: лает; ADV: громко,"sound_event(agent=dog, manner=loud)",assertion,semantics.basic_class,low
+R379,базовые_semantic_classes,Я забыл имя.,PRON: я; VERB: забыл; NOUN: имя,"memory_loss(agent=I, content=name)",self_report,semantics.basic_class,low
+R380,базовые_semantic_classes,Они ищут выход.,PRON: они; VERB: ищут; NOUN: выход,"search(agent=they, target=exit)",assertion,semantics.basic_class,low
+R381,ambiguity_cases,Я видел человека с биноклем.,VERB: видел; NOUN: человека; PP: с биноклем,"see(agent=I, object=person, pp_attach=object_or_instrument)",assertion,ambiguity.challenge,high: PP attachment
+R382,ambiguity_cases,Старые книги и журналы лежат там.,"ADJ: старые; NOUN: книги, журналы; CONJ: и",coordination(attribute_scope=books_only_or_both),assertion,ambiguity.challenge,high: adjective scope
+R383,ambiguity_cases,Он видел её утку.,PRON: он; PRON: её; NOUN: утку,"see(duck, owner=she?) or see her ducking?",assertion,ambiguity.challenge,high: её possessive/personal; lexical ambiguity
+R384,ambiguity_cases,Я не обещал прийти.,NEG: не; VERB: обещал; INF: прийти,negation_scope(promise vs coming),assertion_negative,ambiguity.challenge,high: negation scope
+R385,ambiguity_cases,Не отправляй файл или ссылку.,NEG: не; VERB.imp: отправляй; CONJ: или,prohibit(send file/link) with alternative scope,prohibition,ambiguity.challenge,high: negated OR
+R386,ambiguity_cases,Мать любит дочь.,"NOUN: мать, дочь; VERB: любит","love(agent=mother, object=daughter)",assertion,ambiguity.challenge,medium: case syncretism but word order helps
+R387,ambiguity_cases,Замок открыт.,NOUN: замок; ADJ.short/PART: открыт,state(lock/castle=open),assertion,ambiguity.challenge,high: lexical homonym замок
+R388,ambiguity_cases,Коса лежит у реки.,NOUN: коса; VERB: лежит; PREP: у; NOUN: реки,"location(entity=scythe/braid/spit, near river)",assertion,ambiguity.challenge,high: lexical homonym коса
+R389,ambiguity_cases,Мы говорили о мире.,VERB: говорили; PREP: о; NOUN[предл]: мире,topic(world/peace),assertion,ambiguity.challenge,high: lexical ambiguity мир
+R390,ambiguity_cases,Ключ от машины потерялся.,NOUN: ключ; PREP: от; NOUN: машины; VERB: потерялся,object=car_key/literal key from car,assertion,ambiguity.challenge,medium: от relation type
+R391,ambiguity_cases,Письмо от директора лежит здесь.,NOUN: письмо; PREP: от; NOUN: директора,message(source/author=director),assertion,ambiguity.challenge,medium: source vs author
+R392,ambiguity_cases,Он встретил брата учителя.,VERB: встретил; NOUN[род]: брата учителя,meet(object=teacher's brother or brother who is teacher?),assertion,ambiguity.challenge,high: genitive attachment
+R393,ambiguity_cases,В комнате тихо сидели дети.,PP: в комнате; ADV: тихо; VERB: сидели; NOUN: дети,state/action(children sitting quietly in room),assertion,ambiguity.challenge,medium: adverb loc/order
+R394,ambiguity_cases,Собака укусила девочку в пальто.,"NOUN: собака, девочку; PP: в пальто","bite(object=girl, pp_attach=girl or dog?)",assertion,ambiguity.challenge,high: PP attachment
+R395,ambiguity_cases,Он сказал ей уйти.,VERB: сказал; PRON[дат]: ей; INF: уйти,speech_act(command recipient=she action=leave),assertion,ambiguity.challenge,medium: infinitive subject
+R396,ambiguity_cases,Позвони брату утром.,VERB.imp: позвони; NOUN[дат]: брату; ADV/NOUN: утром,"call(recipient=brother, time=morning)",command,ambiguity.challenge,medium: temporal attachment
+R397,ambiguity_cases,Только Иван отправил отчёт.,PART: только; PROPN: Иван; VERB: отправил,exclusive_focus(subject=Ivan),assertion,ambiguity.challenge,medium: focus scope
+R398,ambiguity_cases,Иван только отправил отчёт.,PART: только; PROPN: Иван; VERB: отправил,exclusive/minimal_focus(action=send only or just sent),assertion,ambiguity.challenge,high: only scope/action nuance
+R399,ambiguity_cases,Иван отправил только отчёт.,PART: только; NOUN: отчёт,exclusive_focus(object=report),assertion,ambiguity.challenge,medium: object focus
+R400,ambiguity_cases,Стрелять нельзя помиловать.,INF: стрелять; MODAL: нельзя; INF: помиловать,punctuation_dependent(execute vs pardon),ambiguous_directive,ambiguity.challenge,high: punctuation missing changes meaning

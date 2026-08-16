@@ -1,0 +1,15 @@
+{
+ "schema_version": 1,
+ "source_repository": "QxFx0 (Haskell)",
+ "source_commit": "b67f9efd1c39a81ff0998a3e6e21cbf94ea0ec2b",
+ "source_worktree_dirty": true,
+ "license": "MIT",
+ "imported": "2026-08-16",
+ "files": {
+  "corpus.csv": "dcc403adb3fa66c397a065543fd2bf5eac4813cc670a61bb76868345e457d873"
+ },
+ "asset": "school parser research corpus",
+ "rows": 400,
+ "purpose": "parser drift gate: PropositionParser mode+subject snapshot over school-parser inputs",
+ "original_path": "test/golden/input_semantics/russian_school_parser_corpus_400.csv"
+}

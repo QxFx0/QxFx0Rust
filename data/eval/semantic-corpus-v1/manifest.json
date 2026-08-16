@@ -1,0 +1,16 @@
+{
+ "schema_version": 1,
+ "source_repository": "QxFx0 (Haskell)",
+ "source_commit": "b67f9efd1c39a81ff0998a3e6e21cbf94ea0ec2b",
+ "source_worktree_dirty": true,
+ "license": "MIT",
+ "imported": "2026-08-16",
+ "files": {
+  "corpus.jsonl": "640c8c2e16e772e9533d8f7c62485a40631ff2059f18a7e6ba2fcbfe781957af"
+ },
+ "asset": "semantic corpus tiers P0/P1/P2",
+ "rows": 110,
+ "purpose": "routing gate: logic/dialogue inputs must not fall into CMRepair",
+ "original_path": "test/golden/semantic_corpus.jsonl",
+ "family_label_note": "Haskell CM* labels; only must_not_family[CMRepair] is enforced in Rust; expected_family_any_of labels are Haskell-side and recorded but not gated"
+}

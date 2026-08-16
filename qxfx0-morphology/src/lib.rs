@@ -1,4 +1,7 @@
+pub mod government;
+pub mod inference;
 pub mod runtime;
+pub mod verbs;
 pub use runtime::{
     get_runtime, load_from_directory, MorphologyError, MorphologyResult, MorphologyRuntime,
     MorphologyStats, EMBEDDED_BUNDLE_SIZE_BYTES, EMBEDDED_LEXEMES_SIZE_BYTES,
