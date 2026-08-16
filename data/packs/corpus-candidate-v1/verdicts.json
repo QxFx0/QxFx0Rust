@@ -1,0 +1,483 @@
+{
+  "schema": "qxfx0:corpus-candidate-review:v1",
+  "reviewed_at": "2026-08-16",
+  "candidate_count": 39,
+  "counts": {
+    "blocked_graph_grounding": 35,
+    "ready_for_slot_typing": 4
+  },
+  "notes": [
+    "verdicts are recomputed from the seed graph, the noun lexicon and the quarantine rows on every run; edit ground truth, not this file",
+    "ready_for_slot_typing candidates must be covered by exactly the rows of typed_slots.tsv"
+  ],
+  "verdicts": [
+    {
+      "concept_id": "concept.аксиома",
+      "topic": "аксиома",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.алгоритм",
+      "topic": "алгоритм",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.беспристрастность",
+      "topic": "беспристрастность",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.благодарность",
+      "topic": "благодарность",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.верность",
+      "topic": "верность",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.воспроизводимость",
+      "topic": "воспроизводимость",
+      "verdict": "ready_for_slot_typing",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": true,
+        "source_row_present": true
+      },
+      "rationale": "graph atom, noun-lexicon lemma and source row all verify"
+    },
+    {
+      "concept_id": "concept.выбор",
+      "topic": "выбор",
+      "verdict": "ready_for_slot_typing",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": true,
+        "source_row_present": true
+      },
+      "rationale": "graph atom, noun-lexicon lemma and source row all verify"
+    },
+    {
+      "concept_id": "concept.граница",
+      "topic": "граница",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.данные",
+      "topic": "данные",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.длительность",
+      "topic": "длительность",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.договор",
+      "topic": "договор",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.доказательство",
+      "topic": "доказательство",
+      "verdict": "ready_for_slot_typing",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": true,
+        "source_row_present": true
+      },
+      "rationale": "graph atom, noun-lexicon lemma and source row all verify"
+    },
+    {
+      "concept_id": "concept.долженствование",
+      "topic": "долженствование",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.дух",
+      "topic": "дух",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.душа",
+      "topic": "душа",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.закон",
+      "topic": "закон",
+      "verdict": "ready_for_slot_typing",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": true,
+        "source_row_present": true
+      },
+      "rationale": "graph atom, noun-lexicon lemma and source row all verify"
+    },
+    {
+      "concept_id": "concept.идентичность",
+      "topic": "идентичность",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.инстинкт",
+      "topic": "инстинкт",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.когерентность",
+      "topic": "когерентность",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.код",
+      "topic": "код",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.логика",
+      "topic": "логика",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.нация",
+      "topic": "нация",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.нейрон",
+      "topic": "нейрон",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.объективность",
+      "topic": "объективность",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.поэзия",
+      "topic": "поэзия",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.право",
+      "topic": "право",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.присутствие",
+      "topic": "присутствие",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.психика",
+      "topic": "психика",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.революция",
+      "topic": "революция",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.ремонт",
+      "topic": "ремонт",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.решимость",
+      "topic": "решимость",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.рынок",
+      "topic": "рынок",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.самоопределение",
+      "topic": "самоопределение",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.самооценка",
+      "topic": "самооценка",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.свидетельство",
+      "topic": "свидетельство",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.слушание",
+      "topic": "слушание",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.собственность",
+      "topic": "собственность",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.становление",
+      "topic": "становление",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    },
+    {
+      "concept_id": "concept.цифра",
+      "topic": "цифра",
+      "verdict": "blocked_graph_grounding",
+      "checks": {
+        "single_token": true,
+        "lemma_in_noun_lexicon": true,
+        "graph_atom_in_seed": false,
+        "source_row_present": true
+      },
+      "rationale": "graph_atom_id is the topic token stamped by the pack builder, not a seed graph atom; grounding needs a seed extension or an explicit null before any activation review"
+    }
+  ]
+}

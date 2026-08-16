@@ -169,6 +169,15 @@ def main():
         help="additional candidate concepts.json merged into the alias index "
         "(review measurement only; matches are recorded, never admitted)",
     )
+    parser.add_argument(
+        "--typed-slots",
+        type=Path,
+        default=None,
+        help="editorial typed-slots TSV (see data/imports/"
+        "haskell-curated-pilot-v1/typed_slots.tsv) merged into the audited "
+        "index for measurement; a covered topic stops being "
+        "missing_typed_slots, nothing is promoted",
+    )
     args = parser.parse_args()
     if args.limit <= 0:
         parser.error("--limit must be positive")
@@ -198,6 +207,11 @@ def main():
                 aliases[normalized] = matches
     surfaces = morphology_surfaces(lexicon_paths)
     audited = audited_topics(tsv_path)
+    if args.typed_slots is not None:
+        # Review TSV rides on top of the audited profile but never overrides
+        # it: a topic already audited in the release asset stays audited.
+        for topic, entry in audited_topics(args.typed_slots).items():
+            audited.setdefault(topic, entry)
 
     grouped = defaultdict(list)
     first_line = {}

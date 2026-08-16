@@ -1,0 +1,25 @@
+# Typed slots for quarantined pilot topics (ADR-0039 slot-audit protocol).
+#
+# This is the manual review gate the importer deliberately refuses to
+# automate: a topic leaves missing_typed_slots only when an editor has
+# assigned its predicate slots. The column scheme mirrors the audited
+# profile (qxfx0-plan-v2 era: qxfx0-semantic/assets/argued_topics.tsv):
+#
+#   topic           normalized pilot topic, must be a review-passed candidate
+#   predicate_id    stable semantic id of the chosen source predicate
+#   subject_id      seed graph atom id of the topic (verified to exist)
+#   relation_id     semantic id of the head relation
+#   object_id       semantic id of the governed object
+#   thesis_surface  VERBATIM russian surface from the source row (the
+#                   importer re-checks it against the corpus row and
+#                   rejects a paraphrase as audited_surface_not_in_source_row)
+#
+# Measurement only: `import_haskell_corpus.py --typed-slots <this file>`
+# merges these rows into the audited index for quarantine re-measurement.
+# Nothing here promotes a topic; activation remains a separately reviewed
+# catalog lifecycle decision.
+topic	predicate_id	subject_id	relation_id	object_id	thesis_surface
+доказательство	proof_confirms_truth	dokazatelstvo	podtverzhdaet	istinnost	доказательство подтверждает истинность
+воспроизводимость	reproducibility_tests_truth	vosproizvodimost	proveryaet	istinnost	воспроизводимость проверяет истинность
+выбор	choice_defines_action_direction	vybor	opredelyaet	napravlenie_deystviya	выбор определяет направление действия
+закон	law_establishes_order	zakon	ustanavlivaet	poryadok	закон устанавливает порядок
