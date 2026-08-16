@@ -932,6 +932,30 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
+    let verb_count = qxfx0_morphology::verb_lexicon::lemma_count();
+    let verb_probe = qxfx0_morphology::verbs::conjugate_present(
+        "писать",
+        qxfx0_morphology::verbs::VerbPerson::FirstSingular,
+    ) == Some("пишу".into())
+        && qxfx0_morphology::verbs::past_tense(
+            "мочь",
+            qxfx0_types::morphology::Gender::Masculine,
+            qxfx0_types::morphology::Number::Singular,
+        ) == Some("мог".into());
+    let verbs_passed = verb_count >= 19_000 && verb_probe;
+    report.checks.push(DoctorCheck {
+        name: "Verb lexicon",
+        passed: verbs_passed,
+        details: if verbs_passed {
+            format!("{verb_count} digest-pinned verb paradigms; conjugation probes operational")
+        } else {
+            format!(
+                "verb lexicon degraded: {verb_count} lemmas, probes {}",
+                if verb_probe { "ok" } else { "failed" }
+            )
+        },
+    });
+
     let code_graph = build_full_registry();
     let mut code_violations = code_graph.validate();
     let type_edges = code_graph
@@ -1821,7 +1845,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 11);
+        assert_eq!(report.checks.len(), 12);
         assert!(report
             .checks
             .iter()

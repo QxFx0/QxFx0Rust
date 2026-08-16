@@ -2,3 +2,6 @@ scripts/soak-report.sh text eol=lf
 scripts/diagnostic-soak-1000.sh text eol=lf
 # Knowledge-pack bytes are hashed as their canonical LF representation.
 data/** text eol=lf
+
+# Embedded digest-pinned assets must stay byte-identical on checkout.
+qxfx0-semantic/assets/*.json text eol=lf
