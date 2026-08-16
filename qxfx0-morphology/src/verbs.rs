@@ -1,11 +1,13 @@
-//! Rule-based Russian verb conjugation, fail-closed.
+//! Russian verb conjugation: table-first, rule fallback, fail-closed.
 //!
-//! Ported from the Haskell rule engine (QxFx0/Runtime/GF/Morphology.hs)
-//! with two deliberate corrections: the Haskell engine silently produced
-//! wrong forms for consonant-stem and alternating verbs («писать» →
-//! «писаю», «любить» → «любат»). This port returns `None` for every person
-//! whose form cannot be derived by rule, so a caller degrades visibly
-//! instead of fabricating a surface.
+//! Every function consults the embedded verb lexicon (19k infinitives
+//! materialized from the pymorphy3 OpenCorpora dictionary — see
+//! `crate::verb_lexicon`) before applying the ported rule engine. The rules
+//! come from the Haskell engine (QxFx0/Runtime/GF/Morphology.hs) with two
+//! deliberate corrections: the Haskell engine silently produced wrong forms
+//! for consonant-stem and alternating verbs («писать» → «писаю», «любить» →
+//! «любат»). The rules return `None` for every form they cannot derive, so
+//! a caller degrades visibly instead of fabricating a surface.
 //!
 //! Coverage:
 //! - present/future (imperfective) of the productive vowel-stem classes,
@@ -124,6 +126,20 @@ fn ends_with_sibilant(stem: &str) -> bool {
 /// alternations are lexical), and the caller must not fabricate one.
 pub fn conjugate_present(infinitive: &str, person: VerbPerson) -> Option<String> {
     let lower = infinitive.to_lowercase();
+    if let Some(entry) = crate::verb_lexicon::lookup(&lower) {
+        let key = match person {
+            VerbPerson::FirstSingular => "f1sg",
+            VerbPerson::SecondSingular => "f2sg",
+            VerbPerson::ThirdSingular => "f3sg",
+            VerbPerson::FirstPlural => "f1pl",
+            VerbPerson::SecondPlural => "f2pl",
+            VerbPerson::ThirdPlural => "f3pl",
+        };
+        if let Some(form) = entry.form(key) {
+            return Some(form.to_string());
+        }
+        return None;
+    }
     if IRREGULAR_PRESENT.contains(&lower.as_str()) {
         return None;
     }
@@ -191,6 +207,20 @@ pub fn conjugate_present(infinitive: &str, person: VerbPerson) -> Option<String>
 /// Irregular stems (нести → нёс) are refused.
 pub fn past_tense(infinitive: &str, gender: Gender, number: Number) -> Option<String> {
     let lower = infinitive.to_lowercase();
+    if let Some(entry) = crate::verb_lexicon::lookup(&lower) {
+        let key = match number {
+            Number::Plural => "ppl",
+            Number::Singular => match gender {
+                Gender::Feminine => "pf",
+                Gender::Neuter => "pn",
+                _ => "pm",
+            },
+        };
+        if let Some(form) = entry.form(key) {
+            return Some(form.to_string());
+        }
+        return None;
+    }
     if IRREGULAR_PAST.contains(&lower.as_str()) {
         return None;
     }
@@ -213,6 +243,18 @@ pub fn compound_future(infinitive: &str) -> String {
     format!("буду {}", infinitive.to_lowercase())
 }
 
+/// Imperative form, table-backed only: imperative derivation is riddled
+/// with stress and stem alternations the rules do not model.
+pub fn imperative(infinitive: &str, number: Number) -> Option<String> {
+    let key = match number {
+        Number::Singular => "impsg",
+        Number::Plural => "imppl",
+    };
+    crate::verb_lexicon::lookup(infinitive)?
+        .form(key)
+        .map(String::from)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,25 +271,28 @@ mod tests {
     }
 
     fn forms(words: [&str; 6]) -> [Option<String>; 6] {
-        words.map(|w| Some(String::from(w)))
+        words.map(|word| Some(String::from(word)))
     }
 
     #[test]
-    fn suffix_verbs_conjugate_fully() {
-        // -ова-/-ева-/-ыва-/-ива- verbs are regular by shape.
+    fn suffix_verbs_conjugate_via_table_and_rules() {
+        // -ова-/-ева-/-ыва-/-ива- verbs are regular by shape; both the
+        // table path (рисовать) and the pure-rule path (a table-absent
+        // -овать verb) are covered.
         assert_eq!(
             all_present("рисовать"),
             forms(["рисую", "рисуешь", "рисует", "рисуем", "рисуете", "рисуют"])
         );
+        assert!(crate::verb_lexicon::lookup("фырковать").is_none());
         assert_eq!(
-            all_present("показывать"),
+            all_present("фырковать"),
             forms([
-                "показываю",
-                "показываешь",
-                "показывает",
-                "показываем",
-                "показываете",
-                "показывают"
+                "фыркую",
+                "фыркуешь",
+                "фыркует",
+                "фыркуем",
+                "фыркуете",
+                "фыркуют"
             ])
         );
         assert_eq!(
@@ -261,11 +306,45 @@ mod tests {
     }
 
     #[test]
-    fn bare_first_conjugation_verbs_are_refused_for_present() {
+    fn table_backed_bare_conjugation_verbs_resolve_fully() {
+        // The lexicon closes the gap the rules cannot: bare -ать verbs and
+        // alternating stems come straight from the dictionary.
+        assert_eq!(
+            conjugate_present("делать", VerbPerson::FirstSingular),
+            Some("делаю".into())
+        );
+        assert_eq!(
+            conjugate_present("читать", VerbPerson::ThirdPlural),
+            Some("читают".into())
+        );
+        assert_eq!(
+            conjugate_present("писать", VerbPerson::FirstSingular),
+            Some("пишу".into())
+        );
+        assert_eq!(
+            conjugate_present("жить", VerbPerson::FirstSingular),
+            Some("живу".into())
+        );
+        assert_eq!(
+            conjugate_present("гулять", VerbPerson::ThirdSingular),
+            Some("гуляет".into())
+        );
+        assert_eq!(
+            conjugate_present("стоять", VerbPerson::FirstSingular),
+            Some("стою".into())
+        );
+    }
+
+    #[test]
+    fn bare_first_conjugation_without_a_table_entry_is_refused() {
         // делать/читать are regular, писать alternates — no ending rule can
-        // tell them apart, so the whole bare -ать/-ять class is refused.
-        for verb in ["делать", "читать", "гулять", "стоять", "писать"]
-        {
+        // tell them apart, so the bare class stays refused when the lexicon
+        // has no entry.
+        for verb in ["чтопать", "скулыбять"] {
+            assert!(
+                crate::verb_lexicon::lookup(verb).is_none(),
+                "{verb} must be table-absent for this test"
+            );
             assert_eq!(
                 conjugate_present(verb, VerbPerson::ThirdSingular),
                 None,
@@ -283,64 +362,58 @@ mod tests {
     }
 
     #[test]
-    fn second_conjugation_consonant_stems_cover_all_but_first_singular() {
+    fn second_conjugation_consonant_stems_cover_all_but_first_singular_by_rules() {
+        // говорить/любить come from the table now; a table-absent -ить verb
+        // exercises the rule path.
+        assert!(crate::verb_lexicon::lookup("фырчить").is_none());
         assert_eq!(
-            conjugate_present("говорить", VerbPerson::FirstSingular),
+            conjugate_present("фырчить", VerbPerson::FirstSingular),
             None
         );
         assert_eq!(
-            conjugate_present("говорить", VerbPerson::SecondSingular),
-            Some("говоришь".into())
+            conjugate_present("фырчить", VerbPerson::SecondSingular),
+            Some("фырчишь".into())
         );
         assert_eq!(
-            conjugate_present("говорить", VerbPerson::ThirdSingular),
-            Some("говорит".into())
-        );
-        assert_eq!(
-            conjugate_present("говорить", VerbPerson::FirstPlural),
-            Some("говорим".into())
-        );
-        assert_eq!(
-            conjugate_present("говорить", VerbPerson::SecondPlural),
-            Some("говорите".into())
-        );
-        assert_eq!(
-            conjugate_present("говорить", VerbPerson::ThirdPlural),
-            Some("говорят".into())
-        );
-        // любить: 1sg inserts -л- (люблю) — refused; 3pl любит rule form.
-        assert_eq!(conjugate_present("любить", VerbPerson::FirstSingular), None);
-        assert_eq!(
-            conjugate_present("любить", VerbPerson::ThirdPlural),
-            Some("любят".into())
+            conjugate_present("фырчить", VerbPerson::ThirdPlural),
+            Some("фырчат".into())
         );
     }
 
     #[test]
-    fn classic_exceptions_classify_but_have_no_rule_stems() {
-        // смотреть/держать end in bare -еть/-ать: the exception list fixes
-        // the class, but their present stems are not derivable by rule.
-        for verb in ["смотреть", "держать", "видеть", "слышать", "терпеть"]
-        {
+    fn classic_exceptions_are_table_backed() {
+        for (verb, third_singular, third_plural, first_singular) in [
+            ("смотреть", "смотрит", "смотрят", "смотрю"),
+            ("держать", "держит", "держат", "держу"),
+            ("видеть", "видит", "видят", "вижу"),
+            ("слышать", "слышит", "слышат", "слышу"),
+            ("терпеть", "терпит", "терпят", "терплю"),
+        ] {
             assert_eq!(classify_verb(verb), ConjugationClass::Second, "{verb}");
             assert_eq!(
                 conjugate_present(verb, VerbPerson::ThirdSingular),
-                None,
+                Some(third_singular.into()),
+                "{verb}"
+            );
+            assert_eq!(
+                conjugate_present(verb, VerbPerson::ThirdPlural),
+                Some(third_plural.into()),
+                "{verb}"
+            );
+            assert_eq!(
+                conjugate_present(verb, VerbPerson::FirstSingular),
+                Some(first_singular.into()),
                 "{verb}"
             );
         }
     }
 
     #[test]
-    fn irregular_present_verbs_fail_closed() {
-        for irregular in ["гнать", "жить", "петь", "ждать", "брать", "дать"]
-        {
-            assert_eq!(
-                conjugate_present(irregular, VerbPerson::ThirdSingular),
-                None,
-                "{irregular}"
-            );
-        }
+    fn imperative_is_table_backed_only() {
+        assert_eq!(imperative("делать", Number::Singular), Some("делай".into()));
+        assert_eq!(imperative("делать", Number::Plural), Some("делайте".into()));
+        assert_eq!(imperative("читать", Number::Singular), Some("читай".into()));
+        assert_eq!(imperative("чтопать", Number::Singular), None);
     }
 
     #[test]
@@ -362,10 +435,6 @@ mod tests {
             Some("делали".into())
         );
         assert_eq!(
-            past_tense("любить", Gender::Masculine, Number::Singular),
-            Some("любил".into())
-        );
-        assert_eq!(
             past_tense("писать", Gender::Feminine, Number::Singular),
             Some("писала".into())
         );
@@ -376,18 +445,21 @@ mod tests {
     }
 
     #[test]
-    fn past_tense_irregulars_fail_closed() {
-        for irregular in ["нести", "мочь", "жечь", "идти", "сесть", "дать"]
-        {
-            assert_eq!(
-                past_tense(irregular, Gender::Masculine, Number::Singular),
-                None,
-                "{irregular}"
-            );
-        }
+    fn past_tense_irregulars_are_table_backed_or_refused() {
+        // мочь/идти come from the table; a table-absent irregular stem
+        // is refused by the rules.
         assert_eq!(
-            past_tense("говорить", Gender::Masculine, Number::Singular),
-            Some("говорил".into())
+            past_tense("мочь", Gender::Masculine, Number::Singular),
+            Some("мог".into())
+        );
+        assert_eq!(
+            past_tense("идти", Gender::Feminine, Number::Singular),
+            Some("шла".into())
+        );
+        assert!(crate::verb_lexicon::lookup("чтомочь").is_none());
+        assert_eq!(
+            past_tense("чтомочь", Gender::Masculine, Number::Singular),
+            None
         );
     }
 

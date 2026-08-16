@@ -1,6 +1,7 @@
 pub mod government;
 pub mod inference;
 pub mod runtime;
+pub mod verb_lexicon;
 pub mod verbs;
 pub use runtime::{
     get_runtime, load_from_directory, MorphologyError, MorphologyResult, MorphologyRuntime,
@@ -67,8 +68,14 @@ impl MorphologyData {
             }
         }
 
-        // 3. Fallback: return original word
-        lower
+        // 3. Consult the embedded runtime lexicon (19k+ paradigms) before
+        // giving up: an inflected form absent from the small seed dictionary
+        // usually resolves there. Ambiguous surfaces keep the original word —
+        // picking one lemma would fabricate a reading.
+        match crate::runtime::get_runtime().lemmatize(&lower) {
+            qxfx0_types::morphology::MorphologyLookup::Resolved(resolution) => resolution.lemma,
+            _ => lower,
+        }
     }
 
     fn build_seed() -> Self {
