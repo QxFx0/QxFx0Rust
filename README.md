@@ -10,12 +10,17 @@ The CLI is the supported production surface. It includes:
 
 - atomic SQLite persistence and automatic compatibility migration to schema v10;
 - six-stage turn processing with guard rollback and governance events;
-- 107 recognized topics, of which 30 have audited declarative content;
+- 130 recognized topics, of which 60 have audited declarative content with
+  129 typed claims;
 - 20k-lemma noun morphology plus 30,809 digest-pinned verb paradigms
   (reflexive included), 42,239 adjective and 68 closed-class pronoun
   paradigms, rule-based out-of-vocabulary declension and preposition
   government;
-- 207 seed atoms, 346 semantic relations and 69 curated `FactRecord` values;
+- 207 seed atoms, 346 semantic relations and 129 curated `FactRecord` values;
+- a 60-topic/129-claim audited ResponsePlan V2 corpus with manifest, replay,
+  realization-parity and zero-downgrade gates;
+- the «Кодекс» practice loop: deterministic topic revisits, prior-position
+  callbacks, explicit contradiction events and practice-day reporting;
 - bounded FactId-grounded positions and replay-stable semantic episodes;
 - a manifest-validated active knowledge pack with a replay-visible SHA-256 fingerprint;
 - 127 Russian surface templates and six-case morphology;
@@ -114,7 +119,7 @@ Example output:
 Ежедневная петля:
 
 ```bash
-# 1. Тема дня: детерминированный выбор из 30 аудированных тем (UTC-день),
+# 1. Тема дня: детерминированный выбор из 60 аудированных тем (UTC-день),
 #    тезис и контрпункт из проверенного корпуса, два вопроса для записи.
 qxfx0 reflect
 qxfx0 reflect свобода          # явная тема; неаудированная — отказ с ошибкой
@@ -134,6 +139,14 @@ qxfx0 --session-id diary report --markdown --out week-1.md
 файл. Содержимое отчёта — чистая функция состояния: два отчёта по одному
 состоянию совпадают байт-в-байт, включая SHA-256-отпечаток активного пака.
 
+Политика возврата темы — детерминированная функция `(UTC-день, состояние)`:
+сначала возвращаются темы, которым исполнилось минимум семь дней, затем ещё
+не посещённые темы, а после обхода корпуса — самая старая позиция. Карточка
+возврата показывает до двух прошлых позиций прямо в тексте. Если новая запись
+противоречит сохранённой, это фиксируется как событие практики и попадает в
+карточку и отчёт. Acceptance-тест `codex_thirty_day_practice` прогоняет 30
+дней, проверяет непрерывность, возврат темы, динамику позиций и противоречие.
+
 ## Health check
 
 `doctor` is an executable health gate, not an informational banner. It checks:
@@ -144,7 +157,6 @@ qxfx0 --session-id diary report --markdown --out week-1.md
 - FactId-grounded Perspective capacity and curated counterpoint links;
 - FactId-authorized stance rendering with fail-closed validation of persisted
   opinions;
-- the non-promoting Haskell corpus pilot and its quarantine counts;
 - embedded template syntax, weights and relation-type coverage;
 - morphology manifest, hash, provenance, tier counts and ambiguity metrics;
 - production code-registry identities, endpoints, indexes and `RelComposes` edges.
@@ -154,12 +166,18 @@ It exits non-zero if any check fails:
 ```text
 QxFx0 Rust v0.1.1 health check:
   [OK] SQLite: schema v10, quick_check/foreign keys/session states valid
-  [OK] Seed graph: 172 atoms, 276 relations, 107 covered topics
-  [OK] Knowledge packs: active_packs=[philosophy-core-v1@1(...)], fact_conflicts=0, fingerprint=...
-  [OK] Corpus import pilot: pilot_topics=300, already_active=5, quarantine=295, promotion_enabled=false
-  [OK] Templates: 127 templates for 33 types; direct coverage 22/23 used relation types
+  [OK] Seed graph: 207 atoms, 346 relations, 130 covered topics
+  [OK] Content plan assets: recognition_topics_total=130, content_predicates_total=129, argued_topics_admitted=60, argued_predicates_admitted=60, profile_enabled=audited_v1
+  [OK] Templates: 127 templates for 33 types; direct coverage 24/31 used relation types
   [OK] Morphology: seed dictionary and case conversion operational
+  [OK] Verb lexicon: 30809 digest-pinned verb paradigms; conjugation probes operational
+  [OK] Adjective lexicon: 42239 digest-pinned adjective paradigms; probes operational
+  [OK] Pronoun lexicon: 68 digest-pinned closed-class paradigms
   [OK] Code registry: 97 typed atoms, 1353 relations, 1322 RelComposes edges
+  [OK] Knowledge pack: active immutable pack fingerprint ..., 129 facts
+  [OK] Curated FactRegistry: 129 curated FactId records re-resolve successfully
+  [OK] Perspective boundary: bounded PerspectiveState valid; fact-grounded rollout default is Disabled
+  [OK] Stance authority: signed attestation, bounded provenance, and temporal contract versions valid
   Status: OK
 ```
 
@@ -187,7 +205,7 @@ not flush the operating system's filesystem page cache:
 python3 scripts/benchmark_runtime.py --samples 10
 ```
 
-Renderer breadth is measured independently across all 30 audited topics. The
+Renderer breadth is measured independently across all 60 audited topics. The
 audit reports unique responses and sentences, repeated sentence counts, and
 topic-normalized opening n-grams. It is diagnostic and does not change the
 renderer or semantic state:
@@ -266,11 +284,11 @@ python3 scripts/import_haskell_corpus.py --limit 300
 
 It writes a normalized inventory, an explicit quarantine and a hash-validated
 metrics report under `data/imports/haskell-curated-pilot-v1`. Promotion is
-disabled. The current source contains 6,239 rows and 12,478 surfaces but only
-4,050 trimmed raw topic strings (4,040 after normalization); the 300-topic pilot admits
-no new facts and quarantines 295 candidates for review. The source worktree was
-dirty when the report was generated, which is exposed by `doctor` and must be
-resolved before a production import pack can claim commit-exact provenance.
+disabled. The pinned report records 6,239 source rows, 12,478 predicates,
+4,050 trimmed raw topic strings (4,040 after normalization), and a clean source
+worktree. The 300-topic pilot admits no new facts and quarantines 295 candidates
+for review, including 271 candidates without typed slots. Promotion remains
+disabled until those candidates pass the same audited admission boundary.
 
 Production examples for daily backup retention, five-minute monitoring,
 systemd timers and logrotate are in [`ops/`](ops/README.md). `metrics` exits
@@ -294,12 +312,22 @@ The integration suite includes a 1,000-turn full-pipeline soak test. It verifies
 Run the same checks as CI:
 
 ```bash
+cargo audit --deny unsound
 cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace --all-targets
+cargo install cargo-llvm-cov --version 0.8.4 --locked
+mkdir -p coverage
+cargo llvm-cov --locked --workspace --all-targets --lcov --output-path coverage/lcov.info
+cargo llvm-cov --locked report --text > coverage/summary.txt
 cargo build --locked --workspace --release
 target/release/qxfx0 --db /tmp/qxfx0-doctor.db doctor
 ```
+
+The release gate also runs all six ResponsePlan V2 contract gates, verifies
+the explicit authority trace path and executes the positive/negative
+behavioral authority matrix in
+[`scripts/response-plan-v2-behavioral-canary.sh`](scripts/response-plan-v2-behavioral-canary.sh).
 
 CI and local release checks use the Rust 1.93.1 toolchain pinned in
 `rust-toolchain.toml`, including the matching `clippy` and `rustfmt` components.
@@ -336,7 +364,7 @@ Run it in isolation with:
 cargo test --locked -p qxfx0-pipeline --test structural_corpus
 ```
 
-It validates all 30 admitted topics in fresh sessions and one shared 30-turn
+It validates all 60 admitted topics in fresh sessions and one shared 60-turn
 session: topic and canonical slots, exact predicate set, claim roles,
 derivation, provenance, no repeated claims, terminal punctuation, and explicit
 fallback for recognized but unadmitted content. It observes `plan_shadow`; the
@@ -356,10 +384,20 @@ plan-to-surface comparison in the render trace. With the flag,
 fallback, greeting, purpose and external-cause routes retain their existing
 contracts.
 
+The explicit `turn --response-plan-v2-authority` path is a separate three-topic
+canary authority surface. It emits a verifiable external JSONL trace; the
+default turn path remains unchanged unless an authority or renderer flag is
+provided.
+
 ## Operational limits
 
 - QxFx0 is a deterministic local semantic system, not a general-purpose factual assistant.
-- Recognition covers 107 topics, but declarative rendering is currently admitted for only 30.
+- Recognition covers 130 topics, with declarative rendering currently admitted for 60.
+- The audited profile contains 129 typed claims across 60 admitted topics; each
+  topic has a thesis and counterpoint, with an optional consequence where the
+  corpus supplies one.
+- The first product acceptance proof covers 30 deterministic journal days and
+  requires visible position dynamics plus at least one contradiction.
 - There is no active autonomous learning or promotion loop; corpus expansion remains review-gated.
 - External-world causal questions are explicitly marked as requiring external facts.
 - The morphology engine combines pinned paradigms with fail-closed rules: verbs outside the lexicon and nouns whose stem class is undecidable by ending are refused rather than guessed.
