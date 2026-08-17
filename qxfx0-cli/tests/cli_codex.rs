@@ -19,6 +19,10 @@ fn reflect_daily_topic_never_creates_a_database() {
     );
     assert!(stdout.contains("Контрпункт"));
     assert!(
+        stdout.contains("первая запись") && stdout.contains("Ответь одним предложением"),
+        "first contact must explain the ritual: {stdout}"
+    );
+    assert!(
         !db.exists(),
         "reflect must not create the database on a mistyped path"
     );
@@ -84,6 +88,10 @@ fn report_shows_the_belief_protocol_after_real_turns() {
     assert!(
         stdout.contains("свобода"),
         "topic counts must appear: {stdout}"
+    );
+    assert!(
+        stdout.contains("дней практики: 1"),
+        "practice metric must be visible: {stdout}"
     );
 
     let markdown = run(&db, &["--session-id", "diary", "report", "--markdown"]);

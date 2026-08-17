@@ -1,7 +1,7 @@
 //! Audited-corpus chain construction (ADR-0034 §10).
 //!
 //! The `response-plan-v2-audited-corpus` gate verifies semantic and authority
-//! parity over all 30 audited topics: every stated claim of every topic must
+//! parity over all 60 audited topics: every stated claim of every topic must
 //! traverse the whole certificate chain — admission, evidence, assertion —
 //! and land on a `ClaimAuthority`. This module is the chain builder the gate
 //! reads; the manifest locks the sources and the approved surfaces, and the
@@ -944,11 +944,11 @@ mod tests {
     }
 
     #[test]
-    fn the_corpus_closes_over_30_topics_and_69_claims() {
+    fn the_corpus_closes_over_60_topics_and_129_claims() {
         let report = audit_audited_corpus().expect("whole corpus must authorize");
-        assert_eq!(report.topics, 30);
-        assert_eq!(report.statements, 69);
-        assert_eq!(report.curated, 69);
+        assert_eq!(report.topics, 60);
+        assert_eq!(report.statements, 129);
+        assert_eq!(report.curated, 129);
         assert_eq!(report.derived_curated, 0);
     }
 

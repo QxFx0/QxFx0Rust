@@ -237,9 +237,9 @@ impl ArguedTopicRegistry {
             }
         }
 
-        if topics.len() != 30 {
+        if topics.len() != 60 {
             return Err(format!(
-                "audited_v1 must admit exactly 30 topics, found {}",
+                "audited_v1 must admit exactly 60 topics, found {}",
                 topics.len()
             ));
         }
@@ -327,12 +327,12 @@ mod tests {
         let registry = argued_topic_registry().unwrap();
         let metrics = registry.metrics();
 
-        assert_eq!(metrics.recognition_topics_total, 107);
-        assert_eq!(metrics.argued_topics_admitted, 30);
-        assert_eq!(metrics.argued_predicates_admitted, 30);
-        assert_eq!(metrics.content_predicates_total, 69);
-        assert_eq!(registry.facts().len(), 69);
-        assert_eq!(registry.facts().count_by_status(FactStatus::Curated), 69);
+        assert_eq!(metrics.recognition_topics_total, 130);
+        assert_eq!(metrics.argued_topics_admitted, 60);
+        assert_eq!(metrics.argued_predicates_admitted, 60);
+        assert_eq!(metrics.content_predicates_total, 129);
+        assert_eq!(registry.facts().len(), 129);
+        assert_eq!(registry.facts().count_by_status(FactStatus::Curated), 129);
         assert_eq!(metrics.profile_enabled, "audited_v1");
     }
 
@@ -380,7 +380,13 @@ mod tests {
                     .records()
                     .find(|record| record.concept_id == fact.object)
                     .expect("fact object must resolve to a concept record");
-                assert_eq!(object_record.ontology_kind, "semantic_object");
+                // The 60-topic profile argues about themes as well as
+                // supporting objects («поэзия выражает красоту»), so an
+                // object may be a topic concept or a semantic object.
+                assert!(matches!(
+                    object_record.ontology_kind.as_str(),
+                    "semantic_object" | "abstract_concept"
+                ));
             }
         }
     }

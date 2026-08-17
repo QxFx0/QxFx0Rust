@@ -27,11 +27,11 @@ const SEED_GRAPH_JSON: &str = include_str!(concat!(
 ));
 
 /// SHA-256 of `assets/seed_graph.json`, printed by `gen_seed_asset`.
-const SEED_GRAPH_SHA256: &str = "03fc952d6269239c16d5eaf947b1305d021a43989051413d374d0e8d33ccc814";
+const SEED_GRAPH_SHA256: &str = "da17148e1ce8dea6cf58c389c294b27c0b3e3c2328acd8622e5091be96f3c276";
 
 const SEED_GRAPH_SCHEMA: &str = "qxfx0:seed-graph:v1";
 
-/// 107 covered philosophical topics.
+/// 129 covered philosophical topics.
 pub const COVERED_TOPICS: &[&str] = &[
     "свобода",
     "произвол",
@@ -140,6 +140,29 @@ pub const COVERED_TOPICS: &[&str] = &[
     "результат",
     "диалог",
     "спор",
+    "аксиома",
+    "беспристрастность",
+    "благодарность",
+    "верность",
+    "граница",
+    "длительность",
+    "долженствование",
+    "дух",
+    "идентичность",
+    "когерентность",
+    "алгоритм",
+    "объективность",
+    "поэзия",
+    "право",
+    "присутствие",
+    "психика",
+    "решимость",
+    "самоопределение",
+    "самооценка",
+    "свидетельство",
+    "слушание",
+    "собственность",
+    "становление",
 ];
 
 /// The serialized seed asset. Indexes are rebuilt after loading.
@@ -219,7 +242,7 @@ mod tests {
         let graph = seed_graph();
         assert_eq!(graph.atoms.len(), 207, "seed atom census");
         assert_eq!(graph.edges.len(), 346, "seed edge census");
-        assert_eq!(COVERED_TOPICS.len(), 107, "topic census");
+        assert_eq!(COVERED_TOPICS.len(), 130, "topic census");
     }
 
     #[test]

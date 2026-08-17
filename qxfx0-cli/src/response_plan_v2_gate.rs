@@ -11,7 +11,7 @@
 //! legitimately produce a different — and correct — string.
 //!
 //! `response-plan-v2-phase-b` reads the `audited-corpus` manifest and runs the
-//! whole certificate chain — admission, evidence, assertion — over all 30
+//! whole certificate chain — admission, evidence, assertion — over all 60
 //! audited topics: every stated claim of every topic must land on a
 //! `ClaimAuthority` (semantic + authority parity). The manifest's source
 //! digests lock the gates to the exact asset bytes a release binary carries.
@@ -47,6 +47,8 @@ const AUDITED_CORPUS_SCHEMA_VERSION: u32 = 2;
 const AUDITED_CORPUS_ID: &str = "response-plan-v2-audited-corpus-v2";
 const REPLAY_MANIFEST_PATH: &str = "data/gates/response-plan-v2/replay-manifest.json";
 const REPLAY_MANIFEST_ID: &str = "response-plan-v2-replay-v2";
+const AUDITED_TOPICS_TOTAL: usize = 60;
+const AUDITED_CLAIMS_TOTAL: usize = 129;
 
 /// Embedded so a release binary can run the gate without a working tree.
 const EMBEDDED_MATRIX: &str =
@@ -724,8 +726,12 @@ fn run_replay_gate() -> GateReport {
     if manifest.matrix_id != matrix.matrix_id || manifest.matrix_digest != matrix.matrix_digest {
         violations.push("replay manifest is not bound to the agreement matrix".into());
     }
-    if manifest.topics_total != 30 || manifest.claims_total != 69 {
-        violations.push("replay manifest must bind 30 topics and 69 claims".into());
+    if manifest.topics_total != AUDITED_TOPICS_TOTAL
+        || manifest.claims_total != AUDITED_CLAIMS_TOTAL
+    {
+        violations.push(format!(
+            "replay manifest must bind {AUDITED_TOPICS_TOTAL} topics and {AUDITED_CLAIMS_TOTAL} claims"
+        ));
     }
     if manifest.selection_vectors_digest.len() != 64
         || manifest.realization_vectors_digest.len() != 64
@@ -784,7 +790,7 @@ fn run_replay_gate() -> GateReport {
             gate: GatePhase::D.as_str(),
             passed: true,
             details: format!(
-                "manifest={}, corpus=30 topics/69 claims, legacy_graph=false",
+                "manifest={}, corpus={AUDITED_TOPICS_TOTAL} topics/{AUDITED_CLAIMS_TOTAL} claims, legacy_graph=false",
                 short_digest(&manifest.manifest_digest)
             ),
             violations,
@@ -794,7 +800,7 @@ fn run_replay_gate() -> GateReport {
     }
 }
 
-/// Phase B: the audited corpus — semantic + authority parity over all 30
+/// Phase B: the audited corpus — semantic + authority parity over all 60
 /// topics. Every stated claim of every topic must traverse the whole chain
 /// (admission → evidence → assertion) and land on a `ClaimAuthority`; the
 /// manifest must lock the exact asset bytes the release binary carries.
@@ -848,21 +854,21 @@ fn run_phase_b() -> GateReport {
         }
     }
 
-    if manifest.diagnostics.topics_total != 30 {
+    if manifest.diagnostics.topics_total != AUDITED_TOPICS_TOTAL {
         violations.push(format!(
-            "audited-corpus must cover exactly 30 topics, manifest says {}",
+            "audited-corpus must cover exactly {AUDITED_TOPICS_TOTAL} topics, manifest says {}",
             manifest.diagnostics.topics_total
         ));
     }
-    if manifest.diagnostics.claims_total != 69 {
+    if manifest.diagnostics.claims_total != AUDITED_CLAIMS_TOTAL {
         violations.push(format!(
-            "audited-corpus must cover exactly 69 claims, manifest says {}",
+            "audited-corpus must cover exactly {AUDITED_CLAIMS_TOTAL} claims, manifest says {}",
             manifest.diagnostics.claims_total
         ));
     }
-    if manifest.topics.len() != 30 {
+    if manifest.topics.len() != AUDITED_TOPICS_TOTAL {
         violations.push(format!(
-            "audited-corpus must contain exactly 30 topics, found {}",
+            "audited-corpus must contain exactly {AUDITED_TOPICS_TOTAL} topics, found {}",
             manifest.topics.len()
         ));
     }
@@ -959,9 +965,9 @@ fn run_phase_b() -> GateReport {
         claims_authorized += topic.statement_count();
     }
 
-    if manifest_claims != 69 {
+    if manifest_claims != AUDITED_CLAIMS_TOTAL {
         violations.push(format!(
-            "audited-corpus topics contain {manifest_claims} claims, expected 69"
+            "audited-corpus topics contain {manifest_claims} claims, expected {AUDITED_CLAIMS_TOTAL}"
         ));
     }
     if exact_clause_topics != manifest.diagnostics.exact_clause_surfaces
@@ -1251,8 +1257,8 @@ fn run_phase_c() -> GateReport {
         }
     }
 
-    if claims_realized != 69
-        || fixed_surface_claims != 39
+    if claims_realized != AUDITED_CLAIMS_TOTAL
+        || fixed_surface_claims != manifest.diagnostics.fixed_phrase_surfaces
         || exact_clauses != manifest.diagnostics.exact_clause_surfaces
         || governed_clauses != manifest.diagnostics.governed_clause_surfaces
     {
@@ -1266,7 +1272,7 @@ fn run_phase_c() -> GateReport {
             gate: GatePhase::C.as_str(),
             passed: true,
             details: format!(
-                "manifest={}, claims realized {claims_realized}/69 (exact/governed/fixed={exact_clauses}/{governed_clauses}/{fixed_surface_claims})",
+                "manifest={}, claims realized {claims_realized}/{AUDITED_CLAIMS_TOTAL} (exact/governed/fixed={exact_clauses}/{governed_clauses}/{fixed_surface_claims})",
                 short_digest(&manifest.manifest_digest),
             ),
             violations,
@@ -1358,7 +1364,7 @@ mod tests {
             "canary report failed: {:?}",
             report.violations
         );
-        assert!(report.details.contains("audited_turns=30"));
+        assert!(report.details.contains("audited_turns=60"));
         assert!(report.details.contains("attestation_parity_violations=0"));
         assert!(report.details.contains("unauthorized_v1_fallbacks=0"));
     }

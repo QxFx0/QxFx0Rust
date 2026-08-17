@@ -735,7 +735,11 @@ pub fn finalize_stage(
                         .filter(|cid| **cid != new_id)
                         .cloned()
                         .max_by_key(|cid| {
-                            new_store.active.get(cid).map(|(_, turn)| *turn).unwrap_or(0)
+                            new_store
+                                .active
+                                .get(cid)
+                                .map(|(_, turn)| *turn)
+                                .unwrap_or(0)
                         })
                     {
                         new_store = CommitmentOps::contradict(

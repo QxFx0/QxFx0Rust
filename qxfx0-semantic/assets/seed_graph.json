@@ -154,22 +154,22 @@
     "аксиома": {
       "id": "аксиома",
       "display": "аксиома",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "алгоритм": {
       "id": "алгоритм",
       "display": "алгоритм",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "беспристрастность": {
       "id": "беспристрастность",
       "display": "беспристрастность",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "благодарность": {
       "id": "благодарность",
       "display": "благодарность",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "будущее": {
       "id": "будущее",
@@ -189,7 +189,7 @@
     "верность": {
       "id": "верность",
       "display": "верность",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "власть": {
       "id": "власть",
@@ -259,7 +259,7 @@
     "граница": {
       "id": "граница",
       "display": "граница",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "грусть": {
       "id": "грусть",
@@ -299,7 +299,7 @@
     "длительность": {
       "id": "длительность",
       "display": "длительность",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "добро": {
       "id": "добро",
@@ -334,7 +334,7 @@
     "долженствование": {
       "id": "долженствование",
       "display": "долженствование",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "дом": {
       "id": "дом",
@@ -349,7 +349,7 @@
     "дух": {
       "id": "дух",
       "display": "дух",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "душа": {
       "id": "душа",
@@ -414,7 +414,7 @@
     "идентичность": {
       "id": "идентичность",
       "display": "идентичность",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "инстинкт": {
       "id": "инстинкт",
@@ -464,7 +464,7 @@
     "когерентность": {
       "id": "когерентность",
       "display": "когерентность",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "код": {
       "id": "код",
@@ -589,7 +589,7 @@
     "объективность": {
       "id": "объективность",
       "display": "объективность",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "одиночество": {
       "id": "одиночество",
@@ -654,7 +654,7 @@
     "поэзия": {
       "id": "поэзия",
       "display": "поэзия",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "права": {
       "id": "права",
@@ -669,7 +669,7 @@
     "право": {
       "id": "право",
       "display": "право",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "прекрасное": {
       "id": "прекрасное",
@@ -699,7 +699,7 @@
     "присутствие": {
       "id": "присутствие",
       "display": "присутствие",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "причина": {
       "id": "причина",
@@ -724,7 +724,7 @@
     "психика": {
       "id": "психика",
       "display": "психика",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "путешествие": {
       "id": "путешествие",
@@ -789,7 +789,7 @@
     "решимость": {
       "id": "решимость",
       "display": "решимость",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "рынок": {
       "id": "рынок",
@@ -799,7 +799,7 @@
     "самоопределение": {
       "id": "самоопределение",
       "display": "самоопределение",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "самоотчёт": {
       "id": "самоотчёт",
@@ -809,7 +809,7 @@
     "самооценка": {
       "id": "самооценка",
       "display": "самооценка",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "самосознание": {
       "id": "самосознание",
@@ -819,7 +819,7 @@
     "свидетельство": {
       "id": "свидетельство",
       "display": "свидетельство",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "свобода": {
       "id": "свобода",
@@ -859,7 +859,7 @@
     "слушание": {
       "id": "слушание",
       "display": "слушание",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "смерть": {
       "id": "смерть",
@@ -874,7 +874,7 @@
     "собственность": {
       "id": "собственность",
       "display": "собственность",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "совесть": {
       "id": "совесть",
@@ -914,7 +914,7 @@
     "становление": {
       "id": "становление",
       "display": "становление",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "страдание": {
       "id": "страдание",

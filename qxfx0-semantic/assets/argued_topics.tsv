@@ -32,3 +32,33 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 власть	power_influence	vlast	oznachaet	vliyat_na_drugih	власть означает способность влиять на действия других	власть определяет, чья воля становится законом
 правда	truthfulness_facts	pravda	pretenduet	na_sootvetstvie_faktam	правда претендует на соответствие фактам	правда отличается от истины личной вовлечённостью рассказчика
 молчание	silence_speech	molchanie	kontrastiruet	s_rechyu	молчание контрастирует с речью, но не тождественно пустоте	молчание может быть актом отказа или знаком присутствия
+аксиома	aksioma_prinimaetsya	aksioma	prinimaetsya	dokazatelstvo	аксиома принимается без доказательства	аксиома служит основанием для вывода
+беспристрастность	bespristrastnost_trebuet	bespristrastnost	trebuet	obektivnost	беспристрастность требует объективности	беспристрастность способствует объективной оценке
+верность	vernost_predpolagaet	vernost	predpolagaet	doverie	верность предполагает доверие	верность проверяется в испытаниях
+государство	gosudarstvo_ustanavlivaet	gosudarstvo	ustanavlivaet	poryadok	государство устанавливает порядок	государство ограничивает произвол
+граница	granitsa_otlichaetsya	granitsa	otlichaetsya	khaos	граница отличается от хаоса	граница устанавливает условие формы
+длительность	dlitelnost_vyrazhaet	dlitelnost	vyrazhaet	vremya	длительность выражает время	длительность отличает процесс от события
+долженствование	dolzhenstvovanie_vyrazhaet	dolzhenstvovanie	vyrazhaet	moral	долженствование выражает мораль	долженствование отличается от желания
+дух	dukh_vyrazhaet	dukh	vyrazhaet	suschnost	дух выражает сущность	дух отличается от тела
+благодарность	blagodarnost_vyrazhaet	blagodarnost	vyrazhaet	dobro	благодарность выражает добро	благодарность укрепляет связи между людьми
+жизнь	zhizn_vyrazhaet	zhizn	vyrazhaet	stanovlenie	жизнь выражает становление	жизнь ограничена смертью
+идентичность	identichnost_predpolagaet	identichnost	predpolagaet	vremya	идентичность предполагает время	идентичность различается через самоопределение
+искусство	iskusstvo_vyrazhaet	iskusstvo	vyrazhaet	krasota	искусство выражает красоту	искусство преодолевает границу выразимого
+когерентность	kogerentnost_podderzhivaet	kogerentnost	podderzhivaet	sistema	когерентность поддерживает систему	когерентность обеспечивает цельность
+алгоритм	algoritm_opredelyaet	algoritm	opredelyaet	deystvie	алгоритм определяет действие	алгоритм гарантирует результат при корректном исполнении
+музыка	muzyka_vyrazhaet	muzyka	vyrazhaet	emotsiya	музыка выражает эмоцию	музыка создаёт гармоническое пространство
+мышление	myshlenie_trebuet	myshlenie	trebuet	znanie	мышление требует знания	мышление отличается от восприятия
+объективность	obektivnost_trebuet	obektivnost	trebuet	istina	объективность требует истины	объективность проверяется межсубъектным согласием
+поэзия	poeziya_vyrazhaet	poeziya	vyrazhaet	krasota	поэзия выражает красоту	поэзия преодолевает границы выразимого
+право	pravo_ustanavlivaet	pravo	ustanavlivaet	granitsa	право устанавливает границу	право выражает притязание на справедливость
+присутствие	prisutstvie_vyrazhaet	prisutstvie	vyrazhaet	vremya	присутствие выражает время	присутствие отличается от бездействия осознанностью
+психика	psikhika_vyrazhaet	psikhika	vyrazhaet	zhizn	психика выражает жизнь	психика отличается от тела нематериальностью
+решимость	reshimost_preodolevaet	reshimost	preodolevaet	somnenie	решимость преодолевает сомнение	решимость выражает силу воли
+самоопределение	samoopredelenie_vyrazhaet	samoopredelenie	vyrazhaet	identichnost	самоопределение выражает идентичность	самоопределение формирует границы я
+самооценка	samootsenka_napravlena	samootsenka	napravlena	lichnost	самооценка направлена на личность	самооценка может быть источником роста или ограничения
+свидетельство	svidetelstvo_podtverzhdaet	svidetelstvo	podtverzhdaet	pravda	свидетельство подтверждает правду	свидетельство требует достоверности
+слушание	slushanie_otkryvaet	slushanie	otkryvaet	dialog	слушание открывает диалог	слушание требует внимательности
+смысл	smysl_orientiruet	smysl	orientiruet	ponimanie	смысл ориентирует понимание	смысл связан с целью высказывания
+собственность	sobstvennost_vyrazhaet	sobstvennost	vyrazhaet	tsennost	собственность выражает ценность	собственность устанавливает границы
+становление	stanovlenie_svyazan	stanovlenie	svyazan	razvitie	становление связано с развитием	становление связано с развитием во времени
+сущность	suschnost_opredelyaet	suschnost	opredelyaet	bytie	сущность определяет бытие	сущность отделена от существования

@@ -1203,7 +1203,18 @@ pub fn save_journal_state(
 /// runners call this before `save_state_with_timings` so their sessions
 /// share the journal calendar too.
 fn stamp_practice_today(state: &mut qxfx0_types::system_state::SystemState) {
-    state.dialogue.practice_days.insert(today_epoch_day());
+    let day = today_epoch_day();
+    stamp_practice_day(state, day);
+}
+
+/// Record one practice day and the topic answered on it. Keeping this at the
+/// CLI boundary makes the calendar/revisit policy deterministic in tests and
+/// in replay: the day is an explicit input, never sampled by the pipeline.
+fn stamp_practice_day(state: &mut qxfx0_types::system_state::SystemState, day: u64) {
+    state.dialogue.practice_days.insert(day);
+    if let Some(topic) = state.dialogue.last_topic.clone() {
+        state.dialogue.topic_last_practice_day.insert(topic, day);
+    }
 }
 
 pub fn run_turn_with_renderer(
@@ -1240,7 +1251,7 @@ pub fn run_journal_turn(
         session_id: session_id.to_string(),
     };
     let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
-    state.dialogue.practice_days.insert(epoch_day);
+    stamp_practice_day(&mut state, epoch_day);
     db.save_state(session_id, &state)?;
     Ok(output.response)
 }
@@ -1953,10 +1964,10 @@ mod tests {
             .iter()
             .find(|check| check.name == "Content plan assets")
             .expect("content plan assets check");
-        assert!(content_assets.details.contains("argued_topics_admitted=30"));
+        assert!(content_assets.details.contains("argued_topics_admitted=60"));
         assert!(content_assets
             .details
-            .contains("content_predicates_total=69"));
+            .contains("content_predicates_total=129"));
         let _ = std::fs::remove_file(path);
     }
 

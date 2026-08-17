@@ -237,7 +237,10 @@ impl CommitmentOps {
                     .split_whitespace()
                     .filter(|w| w.len() >= 3)
                     .collect();
-                !query_words.intersection(&stmt_words).collect::<Vec<_>>().is_empty()
+                !query_words
+                    .intersection(&stmt_words)
+                    .collect::<Vec<_>>()
+                    .is_empty()
                     || stem_overlap_count(&query_words, &stmt_words) > 0
             })
             .map(|(cid, _)| cid.clone())

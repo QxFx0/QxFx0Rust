@@ -2550,7 +2550,7 @@ mod tests {
     }
 
     #[test]
-    fn response_plan_v2_shadow_covers_30_topics_and_69_claims() {
+    fn response_plan_v2_shadow_covers_60_topics_and_129_claims() {
         let registry = qxfx0_semantic::argued_topic_registry().expect("audited registry");
         let mut topics = 0usize;
         let mut claims = 0usize;
@@ -2605,8 +2605,8 @@ mod tests {
                 Some(&"false".into())
             );
         }
-        assert_eq!(topics, 30);
-        assert_eq!(claims, 69);
+        assert_eq!(topics, 60);
+        assert_eq!(claims, 129);
     }
 
     fn parity_input(session_id: &str) -> TurnInput {

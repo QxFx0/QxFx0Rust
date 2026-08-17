@@ -27,6 +27,11 @@ pub struct DialogueState {
     /// determinism is preserved: the day is part of the recorded input.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub practice_days: BTreeSet<u64>,
+    /// Last synthetic/real practice day for each topic. This is the
+    /// persisted input to the revisit policy; it keeps topic scheduling
+    /// independent from turn numbers and wall-clock sampling.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub topic_last_practice_day: BTreeMap<String, u64>,
 }
 
 impl Default for DialogueState {
@@ -38,6 +43,7 @@ impl Default for DialogueState {
             last_topic: None,
             conversation_state: None,
             practice_days: BTreeSet::new(),
+            topic_last_practice_day: BTreeMap::new(),
         }
     }
 }
@@ -431,6 +437,11 @@ mod tests {
         state.dialogue.turn_count = 3;
         state.dialogue.history.push("hello".into());
         state.dialogue.last_topic = Some("свобода".into());
+        state.dialogue.practice_days.insert(20_000);
+        state
+            .dialogue
+            .topic_last_practice_day
+            .insert("свобода".into(), 20_000);
         state.governance_log.append(GovernanceEvent {
             turn: 1,
             event_type: GovernanceEventType::GraphEnriched { new_relations: 2 },
@@ -446,6 +457,14 @@ mod tests {
         assert_eq!(restored.dialogue.turn_count, 3);
         assert_eq!(restored.dialogue.history.len(), 1);
         assert_eq!(restored.dialogue.last_topic, Some("свобода".into()));
+        assert_eq!(
+            restored.dialogue.practice_days,
+            [20_000].into_iter().collect()
+        );
+        assert_eq!(
+            restored.dialogue.topic_last_practice_day.get("свобода"),
+            Some(&20_000)
+        );
         assert_eq!(restored.governance_log.len(), 1);
         assert!(
             restored

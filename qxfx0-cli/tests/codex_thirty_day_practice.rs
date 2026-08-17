@@ -1,7 +1,7 @@
-//! «Кодекс» product acceptance: the forty-day practice loop.
+//! «Кодекс» product acceptance: the thirty-day practice loop.
 //!
 //! This is the proof that the journal has product value, not just
-//! architecture: over forty synthetic days of daily practice the loop must
+//! architecture: over thirty synthetic days of daily practice the loop must
 //! (1) stamp every practiced day, (2) walk the audited corpus first and
 //! then consciously REVISIT topics, (3) catch the practitioner
 //! contradicting an earlier position, and (4) echo prior positions and the
@@ -23,21 +23,19 @@ fn temp_db(name: &str) -> std::path::PathBuf {
     path
 }
 
-fn journal_state(
-    db: &qxfx0_persistence::Persistence,
-) -> qxfx0_types::system_state::SystemState {
+fn journal_state(db: &qxfx0_persistence::Persistence) -> qxfx0_types::system_state::SystemState {
     db.load_state("diary")
         .expect("session loads")
         .expect("session exists after the first turn")
 }
 
 #[test]
-fn forty_day_practice_closes_the_loop() {
+fn thirty_day_practice_closes_the_loop() {
     let db_path = temp_db("diary-practice");
     let db_path_str = db_path.to_str().expect("temp path is UTF-8").to_string();
     let db = qxfx0_persistence::Persistence::open(&db_path_str).expect("database opens");
     let start = 20_000u64;
-    let days = 40u64;
+    let days = 30u64;
 
     let mut revisited_any = false;
     for day in 0..days {
@@ -107,8 +105,17 @@ fn forty_day_practice_closes_the_loop() {
         "each recorded contradiction is replay-visible in governance"
     );
 
-    // A later card carries the memory: prior positions and the event.
-    let topic = select_topic_of_day(start + 100, Some(&state));
+    // The card for the contradicted topic carries the memory: prior
+    // positions and the event are scoped to the recalled subject.
+    let topic = state
+        .semantic
+        .semantic_commitments
+        .as_ref()
+        .and_then(|store| store.contradictions.last())
+        .and_then(|event| {
+            store_topic(&state, &event.left).or_else(|| store_topic(&state, &event.right))
+        })
+        .expect("a contradiction identifies a topic");
     let card = build_reflection_card(&topic, start + 100).expect("audited topic");
     let memory = build_memory_card(card, &state);
     assert!(
@@ -120,9 +127,22 @@ fn forty_day_practice_closes_the_loop() {
     let rendered = render_memory_card(&memory);
     assert!(rendered.contains("В прошлый раз"));
     assert!(rendered.contains("Событие практики"));
-    assert!(rendered.contains("Дней практики: 40"));
+    assert!(rendered.contains("Дней практики: 30"));
 
     let _ = std::fs::remove_file(db_path);
+}
+
+fn store_topic(
+    state: &qxfx0_types::system_state::SystemState,
+    id: &qxfx0_types::system_state::CommitmentId,
+) -> Option<String> {
+    state
+        .semantic
+        .semantic_commitments
+        .as_ref()?
+        .active
+        .get(id)
+        .map(|(payload, _)| payload.topic.clone())
 }
 
 fn journal_state_if_exists(

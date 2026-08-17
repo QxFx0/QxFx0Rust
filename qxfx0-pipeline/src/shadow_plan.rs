@@ -330,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn all_30_admitted_topics_build_fact_resolved_declarative_plans() {
+    fn all_60_admitted_topics_build_fact_resolved_declarative_plans() {
         let registry = argued_topic_registry().unwrap();
 
         for topic in registry.topics() {

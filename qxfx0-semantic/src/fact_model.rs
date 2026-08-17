@@ -482,11 +482,11 @@ mod tests {
         ));
     }
     #[test]
-    fn active_pack_maps_all_69_facts_and_39_conditions() {
+    fn active_pack_maps_all_129_facts_and_39_conditions() {
         let registry = crate::active_pack_set().facts();
         let graph = registry.canonical_thesis_graph().unwrap();
-        assert_eq!(registry.len(), 69);
-        assert_eq!(graph.theses().len(), 69);
+        assert_eq!(registry.len(), 129);
+        assert_eq!(graph.theses().len(), 129);
         assert_eq!(graph.relations().len(), 39);
         assert_eq!(
             graph
