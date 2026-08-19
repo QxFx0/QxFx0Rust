@@ -602,7 +602,10 @@ fn validate_manifest(
                 ("assessments.json", source.assessments),
             ]
         }
-        _ => unreachable!(),
+        other => panic!(
+            "knowledge_pack: schema_version {other} passed the 1|2 identity guard for pack '{}'",
+            manifest.pack_id
+        ),
     };
     if manifest.files.len() != files.len() {
         return Err(v(format!(

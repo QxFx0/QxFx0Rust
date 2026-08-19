@@ -372,17 +372,19 @@ route-based renderer remains the default authority. The plan-renderer checks
 in the same gate verify the exact curated surface for the same fresh and
 long-session corpus.
 
-To run the controlled audited renderer, enable the explicit CLI flag:
+To run the controlled audited renderer, it is now the default:
 
 ```bash
-target/release/qxfx0 --db qxfx0.db --render-audited-plan turn 'что такое свобода?'
+target/release/qxfx0 --db qxfx0.db turn 'что такое свобода?'
 ```
 
-Without the flag, `legacy_shadow` remains authoritative and records a
-plan-to-surface comparison in the render trace. With the flag,
 `audited_plan` renders only admitted topic-backed `ReadyResponsePlan` values;
-fallback, greeting, purpose and external-cause routes retain their existing
-contracts.
+for admitted topics it emits the curated Thesis/Контрпункт/Следствие surface,
+for everything else (fallback, greeting, purpose, external-cause routes) it
+retains the existing contracts. `--render-audited-plan` is kept as an explicit
+alias; `--render-legacy` restores the legacy shadow renderer for A/B comparison.
+`legacy_shadow` records a plan-to-surface comparison in the render trace.
+See `docs/operations/audited-plan-latency-pilot-2026-08.md`.
 
 The explicit `turn --response-plan-v2-authority` path is a separate three-topic
 canary authority surface. It emits a verifiable external JSONL trace; the

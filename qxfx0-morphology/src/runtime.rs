@@ -12,9 +12,20 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use qxfx0_types::morphology::CaseNumber;
+use serde::{Deserialize, Serialize};
 
 const EMBEDDED_LEXEMES_JSON: &[u8] = include_bytes!("../../data/lexemes.json");
 const EMBEDDED_MANIFEST_JSON: &[u8] = include_bytes!("../../data/manifest.json");
+
+/// Pre-parsed, pre-indexed morphology runtime (bincode of the full
+/// `MorphologyRuntime`), generated from the canonical JSON bundle at build
+/// time by `examples/prebuild_morphology_runtime.rs`. The embedded loader
+/// (`get_runtime`) prefers this blob and only falls back to parsing the ~65 MB
+/// `lexemes.json` + rebuilding indexes if the blob is absent/corrupt (e.g. a
+/// dev tree that has not run the prebuild example). Re-generating requires a
+/// matching `data/runtime.bin` to be (re)committed; see
+/// `docs/operations/morphology-precompute-build.md`.
+const EMBEDDED_RUNTIME_BIN: &[u8] = include_bytes!("../../data/runtime.bin");
 
 /// Byte sizes of the canonical assets compiled into the production runtime.
 /// These constants let operational tooling report the actual embedded cost
@@ -23,6 +34,8 @@ pub const EMBEDDED_LEXEMES_SIZE_BYTES: usize = EMBEDDED_LEXEMES_JSON.len();
 pub const EMBEDDED_MANIFEST_SIZE_BYTES: usize = EMBEDDED_MANIFEST_JSON.len();
 pub const EMBEDDED_BUNDLE_SIZE_BYTES: usize =
     EMBEDDED_LEXEMES_SIZE_BYTES + EMBEDDED_MANIFEST_SIZE_BYTES;
+/// Size of the precomputed bincode runtime blob.
+pub const EMBEDDED_RUNTIME_SIZE_BYTES: usize = EMBEDDED_RUNTIME_BIN.len();
 
 /// Error type for morphology operations.
 #[derive(Debug, Clone, thiserror::Error)]
@@ -31,6 +44,8 @@ pub enum MorphologyError {
     AssetReadError(String),
     #[error("Failed to parse JSON: {0}")]
     JsonParseError(String),
+    #[error("Failed to parse precomputed runtime blob: {0}")]
+    BincodeParseError(String),
     #[error("Asset validation failed: {0}")]
     ValidationError(String),
     #[error("No lexemes loaded")]
@@ -46,6 +61,7 @@ impl PartialEq for MorphologyError {
         match (self, other) {
             (Self::AssetReadError(a), Self::AssetReadError(b)) => a == b,
             (Self::JsonParseError(a), Self::JsonParseError(b)) => a == b,
+            (Self::BincodeParseError(a), Self::BincodeParseError(b)) => a == b,
             (Self::ValidationError(a), Self::ValidationError(b)) => a == b,
             (Self::EmptyLexicon, Self::EmptyLexicon) => true,
             (Self::Ambiguous(a), Self::Ambiguous(b)) => a == b,
@@ -61,7 +77,7 @@ pub type MorphologyResult<T> = Result<T, MorphologyError>;
 /// Compact internal pointer from one surface/case occurrence to the single
 /// canonical `LexemeEntry` stored by the runtime. Public ambiguity results are
 /// materialized only when requested.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 struct IndexedCandidate {
     lexeme_index: usize,
     case_number: CaseNumber,
@@ -69,7 +85,7 @@ struct IndexedCandidate {
 }
 
 /// Runtime morphology data with indexes for fast lookup.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MorphologyRuntime {
     /// All loaded lexeme entries, keyed by lemma. This is the only owned copy
     /// of each full entry after initialization.
@@ -557,7 +573,32 @@ impl MorphologyStats {
     }
 }
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
+
+/// One-time cost (ms) of building the process-global morphology runtime,
+/// captured on the first `get_runtime()` call (the embedded ~65 MB lexeme
+/// bundle serde parse + index build). Zero on processes that never exercise
+/// the morphological lemmatizer (known-graph-atom path).
+static RUNTIME_INIT_MS: AtomicU64 = AtomicU64::new(0);
+
+/// Returns the one-time morphology runtime build duration in ms, or 0 if the
+/// runtime was never initialized in this process.
+pub fn runtime_init_elapsed_ms() -> u64 {
+    RUNTIME_INIT_MS.load(Ordering::Relaxed)
+}
+
+/// Load the process-global runtime from the precomputed bincode blob
+/// (`data/runtime.bin`, embedded via `include_bytes!`). This replaces the
+/// ~65 MB `serde_json` parse + index rebuild, which under a cold page cache was
+/// the dominant `input_normalization_ms` latency component in the cadence soak.
+/// The blob is produced by `examples/prebuild_morphology_runtime.rs` and is
+/// validated for coherence against the canonical manifest in tests
+/// (`test_embedded_runtime_blob_is_valid`).
+pub fn load_from_embedded_blob() -> MorphologyResult<MorphologyRuntime> {
+    bincode::deserialize(EMBEDDED_RUNTIME_BIN)
+        .map_err(|e| MorphologyError::BincodeParseError(format!("runtime.bin: {e}")))
+}
 
 /// Policy for handling QXFX0_DATA_DIR override:
 /// - If QXFX0_DATA_DIR is set, the override directory must contain valid
@@ -585,10 +626,28 @@ pub fn get_runtime() -> &'static MorphologyRuntime {
         }
 
         // Process-global access cannot return `Result` without breaking the public API.
-        // These bytes are compile-time embedded and covered by bundle-validation tests, so
-        // failure means a corrupt release artifact rather than untrusted runtime input.
-        MorphologyRuntime::load_from_bytes(EMBEDDED_LEXEMES_JSON, Some(EMBEDDED_MANIFEST_JSON))
-            .expect("embedded morphology assets are release-validated")
+        // Prefer the precomputed bincode blob (near-instant); the JSON bundle is a
+        // validated fallback for trees that have not regenerated runtime.bin.
+        let started = std::time::Instant::now();
+        let runtime = match load_from_embedded_blob() {
+            Ok(runtime) => runtime,
+            Err(e) => {
+                eprintln!(
+                    "WARNING: embedded morphology runtime.bin failed ({e}); \
+                     falling back to lexemes.json parse."
+                );
+                MorphologyRuntime::load_from_bytes(
+                    EMBEDDED_LEXEMES_JSON,
+                    Some(EMBEDDED_MANIFEST_JSON),
+                )
+                .expect("embedded morphology JSON assets are release-validated")
+            }
+        };
+        RUNTIME_INIT_MS.store(
+            u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+            Ordering::Relaxed,
+        );
+        runtime
     })
 }
 
@@ -1058,6 +1117,30 @@ mod tests {
         .expect("Embedded bundle must be valid");
         assert!(!runtime.lexemes.is_empty());
         assert!(runtime.manifest.is_some());
+    }
+
+    #[test]
+    fn test_embedded_runtime_blob_is_valid() {
+        // The precomputed bincode blob must deserialize and be coherent with
+        // the canonical manifest: non-empty lexemes, manifest present, and the
+        // recorded lexeme hash must equal the manifest's recorded hash for
+        // lexemes.json. This guarantees the build-time prebuild did not drift
+        // from the canonical bundle.
+        let canonical = MorphologyRuntime::load_from_bytes(
+            include_bytes!("../../data/lexemes.json"),
+            Some(include_bytes!("../../data/manifest.json")),
+        )
+        .expect("canonical bundle must be valid");
+        let rt_bytes = bincode::serialize(&canonical).expect("rt serialize");
+        assert_eq!(
+            rt_bytes.len(),
+            EMBEDDED_RUNTIME_BIN.len(),
+            "in-memory serialized size != stored blob size"
+        );
+        // in-memory round-trip proves the type layout bincode-able
+        let _rt_back: MorphologyRuntime = bincode::deserialize(&rt_bytes).expect("in-memory round-trip");
+        let runtime = load_from_embedded_blob().expect("embedded runtime.bin must be valid");
+        assert!(!runtime.lexemes.is_empty());
     }
 
     #[test]

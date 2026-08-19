@@ -1,6 +1,6 @@
 use crate::fresh_state;
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_trace_and_renderer, RendererAuthority, TurnInput,
+    process_turn_with_renderer, process_turn_with_trace_and_renderer, RendererAuthority, TurnInput,
 };
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -15,6 +15,7 @@ pub struct LatencyDistributionMicros {
     pub min: u64,
     pub p50: u64,
     pub p95: u64,
+    pub p99: u64,
     pub max: u64,
     pub mean: u64,
 }
@@ -30,6 +31,7 @@ impl LatencyDistributionMicros {
             min: samples[0],
             p50: nearest_rank(&samples, 50),
             p95: nearest_rank(&samples, 95),
+            p99: nearest_rank(&samples, 99),
             max: samples[count - 1],
             mean: (sum / count as u128).try_into().unwrap_or(u64::MAX),
         }
@@ -40,6 +42,8 @@ impl LatencyDistributionMicros {
 pub struct RuntimeBenchmarkReport {
     pub schema_version: u8,
     pub benchmark_input: &'static str,
+    /// Renderer authority exercised by this benchmark.
+    pub renderer: &'static str,
     pub first_turn_micros: u64,
     pub warmup_turns: usize,
     pub steady_state_micros: LatencyDistributionMicros,
@@ -93,6 +97,7 @@ pub struct RendererDiversityReport {
 pub fn run_runtime_benchmark(
     steady_samples: usize,
     warmup_turns: usize,
+    renderer: RendererAuthority,
 ) -> Result<RuntimeBenchmarkReport, String> {
     if steady_samples == 0 || steady_samples > MAX_BENCHMARK_SAMPLES {
         return Err(format!(
@@ -107,24 +112,29 @@ pub fn run_runtime_benchmark(
 
     let rss_before_bytes = resident_set_size_bytes();
     let first_started = Instant::now();
-    run_measured_turn("__benchmark_first__")?;
+    run_measured_turn("__benchmark_first__", renderer)?;
     let first_turn_micros = elapsed_micros(first_started);
     let rss_after_first_turn_bytes = resident_set_size_bytes();
 
     for index in 0..warmup_turns {
-        run_measured_turn(&format!("__benchmark_warmup_{index}__"))?;
+        run_measured_turn(&format!("__benchmark_warmup_{index}__"), renderer)?;
     }
 
     let mut steady = Vec::with_capacity(steady_samples);
     for index in 0..steady_samples {
         let started = Instant::now();
-        run_measured_turn(&format!("__benchmark_steady_{index}__"))?;
+        run_measured_turn(&format!("__benchmark_steady_{index}__"), renderer)?;
         steady.push(elapsed_micros(started));
     }
 
     Ok(RuntimeBenchmarkReport {
         schema_version: 1,
         benchmark_input: BENCHMARK_INPUT,
+        renderer: match renderer {
+            RendererAuthority::LegacyShadow => "legacy_shadow",
+            RendererAuthority::AuditedPlan => "audited_plan",
+            RendererAuthority::V2Canary => "v2_canary",
+        },
         first_turn_micros,
         warmup_turns,
         steady_state_micros: LatencyDistributionMicros::from_samples(steady),
@@ -234,13 +244,13 @@ pub fn run_renderer_diversity_audit(
     })
 }
 
-fn run_measured_turn(session_id: &str) -> Result<(), String> {
+fn run_measured_turn(session_id: &str, renderer: RendererAuthority) -> Result<(), String> {
     let mut state = fresh_state(session_id);
     let input = TurnInput {
         raw_text: BENCHMARK_INPUT.into(),
         session_id: session_id.into(),
     };
-    let output = process_turn(&input, &mut state);
+    let output = process_turn_with_renderer(&input, &mut state, renderer);
     if output.blocked || output.response.trim().is_empty() {
         return Err("benchmark turn did not produce an admissible response".into());
     }

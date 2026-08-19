@@ -42,6 +42,11 @@ struct Cli {
     #[arg(long, global = true)]
     render_audited_plan: bool,
 
+    /// Force the legacy shadow renderer (explicit escape hatch; the default
+    /// renderer is `audited_plan`). Mutually exclusive with `--render-audited-plan`.
+    #[arg(long, global = true, conflicts_with = "render_audited_plan")]
+    render_legacy: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -145,6 +150,9 @@ enum Commands {
         samples: usize,
         #[arg(long, default_value_t = 10)]
         warmup: usize,
+        /// Measure the audited-plan renderer instead of the default legacy shadow.
+        #[arg(long)]
+        audited_plan: bool,
         #[arg(long)]
         json: bool,
     },
@@ -217,10 +225,14 @@ fn main() -> anyhow::Result<()> {
     let process_started = Instant::now();
     tracing_subscriber::fmt::init();
     let cli = Cli::parse();
-    let renderer_authority = if cli.render_audited_plan {
-        RendererAuthority::AuditedPlan
-    } else {
+    // Default authority is `audited_plan` (ADR-0034/0041). It is ~7x faster at
+    // p99 than legacy_shadow and produces the curated, fail-closed surface for
+    // admitted topics. `--render-legacy` restores the legacy shadow renderer for
+    // A/B comparison; `--render-audited-plan` is kept as an explicit no-op alias.
+    let renderer_authority = if cli.render_legacy {
         RendererAuthority::LegacyShadow
+    } else {
+        RendererAuthority::AuditedPlan
     };
 
     ctrlc::set_handler(|| {
@@ -722,9 +734,16 @@ fn main() -> anyhow::Result<()> {
         Commands::Benchmark {
             samples,
             warmup,
+            audited_plan,
             json,
         } => {
-            let report = run_runtime_benchmark(samples, warmup).map_err(anyhow::Error::msg)?;
+            let renderer = if audited_plan {
+                RendererAuthority::AuditedPlan
+            } else {
+                RendererAuthority::LegacyShadow
+            };
+            let report =
+                run_runtime_benchmark(samples, warmup, renderer).map_err(anyhow::Error::msg)?;
             if json {
                 println!("{}", serde_json::to_string_pretty(&report)?);
             } else {

@@ -65,7 +65,9 @@ fn build_outcome(
                     ExternalSubjectKind::Phenomenon,
                     "system.external.world_cause",
                 ),
-                _ => unreachable!("guarded by the outer match"),
+                other => panic!(
+                    "shadow plan contract match escaped its outer guard (mode={other:?}, subject={trimmed_subject:?})"
+                ),
             };
             let external = ExternalSubject::new(kind, subject);
             build_contract_plan(

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 /// Source tier for lexeme provenance, ordered by trust level.
 /// Higher trust tiers are preferred during candidate resolution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum SourceTier {
     /// Manually curated, verified entries
     Curated,
@@ -14,6 +14,32 @@ pub enum SourceTier {
     /// Automatically generated coverage entries
     #[default]
     AutoCoverage,
+}
+
+impl SourceTier {
+    /// Keyword string form used by both JSON and the precomputed bincode
+    /// morphology blob. Kept in sync with `FromStr` below so Serialize/
+    /// Deserialize are symmetric (the derived `Serialize` would emit a variant
+    /// index, which the manual `Deserialize` could not read back).
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SourceTier::Curated => "curated",
+            SourceTier::Reviewed => "reviewed",
+            SourceTier::AutoVerified => "auto_verified",
+            SourceTier::AutoCoverage => "auto_coverage",
+        }
+    }
+}
+
+// --- Serialize mirrors the string-keyed Deserialize above (keyword form) ---
+// so the type round-trips under serde_json AND bincode.
+impl Serialize for SourceTier {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
 }
 
 impl SourceTier {
@@ -64,6 +90,25 @@ pub enum PartOfSpeech {
     Particle,
     Numeral,
     Other,
+}
+
+impl PartOfSpeech {
+    /// Lowercase keyword mirroring `FromStr`; symmetric for JSON + bincode.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PartOfSpeech::Noun => "noun",
+            PartOfSpeech::Adjective => "adjective",
+            PartOfSpeech::Verb => "verb",
+            PartOfSpeech::Adverb => "adverb",
+            PartOfSpeech::Pronoun => "pronoun",
+            PartOfSpeech::Preposition => "preposition",
+            PartOfSpeech::Conjunction => "conjunction",
+            PartOfSpeech::Interjection => "interjection",
+            PartOfSpeech::Particle => "particle",
+            PartOfSpeech::Numeral => "numeral",
+            PartOfSpeech::Other => "other",
+        }
+    }
 }
 
 impl FromStr for PartOfSpeech {
@@ -406,7 +451,7 @@ impl InflectionForms {
 
 /// A lexeme entry in the morphology dictionary.
 /// Represents a lemma with its grammatical features and all inflected forms.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LexemeEntry {
     /// The lemma in nominative singular form (canonical form)
     pub lemma: String,
@@ -418,6 +463,19 @@ pub struct LexemeEntry {
     pub source_tier: SourceTier,
     /// Quality score (0.0 to 1.0)
     pub quality: f64,
+}
+
+// Serialize delegates to the flat layout (`FlatLexemeEntry`) so that Serialize
+// is symmetric with the manual flat-layout `Deserialize` above; this keeps JSON
+// output identical and makes bincode round-tripping possible for the
+// precomputed morphology blob.
+impl Serialize for LexemeEntry {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        FlatLexemeEntry::from(self).serialize(serializer)
+    }
 }
 
 impl LexemeEntry {
@@ -448,7 +506,7 @@ impl LexemeEntry {
 }
 
 /// Flat entry format for JSON deserialization (without features object)
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct FlatLexemeEntry {
     lemma: String,
     #[serde(default)]
@@ -462,6 +520,20 @@ struct FlatLexemeEntry {
     #[serde(default)]
     quality: f64,
     forms: InflectionForms,
+}
+
+impl From<&LexemeEntry> for FlatLexemeEntry {
+    fn from(e: &LexemeEntry) -> Self {
+        Self {
+            lemma: e.lemma.clone(),
+            pos: e.features.pos.as_str().to_owned(),
+            gender: e.features.gender.as_str().to_owned(),
+            animacy: e.features.animacy.as_str().to_owned(),
+            source_tier: e.source_tier,
+            quality: e.quality,
+            forms: e.forms.clone(),
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for LexemeEntry {

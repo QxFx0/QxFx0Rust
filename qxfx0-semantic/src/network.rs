@@ -251,8 +251,8 @@ pub fn build_topic_atoms(graph: &AtomGraph) -> BTreeMap<AtomId, BTreeSet<AtomId>
 /// the network is rebuilt exactly once and stored back in the state.
 pub fn cached_semantic_network(semantic: &mut SemanticState) -> SemanticNetwork {
     let edge_count = semantic.runtime_graph.edges.len();
-    if let Some(cached) = semantic.cached_network.clone() {
-        if semantic.cached_edge_count == edge_count {
+    if semantic.cached_edge_count == edge_count {
+        if let Some(cached) = semantic.cached_network.clone() {
             return cached;
         }
     }

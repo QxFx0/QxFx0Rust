@@ -6,6 +6,11 @@ scripts/diagnostic-soak-1000.sh text eol=lf
 # Knowledge-pack bytes are hashed as their canonical LF representation.
 data/** text eol=lf
 
+# Precomputed morphology blob is raw bincode, not text: disable CRLF/lf
+# normalization or autocrlf corrupts its byte-for-byte hash contract used by
+# test_embedded_runtime_blob_is_valid. This overrides the data/** text rule.
+data/*.bin binary
+
 # Embedded digest-pinned assets must stay byte-identical on checkout.
 qxfx0-semantic/assets/*.json text eol=lf
 

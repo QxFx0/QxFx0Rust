@@ -316,6 +316,12 @@ pub struct TurnOutput {
 pub struct PipelineStageTimings {
     /// Parsing, topic normalization, and typed input construction.
     pub input_normalization_ms: u64,
+    /// One-time, process-global morphology runtime build cost (embedded
+    /// lexeme-bundle serde parse + index build), incurred on the first
+    /// lemmatizer call in a process. Zero when the known-graph-atom path
+    /// never touches the lemmatizer. Attribute for `input_normalization_ms`
+    /// spikes that are not per-turn parse work.
+    pub morphology_init_ms: u64,
     /// Self-layer preparation.
     pub prepare_ms: u64,
     /// Typed family routing.
@@ -349,6 +355,7 @@ impl PipelineStageTimings {
             "finalize" => self.finalize_ms = elapsed_ms,
             "guard" => self.guard_ms = elapsed_ms,
             "persist" => self.persist_ms = elapsed_ms,
+            "morphology_init" => self.morphology_init_ms = elapsed_ms,
             _ => {}
         }
     }
@@ -1526,7 +1533,7 @@ fn process_turn_internal(
         return session_invariant_output(state, "loaded state violates invariants");
     }
 
-    let snapshot = state.clone();
+    let snapshot = state.capture_rollback_snapshot();
     let mut recovery = RecoverySnapshot::default();
 
     // Parse once and retain the typed proposition throughout the pipeline.
@@ -1559,6 +1566,7 @@ fn process_turn_internal(
     if let Some(timings) = timings.as_deref_mut() {
         timings.input_normalization_ms =
             PipelineStageTimings::duration_ms(normalization_started.elapsed());
+        timings.morphology_init_ms = qxfx0_morphology::runtime_init_elapsed_ms();
     }
 
     // Stage 1: Prepare
@@ -1573,7 +1581,7 @@ fn process_turn_internal(
         Ok(context) => context,
         Err(error) => {
             tracing::error!("prepare_stage failed: {error}");
-            *state = snapshot;
+            snapshot.apply(state);
             return recovery_output(state, &recovery);
         }
     };
@@ -1591,7 +1599,7 @@ fn process_turn_internal(
         Ok(context) => context,
         Err(error) => {
             tracing::error!("route_stage failed: {error}");
-            *state = snapshot;
+            snapshot.apply(state);
             return recovery_output(state, &recovery);
         }
     };
@@ -1626,7 +1634,7 @@ fn process_turn_internal(
         Ok(context) => context.with_authority_decision(authority_receipt),
         Err(error) => {
             tracing::error!("plan_shadow_stage failed: {error}");
-            *state = snapshot;
+            snapshot.apply(state);
             return recovery_output(state, &recovery);
         }
     };
@@ -1643,7 +1651,7 @@ fn process_turn_internal(
         Ok(context) => context,
         Err(error) => {
             tracing::error!("render_stage failed: {error}");
-            *state = snapshot;
+            snapshot.apply(state);
             return recovery_output(state, &recovery);
         }
     };
@@ -1660,7 +1668,7 @@ fn process_turn_internal(
             Ok(receipt) => Ok(receipt),
             Err(error) if fact_grounded_rollout.permits_render_authorization() => {
                 tracing::error!("fact-grounded receipt failed: {error}");
-                *state = snapshot;
+                snapshot.apply(state);
                 return recovery_output(state, &recovery);
             }
             Err(error) => Err(error),
@@ -1681,7 +1689,7 @@ fn process_turn_internal(
         Ok(context) => context,
         Err(error) => {
             tracing::error!("finalize_stage failed: {error}");
-            *state = snapshot;
+            snapshot.apply(state);
             return recovery_output(state, &recovery);
         }
     };
@@ -1698,7 +1706,7 @@ fn process_turn_internal(
         Ok(context) => context,
         Err(error) => {
             tracing::error!("guard_stage failed: {error}");
-            *state = snapshot;
+            snapshot.apply(state);
             return recovery_output(state, &recovery);
         }
     };
@@ -1798,7 +1806,7 @@ fn process_turn_internal(
         if let Err(error) = outcome {
             if fact_grounded_rollout.permits_render_authorization() {
                 tracing::error!("fact-grounded finalize failed: {error}");
-                *state = snapshot;
+                snapshot.apply(state);
                 return recovery_output(state, &recovery);
             }
         }
@@ -1832,8 +1840,8 @@ fn process_turn_internal(
     // the explicit blocked decision remain, then dialogue bookkeeping below
     // records that a rejected turn occurred.
     if blocked {
-        state.semantic = snapshot.semantic.clone();
-        state.dialogue.conversation_state = snapshot.dialogue.conversation_state;
+        state.semantic = snapshot.semantic().clone();
+        state.dialogue.conversation_state = snapshot.dialogue().conversation_state;
     }
 
     // W6: If the guard blocked this turn, replace the response with a recovery string

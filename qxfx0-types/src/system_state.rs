@@ -312,6 +312,101 @@ impl SystemState {
     }
 }
 
+/// Pre-turn rollback snapshot of the SystemState fields that a turn pipeline
+/// may mutate. Two derived, regenerable sub-structures are deliberately *not*
+/// captured so the per-turn snapshot stays cheap in long `chat`/service
+/// sessions:
+///
+/// * `dialogue.history` — the pipeline only *reads* the response history
+///   during a turn, and writes it once after the last rollback point. Omitting
+///   the (dominant) history vector avoids a deep clone of up to 10,000 strings
+///   on every turn.
+/// * `semantic.cached_network` / `cached_edge_count` — `#[serde(skip)]` caches
+///   of `runtime_graph`. On restore they must be rebuilt against the restored
+///   graph anyway (see the invalidation in `stages.rs` finalize/guard paths), so
+///   cloning the up-to-10k-node network into the snapshot is pure overhead.
+///
+/// Callers must preserve `state.dialogue.history` across the turn; the restore
+/// path leaves it untouched.
+#[derive(Debug, Clone)]
+pub struct TurnRollbackSnapshot {
+    dialogue: DialogueState,
+    semantic: SemanticState,
+    governance_log: GovernanceLog,
+    last_turn_decision: Option<TurnDecision>,
+}
+
+impl SystemState {
+    /// Capture a rollback snapshot of the fields the pipeline may mutate.
+    ///
+    /// Excludes `dialogue.history` and the derived `semantic.cached_network`
+    /// cache (see [`TurnRollbackSnapshot`]); `session_id` is also stable for the
+    /// lifetime of a turn and is not restored.
+    pub fn capture_rollback_snapshot(&self) -> TurnRollbackSnapshot {
+        // `cached_network` is a regenerable `#[serde(skip)]` cache: clone the
+        // rest of SemanticState field by field but leave the cache as `None` so
+        // a multi-turn session does not deep-clone a 10k-node network per turn.
+        TurnRollbackSnapshot {
+            dialogue: DialogueState {
+                turn_count: self.dialogue.turn_count,
+                history: Vec::new(),
+                last_family: self.dialogue.last_family,
+                last_topic: self.dialogue.last_topic.clone(),
+                conversation_state: self.dialogue.conversation_state,
+                practice_days: self.dialogue.practice_days.clone(),
+                topic_last_practice_day: self.dialogue.topic_last_practice_day.clone(),
+            },
+            semantic: SemanticState {
+                field: self.semantic.field.clone(),
+                runtime_graph: self.semantic.runtime_graph.clone(),
+                pack_set_fingerprint: self.semantic.pack_set_fingerprint.clone(),
+                semantic_commitments: self.semantic.semantic_commitments.clone(),
+                essence: self.semantic.essence.clone(),
+                adjunction: self.semantic.adjunction.clone(),
+                perspective: self.semantic.perspective.clone(),
+                stance_provenance: self.semantic.stance_provenance.clone(),
+                thesis_state: self.semantic.thesis_state.clone(),
+                cached_edge_count: 0,
+                cached_network: None,
+            },
+            governance_log: self.governance_log.clone(),
+            last_turn_decision: self.last_turn_decision.clone(),
+        }
+    }
+}
+
+impl TurnRollbackSnapshot {
+    /// Restore the captured fields into `state`, leaving `dialogue.history`
+    /// untouched (see [`capture_rollback_snapshot`]).
+    pub fn apply(self, state: &mut SystemState) {
+        state.dialogue.turn_count = self.dialogue.turn_count;
+        state.dialogue.last_family = self.dialogue.last_family;
+        state.dialogue.last_topic = self.dialogue.last_topic;
+        state.dialogue.conversation_state = self.dialogue.conversation_state;
+        state.dialogue.practice_days = self.dialogue.practice_days;
+        state.dialogue.topic_last_practice_day = self.dialogue.topic_last_practice_day;
+
+        state.semantic = self.semantic;
+        state.governance_log = self.governance_log;
+        state.last_turn_decision = self.last_turn_decision;
+    }
+
+    /// Shared access to the semantic snapshot for partial (blocked-turn) restores.
+    pub fn semantic(&self) -> &SemanticState {
+        &self.semantic
+    }
+
+    /// Shared access to the dialogue snapshot for partial restores.
+    pub fn dialogue(&self) -> &DialogueState {
+        &self.dialogue
+    }
+
+    #[cfg(test)]
+    pub fn into_semantic(self) -> SemanticState {
+        self.semantic
+    }
+}
+
 /// Turn decision — routing + force + guard status.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TurnDecision {
@@ -485,5 +580,98 @@ mod tests {
         assert!(violations
             .iter()
             .any(|reason| reason.contains("confidence")));
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn rollback_snapshot_restores_mutables_and_preserves_history() {
+        let mut state = SystemState::default();
+        state.session_id = "snapshot-test".into();
+        state.dialogue.turn_count = 3;
+        state.dialogue.history.push("pre-history-1".into());
+        state.dialogue.history.push("pre-history-2".into());
+        state.dialogue.last_topic = Some("свобода".into());
+        state.dialogue.practice_days.insert(20_000);
+        state
+            .dialogue
+            .topic_last_practice_day
+            .insert("свобода".into(), 20_000);
+        state.last_turn_decision = Some(TurnDecision {
+            family: CanonicalMoveFamily::CMConnect,
+            force: IllocutionaryForce::IFAssert,
+            guard_status: GuardStatus::Allowed,
+            legitimacy: 0.9,
+        });
+        state.semantic.field.confidence = 0.5;
+        state.governance_log.append(GovernanceEvent {
+            turn: 1,
+            event_type: GovernanceEventType::GraphEnriched { new_relations: 3 },
+            family: CanonicalMoveFamily::CMConnect,
+            guard_status: GuardStatus::InvariantOk,
+            timestamp: "turn-1".into(),
+        });
+
+        // Mutate the state after capture: history grows (the only turn-writer),
+        // plus the semantic/governance fields the turn stage mutates.
+        let snapshot = state.capture_rollback_snapshot();
+        state.dialogue.history.push("during-turn".into());
+        state.dialogue.turn_count = 7;
+        state.dialogue.last_topic = Some("дом".into());
+        state.dialogue.practice_days.insert(21_000);
+        state.dialogue.conversation_state = Some(2);
+        state.semantic.field.confidence = 0.1;
+        state.last_turn_decision = None;
+        state.governance_log.append(GovernanceEvent {
+            turn: 2,
+            event_type: GovernanceEventType::GraphEnriched { new_relations: 9 },
+            family: CanonicalMoveFamily::CMGround,
+            guard_status: GuardStatus::InvariantOk,
+            timestamp: "turn-2".into(),
+        });
+
+        snapshot.apply(&mut state);
+
+        // Non-history mutables: restored to pre-turn values.
+        assert_eq!(state.dialogue.turn_count, 3);
+        assert_eq!(state.dialogue.last_topic, Some("свобода".into()));
+        assert_eq!(state.dialogue.conversation_state, None);
+        assert_eq!(state.dialogue.practice_days, [20_000].into_iter().collect());
+        assert_eq!(
+            state.dialogue.topic_last_practice_day.get("свобода"),
+            Some(&20_000u64)
+        );
+        assert_eq!(state.last_turn_decision.as_ref().unwrap().legitimacy, 0.9);
+        assert_eq!(
+            state.last_turn_decision.as_ref().unwrap().guard_status,
+            GuardStatus::Allowed
+        );
+        assert!((state.semantic.field.confidence - 0.5).abs() < 1e-12);
+        assert_eq!(state.governance_log.len(), 1);
+
+        // History is untouched by restore: it still contains the during-turn
+        // append that the turn pipeline writes after capture.
+        assert_eq!(
+            state.dialogue.history.last().map(|s| s.as_str()),
+            Some("during-turn")
+        );
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn rollback_snapshot_excludes_the_derived_cache() {
+        let mut state = SystemState::default();
+        state.semantic.cached_network = Some(crate::network::SemanticNetwork::default());
+        state.semantic.cached_edge_count = 4_321;
+
+        let snapshot = state.capture_rollback_snapshot();
+
+        // The derived cache is not carried into the snapshot: a restore must
+        // force a lazy rebuild, so it must come back empty.
+        assert!(snapshot.semantic().cached_network.is_none());
+        assert_eq!(snapshot.semantic().cached_edge_count, 0);
+
+        snapshot.apply(&mut state);
+        assert!(state.semantic.cached_network.is_none());
+        assert_eq!(state.semantic.cached_edge_count, 0);
     }
 }

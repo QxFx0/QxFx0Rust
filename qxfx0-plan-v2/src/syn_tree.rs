@@ -339,7 +339,7 @@ pub fn resolve(
     for (occurrence, node) in tree.iter() {
         let SynNode::Clause(clause) = node else {
             let SynNode::FixedPhrase(surface) = node else {
-                unreachable!()
+                panic!("syn_tree::resolve: occurrence {occurrence:?} holds a node that is neither Clause nor FixedPhrase");
             };
             fixed_nodes += 1;
             resolved_slots += 1;

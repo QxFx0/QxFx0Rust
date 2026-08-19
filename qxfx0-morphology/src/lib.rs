@@ -6,9 +6,10 @@ pub mod runtime;
 pub mod verb_lexicon;
 pub mod verbs;
 pub use runtime::{
-    get_runtime, load_from_directory, MorphologyError, MorphologyResult, MorphologyRuntime,
-    MorphologyStats, EMBEDDED_BUNDLE_SIZE_BYTES, EMBEDDED_LEXEMES_SIZE_BYTES,
-    EMBEDDED_MANIFEST_SIZE_BYTES,
+    get_runtime, load_from_directory, load_from_embedded_blob, runtime_init_elapsed_ms,
+    MorphologyError, MorphologyResult, MorphologyRuntime, MorphologyStats,
+    EMBEDDED_BUNDLE_SIZE_BYTES, EMBEDDED_LEXEMES_SIZE_BYTES, EMBEDDED_MANIFEST_SIZE_BYTES,
+    EMBEDDED_RUNTIME_SIZE_BYTES,
 };
 
 use std::collections::BTreeMap;

@@ -79,7 +79,9 @@ pub fn integrate_curated_claims(
             ClaimRole::Consequence | ClaimRole::Support => {
                 reinforce_opinion(&mut next, turn_seq, fact)?
             }
-            ClaimRole::DialogueAct => unreachable!("rejected before fact selection"),
+            ClaimRole::DialogueAct => panic!(
+                "fact_perspective: DialogueAct reached curated-claim integration at turn {turn_seq}; it is rejected before fact selection"
+            ),
         };
         episodes_added += usize::from(changed);
     }
