@@ -23,6 +23,9 @@ use std::collections::BTreeMap;
 const SECONDS_PER_DAY: u64 = 86_400;
 /// A topic becomes due for an intentional callback after this many days.
 const REVISIT_AFTER_DAYS: u64 = 7;
+/// Essence angst from which the practice surfaces call it out explicitly —
+/// below this the numbers speak for themselves in the report.
+pub const PRACTICE_ANGST_ATTENTION: f64 = 0.5;
 
 /// UTC epoch day of a Unix timestamp, clamped to 0 before the epoch.
 pub fn epoch_day(unix_seconds: u64) -> u64 {
@@ -235,7 +238,7 @@ pub fn position_challenge(
 }
 
 /// A reflection card with the journal's memory attached.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MemoryCard {
     pub card: ReflectionCard,
     /// True when the topic was chosen by the revisit policy.
@@ -245,6 +248,8 @@ pub struct MemoryCard {
     /// topic, replacing the corpus counterpoint on revisits.
     pub challenge: Option<PositionChallenge>,
     pub contradiction: Option<ContradictionEcho>,
+    /// Essence angst — the practice's living tension, echoed when elevated.
+    pub angst: f64,
     pub practice_days: usize,
 }
 
@@ -316,6 +321,7 @@ pub fn build_memory_card(card: ReflectionCard, state: &SystemState, day: u64) ->
         prior_positions,
         challenge,
         contradiction,
+        angst: state.semantic.essence.angst,
         practice_days: state.dialogue.practice_days.len(),
     }
 }
@@ -371,6 +377,12 @@ pub fn render_memory_card(memory: &MemoryCard) -> String {
         out.push_str(
             "  Противоречие не ошибка — это точка роста. Разберись, что именно изменилось.\n",
         );
+        if memory.angst >= PRACTICE_ANGST_ATTENTION {
+            out.push_str(&format!(
+                "  Тревога практики: {:.2} — столкновения позиций копятся; разберись с ними, прежде чем идти дальше.\n",
+                memory.angst
+            ));
+        }
     }
     if memory.practice_days > 0 {
         out.push_str(&format!("\nДней практики: {}\n", memory.practice_days));
@@ -549,6 +561,12 @@ pub fn render_report_console(report: &ReflectionReport) -> String {
     }
     out.push('\n');
     out.push_str(&format!("Противоречия: {}\n", report.contradictions));
+    if report.contradictions > 0 && report.angst >= PRACTICE_ANGST_ATTENTION {
+        out.push_str(&format!(
+            "Тревога практики: {:.2} — твои позиции сталкиваются; вернись к противоречиям и разберись, что изменилось.\n",
+            report.angst
+        ));
+    }
     out.push_str(&format!(
         "Governance: завершено {}, блокировок {}, отказов ёмкости {}\n",
         report.governance_completed, report.governance_blocked, report.governance_capacity_reached
@@ -584,6 +602,11 @@ pub fn render_report_markdown(report: &ReflectionReport) -> String {
         report.witness_capacity.max(32)
     ));
     out.push_str(&format!("- Тревога: {:.2}\n", report.angst));
+    if report.contradictions > 0 && report.angst >= PRACTICE_ANGST_ATTENTION {
+        out.push_str(
+            "- **Тревога практики высокая**: твои позиции сталкиваются; вернись к противоречиям и разберись, что изменилось.\n",
+        );
+    }
     out.push_str(&format!(
         "- Траектория зафиксирована: {}\n",
         if report.trajectory_committed {
@@ -1281,10 +1304,50 @@ mod tests {
         let console = render_report_console(&report);
         assert!(console.contains("протокол размышлений"));
         assert!(console.contains("свобода — 2"));
+        assert!(
+            !console.contains("Тревога практики"),
+            "angst 0.25 with a contradiction stays below the attention threshold"
+        );
         let markdown = render_report_markdown(&report);
         assert!(markdown.contains("# Кодекс"));
         assert!(markdown.contains("| свобода | 2 |"));
         assert!(markdown.contains("## Governance"));
+    }
+
+    #[test]
+    fn elevated_angst_with_contradictions_is_called_out_in_both_formats() {
+        let mut state = state_with_commitments();
+        state.semantic.essence.angst = 0.6;
+        let report = build_reflection_report(&state);
+        let console = render_report_console(&report);
+        assert!(console.contains("Тревога практики: 0.6"));
+        assert!(render_report_markdown(&report).contains("Тревога практики высокая"));
+        // Without contradictions the attention line stays silent even at
+        // high angst — the call-out is about colliding positions.
+        state
+            .semantic
+            .semantic_commitments
+            .as_mut()
+            .expect("store exists")
+            .contradictions
+            .clear();
+        let report = build_reflection_report(&state);
+        assert!(!render_report_console(&report).contains("Тревога практики"));
+    }
+
+    #[test]
+    fn memory_card_echoes_angst_only_when_elevated() {
+        let mut state = state_with_commitments();
+        let card = build_reflection_card("свобода", 20_000).unwrap();
+        let calm = build_memory_card(card.clone(), &state, 20_000);
+        assert!(calm.contradiction.is_some());
+        assert!(calm.angst < PRACTICE_ANGST_ATTENTION);
+        assert!(!render_memory_card(&calm).contains("Тревога практики"));
+
+        state.semantic.essence.angst = 0.75;
+        let tense = build_memory_card(card, &state, 20_000);
+        let rendered = render_memory_card(&tense);
+        assert!(rendered.contains("Тревога практики: 0.75"));
     }
 
     #[test]

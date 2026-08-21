@@ -751,6 +751,16 @@ pub fn finalize_stage(
                             turn,
                             &new_store,
                         );
+                        // A caught contradiction is existential tension by
+                        // definition: the practitioner's own beliefs
+                        // collided in their journal. It feeds the essence
+                        // angst as a double divergent-witness accrual, so
+                        // the belief protocol and the essence trajectory
+                        // move as one practice.
+                        state.semantic.essence.angst = (state.semantic.essence.angst
+                            + em.angst_accrual_rate
+                            + em.angst_accrual_rate)
+                            .min(1.0);
                         let family = state
                             .last_turn_decision
                             .as_ref()
