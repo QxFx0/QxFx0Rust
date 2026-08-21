@@ -322,6 +322,19 @@ pub struct PipelineStageTimings {
     /// never touches the lemmatizer. Attribute for `input_normalization_ms`
     /// spikes that are not per-turn parse work.
     pub morphology_init_ms: u64,
+    /// One-time (process-global) cost of eagerly faulting the embedded
+    /// morphology runtime blob before deserialization. Zero on processes that
+    /// never exercise the lemmatizer. Sub-component of the
+    /// `input_normalization_ms` spike attribution; see
+    /// `qxfx0_morphology::runtime_blob_warm_ms`.
+    pub morphology_blob_warm_ms: u64,
+    /// One-time (process-global) cost of making the adjective lexicon usable
+    /// (blob deserialize on the happy path, JSON parse + index rebuild on the
+    /// fallback), incurred on the first adjective surface resolution. Zero
+    /// when no adjective is ever resolved. Attribute for
+    /// `input_normalization_ms` spikes that `morphology_init_ms` does not
+    /// cover; see `qxfx0_morphology::adjective_lexicon_init_ms`.
+    pub adjective_lexicon_init_ms: u64,
     /// Self-layer preparation.
     pub prepare_ms: u64,
     /// Typed family routing.
@@ -1567,6 +1580,8 @@ fn process_turn_internal(
         timings.input_normalization_ms =
             PipelineStageTimings::duration_ms(normalization_started.elapsed());
         timings.morphology_init_ms = qxfx0_morphology::runtime_init_elapsed_ms();
+        timings.morphology_blob_warm_ms = qxfx0_morphology::runtime_blob_warm_ms();
+        timings.adjective_lexicon_init_ms = qxfx0_morphology::adjective_lexicon_init_ms();
     }
 
     // Stage 1: Prepare

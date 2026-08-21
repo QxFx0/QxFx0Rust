@@ -1,7 +1,8 @@
 # Audit: audited_plan latency pilot
 
-- Status: Closed — gate passed
-- Date: 2026-08-18
+- Status: Renderer gate passed; cadence gate fix implemented (2026-08-21),
+  full 1,000-turn soak confirmation running detached
+- Date: 2026-08-18, addendum 2026-08-21 (true tail attribution)
 - Toolchain: Rust 1.93.1 (`cargo benchmark --audited-plan`), pinned via `rust-toolchain.toml`
 - Instrument: `qxfx0 benchmark --samples 400 --warmup 30 --json` per renderer
 
@@ -94,23 +95,86 @@ round-trip. Regenerating after editing `data/lexemes.json` is documented in
 | `pipeline.plan_render_ms` (both) | 11 ms | 18 ms | 21 ms | 21 ms | 0 |
 | `pipeline.morphology_init_ms` (lemmatizing turns) | 194 ms warm | — | — | — | — |
 
-Direct same-turn before/after: **n=55 = 2436 ms → 1709 ms**. Warm `morphology_init`
-(384 ms → 194 ms) and the smaller cold fault set (65 MB → 20.7 MB, ~0.32×) together
-clear the 2,000 ms gate with margin. `plan_render_ms` is stable and ≤21 ms regardless.
+Direct attribution of the pre-fix spike: the morphology-trigger turn (n=55 ≈
+2,436 ms) was the 65 MB `lexemes.json` parse + index rebuild on first
+`lemmatize_surface`. Post-fix, `morphology_init_ms` is warm and consistent (≈194 ms,
+no rebuild) and the cold fault set shrank (65 MB → 20.7 MB, ~0.32×). Soak-1000
+**p99 = 1,710 ms < 2,000 ms** (metric gate met), **but** 2/1,000 turns still breach
+on the index-7 trigger (n=103 = 2,213 ms; n=895 = 2,230 ms).
+
+### True attribution of the residual tail (2026-08-21 addendum)
+
+The earlier "cold `.rodata` page-fault" theory for the residual ~1.8 s is
+**wrong**, proven by the blob pre-fault soak
+(`/tmp/opencode/qxfx0-soak-warm-full`, 840/1,000 turns with the pre-fault
+binary): `morphology_blob_warm_ms = 0` on **every** turn, including the slow
+ones — the noun blob pages are page-cache-resident between per-turn
+processes, so the linear pre-fault sweep costs <1 ms. The breaches are not
+cache faults at all. They are **CPU work**: the per-prompt medians of
+`input_normalization_ms` show
+
+| prompt (cycle index) | median | >900 ms |
+|---|---|---|
+| «Что делает решение справедливым?» (idx 6) | **1,621 ms** | 69/69 |
+| all other 11 prompts | 193–198 ms | 1/826 |
+
+The word «справедливым» is an adjective surface the noun runtime cannot
+resolve, so `lemmatize_surface` falls through to the **adjective lexicon**:
+`serde_json`-parsing the embedded **49.7 MB `adjective_lexemes.json`** and
+rebuilding the surface→lemmas reverse index (573 K entries) **in every fresh
+`qxfx0 turn` process** — ~1.4 s of CPU on top of the ~250 ms noun-runtime
+deserialize (`morphology_init_ms`, correctly NOT elevated). The warm-fix
+soak's `slow_turns = 5` (turns 211, 391, 475, 739, … all idx-6) is exactly
+this deterministic parse cost plus host-contention variance pushing a
+1.6 s median over the 2,000 ms gate ~0.6 % of the time.
+
+### Adjective precompute fix (this round)
+
+Same play as the noun `runtime.bin`, one step further because a bincode blob
+of the built `BTreeMap`s still costs ~1 s of per-node allocation to
+deserialize (measured: `adjective_lexicon_init_ms ≈ 1,000 ms`). The new
+`data/adjective_runtime.bin` (64.4 MB) stores the lemma table and the reverse
+index in a **flat, zero-copy columnar layout** — two concatenated string
+buffers plus `u32` bound vectors; deserializing is a pair of `memcpy`s
+(~200 ms) and every lookup is a binary search over sorted strings.
+Generator: `cargo run -p qxfx0-morphology --example prebuild_adjective_runtime`;
+parity gate: `embedded_adjective_runtime_blob_matches_the_json_lexicon`;
+attribution diagnostic: `pipeline.adjective_lexicon_init_ms`.
+
+A/B on the idx-6 prompt (release binary, fresh process per turn):
+
+| | total turn | `input_normalization_ms` | adjective init |
+|---|---|---|---|
+| pre-fix | 1,621–2,270 ms | 2,090–2,218 ms (slow turns) | (unattributed) |
+| flat blob | **414–445 ms** | 391–423 ms | 185–214 ms |
 
 ## Gate verification
 
 Against the performance gate required by the incident:
 
-- **Renderer / cadence gate — PASS.** Soak-60 (audited default, 60 s idle):
-  `turn_failures=0`, `slow_turns=0`, latency **p99 = 1709 ms < 2000 ms**,
-  `final_doctor_ok=1`, `final_metrics_ok=1`; `pipeline.plan_render_ms` p99 = 21 ms.
-- **In-process benchmark (renderer headroom)** — `qxfx0 benchmark --samples 200
-  --warmup 20 --audited-plan --json`: p50 = 13.6 ms, p95 = 14.7 ms, **p99 =
-  15.3 ms** (max 15.9 ms), vs `legacy_shadow` p99 = 101.7 ms — ~7× headroom. ✅
+- **Renderer gate — PASS.** In-process `qxfx0 benchmark --samples 200 --warmup 20
+  --audited-plan --json`: p50 = 13.6 ms, p95 = 14.7 ms, **p99 = 15.3 ms** (max
+  15.9 ms), vs `legacy_shadow` p99 = 101.7 ms ≈ 7× headroom, zero failures. ✅
+- **End-to-end cadence gate — fix implemented, soak confirmation running.**
+  The warm-fix soak (840/1,000 turns, 60 s idle, blob pre-fault binary)
+  ended with `turn_failures=0` but **`slow_turns = 5`** — all five the idx-6
+  adjective-parse trigger above; it was stopped once its verdict was clear
+  (artifacts: `/tmp/opencode/qxfx0-soak-warm-full/`). With the adjective
+  precompute the same prompt runs at ~0.4 s (4.5× gate margin). A fresh full
+  1,000-turn @60 s-idle soak on the fixed binary is running detached:
+  started 2026-08-21T20:56Z, dir `/tmp/opencode/qxfx0-soak-adjectives-1000/`
+  (status `pilot.status`, key line `slow_turns=N`; report `pilot.report` with
+  `final_metrics_ok=1`). The cadence gate closes only when that soak lands
+  `slow_turns = 0`.
 
-The renderer change plus the morphology precompute together clear the
-end-to-end cadence gate.
+> Methodology note: the original ask included `echo 3 > /proc/sys/vm/drop_caches`
+> before each turn to force a fully cold cache. This host is uid 1000 (not root),
+> so forced cache drops **could not** be run; the soak has only *partial* cache
+> cooling. With the adjective parse eliminated, page-cache state no longer
+> changes the turn-cost class (the flat-blob deserialize is ~0.2 s warm or
+> cold), so the 60 s-idle soak is now a meaningful proxy for the fully-cold
+> stress; re-run as root with the drop-caches loop if a fully-cold
+> confirmation is mandated.
 
 ## Recommendation / closure
 
@@ -120,39 +184,54 @@ CodeX `reflect`/`report` journal path); `legacy_shadow` is reachable via
 content (fallback, greeting, purpose, external-cause routes) keeps identical
 output, so only the 60 admitted topics differ, toward the structured/fail-closed
 curated surface. It removes the largest *in-process renderer* cost (~7× p99
-headroom). The residual intermittent tail is now **attributed** (not "no single
-root cause"): it is morphology runtime initialization, measured via the new
-`pipeline.morphology_init_ms` diagnostic (`qxfx0-morphology::runtime_init_elapsed_ms`,
-captured inside `input_normalization_ms`).
+headroom).
 
-Both gates are now closed by implementation, not by threshold changes:
+Renderer gate closed by implementation. Cadence gate: the tail is fully
+attributed and eliminated by implementation (items 2–4); formal closure
+waits on the running 1,000-turn soak (`slow_turns = 0` required).
 
 1. **`--render-audited-plan` → default** (`qxfx0-cli/src/main.rs`): renderer p99
-   drops from 101.7 ms (legacy) to 15.3 ms in-process.
-2. **Morphology precompute** (`qxfx0-morphology`): `get_runtime()` deserializes
+   drops from 101.7 ms to 15.3 ms in-process.
+2. **Noun-runtime precompute** (`qxfx0-morphology`): `get_runtime()` deserializes
    the committed 20.7 MB `data/runtime.bin` instead of parsing the 65 MB
    `lexemes.json` + rebuilding indexes on every cold process. Generator:
    `examples/prebuild_morphology_runtime.rs`; coherency + hash test:
    `test_embedded_runtime_blob_is_valid`. This removed the intermittent
    `input_normalization_ms` / `morphology_init_ms` tail that the cadence soak
    attributed (pre-fix n=55 = 2436 ms → post-fix 1709 ms).
+3. **Noun blob pre-fault** (`qxfx0-morphology/src/runtime.rs`,
+   `warm_embedded_blob`): eagerly faults the embedded `runtime.bin` pages in a
+   linear sweep before `bincode::deserialize`, converting any genuine cold-fault
+   cost into a readahead-friendly pass (`pipeline.morphology_blob_warm_ms`).
+   On this host the pages are page-cache-resident between per-turn processes,
+   so the sweep measures 0 ms — kept as cheap insurance for genuinely cold
+   hosts; it is NOT what removed the residual tail.
+4. **Adjective-lexicon precompute** (`qxfx0-morphology/src/adjective_lexicon.rs`):
+   the actual residual-tail fix. The 49.7 MB JSON parse + 573 K-entry reverse
+   index rebuild per process (idx-6 prompts, median 1.6 s) is replaced by the
+   flat zero-copy `data/adjective_runtime.bin` (deserialize ≈ 0.2 s; idx-6
+   turn ≈ 0.4 s). New attribution diagnostic:
+   `pipeline.adjective_lexicon_init_ms`.
 
 Operational notes for maintainers:
 
-- `data/runtime.bin` is checked into the repo next to `data/lexemes.json`. On
-  editing `data/lexemes.json`, regenerate with `cargo run -p qxfx0-morphology
-  --example prebuild_morphology_runtime`, re-validate with
-  `cargo test -p qxfx0-morphology --all-features`, and commit the new blob.
+- `data/runtime.bin` (20.7 MB) and `data/adjective_runtime.bin` (64.4 MB) are
+  checked into the repo next to their canonical JSON sources. On editing
+  `data/lexemes.json` regenerate with `cargo run -p qxfx0-morphology
+  --example prebuild_morphology_runtime`; on editing
+  `data/adjective_lexemes.json` regenerate with `cargo run -p qxfx0-morphology
+  --example prebuild_adjective_runtime`. Re-validate with
+  `cargo test -p qxfx0-morphology --all-features` (both parity gates) and
+  commit the blobs together with the JSON.
 - The `QXFX0_DATA_DIR` override path still parses the directory's
   `lexemes.json` directly (manual/ops path, not performance-critical).
-- This soak-60 ran on a quiet 16-core host; the page cache was *partially*
-  cooled across the 60 s idle but not aggressively evicted, so the observed
-  p99 (1709 ms) is a conservative floor — under harsher cold-cache conditions
-  the smaller 20.7 MB fault set keeps proportionate margin. A full 1,000-turn
-  soak on a dedicated, cache-flushed host is the recommended release gate
-  confirmation (not required to merge; `scripts/diagnostic-soak-1000.sh`
-  parameterised via `QXFX0_DIAGNOSTIC_TURNS`).
+- The pre-fault warm path touches `EMBEDDED_RUNTIME_BIN` page-by-page, so it
+  tracks any change in blob size/mapping.
+- Soak confirmation: poll `/tmp/opencode/qxfx0-soak-adjectives-1000/pilot.status`
+  (`slow_turns=N`; expect 0) and `pilot.report` (`final_metrics_ok=1`).
+  Until it lands `slow_turns = 0`, treat the cadence gate as pending
+  (renderer gate and p99 metric gate are already met with margin).
 
 No further renderer change is required or in scope; the `--audited-plan`
 benchmark flag and `--render-legacy` are both retained for repeatable
-measurement. This closes the latency audit branch against `audited_plan`.
+measurement.

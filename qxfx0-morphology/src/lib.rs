@@ -5,9 +5,10 @@ pub mod pronoun_lexicon;
 pub mod runtime;
 pub mod verb_lexicon;
 pub mod verbs;
+pub use adjective_lexicon::adjective_lexicon_init_ms;
 pub use runtime::{
-    get_runtime, load_from_directory, load_from_embedded_blob, runtime_init_elapsed_ms,
-    MorphologyError, MorphologyResult, MorphologyRuntime, MorphologyStats,
+    get_runtime, load_from_directory, load_from_embedded_blob, runtime_blob_warm_ms,
+    runtime_init_elapsed_ms, MorphologyError, MorphologyResult, MorphologyRuntime, MorphologyStats,
     EMBEDDED_BUNDLE_SIZE_BYTES, EMBEDDED_LEXEMES_SIZE_BYTES, EMBEDDED_MANIFEST_SIZE_BYTES,
     EMBEDDED_RUNTIME_SIZE_BYTES,
 };

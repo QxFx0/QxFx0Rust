@@ -588,6 +588,48 @@ pub fn runtime_init_elapsed_ms() -> u64 {
     RUNTIME_INIT_MS.load(Ordering::Relaxed)
 }
 
+static RUNTIME_BLOB_WARM_MS: AtomicU64 = AtomicU64::new(0);
+
+/// One-time, process-global cost (ms) of eagerly faulting the embedded runtime
+/// blob (`data/runtime.bin`, ~20.7 MB `include_bytes!`'d into `.rodata`) into the
+/// page table before bincode deserializes it. Incurred on the first
+/// `load_from_embedded_blob()` call in a process; zero otherwise. On the
+/// cadence soak this is the pre-fault that converts the stochastic cold-page
+/// fault tail (interleaved with `BTreeMap` construction during deserialize) into
+/// a single linear, readahead-friendly sweep.
+pub fn runtime_blob_warm_ms() -> u64 {
+    RUNTIME_BLOB_WARM_MS.load(Ordering::Relaxed)
+}
+
+/// Force the OS to resolve the embedded runtime blob's pages eagerly and in
+/// order before `bincode::deserialize` randomly walks the resulting `BTreeMap`.
+///
+/// `EMBEDDED_RUNTIME_BIN` is mapped into the process's read-only data segment by
+/// the loader; on a per-turn subprocess the pages are cold every turn. Without
+/// this, `deserialize` faults them in an allocation/random-access pattern whose
+/// latency is stochastic under host memory pressure (the index-7 outliers in the
+/// cadence soak: ~1.8 s unattributed `input_normalization_ms` remainder). A
+/// single sequential 1-byte-per-4 KiB page touch is the actual pre-fault and is
+/// kept dependency-free (no `libc`): `madvise(MADV_WILLNEED)` is only a hint, so
+/// the explicit read is what guarantees resolution.
+fn warm_embedded_blob() {
+    let bytes = EMBEDDED_RUNTIME_BIN;
+    let started = std::time::Instant::now();
+    let len = bytes.len();
+    let page = 4096usize;
+    let mut i = 0usize;
+    while i < len {
+        // Sequential, page-stride read: forces minor/major fault resolution in
+        // linear order so the subsequent deserialize sees warm pages.
+        std::hint::black_box(unsafe { bytes.get_unchecked(i) });
+        i += page;
+    }
+    RUNTIME_BLOB_WARM_MS.store(
+        u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+        Ordering::Relaxed,
+    );
+}
+
 /// Load the process-global runtime from the precomputed bincode blob
 /// (`data/runtime.bin`, embedded via `include_bytes!`). This replaces the
 /// ~65 MB `serde_json` parse + index rebuild, which under a cold page cache was
@@ -596,6 +638,10 @@ pub fn runtime_init_elapsed_ms() -> u64 {
 /// validated for coherence against the canonical manifest in tests
 /// (`test_embedded_runtime_blob_is_valid`).
 pub fn load_from_embedded_blob() -> MorphologyResult<MorphologyRuntime> {
+    // Eagerly fault the blob pages linearly before deserializing, so the
+    // stochastic cold page-fault cost does not interleave with BTreeMap
+    // construction under host memory pressure (cadence-soak tail on index-7).
+    warm_embedded_blob();
     bincode::deserialize(EMBEDDED_RUNTIME_BIN)
         .map_err(|e| MorphologyError::BincodeParseError(format!("runtime.bin: {e}")))
 }
@@ -1138,7 +1184,8 @@ mod tests {
             "in-memory serialized size != stored blob size"
         );
         // in-memory round-trip proves the type layout bincode-able
-        let _rt_back: MorphologyRuntime = bincode::deserialize(&rt_bytes).expect("in-memory round-trip");
+        let _rt_back: MorphologyRuntime =
+            bincode::deserialize(&rt_bytes).expect("in-memory round-trip");
         let runtime = load_from_embedded_blob().expect("embedded runtime.bin must be valid");
         assert!(!runtime.lexemes.is_empty());
     }
