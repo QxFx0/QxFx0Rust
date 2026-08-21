@@ -20,7 +20,8 @@ The CLI is the supported production surface. It includes:
 - a 60-topic/129-claim audited ResponsePlan V2 corpus with manifest, replay,
   realization-parity and zero-downgrade gates;
 - the «Кодекс» practice loop: deterministic topic revisits, prior-position
-  callbacks, explicit contradiction events and practice-day reporting;
+  callbacks, explicit contradiction events, practice-day reporting and a
+  replay-verifiable diary export (`export` / `verify-diary`);
 - bounded FactId-grounded positions and replay-stable semantic episodes;
 - a manifest-validated active knowledge pack with a replay-visible SHA-256 fingerprint;
 - 127 Russian surface templates and six-case morphology;
@@ -131,7 +132,22 @@ qxfx0 --session-id diary turn "свобода для меня — это пре�
 #    противоречия, состояние эссенции и governance-статистика.
 qxfx0 --session-id diary report
 qxfx0 --session-id diary report --markdown --out week-1.md
+
+# 4. Верифицируемый дневник: Markdown с вложенным манифестом (входы, ответы,
+#    дни, дайджесты состояний). Подпись парольной фразой — опционально.
+qxfx0 --session-id diary export --out diary-2026-08.md
+qxfx0 --session-id diary export --out diary-signed.md --passphrase "моя фраза"
+qxfx0 verify-diary diary-signed.md --passphrase "моя фраза"
 ```
+
+Подпись дневника — это сам детерминизм системы: `verify-diary` пересобирает
+каждую запись этой же версией qxfx0 в чистой in-memory сессии и сверяет
+ответы, дайджесты состояний каждого хода и итоговый дайджест сессии.
+Изменённая хотя бы на букву запись не пройдёт проверку; HMAC-подпись
+дополнительно доказывает авторство экспорта. Acceptance-тест
+`codex_verifiable_export` проверяет: чистый экспорт верифицируется, правка
+буквы в записи или ответе ломает верификацию, неверная парольная фраза
+отклоняется, а правки прозы вне манифеста безвредны.
 
 `reflect` не открывает базу вовсе; `report` только читает существующую базу
 и сессию и отказывает (код выхода ≠ 0), если их нет — продукт не создаёт

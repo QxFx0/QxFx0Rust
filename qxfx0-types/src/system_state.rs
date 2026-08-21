@@ -32,6 +32,35 @@ pub struct DialogueState {
     /// independent from turn numbers and wall-clock sampling.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub topic_last_practice_day: BTreeMap<String, u64>,
+    /// The journal itself: one record per turn, so the diary export is the
+    /// complete, replayable truth of the session. Empty for sessions
+    /// predating journal recording — their exports say so honestly.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub journal: Vec<JournalRecord>,
+}
+
+/// One recorded diary turn: what the practitioner wrote, the response it
+/// earned, the day it was written and the stable digest of the state after
+/// the turn. The digest is taken BEFORE the record is appended (a replay
+/// that reconstructs records 1..N-1 byte-identically recomputes it), which
+/// is what makes the export verifiable by deterministic replay.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JournalRecord {
+    /// 1-based turn number, matches `turn_count` after the turn.
+    pub turn: usize,
+    /// UTC epoch day the turn was written on (explicit input, never sampled
+    /// by the pipeline).
+    pub day: u64,
+    /// Topic the turn resolved to, when routing found one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub topic: Option<String>,
+    /// The practitioner's own words — the diary entry.
+    pub input: String,
+    /// The system's response to it.
+    pub response: String,
+    /// Hex SHA-256 of the stable state digest after this turn — the replay
+    /// witness.
+    pub state_digest: String,
 }
 
 impl Default for DialogueState {
@@ -44,6 +73,7 @@ impl Default for DialogueState {
             conversation_state: None,
             practice_days: BTreeSet::new(),
             topic_last_practice_day: BTreeMap::new(),
+            journal: Vec::new(),
         }
     }
 }
@@ -355,6 +385,7 @@ impl SystemState {
                 conversation_state: self.dialogue.conversation_state,
                 practice_days: self.dialogue.practice_days.clone(),
                 topic_last_practice_day: self.dialogue.topic_last_practice_day.clone(),
+                journal: self.dialogue.journal.clone(),
             },
             semantic: SemanticState {
                 field: self.semantic.field.clone(),

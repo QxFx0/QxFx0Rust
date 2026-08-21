@@ -1875,6 +1875,21 @@ fn process_turn_internal(
         let excess = state.dialogue.history.len() - 10_000;
         state.dialogue.history.drain(0..excess);
     }
+    // The journal records every completed turn with placeholder day and
+    // digest. The CLI boundary finalizes them (practice day + replay
+    // witness) before persisting, so a replay of the journal reconstructs
+    // the same records — and their digests — byte-identically.
+    state
+        .dialogue
+        .journal
+        .push(qxfx0_types::system_state::JournalRecord {
+            turn: state.dialogue.turn_count,
+            day: 0,
+            topic: Some(subject.clone()),
+            input: routed.prepared().input().raw_text().to_owned(),
+            response: response.clone(),
+            state_digest: String::new(),
+        });
 
     // Field adjustments — skip on blocked turns (rejected output should not
     // reinforce confidence or counterfactual).

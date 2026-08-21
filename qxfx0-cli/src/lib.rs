@@ -1207,13 +1207,36 @@ fn stamp_practice_today(state: &mut qxfx0_types::system_state::SystemState) {
     stamp_practice_day(state, day);
 }
 
-/// Record one practice day and the topic answered on it. Keeping this at the
-/// CLI boundary makes the calendar/revisit policy deterministic in tests and
-/// in replay: the day is an explicit input, never sampled by the pipeline.
+/// Record one practice day and the topic answered on it, and finalize the
+/// journal record of the turn that was just processed. Keeping this at the
+/// CLI boundary makes the calendar/revisit policy deterministic in tests
+/// and in replay: the day is an explicit input, never sampled by the
+/// pipeline.
+///
+/// Finalization fills the record's placeholder day and writes the replay
+/// witness: the stable digest of the state **as it stands at this moment**
+/// (record included, its `state_digest` field still empty). A replay that
+/// reconstructs records 1..N-1 byte-identically recomputes the same digest
+/// for turn N — that is what makes the diary export verifiable. Idempotent:
+/// a save without a new turn (chat quit, double save) finalizes nothing.
 fn stamp_practice_day(state: &mut qxfx0_types::system_state::SystemState, day: u64) {
     state.dialogue.practice_days.insert(day);
     if let Some(topic) = state.dialogue.last_topic.clone() {
         state.dialogue.topic_last_practice_day.insert(topic, day);
+    }
+    let Some(pending) = state.dialogue.journal.last() else {
+        return;
+    };
+    if !pending.state_digest.is_empty() {
+        return;
+    }
+    if let Some(record) = state.dialogue.journal.last_mut() {
+        record.day = day;
+    }
+    let digest = qxfx0_pipeline::execution_trace::calculate_stable_digest(state)
+        .expect("SystemState serializes deterministically for the stable digest");
+    if let Some(record) = state.dialogue.journal.last_mut() {
+        record.state_digest = digest;
     }
 }
 

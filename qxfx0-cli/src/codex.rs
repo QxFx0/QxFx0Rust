@@ -12,9 +12,11 @@
 //! только локальную сессию. Содержимое отчёста — чистая функция состояния,
 //! поэтому два отчёта по одному состоянию байт-в-байт совпадают.
 
+use qxfx0_pipeline::RendererAuthority;
 use qxfx0_semantic::argued_topic_registry;
 use qxfx0_types::system_state::SystemState;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 /// Seconds in one UTC day, for the deterministic topic-of-the-day index.
@@ -544,6 +546,494 @@ pub fn render_report_markdown(report: &ReflectionReport) -> String {
     out
 }
 
+// ---------------------------------------------------------------------------
+// Verifiable diary export
+//
+// The diary's guarantee is the system's determinism: for the same binary
+// (same knowledge packs, same rules) and the same journal inputs, every
+// response and every state digest recomputes identically. An export is a
+// human-readable Markdown diary with an embedded canonical manifest
+// (inputs, responses, days, per-turn state digests, pack fingerprint); a
+// verifier replays the journal in a fresh in-memory session and compares.
+// An optional HMAC-SHA256 passphrase signature covers the manifest bytes
+// and proves the export was authored by whoever knows the phrase.
+// ---------------------------------------------------------------------------
+
+/// Schema tag of the embedded diary manifest.
+pub const DIARY_MANIFEST_SCHEMA: &str = "qxfx0:codex-diary:v1";
+
+/// One journal turn in manifest form — a mirror of
+/// `qxfx0_types::system_state::JournalRecord`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiaryManifestEntry {
+    pub turn: usize,
+    pub day: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub topic: Option<String>,
+    pub input: String,
+    pub response: String,
+    pub state_digest: String,
+}
+
+/// The canonical, replay-verifiable form of one session's diary.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiaryManifest {
+    pub schema: String,
+    pub session_id: String,
+    /// Renderer authority label (`audited_plan`, `legacy_shadow`,
+    /// `v2_canary`) — replay must use the same one.
+    pub renderer: String,
+    pub pack_fingerprint: String,
+    pub practice_days: usize,
+    pub practice_streak: usize,
+    pub turns: usize,
+    pub contradictions: usize,
+    pub entries: Vec<DiaryManifestEntry>,
+    /// Stable digest of the final session state, records included.
+    pub session_digest: String,
+}
+
+/// Stable renderer-authority label for the manifest.
+pub fn renderer_authority_label(authority: RendererAuthority) -> &'static str {
+    match authority {
+        RendererAuthority::AuditedPlan => "audited_plan",
+        RendererAuthority::LegacyShadow => "legacy_shadow",
+        RendererAuthority::V2Canary => "v2_canary",
+    }
+}
+
+/// Parse a renderer-authority label recorded in a manifest.
+pub fn renderer_authority_from_label(label: &str) -> Option<RendererAuthority> {
+    match label {
+        "audited_plan" => Some(RendererAuthority::AuditedPlan),
+        "legacy_shadow" => Some(RendererAuthority::LegacyShadow),
+        "v2_canary" => Some(RendererAuthority::V2Canary),
+        _ => None,
+    }
+}
+
+fn session_digest(state: &SystemState) -> String {
+    qxfx0_pipeline::execution_trace::calculate_stable_digest(state)
+        .expect("SystemState serializes deterministically for the stable digest")
+}
+
+/// Build the diary manifest as a pure function of the persisted state.
+pub fn build_diary_manifest(state: &SystemState, renderer: RendererAuthority) -> DiaryManifest {
+    DiaryManifest {
+        schema: DIARY_MANIFEST_SCHEMA.to_string(),
+        session_id: state.session_id.clone(),
+        renderer: renderer_authority_label(renderer).to_string(),
+        pack_fingerprint: state.semantic.pack_set_fingerprint.clone(),
+        practice_days: state.dialogue.practice_days.len(),
+        practice_streak: practice_streak(&state.dialogue.practice_days),
+        turns: state.dialogue.turn_count,
+        contradictions: state
+            .semantic
+            .semantic_commitments
+            .as_ref()
+            .map(|store| store.contradictions.len())
+            .unwrap_or(0),
+        entries: state
+            .dialogue
+            .journal
+            .iter()
+            .map(|record| DiaryManifestEntry {
+                turn: record.turn,
+                day: record.day,
+                topic: record.topic.clone(),
+                input: record.input.clone(),
+                response: record.response.clone(),
+                state_digest: record.state_digest.clone(),
+            })
+            .collect(),
+        session_digest: session_digest(state),
+    }
+}
+
+/// The export artifact: the Markdown diary, the manifest and the exact
+/// manifest bytes embedded in the Markdown (what a signature covers).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DiaryExport {
+    pub markdown: String,
+    pub manifest: DiaryManifest,
+    pub manifest_json: String,
+}
+
+/// Contradiction statements on a given turn, for the prose rendering.
+fn contradictions_on_turn(state: &SystemState, turn: usize) -> Vec<(String, String)> {
+    let Some(store) = state.semantic.semantic_commitments.as_ref() else {
+        return Vec::new();
+    };
+    store
+        .contradictions
+        .iter()
+        .filter(|event| event.turn == turn)
+        .filter_map(|event| {
+            let payload = |id: &qxfx0_types::system_state::CommitmentId| {
+                store
+                    .active
+                    .get(id)
+                    .map(|entry| &entry.0)
+                    .or_else(|| store.quarantine.get(id).map(|entry| &entry.0))
+            };
+            let left = payload(&event.left)?;
+            let right = payload(&event.right)?;
+            Some((left.statement.clone(), right.statement.clone()))
+        })
+        .collect()
+}
+
+/// Render the human-readable diary: one section per journal turn, with the
+/// practice summary up front and the verification manifest embedded at the
+/// end. A pure function of `(state, renderer)`.
+pub fn build_diary_export(state: &SystemState, renderer: RendererAuthority) -> DiaryExport {
+    let manifest = build_diary_manifest(state, renderer);
+    let manifest_json = serde_json::to_string_pretty(&manifest).expect("manifest serializes");
+
+    let mut out = String::new();
+    out.push_str("# Кодекс — дневник\n\n");
+    out.push_str(&format!(
+        "- **Сессия**: {}\n- **Ходов**: {} | **дней практики**: {} (серия {})\n",
+        manifest.session_id, manifest.turns, manifest.practice_days, manifest.practice_streak
+    ));
+    if manifest.contradictions > 0 {
+        out.push_str(&format!(
+            "- **Противоречий поймано**: {}\n",
+            manifest.contradictions
+        ));
+    }
+    if !manifest.pack_fingerprint.is_empty() {
+        out.push_str(&format!(
+            "- **Пак знаний**: `sha256:{}`\n",
+            manifest.pack_fingerprint
+        ));
+    }
+    out.push('\n');
+
+    for entry in &manifest.entries {
+        let topic = entry.topic.as_deref().unwrap_or("—");
+        out.push_str(&format!(
+            "## Ход {} — день {} — {topic}\n\n",
+            entry.turn, entry.day
+        ));
+        out.push_str(&format!("> {}\n\n", entry.input));
+        out.push_str(&format!("{}\n\n", entry.response));
+        for (left, right) in contradictions_on_turn(state, entry.turn) {
+            out.push_str(&format!(
+                "— Событие практики: столкнулись позиции:\n  новая:   {left}\n  прежняя: {right}\n\n"
+            ));
+        }
+    }
+
+    out.push_str("## Верификация\n\n");
+    out.push_str("Дневник можно проверить: `qxfx0 verify-diary <этот-файл>` — ");
+    out.push_str("команда пересобирает каждую запись этой же версией системы ");
+    out.push_str("и сверяет ответы и дайджесты состояний. Изменённая хотя бы на букву ");
+    out.push_str("запись не пройдёт проверку.\n\n");
+    out.push_str("```codex-manifest\n");
+    out.push_str(&manifest_json);
+    out.push_str("\n```\n");
+
+    DiaryExport {
+        markdown: out,
+        manifest,
+        manifest_json,
+    }
+}
+
+/// Append an HMAC-SHA256 signature block over the embedded manifest bytes.
+/// The passphrase is used as the raw HMAC key (authenticity of the export
+/// artifact, not secrecy of the diary).
+pub fn append_diary_signature(markdown: &mut String, manifest_json: &str, passphrase: &str) {
+    let signature = hmac_sha256_hex(passphrase.as_bytes(), manifest_json.as_bytes());
+    markdown.push_str(&format!(
+        "```codex-signature\nhmac-sha256:{signature}\n```\n"
+    ));
+}
+
+/// HMAC-SHA256 (RFC 2104) over `message` with `key`, using only `sha2`.
+fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
+    const BLOCK: usize = 64;
+    let mut key_block = [0u8; BLOCK];
+    if key.len() > BLOCK {
+        key_block[..32].copy_from_slice(&Sha256::digest(key));
+    } else {
+        key_block[..key.len()].copy_from_slice(key);
+    }
+    let mut inner_pad = [0x36u8; BLOCK];
+    let mut outer_pad = [0x5cu8; BLOCK];
+    for index in 0..BLOCK {
+        inner_pad[index] ^= key_block[index];
+        outer_pad[index] ^= key_block[index];
+    }
+    let mut inner = Sha256::new();
+    inner.update(inner_pad);
+    inner.update(message);
+    let mut outer = Sha256::new();
+    outer.update(outer_pad);
+    outer.update(inner.finalize());
+    outer.finalize().into()
+}
+
+fn hmac_sha256_hex(key: &[u8], message: &[u8]) -> String {
+    let digest = hmac_sha256(key, message);
+    digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+/// Length-independent comparison of two hex digests (compares fixed-size
+/// bytes, so timing does not leak the position of a mismatch).
+fn hex_digests_equal(left: &str, right: &str) -> bool {
+    fn parse_hex64(text: &str) -> Option<[u8; 32]> {
+        if text.len() != 64 {
+            return None;
+        }
+        let mut bytes = [0u8; 32];
+        for (index, chunk) in text.as_bytes().chunks(2).enumerate() {
+            let high = (chunk[0] as char).to_digit(16)?;
+            let low = (chunk[1] as char).to_digit(16)?;
+            bytes[index] = ((high << 4) | low) as u8;
+        }
+        Some(bytes)
+    }
+    match (parse_hex64(left), parse_hex64(right)) {
+        (Some(left), Some(right)) => {
+            let mut difference = 0u8;
+            for index in 0..32 {
+                difference |= left[index] ^ right[index];
+            }
+            difference == 0
+        }
+        _ => false,
+    }
+}
+
+/// The blocks extracted from an exported diary file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExtractedDiary {
+    pub manifest_json: String,
+    pub signature: Option<String>,
+}
+
+fn fenced_block<'a>(text: &'a str, tag: &str) -> Option<&'a str> {
+    let open = format!("```{tag}\n");
+    let start = text.find(&open)? + open.len();
+    let rest = &text[start..];
+    let end = rest.find("\n```")?;
+    Some(&rest[..end])
+}
+
+/// Extract the manifest (and optional signature) from a diary export.
+/// Fails closed on anything malformed — verification then reports the
+/// extraction error instead of trusting partial content.
+pub fn extract_diary_blocks(markdown: &str) -> Result<ExtractedDiary, String> {
+    let manifest_json = fenced_block(markdown, "codex-manifest")
+        .ok_or_else(|| "блок ```codex-manifest не найден".to_string())?
+        .to_string();
+    if manifest_json.trim().is_empty() {
+        return Err("блок манифеста пуст".into());
+    }
+    let signature = fenced_block(markdown, "codex-signature").map(|block| {
+        block
+            .strip_prefix("hmac-sha256:")
+            .unwrap_or(block)
+            .trim()
+            .to_string()
+    });
+    Ok(ExtractedDiary {
+        manifest_json,
+        signature,
+    })
+}
+
+/// Outcome of a diary verification.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiaryVerification {
+    pub session_id: String,
+    pub turns: usize,
+    pub signature_checked: bool,
+    /// `None` — verified; `Some(reason)` — the first failure found.
+    pub failure: Option<String>,
+}
+
+impl DiaryVerification {
+    pub fn verified(&self) -> bool {
+        self.failure.is_none()
+    }
+}
+
+fn verification_failed(
+    session_id: &str,
+    turns: usize,
+    signature_checked: bool,
+    reason: String,
+) -> DiaryVerification {
+    DiaryVerification {
+        session_id: session_id.to_string(),
+        turns,
+        signature_checked,
+        failure: Some(reason),
+    }
+}
+
+/// Verify a diary export by deterministic replay: every journal entry is
+/// re-run in a fresh in-memory session with the recorded renderer authority
+/// and day; responses, per-turn state digests and the final session digest
+/// must all match. When the export carries an HMAC signature, the
+/// passphrase must be supplied and must match before replay even starts.
+pub fn verify_diary(markdown: &str, passphrase: Option<&str>) -> DiaryVerification {
+    let extracted = match extract_diary_blocks(markdown) {
+        Ok(extracted) => extracted,
+        Err(error) => {
+            return verification_failed("", 0, false, error);
+        }
+    };
+    let signature_checked = extracted.signature.is_some();
+    if let Some(signature) = extracted.signature.as_deref() {
+        let Some(passphrase) = passphrase else {
+            return verification_failed(
+                "",
+                0,
+                true,
+                "манифест подписан (hmac-sha256): укажите --passphrase".into(),
+            );
+        };
+        let expected = hmac_sha256_hex(passphrase.as_bytes(), extracted.manifest_json.as_bytes());
+        if !hex_digests_equal(&expected, signature) {
+            return verification_failed(
+                "",
+                0,
+                true,
+                "подпись не сходится: неверная парольная фраза или манифест изменён".into(),
+            );
+        }
+    }
+
+    let manifest: DiaryManifest = match serde_json::from_str(&extracted.manifest_json) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            return verification_failed(
+                "",
+                0,
+                signature_checked,
+                format!("манифест не читается: {error}"),
+            );
+        }
+    };
+    let unknown_session = manifest.session_id.clone();
+    if manifest.schema != DIARY_MANIFEST_SCHEMA {
+        return verification_failed(
+            &unknown_session,
+            manifest.entries.len(),
+            signature_checked,
+            format!("неизвестная схема манифеста: {}", manifest.schema),
+        );
+    }
+    let Some(authority) = renderer_authority_from_label(&manifest.renderer) else {
+        return verification_failed(
+            &unknown_session,
+            manifest.entries.len(),
+            signature_checked,
+            format!("неизвестный рендерер: {}", manifest.renderer),
+        );
+    };
+
+    let db = match qxfx0_persistence::Persistence::open_memory() {
+        Ok(db) => db,
+        Err(error) => {
+            return verification_failed(
+                &unknown_session,
+                manifest.entries.len(),
+                signature_checked,
+                format!("не удалось открыть сессию для реплея: {error}"),
+            );
+        }
+    };
+
+    let mut state = None;
+    for entry in &manifest.entries {
+        let response = match crate::run_journal_turn(
+            &db,
+            &manifest.session_id,
+            &entry.input,
+            entry.day,
+            authority,
+        ) {
+            Ok(response) => response,
+            Err(error) => {
+                return verification_failed(
+                    &manifest.session_id,
+                    manifest.entries.len(),
+                    signature_checked,
+                    format!("ход {}: реплей не выполнился: {error}", entry.turn),
+                );
+            }
+        };
+        if response != entry.response {
+            return verification_failed(
+                &manifest.session_id,
+                manifest.entries.len(),
+                signature_checked,
+                format!(
+                    "ход {}: ответ реплея не совпал с дневником — запись изменена или реплайется другой версией системы",
+                    entry.turn
+                ),
+            );
+        }
+        state = match db.load_state(&manifest.session_id) {
+            Ok(Some(loaded)) => Some(loaded),
+            _ => {
+                return verification_failed(
+                    &manifest.session_id,
+                    manifest.entries.len(),
+                    signature_checked,
+                    format!("ход {}: состояние реплея не читается", entry.turn),
+                );
+            }
+        };
+        let replayed_digest = state
+            .as_ref()
+            .and_then(|state| state.dialogue.journal.last())
+            .map(|record| record.state_digest.as_str())
+            .unwrap_or_default();
+        if replayed_digest != entry.state_digest {
+            return verification_failed(
+                &manifest.session_id,
+                manifest.entries.len(),
+                signature_checked,
+                format!(
+                    "ход {}: дайджест состояния реплея не совпал с дневником",
+                    entry.turn
+                ),
+            );
+        }
+    }
+
+    let Some(state) = state else {
+        return verification_failed(
+            &manifest.session_id,
+            0,
+            signature_checked,
+            "дневник пуст: реплею нечего проверять".into(),
+        );
+    };
+    let final_digest = session_digest(&state);
+    if final_digest != manifest.session_digest {
+        return verification_failed(
+            &manifest.session_id,
+            manifest.entries.len(),
+            signature_checked,
+            "итоговый дайджест сессии не совпал — дневник и реплей разошлись".into(),
+        );
+    }
+
+    DiaryVerification {
+        session_id: manifest.session_id,
+        turns: manifest.entries.len(),
+        signature_checked,
+        failure: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -844,5 +1334,84 @@ mod tests {
         assert!(rendered.contains("В прошлый раз"));
         assert!(rendered.contains("Событие практики"));
         assert!(rendered.contains("Дней практики: 3"));
+    }
+
+    #[test]
+    fn hmac_matches_rfc_4231_vectors() {
+        // RFC 4231, test cases 1-3 (SHA-256).
+        let cases: [(String, String, &str); 3] = [
+            (
+                "0b".repeat(20),
+                "4869205468657265".to_string(),
+                "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7",
+            ),
+            (
+                "4a656665".to_string(),
+                "7768617420646f2079612077616e7420666f72206e6f7468696e673f".to_string(),
+                "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843",
+            ),
+            (
+                "aa".repeat(20),
+                "dd".repeat(50),
+                "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe",
+            ),
+        ];
+        for (key, message, expected) in cases {
+            let key = hex_bytes(&key);
+            let message = hex_bytes(&message);
+            assert_eq!(hmac_sha256_hex(&key, &message), expected);
+        }
+    }
+
+    fn hex_bytes(text: &str) -> Vec<u8> {
+        (0..text.len())
+            .step_by(2)
+            .map(|index| {
+                u8::from_str_radix(&text[index..index + 2], 16).expect("valid hex in test vector")
+            })
+            .collect()
+    }
+
+    #[test]
+    fn signature_and_extraction_round_trip() {
+        let manifest_json = "{\n  \"schema\": \"qxfx0:codex-diary:v1\"\n}";
+        let mut markdown = String::from("дневник...\n\n```codex-manifest\n");
+        markdown.push_str(manifest_json);
+        markdown.push_str("\n```\n");
+        append_diary_signature(&mut markdown, manifest_json, "фраза");
+
+        let extracted = extract_diary_blocks(&markdown).expect("blocks extract");
+        assert_eq!(extracted.manifest_json, manifest_json);
+        let signature = extracted.signature.expect("signature extracted");
+        assert_eq!(
+            signature,
+            hmac_sha256_hex("фраза".as_bytes(), manifest_json.as_bytes())
+        );
+        assert!(hex_digests_equal(
+            &signature,
+            &hmac_sha256_hex("фраза".as_bytes(), manifest_json.as_bytes())
+        ));
+        assert!(!hex_digests_equal(
+            &signature,
+            &hmac_sha256_hex("другая фраза".as_bytes(), manifest_json.as_bytes())
+        ));
+    }
+
+    #[test]
+    fn extraction_fails_closed_without_a_manifest_block() {
+        assert!(extract_diary_blocks("просто дневник без блока").is_err());
+    }
+
+    #[test]
+    fn renderer_labels_round_trip() {
+        for authority in [
+            RendererAuthority::AuditedPlan,
+            RendererAuthority::LegacyShadow,
+            RendererAuthority::V2Canary,
+        ] {
+            let label = renderer_authority_label(authority);
+            assert_eq!(renderer_authority_from_label(label), Some(authority));
+        }
+        assert_eq!(renderer_authority_from_label("nope"), None);
     }
 }

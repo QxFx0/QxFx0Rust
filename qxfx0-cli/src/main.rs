@@ -180,6 +180,24 @@ enum Commands {
         #[arg(long, value_name = "PATH")]
         out: Option<PathBuf>,
     },
+    /// Кодекс: export the session as a verifiable diary — human Markdown
+    /// with an embedded replay-verifiable manifest
+    Export {
+        /// Write the diary to a new file; existing files are never overwritten
+        #[arg(long, value_name = "PATH")]
+        out: PathBuf,
+        /// Sign the manifest with HMAC-SHA256 over this passphrase
+        #[arg(long)]
+        passphrase: Option<String>,
+    },
+    /// Кодекс: verify a diary export by deterministic replay
+    VerifyDiary {
+        /// Path to the exported diary file
+        path: PathBuf,
+        /// Passphrase of the export's HMAC signature, when it carries one
+        #[arg(long)]
+        passphrase: Option<String>,
+    },
     /// Show version
     Version,
     /// Code orchestration — find functions by natural language description
@@ -883,6 +901,92 @@ fn main() -> anyhow::Result<()> {
                 None => print!("{content}"),
             }
             Ok(())
+        }
+        Commands::Export { out, passphrase } => {
+            // Like `report`: an export never creates a database on a
+            // mistyped path — the diary must come from a real session.
+            if !std::path::Path::new(&cli.db).exists() {
+                return Err(anyhow::anyhow!(
+                    "база данных не найдена: {} (export не создаёт новую базу)",
+                    cli.db
+                ));
+            }
+            let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+            let state = match db.load_state(&cli.session_id)? {
+                Some(state) => state,
+                None => {
+                    return Err(anyhow::anyhow!(
+                        "сессия «{}» не найдена в {}",
+                        cli.session_id,
+                        cli.db
+                    ))
+                }
+            };
+            if state.dialogue.journal.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "у сессии «{}» нет записанных ходов дневника: записи ведутся с этой версии, начните с `qxfx0 turn`",
+                    cli.session_id
+                ));
+            }
+            let mut export = qxfx0_cli::codex::build_diary_export(&state, renderer_authority);
+            let signed = passphrase.is_some();
+            if let Some(passphrase) = passphrase {
+                qxfx0_cli::codex::append_diary_signature(
+                    &mut export.markdown,
+                    &export.manifest_json,
+                    &passphrase,
+                );
+            }
+            // Journal artifacts are never silently overwritten.
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&out)
+                .map_err(|error| {
+                    anyhow::anyhow!(
+                        "не удалось создать {}: {error} (существующие файлы не перезаписываются)",
+                        out.display()
+                    )
+                })?;
+            use std::io::Write;
+            file.write_all(export.markdown.as_bytes())?;
+            println!("Дневник записан: {}", out.display());
+            println!(
+                "Проверка: qxfx0 verify-diary {}{}",
+                out.display(),
+                if signed {
+                    " --passphrase <фраза>"
+                } else {
+                    ""
+                }
+            );
+            Ok(())
+        }
+        Commands::VerifyDiary { path, passphrase } => {
+            let markdown = std::fs::read_to_string(&path).map_err(|error| {
+                anyhow::anyhow!("не удалось прочитать {}: {error}", path.display())
+            })?;
+            let verification = qxfx0_cli::codex::verify_diary(&markdown, passphrase.as_deref());
+            if verification.verified() {
+                println!(
+                    "Дневник подтверждён: сессия «{}», ходов {}, подпись {}",
+                    verification.session_id,
+                    verification.turns,
+                    if verification.signature_checked {
+                        "проверена"
+                    } else {
+                        "отсутствует"
+                    }
+                );
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!(
+                    "дневник НЕ прошёл проверку: {}",
+                    verification
+                        .failure
+                        .unwrap_or_else(|| "неизвестная причина".into())
+                ))
+            }
         }
         Commands::Version => {
             println!("QxFx0 Rust v{}", env!("CARGO_PKG_VERSION"));
