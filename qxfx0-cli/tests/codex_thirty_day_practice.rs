@@ -120,7 +120,7 @@ fn thirty_day_practice_closes_the_loop() {
         })
         .expect("a contradiction identifies a topic");
     let card = build_reflection_card(&topic, start + 100).expect("audited topic");
-    let memory = build_memory_card(card, &state);
+    let memory = build_memory_card(card, &state, start + 100);
     assert!(
         !memory.prior_positions.is_empty(),
         "the card must echo what the practitioner wrote before"

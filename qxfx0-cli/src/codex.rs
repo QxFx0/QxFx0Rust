@@ -195,6 +195,76 @@ pub struct ContradictionEcho {
 /// How many prior positions the card echoes.
 const CARD_CALLBACK_LIMIT: usize = 2;
 
+/// Relation types that encode tension against the topic — the graph's own
+/// counter-arguments («государство ограничивает свободу»), and the honest
+/// raw material for a position-aware challenge.
+const CHALLENGE_RELATIONS: &[qxfx0_types::relation_type::RelationType] = &[
+    qxfx0_types::relation_type::RelationType::RelContrastsWith,
+    qxfx0_types::relation_type::RelationType::RelDestroys,
+    qxfx0_types::relation_type::RelationType::RelLimitedBy,
+    qxfx0_types::relation_type::RelationType::RelNegates,
+    qxfx0_types::relation_type::RelationType::RelDiffersFrom,
+    qxfx0_types::relation_type::RelationType::RelIsNot,
+    qxfx0_types::relation_type::RelationType::RelNotReducibleTo,
+];
+
+/// The graph's answer to the practitioner's own recorded position: the
+/// newest held statement on the topic, challenged by a typed opposing edge.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PositionChallenge {
+    /// Turn of the challenged position.
+    pub turn: usize,
+    /// The practitioner's own words.
+    pub position: String,
+    /// The opposing edge's curated sentence (`ru_original`).
+    pub challenge: String,
+}
+
+/// Deterministically pick the graph's challenge for a held position: the
+/// typed opposing edges of the topic, sorted, indexed by
+/// `(day + byte-salt of the position + turn)`. Different held positions
+/// rotate to different challenges; the same position on the same day is
+/// stable. `None` when the graph carries no opposing edge for the topic —
+/// the card then honestly falls back to the corpus counterpoint.
+pub fn position_challenge(
+    topic: &str,
+    position: &str,
+    turn: usize,
+    day: u64,
+) -> Option<PositionChallenge> {
+    let graph = qxfx0_semantic::seed_graph();
+    let atom = qxfx0_types::atom::AtomId::new(topic);
+    let mut edges: Vec<&qxfx0_types::atom::Relation> = graph
+        .relations_from(&atom)
+        .into_iter()
+        .chain(graph.relations_to(&atom))
+        .filter(|relation| CHALLENGE_RELATIONS.contains(&relation.rel_type))
+        .collect();
+    if edges.is_empty() {
+        return None;
+    }
+    edges.sort_by_key(|relation| {
+        (
+            relation.from.as_str().to_string(),
+            relation.rel_type,
+            relation.to.as_str().to_string(),
+            relation.ru_original.clone(),
+        )
+    });
+    let salt = position
+        .bytes()
+        .map(u64::from)
+        .sum::<u64>()
+        .wrapping_add(u64::try_from(turn).unwrap_or(0));
+    let index = ((day + salt) % edges.len() as u64) as usize;
+    let chosen = edges[index];
+    Some(PositionChallenge {
+        turn,
+        position: position.to_string(),
+        challenge: chosen.ru_original.clone(),
+    })
+}
+
 /// A reflection card with the journal's memory attached.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemoryCard {
@@ -202,14 +272,18 @@ pub struct MemoryCard {
     /// True when the topic was chosen by the revisit policy.
     pub revisited: bool,
     pub prior_positions: Vec<PriorPosition>,
+    /// The graph's challenge to the practitioner's newest position on the
+    /// topic, replacing the corpus counterpoint on revisits.
+    pub challenge: Option<PositionChallenge>,
     pub contradiction: Option<ContradictionEcho>,
     pub practice_days: usize,
 }
 
 /// Attach the journal's memory to a reflection card: prior positions on the
-/// topic (newest first, bounded), the last unresolved contradiction and the
-/// practice calendar. A pure function of the state.
-pub fn build_memory_card(card: ReflectionCard, state: &SystemState) -> MemoryCard {
+/// topic (newest first, bounded), the graph's challenge to the newest one,
+/// the last unresolved contradiction and the practice calendar. A pure
+/// function of `(state, day)`.
+pub fn build_memory_card(card: ReflectionCard, state: &SystemState, day: u64) -> MemoryCard {
     let mut prior_positions: Vec<PriorPosition> = state
         .semantic
         .semantic_commitments
@@ -229,6 +303,10 @@ pub fn build_memory_card(card: ReflectionCard, state: &SystemState) -> MemoryCar
         })
         .unwrap_or_default();
     prior_positions.truncate(CARD_CALLBACK_LIMIT);
+
+    let challenge = prior_positions
+        .first()
+        .and_then(|newest| position_challenge(&card.topic, &newest.statement, newest.turn, day));
 
     let contradiction = state
         .semantic
@@ -267,14 +345,46 @@ pub fn build_memory_card(card: ReflectionCard, state: &SystemState) -> MemoryCar
         revisited: !prior_positions.is_empty(),
         card,
         prior_positions,
+        challenge,
         contradiction,
         practice_days: state.dialogue.practice_days.len(),
     }
 }
 
-/// Console rendering of the memory card.
+/// Console rendering of the memory card. On a revisit with a recorded
+/// position, the corpus counterpoint gives way to the graph's challenge to
+/// the practitioner's own words — the practitioner has already met the
+/// corpus counterpoint when they first answered this topic.
 pub fn render_memory_card(memory: &MemoryCard) -> String {
-    let mut out = render_reflection_card(&memory.card);
+    let card = &memory.card;
+    let mut out = String::new();
+    out.push_str(&format!("Кодекс — тема дня: {}\n\n", card.topic));
+    if !card.thesis.is_empty() {
+        out.push_str(&format!("Тезис: {}\n", card.thesis));
+    }
+    match &memory.challenge {
+        Some(challenge) => {
+            out.push_str(&format!(
+                "\n— Граф возражает твоей позиции [ход {}]:\n",
+                challenge.turn
+            ));
+            out.push_str(&format!("  твоя позиция: {}\n", challenge.position));
+            out.push_str(&format!("  возражение:   {}\n", challenge.challenge));
+            out.push_str("  Как их совместить — или одна из них должна уйти?\n");
+        }
+        None => {
+            if !card.counterpoint.is_empty() {
+                out.push_str(&format!("Контрпункт: {}\n", card.counterpoint));
+            }
+        }
+    }
+    out.push('\n');
+    for (index, question) in card.questions.iter().enumerate() {
+        out.push_str(&format!("{}. {}\n", index + 1, question));
+    }
+    out.push_str("\nЗапиши ответ в дневник:\n");
+    out.push_str("  qxfx0 --session-id <сессия> turn \"...\"\n");
+    out.push_str("Затем посмотри протокол:  qxfx0 --session-id <сессия> report\n");
     if memory.revisited {
         out.push_str("\n— В прошлый раз ты писал об этом:\n");
         for position in &memory.prior_positions {
@@ -1324,7 +1434,7 @@ mod tests {
         let mut state = state_with_commitments();
         state.dialogue.practice_days = [100u64, 101, 102].into_iter().collect();
         let card = build_reflection_card("свобода", 20_000).unwrap();
-        let memory = build_memory_card(card, &state);
+        let memory = build_memory_card(card, &state, 20_000);
         assert!(memory.revisited);
         assert_eq!(memory.prior_positions.len(), 2, "bounded to two echoes");
         assert_eq!(memory.prior_positions[0].turn, 3, "newest first");
@@ -1334,6 +1444,64 @@ mod tests {
         assert!(rendered.contains("В прошлый раз"));
         assert!(rendered.contains("Событие практики"));
         assert!(rendered.contains("Дней практики: 3"));
+    }
+
+    #[test]
+    fn revisit_card_challenges_the_practitioners_own_position() {
+        let state = state_with_topic_positions(&[("свобода", 4)]);
+        let card = build_reflection_card("свобода", 20_000).unwrap();
+        let memory = build_memory_card(card, &state, 20_000);
+        let challenge = memory
+            .challenge
+            .clone()
+            .expect("«свобода» carries opposing graph edges");
+        assert_eq!(challenge.turn, 4, "the newest position is challenged");
+        assert!(
+            challenge.challenge.contains("свобод"),
+            "the challenge is a graph sentence about the topic: {}",
+            challenge.challenge
+        );
+        // Deterministic in (position, turn, day).
+        let card_again = build_reflection_card("свобода", 20_000).unwrap();
+        let again = build_memory_card(card_again, &state, 20_000);
+        assert_eq!(again.challenge, Some(challenge.clone()));
+
+        let rendered = render_memory_card(&memory);
+        assert!(rendered.contains("Граф возражает твоей позиции"));
+        assert!(rendered.contains(&challenge.challenge));
+        assert!(
+            !rendered.contains("Контрпункт:"),
+            "a challenge replaces the corpus counterpoint on a revisit"
+        );
+    }
+
+    #[test]
+    fn different_positions_draw_different_challenges() {
+        // The selection salt is the byte sum of the held statement, so two
+        // sessions whose positions differ by exactly one byte land on
+        // adjacent challenges — guaranteed different for ≥2 edges.
+        let left =
+            position_challenge("свобода", "позиция а", 1, 20_000).expect("opposing edges exist");
+        let right =
+            position_challenge("свобода", "позиция б", 1, 20_000).expect("opposing edges exist");
+        assert_ne!(left.challenge, right.challenge);
+    }
+
+    #[test]
+    fn positionless_card_keeps_the_corpus_counterpoint() {
+        let card = build_reflection_card("свобода", 20_000).unwrap();
+        let state = SystemState {
+            session_id: "fresh".into(),
+            ..SystemState::default()
+        };
+        let memory = build_memory_card(card, &state, 20_000);
+        assert!(memory.challenge.is_none());
+        assert!(!memory.revisited);
+        let rendered = render_memory_card(&memory);
+        assert!(
+            rendered.contains("Контрпункт:"),
+            "without a held position the corpus counterpoint stands"
+        );
     }
 
     #[test]

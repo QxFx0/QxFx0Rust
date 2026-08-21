@@ -839,7 +839,7 @@ fn main() -> anyhow::Result<()> {
             };
             match journal_state {
                 Some(state) => {
-                    let memory = qxfx0_cli::codex::build_memory_card(card, &state);
+                    let memory = qxfx0_cli::codex::build_memory_card(card, &state, day);
                     print!("{}", qxfx0_cli::codex::render_memory_card(&memory));
                 }
                 None => {
