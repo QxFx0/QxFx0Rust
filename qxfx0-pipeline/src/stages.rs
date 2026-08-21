@@ -670,9 +670,16 @@ pub fn finalize_stage(
     }
 
     // Commitment — initialise store on first commit.
-    if subject.len() > 2 && response.len() > 10 {
+    // The held position is what the practitioner wrote, not the renderer's
+    // response: the audited renderer is deterministic per topic, so a
+    // response-text statement would deduplicate every revisit into a
+    // non-event, and the card would echo the system's canned thesis instead
+    // of the user's words. The statement is the raw turn text; engagement
+    // still matches on a lowercased copy of it.
+    let position_text = rendered.routed().prepared().input().raw_text();
+    if subject.len() > 2 && position_text.len() > 10 {
         let payload = FactualClaimPayload {
-            statement: response.clone(),
+            statement: position_text.to_string(),
             confidence: 0.7,
             origin: CommitmentOrigin::OriginDialogueOutcome,
             turn_seq: turn,
@@ -689,12 +696,7 @@ pub fn finalize_stage(
         // them. This is the live half of the belief protocol: a challenged
         // position becomes a recorded contradiction, visible in reports and
         // on the next reflection card, not a silent flag.
-        let raw_text = rendered
-            .routed()
-            .prepared()
-            .input()
-            .raw_text()
-            .to_lowercase();
+        let raw_text = position_text.to_lowercase();
         let engagement = qxfx0_commitment::CommitmentOps::detect_engagement(store, &raw_text);
         let (mut new_store, result) = CommitmentOps::commit_observation(payload, store);
         match result {

@@ -58,10 +58,13 @@ fn thirty_day_practice_closes_the_loop() {
         }
 
         // Day 12 contradicts the practitioner's earlier stance on purpose.
+        // Revisits must write distinct sentences: a held position is the
+        // practitioner's own text now, and an identical entry is correctly
+        // deduplicated instead of accumulating.
         let text = if day == 12 {
             format!("я думал о {topic}: я ошибался раньше, это не так")
         } else {
-            format!("я думал о {topic}: моя позиция — принять это всерьёз")
+            format!("я думал о {topic}, день {day}: моя позиция — принять это всерьёз")
         };
         run_journal_turn(
             &db,
