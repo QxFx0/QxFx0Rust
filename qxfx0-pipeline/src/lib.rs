@@ -404,6 +404,36 @@ fn recovery_output(state: &SystemState, recovery: &RecoverySnapshot) -> TurnOutp
     }
 }
 
+/// The graph's challenge to the practitioner's newest earlier-held position
+/// on this turn's topic, as a response appendix. `None` when the topic has
+/// no prior held position or the graph carries no opposing edge for it.
+///
+/// Deterministic in `(state, topic)`: the newest position wins ties on
+/// `(turn, turn_seq)`, and the opposing edge is selected by the byte-salt
+/// of the position plus its turn — the same shared rotation the reflection
+/// card applies (`qxfx0_semantic::challenge`), minus the practice day the
+/// pipeline deliberately does not know.
+fn position_challenge_appendix(state: &SystemState, subject: &str) -> Option<String> {
+    let store = state.semantic.semantic_commitments.as_ref()?;
+    let current_turn = state.dialogue.turn_count;
+    let (payload, turn) = store
+        .active
+        .values()
+        .filter(|(payload, turn)| payload.topic == subject && *turn < current_turn)
+        .max_by_key(|(payload, turn)| (*turn, payload.turn_seq))?;
+    let salt = payload
+        .statement
+        .bytes()
+        .map(u64::from)
+        .sum::<u64>()
+        .wrapping_add(u64::try_from(*turn).unwrap_or(0));
+    let sentence = qxfx0_semantic::challenge::opposing_challenge_sentence(subject, salt)?;
+    Some(format!(
+        "\n\n— Я помню твою позицию [ход {turn}]: «{}».\nГраф возражает: {sentence}.\nКак это совместить — или одна из них должна уйти?",
+        payload.statement
+    ))
+}
+
 /// Early rejection of oversized input, mirroring guard-blocked bookkeeping
 /// (governance event, turn and history advance, recovery surface) without
 /// paying for parse, routing, activation and render of a multi-megabyte
@@ -1870,6 +1900,18 @@ fn process_turn_internal(
     state.dialogue.turn_count += 1;
     state.dialogue.last_family = family;
     state.dialogue.last_topic = Some(subject.clone());
+    // The journal's voice: when the topic already carries a held position
+    // from an earlier turn, the response itself quotes it back with the
+    // graph's opposing edge — the practitioner is answered, not just
+    // recorded. Blocked turns keep the bare recovery surface. The
+    // selection is the same deterministic one the reflection card uses, so
+    // every turn mode (plain, chat, diagnostics) appends byte-identically
+    // and replay verification is preserved.
+    if !blocked {
+        if let Some(appendix) = position_challenge_appendix(state, &subject) {
+            response.push_str(&appendix);
+        }
+    }
     state.dialogue.history.push(response.clone());
     if state.dialogue.history.len() > 10_000 {
         let excess = state.dialogue.history.len() - 10_000;

@@ -195,19 +195,6 @@ pub struct ContradictionEcho {
 /// How many prior positions the card echoes.
 const CARD_CALLBACK_LIMIT: usize = 2;
 
-/// Relation types that encode tension against the topic — the graph's own
-/// counter-arguments («государство ограничивает свободу»), and the honest
-/// raw material for a position-aware challenge.
-const CHALLENGE_RELATIONS: &[qxfx0_types::relation_type::RelationType] = &[
-    qxfx0_types::relation_type::RelationType::RelContrastsWith,
-    qxfx0_types::relation_type::RelationType::RelDestroys,
-    qxfx0_types::relation_type::RelationType::RelLimitedBy,
-    qxfx0_types::relation_type::RelationType::RelNegates,
-    qxfx0_types::relation_type::RelationType::RelDiffersFrom,
-    qxfx0_types::relation_type::RelationType::RelIsNot,
-    qxfx0_types::relation_type::RelationType::RelNotReducibleTo,
-];
-
 /// The graph's answer to the practitioner's own recorded position: the
 /// newest held statement on the topic, challenged by a typed opposing edge.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -221,47 +208,29 @@ pub struct PositionChallenge {
 }
 
 /// Deterministically pick the graph's challenge for a held position: the
-/// typed opposing edges of the topic, sorted, indexed by
-/// `(day + byte-salt of the position + turn)`. Different held positions
-/// rotate to different challenges; the same position on the same day is
-/// stable. `None` when the graph carries no opposing edge for the topic —
-/// the card then honestly falls back to the corpus counterpoint.
+/// topic's typed opposing edges (shared selection with the turn response,
+/// `qxfx0_semantic::challenge`), indexed by `(day + byte-salt of the
+/// position + turn)`. Different held positions rotate to different
+/// challenges; the same position on the same day is stable. `None` when the
+/// graph carries no opposing edge for the topic — the card then honestly
+/// falls back to the corpus counterpoint.
 pub fn position_challenge(
     topic: &str,
     position: &str,
     turn: usize,
     day: u64,
 ) -> Option<PositionChallenge> {
-    let graph = qxfx0_semantic::seed_graph();
-    let atom = qxfx0_types::atom::AtomId::new(topic);
-    let mut edges: Vec<&qxfx0_types::atom::Relation> = graph
-        .relations_from(&atom)
-        .into_iter()
-        .chain(graph.relations_to(&atom))
-        .filter(|relation| CHALLENGE_RELATIONS.contains(&relation.rel_type))
-        .collect();
-    if edges.is_empty() {
-        return None;
-    }
-    edges.sort_by_key(|relation| {
-        (
-            relation.from.as_str().to_string(),
-            relation.rel_type,
-            relation.to.as_str().to_string(),
-            relation.ru_original.clone(),
-        )
-    });
     let salt = position
         .bytes()
         .map(u64::from)
         .sum::<u64>()
-        .wrapping_add(u64::try_from(turn).unwrap_or(0));
-    let index = ((day + salt) % edges.len() as u64) as usize;
-    let chosen = edges[index];
+        .wrapping_add(u64::try_from(turn).unwrap_or(0))
+        .wrapping_add(day);
+    let challenge = qxfx0_semantic::challenge::opposing_challenge_sentence(topic, salt)?;
     Some(PositionChallenge {
         turn,
         position: position.to_string(),
-        challenge: chosen.ru_original.clone(),
+        challenge,
     })
 }
 

@@ -1,5 +1,6 @@
 pub mod argued_topics;
 pub mod catalog_registry;
+pub mod challenge;
 pub mod composer;
 pub mod concept_resolver;
 pub mod conjugate;
