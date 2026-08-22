@@ -421,11 +421,33 @@ pub struct ReflectionReport {
     pub commitments_by_topic: Vec<(String, usize)>,
     /// Latest held positions, newest first.
     pub recent_commitments: Vec<RecentCommitment>,
+    /// Per-topic position dynamics: every held position in turn order,
+    /// marked when it participated in a caught contradiction. The diary's
+    /// own trajectory — what the practitioner actually said, and where it
+    /// broke.
+    pub topic_timelines: Vec<TopicTimeline>,
     pub contradictions: usize,
     pub governance_completed: usize,
     pub governance_blocked: usize,
     pub governance_capacity_reached: usize,
     pub governance_commitment_contradicted: usize,
+}
+
+/// One held position in a topic's timeline.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct TimelinePosition {
+    pub turn: usize,
+    pub statement: String,
+    /// True when a caught contradiction event involves this position.
+    pub contradicted: bool,
+}
+
+/// The position dynamics of one topic.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct TopicTimeline {
+    pub topic: String,
+    /// Positions in turn order.
+    pub positions: Vec<TimelinePosition>,
 }
 
 /// How many recent positions the report lists.
@@ -464,6 +486,44 @@ pub fn build_reflection_report(state: &SystemState) -> ReflectionReport {
     let mut commitments_by_topic: Vec<(String, usize)> = by_topic.into_iter().collect();
     commitments_by_topic.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
+    // Per-topic timelines: every held position in turn order, marked when a
+    // caught contradiction event names it. Topics ordered by their latest
+    // position — the most recently practiced topic leads.
+    let mut timelines: BTreeMap<String, Vec<TimelinePosition>> = BTreeMap::new();
+    if let Some(store) = store {
+        let contradicted_ids: std::collections::BTreeSet<&qxfx0_types::system_state::CommitmentId> =
+            store
+                .contradictions
+                .iter()
+                .flat_map(|event| [&event.left, &event.right])
+                .collect();
+        let mut entries: Vec<(String, TimelinePosition)> = store
+            .active
+            .iter()
+            .map(|(id, (payload, turn))| {
+                (
+                    payload.topic.clone(),
+                    TimelinePosition {
+                        turn: *turn,
+                        statement: payload.statement.clone(),
+                        contradicted: contradicted_ids.contains(id),
+                    },
+                )
+            })
+            .collect();
+        entries.sort_by_key(|(_, position)| (position.turn, position.statement.clone()));
+        for (topic, position) in entries {
+            timelines.entry(topic).or_default().push(position);
+        }
+    }
+    let mut topic_timelines: Vec<TopicTimeline> = timelines
+        .into_iter()
+        .map(|(topic, positions)| TopicTimeline { topic, positions })
+        .collect();
+    topic_timelines.sort_by_key(|timeline| {
+        std::cmp::Reverse(timeline.positions.last().map(|p| p.turn).unwrap_or(0))
+    });
+
     let recent_commitments = active
         .map(|active| {
             let mut recent: Vec<&(qxfx0_types::system_state::FactualClaimPayload, usize)> =
@@ -500,6 +560,7 @@ pub fn build_reflection_report(state: &SystemState) -> ReflectionReport {
         quarantined_commitments: store.map(|store| store.quarantine.len()).unwrap_or(0),
         commitments_by_topic,
         recent_commitments,
+        topic_timelines,
         contradictions: store.map(|store| store.contradictions.len()).unwrap_or(0),
         governance_completed: log.count_by_type(&Event::TurnCompleted),
         governance_blocked: log.count_by_type(&Event::GuardBlocked),
@@ -557,6 +618,19 @@ pub fn render_report_console(report: &ReflectionReport) -> String {
                 "    [ход {} | {}] {}\n",
                 commitment.turn, commitment.topic, commitment.statement
             ));
+        }
+    }
+    if !report.topic_timelines.is_empty() {
+        out.push_str("  динамика позиций:\n");
+        for timeline in &report.topic_timelines {
+            out.push_str(&format!("    {}:\n", timeline.topic));
+            for position in &timeline.positions {
+                let mark = if position.contradicted { " ✗" } else { "" };
+                out.push_str(&format!(
+                    "      [ход {}{mark}] {}\n",
+                    position.turn, position.statement
+                ));
+            }
         }
     }
     out.push('\n');
@@ -638,6 +712,23 @@ pub fn render_report_markdown(report: &ReflectionReport) -> String {
                 "> **ход {}, {}** — {}\n\n",
                 commitment.turn, commitment.topic, commitment.statement
             ));
+        }
+    }
+    if !report.topic_timelines.is_empty() {
+        out.push_str("## Динамика позиций\n\n");
+        out.push_str(
+            "Что ты говорил и где это сломалось (✗ — позиция поймана в противоречии):\n\n",
+        );
+        for timeline in &report.topic_timelines {
+            out.push_str(&format!("**{}**\n\n", timeline.topic));
+            for position in &timeline.positions {
+                let mark = if position.contradicted { " ✗" } else { "" };
+                out.push_str(&format!(
+                    "- ход {}{mark} — {}\n",
+                    position.turn, position.statement
+                ));
+            }
+            out.push('\n');
         }
     }
     out.push_str("## Governance\n\n");
@@ -1348,6 +1439,37 @@ mod tests {
         let tense = build_memory_card(card, &state, 20_000);
         let rendered = render_memory_card(&tense);
         assert!(rendered.contains("Тревога практики: 0.75"));
+    }
+
+    #[test]
+    fn report_traces_the_position_timeline_with_contradiction_marks() {
+        let state = state_with_commitments();
+        let report = build_reflection_report(&state);
+        // «свобода» is the most recently practiced topic and leads.
+        assert_eq!(report.topic_timelines.len(), 2);
+        assert_eq!(report.topic_timelines[0].topic, "свобода");
+        let freedom = &report.topic_timelines[0];
+        assert_eq!(
+            freedom
+                .positions
+                .iter()
+                .map(|position| position.turn)
+                .collect::<Vec<_>>(),
+            vec![2, 3],
+            "positions come in turn order"
+        );
+        // The contradiction event names both freedom positions.
+        assert!(freedom.positions.iter().all(|p| p.contradicted));
+        let duty = &report.topic_timelines[1];
+        assert_eq!(duty.topic, "долг");
+        assert!(duty.positions.iter().all(|p| !p.contradicted));
+
+        let console = render_report_console(&report);
+        assert!(console.contains("динамика позиций"));
+        assert!(console.contains("[ход 3 ✗]"));
+        let markdown = render_report_markdown(&report);
+        assert!(markdown.contains("## Динамика позиций"));
+        assert!(markdown.contains("- ход 3 ✗ —"));
     }
 
     #[test]
