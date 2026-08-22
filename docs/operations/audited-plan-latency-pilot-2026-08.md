@@ -1,7 +1,8 @@
 # Audit: audited_plan latency pilot
 
-- Status: Renderer gate passed; cadence gate fix implemented (2026-08-21),
-  full 1,000-turn soak confirmation running detached
+- Status: Renderer gate passed; cadence gate fix implemented (2026-08-21);
+  the 2026-08-22 soak attempt was invalidated by build-host contention and
+  restarted detached on the 71-topic binary
 - Date: 2026-08-18, addendum 2026-08-21 (true tail attribution)
 - Toolchain: Rust 1.93.1 (`cargo benchmark --audited-plan`), pinned via `rust-toolchain.toml`
 - Instrument: `qxfx0 benchmark --samples 400 --warmup 30 --json` per renderer
@@ -227,10 +228,16 @@ Operational notes for maintainers:
   `lexemes.json` directly (manual/ops path, not performance-critical).
 - The pre-fault warm path touches `EMBEDDED_RUNTIME_BIN` page-by-page, so it
   tracks any change in blob size/mapping.
-- Soak confirmation: poll `/tmp/opencode/qxfx0-soak-adjectives-1000/pilot.status`
+- Soak confirmation: poll `/tmp/opencode/qxfx0-soak-v34-1000/pilot.status`
   (`slow_turns=N`; expect 0) and `pilot.report` (`final_metrics_ok=1`).
   Until it lands `slow_turns = 0`, treat the cadence gate as pending
   (renderer gate and p99 metric gate are already met with margin).
+- The first attempt (`qxfx0-soak-adjectives-1000`, started 2026-08-22 00:16)
+  is not evidence of instability either way: six turns aborted (SIGABRT,
+  02:50–02:55 MSK, coredumps on file) exactly while a release rebuild and
+  the full workspace suite ran on the same host, and one later turn went
+  slow under the same load. Operating rule for the confirmation run: no
+  cargo builds or test suites on this host while the soak is in flight.
 
 No further renderer change is required or in scope; the `--audited-plan`
 benchmark flag and `--render-legacy` are both retained for repeatable
