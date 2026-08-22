@@ -47,8 +47,8 @@ const AUDITED_CORPUS_SCHEMA_VERSION: u32 = 2;
 const AUDITED_CORPUS_ID: &str = "response-plan-v2-audited-corpus-v2";
 const REPLAY_MANIFEST_PATH: &str = "data/gates/response-plan-v2/replay-manifest.json";
 const REPLAY_MANIFEST_ID: &str = "response-plan-v2-replay-v2";
-const AUDITED_TOPICS_TOTAL: usize = 60;
-const AUDITED_CLAIMS_TOTAL: usize = 129;
+const AUDITED_TOPICS_TOTAL: usize = 71;
+const AUDITED_CLAIMS_TOTAL: usize = 151;
 
 /// Embedded so a release binary can run the gate without a working tree.
 const EMBEDDED_MATRIX: &str =
@@ -1364,7 +1364,7 @@ mod tests {
             "canary report failed: {:?}",
             report.violations
         );
-        assert!(report.details.contains("audited_turns=60"));
+        assert!(report.details.contains("audited_turns=71"));
         assert!(report.details.contains("attestation_parity_violations=0"));
         assert!(report.details.contains("unauthorized_v1_fallbacks=0"));
     }

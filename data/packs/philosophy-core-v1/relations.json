@@ -18,6 +18,9 @@
     "semantic_id": "RelDependsOn"
   },
   {
+    "semantic_id": "RelDestroys"
+  },
+  {
     "semantic_id": "RelDiffersFrom"
   },
   {
@@ -31,6 +34,9 @@
   },
   {
     "semantic_id": "RelIsA"
+  },
+  {
+    "semantic_id": "RelOrientsToward"
   },
   {
     "semantic_id": "RelPrescribes"

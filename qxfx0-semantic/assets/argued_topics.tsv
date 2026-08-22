@@ -62,3 +62,14 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 собственность	sobstvennost_vyrazhaet	sobstvennost	vyrazhaet	tsennost	собственность выражает ценность	собственность устанавливает границы
 становление	stanovlenie_svyazan	stanovlenie	svyazan	razvitie	становление связано с развитием	становление связано с развитием во времени
 сущность	suschnost_opredelyaet	suschnost	opredelyaet	bytie	сущность определяет бытие	сущность отделена от существования
+воспроизводимость	vosproizvodimost_podderzhivaet	vosproizvodimost	podderzhivaet	znanie	воспроизводимость поддерживает знание	воспроизводимость отличает знание от мнения	
+выбор	vybor_trebuet	vybor	trebuet	informatsiya	выбор требует информации	выбор несёт ответственность за последствия	
+договор	dogovor_predpolagaet	dogovor	predpolagaet	doverie	договор предполагает доверие	договор требует доверия к исполнению	
+доказательство	dokazatelstvo_podtverzhdaet	dokazatelstvo	podtverzhdaet	istina	доказательство подтверждает истину	доказательство требует проверяемости	
+закон	zakon_napravlena	zakon	napravlena	spravedlivost	закон направлен на справедливость	закон требует соблюдения	
+инстинкт	instinkt_napravlyaet	instinkt	napravlyaet	deystvie	инстинкт направляет действие	инстинкт отличается от воли	
+нация	natsiya_vyrazhaet	natsiya	vyrazhaet	identichnost	нация выражает идентичность	нация основана на общей истории и культуре	
+революция	revolyutsiya_razrushaet	revolyutsiya	razrushaet	traditsiya	революция разрушает традицию	революция открывает новые горизонты	
+ремонт	remont_vosstanavlivaet	remont	vosstanavlivaet	sistema	ремонт восстанавливает систему	ремонт предполагает диагностику поломки	
+рынок	rynok_predpolagaet	rynok	predpolagaet	obmen	рынок предполагает обмен	рынок выражает экономическую рациональность	
+цифра	tsifra_formalizuet	tsifra	formalizuet	opyt	цифра формализует опыт	цифра формализует опыт счёта	

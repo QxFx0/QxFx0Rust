@@ -229,7 +229,7 @@
     "воспроизводимость": {
       "id": "воспроизводимость",
       "display": "воспроизводимость",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "время": {
       "id": "время",
@@ -239,7 +239,7 @@
     "выбор": {
       "id": "выбор",
       "display": "выбор",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "гармония": {
       "id": "гармония",
@@ -319,12 +319,12 @@
     "договор": {
       "id": "договор",
       "display": "договор",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "доказательство": {
       "id": "доказательство",
       "display": "доказательство",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "долг": {
       "id": "долг",
@@ -379,7 +379,7 @@
     "закон": {
       "id": "закон",
       "display": "закон",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "здоровье": {
       "id": "здоровье",
@@ -419,7 +419,7 @@
     "инстинкт": {
       "id": "инстинкт",
       "display": "инстинкт",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "интерес": {
       "id": "интерес",
@@ -559,7 +559,7 @@
     "нация": {
       "id": "нация",
       "display": "нация",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "нейрон": {
       "id": "нейрон",
@@ -769,7 +769,7 @@
     "революция": {
       "id": "революция",
       "display": "революция",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "результат": {
       "id": "результат",
@@ -779,7 +779,7 @@
     "ремонт": {
       "id": "ремонт",
       "display": "ремонт",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "ресурс": {
       "id": "ресурс",
@@ -794,7 +794,7 @@
     "рынок": {
       "id": "рынок",
       "display": "рынок",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "самоопределение": {
       "id": "самоопределение",
@@ -1004,7 +1004,7 @@
     "цифра": {
       "id": "цифра",
       "display": "цифра",
-      "category": "CatConcept"
+      "category": "CatTopic"
     },
     "человек": {
       "id": "человек",

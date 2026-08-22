@@ -255,8 +255,8 @@ fn audited_v1_fixture_matches_the_admission_boundary() {
         .map(|topic| topic.topic().as_str())
         .collect::<BTreeSet<_>>();
 
-    assert_eq!(cases.len(), 60);
-    assert_eq!(fixture_topics.len(), 60);
+    assert_eq!(cases.len(), 71);
+    assert_eq!(fixture_topics.len(), 71);
     assert_eq!(fixture_topics, admitted_topics);
 }
 
@@ -278,8 +278,8 @@ fn audited_v1_structural_gate_passes_in_one_sixty_turn_session() {
         assert_structural_plan(case, &mut state, session_id, turn + 1);
     }
 
-    assert_eq!(state.dialogue.turn_count, 60);
-    assert_eq!(state.dialogue.history.len(), 60);
+    assert_eq!(state.dialogue.turn_count, 71);
+    assert_eq!(state.dialogue.history.len(), 71);
 }
 
 #[test]
@@ -383,8 +383,8 @@ fn audited_plan_renderer_passes_surface_gate_in_one_sixty_turn_session() {
         assert_plan_renderer_surface(case, &mut state, session_id, turn + 1);
     }
 
-    assert_eq!(state.dialogue.turn_count, 60);
-    assert_eq!(state.dialogue.history.len(), 60);
+    assert_eq!(state.dialogue.turn_count, 71);
+    assert_eq!(state.dialogue.history.len(), 71);
 }
 
 #[test]

@@ -727,7 +727,7 @@ mod tests {
     #[test]
     fn embedded_lexicon_parses_and_covers_the_audited_relations() {
         let lexicon = valency_lexicon();
-        assert_eq!(lexicon.len(), 28, "one frame per admitted relation");
+        assert_eq!(lexicon.len(), 30, "one frame per admitted relation");
         assert!(!lexicon.fingerprint().is_empty());
     }
 

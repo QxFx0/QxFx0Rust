@@ -462,6 +462,17 @@
     "version": 1
   },
   {
+    "concept_id": "concept.воспроизводимость",
+    "graph_atom_id": "воспроизводимость",
+    "canonical_lemma": "воспроизводимость",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:воспроизводимость",
+    "version": 1
+  },
+  {
     "concept_id": "concept.время",
     "graph_atom_id": "время",
     "canonical_lemma": "время",
@@ -470,6 +481,17 @@
     "status": "curated",
     "source_pack": "philosophy-core-v1",
     "source_ref": "concept:время",
+    "version": 1
+  },
+  {
+    "concept_id": "concept.выбор",
+    "graph_atom_id": "выбор",
+    "canonical_lemma": "выбор",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:выбор",
     "version": 1
   },
   {
@@ -616,6 +638,17 @@
     "version": 1
   },
   {
+    "concept_id": "concept.договор",
+    "graph_atom_id": "договор",
+    "canonical_lemma": "договор",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:договор",
+    "version": 1
+  },
+  {
     "concept_id": "concept.доказательство",
     "graph_atom_id": "доказательство",
     "canonical_lemma": "доказательство",
@@ -704,6 +737,17 @@
     "version": 1
   },
   {
+    "concept_id": "concept.закон",
+    "graph_atom_id": "закон",
+    "canonical_lemma": "закон",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:закон",
+    "version": 1
+  },
+  {
     "concept_id": "concept.здоровье",
     "graph_atom_id": "здоровье",
     "canonical_lemma": "здоровье",
@@ -767,6 +811,17 @@
     "status": "curated",
     "source_pack": "philosophy-core-v1",
     "source_ref": "concept:идентичность",
+    "version": 1
+  },
+  {
+    "concept_id": "concept.инстинкт",
+    "graph_atom_id": "инстинкт",
+    "canonical_lemma": "инстинкт",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:инстинкт",
     "version": 1
   },
   {
@@ -1023,6 +1078,17 @@
     "version": 1
   },
   {
+    "concept_id": "concept.нация",
+    "graph_atom_id": "нация",
+    "canonical_lemma": "нация",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:нация",
+    "version": 1
+  },
+  {
     "concept_id": "concept.необходимость",
     "graph_atom_id": "необходимость",
     "canonical_lemma": "необходимость",
@@ -1053,17 +1119,6 @@
     "status": "curated",
     "source_pack": "philosophy-core-v1",
     "source_ref": "concept:образование",
-    "version": 1
-  },
-  {
-    "concept_id": "concept.отношения",
-    "graph_atom_id": "отношения",
-    "canonical_lemma": "отношения",
-    "aliases": [],
-    "ontology_kind": "abstract_concept",
-    "status": "curated",
-    "source_pack": "philosophy-core-v1",
-    "source_ref": "concept:отношения",
     "version": 1
   },
   {
@@ -1108,6 +1163,17 @@
     "status": "curated",
     "source_pack": "philosophy-core-v1",
     "source_ref": "concept:ответственность",
+    "version": 1
+  },
+  {
+    "concept_id": "concept.отношения",
+    "graph_atom_id": "отношения",
+    "canonical_lemma": "отношения",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:отношения",
     "version": 1
   },
   {
@@ -1386,6 +1452,17 @@
     "version": 1
   },
   {
+    "concept_id": "concept.революция",
+    "graph_atom_id": "революция",
+    "canonical_lemma": "революция",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:революция",
+    "version": 1
+  },
+  {
     "concept_id": "concept.результат",
     "graph_atom_id": "результат",
     "canonical_lemma": "результат",
@@ -1394,6 +1471,17 @@
     "status": "curated",
     "source_pack": "philosophy-core-v1",
     "source_ref": "concept:результат",
+    "version": 1
+  },
+  {
+    "concept_id": "concept.ремонт",
+    "graph_atom_id": "ремонт",
+    "canonical_lemma": "ремонт",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:ремонт",
     "version": 1
   },
   {
@@ -1416,6 +1504,17 @@
     "status": "curated",
     "source_pack": "philosophy-core-v1",
     "source_ref": "concept:решимость",
+    "version": 1
+  },
+  {
+    "concept_id": "concept.рынок",
+    "graph_atom_id": "рынок",
+    "canonical_lemma": "рынок",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:рынок",
     "version": 1
   },
   {
@@ -1729,6 +1828,17 @@
     "version": 1
   },
   {
+    "concept_id": "concept.традиция",
+    "graph_atom_id": "традиция",
+    "canonical_lemma": "традиция",
+    "aliases": [],
+    "ontology_kind": "semantic_object",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:традиция",
+    "version": 1
+  },
+  {
     "concept_id": "concept.труд",
     "graph_atom_id": "труд",
     "canonical_lemma": "труд",
@@ -1781,6 +1891,17 @@
     "status": "curated",
     "source_pack": "philosophy-core-v1",
     "source_ref": "concept:ценность",
+    "version": 1
+  },
+  {
+    "concept_id": "concept.цифра",
+    "graph_atom_id": "цифра",
+    "canonical_lemma": "цифра",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:цифра",
     "version": 1
   },
   {

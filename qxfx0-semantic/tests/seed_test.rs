@@ -14,7 +14,7 @@ fn test_seed_graph_has_relations() {
 
 #[test]
 fn test_covered_topics_count() {
-    assert_eq!(COVERED_TOPICS.len(), 130, "Should have 130 covered topics");
+    assert_eq!(COVERED_TOPICS.len(), 141, "Should have 141 covered topics");
 }
 
 #[test]

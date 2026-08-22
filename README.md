@@ -10,14 +10,14 @@ The CLI is the supported production surface. It includes:
 
 - atomic SQLite persistence and automatic compatibility migration to schema v10;
 - six-stage turn processing with guard rollback and governance events;
-- 130 recognized topics, of which 60 have audited declarative content with
-  129 typed claims;
+- 141 recognized topics, of which 71 have audited declarative content with
+  151 typed claims;
 - 20k-lemma noun morphology plus 30,809 digest-pinned verb paradigms
   (reflexive included), 42,239 adjective and 68 closed-class pronoun
   paradigms, rule-based out-of-vocabulary declension and preposition
   government;
 - 207 seed atoms, 346 semantic relations and 129 curated `FactRecord` values;
-- a 60-topic/129-claim audited ResponsePlan V2 corpus with manifest, replay,
+- a 71-topic/151-claim audited ResponsePlan V2 corpus with manifest, replay,
   realization-parity and zero-downgrade gates;
 - the «Кодекс» practice loop: deterministic topic revisits, prior-position
   callbacks, explicit contradiction events, practice-day reporting and a
@@ -120,7 +120,7 @@ Example output:
 Ежедневная петля:
 
 ```bash
-# 1. Тема дня: детерминированный выбор из 60 аудированных тем (UTC-день),
+# 1. Тема дня: детерминированный выбор из 71 аудированной темы (UTC-день),
 #    тезис и контрпункт из проверенного корпуса, два вопроса для записи.
 qxfx0 reflect
 qxfx0 reflect свобода          # явная тема; неаудированная — отказ с ошибкой
