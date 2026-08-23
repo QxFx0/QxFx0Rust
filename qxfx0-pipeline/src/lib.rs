@@ -4,6 +4,8 @@
 //! No async, no Tokio, no external middleware — pure synchronous call chain.
 
 #[cfg(test)]
+// Exercises the deprecated process_turn_* wrappers until removal.
+#[allow(deprecated)]
 mod conjugate_pipeline;
 pub mod conversation_fsm;
 #[path = "tracing.rs"]
@@ -15,6 +17,8 @@ mod stages;
 pub mod stance_request;
 pub mod turn_context;
 #[cfg(test)]
+// Exercises the deprecated process_turn_* wrappers until removal.
+#[allow(deprecated)]
 mod vector_pipeline;
 
 pub use stages::{MAX_RUNTIME_ATOMS, MAX_RUNTIME_EDGES};
@@ -703,11 +707,19 @@ pub fn process_turn_with_options_timing_and_trace(
 /// If any stage before the guard fails, the state is rolled back to its
 /// pre-turn snapshot and a blocked recovery output is returned. This prevents
 /// partial side effects from corrupting the session.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options with explicit TurnOptions"
+)]
 pub fn process_turn(input: &TurnInput, state: &mut SystemState) -> TurnOutput {
     process_turn_with_options(input, state, TurnOptions::new())
 }
 
 /// Process a turn with an explicit renderer-authority feature flag.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options with explicit TurnOptions"
+)]
 pub fn process_turn_with_renderer(
     input: &TurnInput,
     state: &mut SystemState,
@@ -722,6 +734,10 @@ pub fn process_turn_with_renderer(
 
 /// Process a turn with an explicit fact-grounded rollout. Only a successful
 /// audited-plan render can produce Perspective evidence.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options with explicit TurnOptions"
+)]
 pub fn process_turn_with_renderer_and_fact_grounded(
     input: &TurnInput,
     state: &mut SystemState,
@@ -746,7 +762,11 @@ pub fn process_turn_with_renderer_and_stance_provenance(
     renderer_authority: RendererAuthority,
     mode: StanceProvenanceMode,
 ) -> TurnOutput {
-    let output = process_turn_with_renderer(input, state, renderer_authority);
+    let output = process_turn_with_options(
+        input,
+        state,
+        TurnOptions::new().with_renderer(renderer_authority),
+    );
     if matches!(mode, StanceProvenanceMode::RecordAffirmedSystemDecision) && !output.blocked {
         if let (Some(topic), turn) = (state.dialogue.last_topic.clone(), state.dialogue.turn_count)
         {
@@ -777,7 +797,11 @@ pub fn process_turn_with_renderer_and_explicit_stance_decision(
     renderer_authority: RendererAuthority,
     decision: qxfx0_types::stance::SystemStanceDecision,
 ) -> TurnOutput {
-    let output = process_turn_with_renderer(input, state, renderer_authority);
+    let output = process_turn_with_options(
+        input,
+        state,
+        TurnOptions::new().with_renderer(renderer_authority),
+    );
     record_explicit_stance_decision_if_allowed(&output, state, decision);
     output
 }
@@ -812,7 +836,11 @@ pub fn process_turn_with_renderer_and_signed_stance_decision(
             },
         )
     });
-    let output = process_turn_with_renderer(input, state, renderer_authority);
+    let output = process_turn_with_options(
+        input,
+        state,
+        TurnOptions::new().with_renderer(renderer_authority),
+    );
     let outcome = match verification {
         None => SignedStanceDecisionOutcome::NoAttestation,
         Some(Err(error)) => {
@@ -863,6 +891,10 @@ fn record_explicit_stance_decision_if_allowed(
 /// Process a turn while collecting lightweight timing evidence for each
 /// pipeline stage. The returned timing is observational and is not persisted
 /// in the session state or included in replay signatures.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_and_timing with explicit TurnOptions"
+)]
 pub fn process_turn_with_timing_and_renderer(
     input: &TurnInput,
     state: &mut SystemState,
@@ -876,30 +908,45 @@ pub fn process_turn_with_timing_and_renderer(
 }
 
 /// Process a turn and return a stage-level trace with cross-process stable
-/// SHA-256 digests. Durations are diagnostic and excluded from replay
+/// SHA-256 digests. Durations are diagnostic and are excluded from replay
 /// signatures.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_trace(
     input: &TurnInput,
     state: &mut SystemState,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
-    process_turn_with_trace_and_renderer(input, state, RendererAuthority::LegacyShadow)
+    process_turn_with_options_and_trace(
+        input,
+        state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+    )
 }
 
 /// Process a turn with trace evidence and explicit renderer authority.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_trace_and_renderer(
     input: &TurnInput,
     state: &mut SystemState,
     renderer_authority: RendererAuthority,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
-    process_turn_with_trace_and_renderer_and_doubt_shadow(
+    process_turn_with_options_and_trace(
         input,
         state,
-        renderer_authority,
-        DoubtShadowMode::Disabled,
+        TurnOptions::new().with_renderer(renderer_authority),
     )
 }
 
 /// Process a turn with deterministic fact-grounded rollout evidence.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_trace_and_renderer_and_fact_grounded(
     input: &TurnInput,
     state: &mut SystemState,
@@ -916,22 +963,30 @@ pub fn process_turn_with_trace_and_renderer_and_fact_grounded(
 }
 
 /// Process a turn with explicit renderer and observation-only doubt settings.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_trace_and_renderer_and_doubt_shadow(
     input: &TurnInput,
     state: &mut SystemState,
     renderer_authority: RendererAuthority,
     doubt_shadow: DoubtShadowMode,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
-    process_turn_with_trace_and_renderer_and_features(
+    process_turn_with_options_and_trace(
         input,
         state,
-        renderer_authority,
-        doubt_shadow,
-        ClarificationMode::Disabled,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(doubt_shadow),
     )
 }
 
 /// Process a turn with explicit renderer and observation-only anomaly settings.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_trace_and_renderer_and_anomaly_shadow(
     input: &TurnInput,
     state: &mut SystemState,
@@ -949,6 +1004,10 @@ pub fn process_turn_with_trace_and_renderer_and_anomaly_shadow(
 
 /// Process a turn with explicit staged cognitive integrations. Standard paths
 /// pass both modes as disabled; `LimitedEnabled` is intentionally opt-in.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_trace_and_renderer_and_features(
     input: &TurnInput,
     state: &mut SystemState,
@@ -956,19 +1015,23 @@ pub fn process_turn_with_trace_and_renderer_and_features(
     doubt_shadow: DoubtShadowMode,
     clarification: ClarificationMode,
 ) -> (TurnOutput, execution_trace::PipelineTrace) {
-    process_turn_with_trace_and_renderer_and_features_and_suppression(
+    process_turn_with_options_and_trace(
         input,
         state,
-        renderer_authority,
-        doubt_shadow,
-        clarification,
-        SameTopicSuppressionMode::Disabled,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(doubt_shadow)
+            .with_clarification(clarification),
     )
 }
 
 /// Process a turn with the separately staged same-topic suppression bridge.
 /// Both cognitive features remain disabled unless an explicit caller enables
 /// their limited pipeline mode.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_trace_and_renderer_and_features_and_suppression(
     input: &TurnInput,
     state: &mut SystemState,
@@ -991,6 +1054,10 @@ pub fn process_turn_with_trace_and_renderer_and_features_and_suppression(
 /// Process a turn with both performance timings and deterministic trace
 /// evidence. This supports independent opt-in diagnostics and doubt shadow
 /// tracing without running the pipeline twice.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_timing_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
     input: &TurnInput,
     state: &mut SystemState,
@@ -1001,17 +1068,20 @@ pub fn process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
     PipelineStageTimings,
     execution_trace::PipelineTrace,
 ) {
-    process_turn_with_timing_trace_and_features_and_suppression(
+    process_turn_with_options_timing_and_trace(
         input,
         state,
-        renderer_authority,
-        doubt_shadow,
-        ClarificationMode::Disabled,
-        SameTopicSuppressionMode::Disabled,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(doubt_shadow),
     )
 }
 
 /// Process a turn with both timing diagnostics and anomaly shadow evidence.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_timing_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_timing_trace_and_renderer_and_anomaly_shadow(
     input: &TurnInput,
     state: &mut SystemState,
@@ -1032,6 +1102,10 @@ pub fn process_turn_with_timing_trace_and_renderer_and_anomaly_shadow(
 }
 
 /// Timing and deterministic trace evidence for all explicit cognitive modes.
+#[deprecated(
+    since = "0.1.1",
+    note = "use process_turn_with_options_timing_and_trace with explicit TurnOptions"
+)]
 pub fn process_turn_with_timing_trace_and_features_and_suppression(
     input: &TurnInput,
     state: &mut SystemState,
@@ -2537,6 +2611,11 @@ const fn doubt_route_name(route: qxfx0_types::DoubtRoute) -> &'static str {
 }
 
 #[cfg(test)]
+// These tests intentionally exercise the deprecated `process_turn_*`
+// convenience wrappers until they are removed: the wrappers stay public API
+// until then, and this coverage keeps them honest against the canonical
+// TurnOptions path.
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

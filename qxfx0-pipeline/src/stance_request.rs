@@ -128,6 +128,8 @@ fn validate_input_session(session_id: &str) -> Result<(), StanceRequestPreparati
 }
 
 #[cfg(test)]
+// Exercises the deprecated process_turn_* wrappers until removal.
+#[allow(deprecated)]
 mod tests {
     #[test]
     fn reflection_phrases_extract_the_governed_topic() {

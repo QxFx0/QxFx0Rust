@@ -1,3 +1,7 @@
+// Exercises the deprecated process_turn_* convenience wrappers until removal:
+// they stay public API until then, and this coverage keeps them honest.
+#![allow(deprecated)]
+
 //! Integration tests — replay determinism, multi-turn persistence, end-to-end pipeline.
 
 use qxfx0_pipeline::fact_grounded::ThesisProjectionRollout;

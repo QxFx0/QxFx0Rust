@@ -16,8 +16,8 @@ use qxfx0_cli::{
     write_response_plan_v2_shadow_trace_jsonl, AuthorityReportScope, DiagnosedTurn,
 };
 use qxfx0_pipeline::{
-    process_turn_with_renderer, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
-    SameTopicSuppressionMode,
+    process_turn_with_options, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
+    SameTopicSuppressionMode, TurnOptions,
 };
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -557,7 +557,11 @@ fn main() -> anyhow::Result<()> {
                     raw_text: line.to_string(),
                     session_id: cli.session_id.clone(),
                 };
-                let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
+                let output = process_turn_with_options(
+                    &input,
+                    &mut state,
+                    TurnOptions::new().with_renderer(renderer_authority),
+                );
 
                 debug!("Saving state for session: {}", cli.session_id);
                 qxfx0_cli::save_journal_state(&db, &cli.session_id, &mut state)?;
@@ -617,7 +621,11 @@ fn main() -> anyhow::Result<()> {
                     raw_text: topic.to_string(),
                     session_id: cli.session_id.clone(),
                 };
-                let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
+                let output = process_turn_with_options(
+                    &input,
+                    &mut state,
+                    TurnOptions::new().with_renderer(renderer_authority),
+                );
                 qxfx0_cli::save_journal_state(&db, &cli.session_id, &mut state)?;
                 println!("[{}/{}] {} → {}", i + 1, iterations, topic, output.response);
                 println!();

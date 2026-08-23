@@ -11,16 +11,11 @@ use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_persistence::SaveStateTimings;
 use qxfx0_pipeline::fact_grounded::FactGroundedRollout;
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_renderer, process_turn_with_renderer_and_stance_provenance,
-    process_turn_with_timing_and_renderer,
-    process_turn_with_timing_trace_and_features_and_suppression,
-    process_turn_with_timing_trace_and_renderer_and_anomaly_shadow,
-    process_turn_with_timing_trace_and_renderer_and_doubt_shadow,
-    process_turn_with_trace_and_renderer_and_anomaly_shadow,
-    process_turn_with_trace_and_renderer_and_doubt_shadow,
-    process_turn_with_trace_and_renderer_and_features_and_suppression, AnomalyShadowMode,
-    ClarificationMode, DoubtShadowMode, PipelineStageTimings, RendererAuthority,
-    SameTopicSuppressionMode, TurnInput,
+    process_turn_with_options, process_turn_with_options_and_timing,
+    process_turn_with_options_and_trace, process_turn_with_options_timing_and_trace,
+    process_turn_with_renderer_and_stance_provenance, AnomalyShadowMode, ClarificationMode,
+    DoubtShadowMode, PipelineStageTimings, RendererAuthority, SameTopicSuppressionMode, TurnInput,
+    TurnOptions,
 };
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::{SemanticState, SystemState};
@@ -766,7 +761,8 @@ pub fn run_operational_metrics(db_path: &str) -> OperationalMetrics {
         session_id: probe_state.session_id.clone(),
     };
     let response_started = Instant::now();
-    let probe_output = process_turn(&probe_input, &mut probe_state);
+    let probe_output =
+        process_turn_with_options(&probe_input, &mut probe_state, TurnOptions::new());
     let response_probe_ms = elapsed_millis(response_started);
     let response_probe_healthy =
         !probe_output.response.trim().is_empty() && probe_state.validate().is_empty();
@@ -1140,7 +1136,7 @@ impl DialogueSession {
             session_id: self.state.session_id.clone(),
         };
         // 1. Try the standard semantic pipeline
-        let output = process_turn(&input, &mut self.state);
+        let output = process_turn_with_options(&input, &mut self.state, TurnOptions::new());
 
         // 2. If the response is empty or looks like a request for code/action,
         // we can integrate the CodeOrchestrator here.
@@ -1251,7 +1247,11 @@ pub fn run_turn_with_renderer(
         raw_text: text.to_string(),
         session_id: session_id.to_string(),
     };
-    let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
+    let output = process_turn_with_options(
+        &input,
+        &mut state,
+        TurnOptions::new().with_renderer(renderer_authority),
+    );
     save_journal_state(db, session_id, &mut state)?;
     Ok(output.response)
 }
@@ -1273,7 +1273,11 @@ pub fn run_journal_turn(
         raw_text: text.to_string(),
         session_id: session_id.to_string(),
     };
-    let output = process_turn_with_renderer(&input, &mut state, renderer_authority);
+    let output = process_turn_with_options(
+        &input,
+        &mut state,
+        TurnOptions::new().with_renderer(renderer_authority),
+    );
     stamp_practice_day(&mut state, epoch_day);
     db.save_state(session_id, &state)?;
     Ok(output.response)
@@ -1314,11 +1318,12 @@ pub fn run_turn_with_renderer_doubt_shadow_trace(
         raw_text: text.to_string(),
         session_id: session_id.to_string(),
     };
-    let (output, trace) = process_turn_with_trace_and_renderer_and_doubt_shadow(
+    let (output, trace) = process_turn_with_options_and_trace(
         &input,
         &mut state,
-        renderer_authority,
-        DoubtShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(DoubtShadowMode::TraceOnly),
     );
     save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
@@ -1340,11 +1345,12 @@ pub fn run_turn_with_renderer_anomaly_shadow_trace(
         raw_text: text.to_string(),
         session_id: session_id.to_string(),
     };
-    let (output, trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+    let (output, trace) = process_turn_with_options_and_trace(
         &input,
         &mut state,
-        renderer_authority,
-        AnomalyShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
     );
     save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
@@ -1366,13 +1372,14 @@ pub fn run_turn_with_renderer_cognitive_pilot(
         raw_text: text.into(),
         session_id: session_id.into(),
     };
-    let (output, trace) = process_turn_with_trace_and_renderer_and_features_and_suppression(
+    let (output, trace) = process_turn_with_options_and_trace(
         &input,
         &mut state,
-        renderer_authority,
-        DoubtShadowMode::Disabled,
-        clarification,
-        suppression,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(clarification)
+            .with_suppression(suppression),
     );
     save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
@@ -1401,8 +1408,11 @@ pub fn run_turn_with_renderer_diagnostics(
         raw_text: text.to_string(),
         session_id: session_id.to_string(),
     };
-    let (output, pipeline) =
-        process_turn_with_timing_and_renderer(&input, &mut state, renderer_authority);
+    let (output, pipeline) = process_turn_with_options_and_timing(
+        &input,
+        &mut state,
+        TurnOptions::new().with_renderer(renderer_authority),
+    );
     stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
     Ok(build_diagnosed_turn(
@@ -1435,11 +1445,12 @@ pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
         raw_text: text.to_string(),
         session_id: session_id.to_string(),
     };
-    let (output, pipeline, trace) = process_turn_with_timing_trace_and_renderer_and_doubt_shadow(
+    let (output, pipeline, trace) = process_turn_with_options_timing_and_trace(
         &input,
         &mut state,
-        renderer_authority,
-        DoubtShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(DoubtShadowMode::TraceOnly),
     );
     stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
@@ -1476,11 +1487,12 @@ pub fn run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace(
         raw_text: text.to_string(),
         session_id: session_id.to_string(),
     };
-    let (output, pipeline, trace) = process_turn_with_timing_trace_and_renderer_and_anomaly_shadow(
+    let (output, pipeline, trace) = process_turn_with_options_timing_and_trace(
         &input,
         &mut state,
-        renderer_authority,
-        AnomalyShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
     );
     stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
@@ -1517,13 +1529,14 @@ pub fn run_turn_with_renderer_diagnostics_and_cognitive_pilot(
         raw_text: text.into(),
         session_id: session_id.into(),
     };
-    let (output, pipeline, trace) = process_turn_with_timing_trace_and_features_and_suppression(
+    let (output, pipeline, trace) = process_turn_with_options_timing_and_trace(
         &input,
         &mut state,
-        renderer_authority,
-        DoubtShadowMode::Disabled,
-        clarification,
-        suppression,
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(clarification)
+            .with_suppression(suppression),
     );
     stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;

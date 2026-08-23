@@ -1,6 +1,7 @@
 use crate::fresh_state;
 use qxfx0_pipeline::{
-    process_turn_with_renderer, process_turn_with_trace_and_renderer, RendererAuthority, TurnInput,
+    process_turn_with_options, process_turn_with_options_and_trace, RendererAuthority, TurnInput,
+    TurnOptions,
 };
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -178,10 +179,10 @@ pub fn run_renderer_diversity_audit(
             session_id: session_id.clone(),
         };
         let mut state = fresh_state(&session_id);
-        let (output, trace) = process_turn_with_trace_and_renderer(
+        let (output, trace) = process_turn_with_options_and_trace(
             &input,
             &mut state,
-            RendererAuthority::AuditedPlan,
+            TurnOptions::new().with_renderer(RendererAuthority::AuditedPlan),
         );
         let ready = trace.steps.iter().any(|step| {
             step.stage == "plan_shadow"
@@ -250,7 +251,11 @@ fn run_measured_turn(session_id: &str, renderer: RendererAuthority) -> Result<()
         raw_text: BENCHMARK_INPUT.into(),
         session_id: session_id.into(),
     };
-    let output = process_turn_with_renderer(&input, &mut state, renderer);
+    let output = process_turn_with_options(
+        &input,
+        &mut state,
+        TurnOptions::new().with_renderer(renderer),
+    );
     if output.blocked || output.response.trim().is_empty() {
         return Err("benchmark turn did not produce an admissible response".into());
     }

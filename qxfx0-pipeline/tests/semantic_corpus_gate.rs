@@ -1,3 +1,7 @@
+// Exercises the deprecated process_turn_* convenience wrappers until removal:
+// they stay public API until then, and this coverage keeps them honest.
+#![allow(deprecated)]
+
 //! Routing gate over the semantic corpus tiers P0/P1/P2 (110 rows).
 //!
 //! The corpus originates from the Haskell QxFx0 project (see

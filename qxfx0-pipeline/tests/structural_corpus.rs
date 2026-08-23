@@ -1,3 +1,7 @@
+// Exercises the deprecated process_turn_* convenience wrappers until removal:
+// they stay public API until then, and this coverage keeps them honest.
+#![allow(deprecated)]
+
 //! Structural acceptance gate for the audited content-plan corpus.
 //!
 //! This gate observes the shadow plan. The legacy renderer intentionally
