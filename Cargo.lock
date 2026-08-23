@@ -538,6 +538,7 @@ dependencies = [
  "qxfx0-render",
  "qxfx0-self",
  "qxfx0-semantic",
+ "qxfx0-serve",
  "qxfx0-types",
  "rusqlite",
  "serde",
@@ -694,6 +695,18 @@ dependencies = [
  "sha2",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "qxfx0-serve"
+version = "0.1.1"
+dependencies = [
+ "qxfx0-codex",
+ "qxfx0-persistence",
+ "qxfx0-pipeline",
+ "qxfx0-types",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

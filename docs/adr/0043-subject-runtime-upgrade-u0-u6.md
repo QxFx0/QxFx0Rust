@@ -36,13 +36,20 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   manifest as the single source of truth (CI: regeneration = no diff);
   README/doctor number sync; blob storage policy (LFS or artifacts) before
   the corpus starts growing again.
-- **U1 «Субстрат»** — `qxfx0 serve`: the unversioned `components/
-  QxFx0TurnService` returns into the workspace as the daemon base (same
-  turn code, unix socket, per-session state isolation — determinism needs
-  state isolation, not process death). The noun blob moves to a columnar
-  mmap format mirroring the adjective blob (~200 ms deserialize → ~0).
-  Gates: CLI cadence no worse than today; new daemon gate p99 < 50 ms;
-  soak extended with a serve mode.
+- **U1 «Субстрат»** — `qxfx0 serve`: a canonical long-lived process in the
+  main workspace — same turn code over the journal runtime, a unix socket
+  with a one-JSON-per-line protocol, single-threaded accept loop so
+  same-session turns stay serialized. Determinism needs state isolation,
+  not process death: the daemon pays the blob/seed-graph init once instead
+  of per turn. The `components/` services (QxFx0TurnService et al.) are
+  independently versioned nested repositories, not unversioned code as the
+  audit first read — they keep their HTTP/TLS/Postgres authority-
+  infrastructure shape and may later re-target the canonical serve layer.
+  The noun blob then moves to a columnar mmap format mirroring the
+  adjective blob (~200 ms deserialize → ~0).
+  Gates: CLI cadence no worse than today; daemon warm-turn gate p99 < 50 ms
+  with byte-identical responses vs the CLI path; soak extended with a serve
+  mode.
 - **U2 «Ядро субъекта»** — port `Conatus` (drive/energy functional) and
   `Essence` (witness / shouldCommit / commit; unconditional law, not a
   runtime flag; `EssenceRupture`; ablation hook only for the B2 control

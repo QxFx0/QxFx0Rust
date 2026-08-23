@@ -132,6 +132,14 @@ enum Commands {
         /// New destination file; existing files are never overwritten
         destination: String,
     },
+    /// Serve turns over a unix socket as a long-lived process (ADR-0043 U1):
+    /// one JSON request per line, same journal sequence as `turn`, blobs
+    /// initialized once per process instead of once per turn.
+    Serve {
+        /// Unix socket path to listen on
+        #[arg(long, value_name = "PATH", default_value = "/tmp/qxfx0.sock")]
+        socket: PathBuf,
+    },
     /// Health, database-size and response-latency metrics
     Metrics {
         /// Emit JSON instead of Prometheus text format
@@ -737,6 +745,13 @@ fn main() -> anyhow::Result<()> {
             info!("Creating online database backup");
             qxfx0_persistence::Persistence::backup_database(&cli.db, &destination)?;
             println!("Backup verified: {}", destination);
+            Ok(())
+        }
+        Commands::Serve { socket } => {
+            let listener = qxfx0_serve::bind(&socket)?;
+            info!("serving turns on {}", socket.display());
+            println!("listening: {}", socket.display());
+            qxfx0_serve::serve(listener, &cli.db)?;
             Ok(())
         }
         Commands::Metrics {

@@ -103,6 +103,24 @@ cargo run --locked -p qxfx0-cli -- reflect
 cargo run --locked -p qxfx0-cli -- --session-id demo report
 ```
 
+### Long-lived daemon (ADR-0043 U1)
+
+`serve` runs the same journal sequence as `turn` in a long-lived process
+over a unix socket — the morphology blobs and the seed graph are built once
+per process instead of once per turn, removing the cold-init cost class
+from every warm turn. One JSON object per line:
+
+```bash
+target/release/qxfx0 --db /tmp/qxfx0.db serve --socket /tmp/qxfx0.sock
+echo '{"session_id":"demo","text":"что такое свобода?"}' | socat - UNIX-CONNECT:/tmp/qxfx0.sock
+# {"session_id":"demo","turn":1,"response":"…","blocked":false}
+```
+
+Responses are byte-identical to the CLI path on the same session (asserted
+by the socket integration tests, together with a warm-turn budget of
+50 ms per turn in release). Turns execute strictly sequentially in a single
+database-worker thread; a hung client never blocks the listener.
+
 Example output:
 
 ```text
