@@ -78,6 +78,9 @@ jobs:
       - name: Run production health check
         run: target/release/qxfx0 --db "$RUNNER_TEMP/qxfx0-doctor.db" doctor
 
+      - name: Verify committed census matches the binary
+        run: python3 scripts/generate_census.py --check --binary target/release/qxfx0
+
       - name: Run ResponsePlan V2 contract gates
         shell: bash
         run: |

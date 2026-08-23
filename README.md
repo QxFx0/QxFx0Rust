@@ -209,6 +209,17 @@ Use `doctor --json` for automation. The `metrics` command additionally emits
 Prometheus gauges for doctor health, total DB/WAL/SHM bytes, doctor duration,
 and the duration and health of an in-memory response probe.
 
+The content census (topics, claims, lexicons, packs) is a committed artifact:
+`data/census.json` records every content-bearing count of the release binary.
+After a content or morphology wave, regenerate it and commit it together with
+the change — CI fails on drift:
+
+```bash
+cargo build --release -p qxfx0-cli
+python3 scripts/generate_census.py          # regenerate data/census.json
+python3 scripts/generate_census.py --check  # verify: committed == binary
+```
+
 ## Performance and renderer baselines
 
 The built-in benchmark separates the first lazy in-memory turn from a warmed
