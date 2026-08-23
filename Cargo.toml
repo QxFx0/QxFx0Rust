@@ -8,7 +8,6 @@ members = [
     "qxfx0-commitment",
     "qxfx0-morphology",
     "qxfx0-persistence",
-    "qxfx0-governance",
     "qxfx0-guard",
     "qxfx0-render",
     "qxfx0-pipeline",

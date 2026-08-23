@@ -9,7 +9,7 @@ The system is self-contained: it does not call an LLM or an external knowledge s
 The CLI is the supported production surface. It includes:
 
 - atomic SQLite persistence and automatic compatibility migration to schema v10;
-- six-stage turn processing with guard rollback and governance events;
+- seven-stage turn processing with guard rollback and governance events;
 - 141 recognized topics, of which 71 have audited declarative content with
   151 typed claims;
 - 20k-lemma noun morphology plus 30,809 digest-pinned verb paradigms
@@ -36,7 +36,7 @@ The CLI is the supported production surface. It includes:
 ```text
 qxfx0-cli          CLI: turn, chat, doctor, backup, metrics, sessions, code
        │
-qxfx0-pipeline     Prepare → Route → Render → Finalize → Guard → Persist
+qxfx0-pipeline     Prepare → Route → PlanShadow → Render → Finalize → Guard → Persist
        │
        ├── qxfx0-self         conatus, deliberation, Perspective, semantic episodes
        ├── qxfx0-semantic     parser, seed graph, activation, selection, composition
@@ -44,13 +44,13 @@ qxfx0-pipeline     Prepare → Route → Render → Finalize → Guard → Persi
        ├── qxfx0-render       typed semantic-frame rendering
        ├── qxfx0-guard        input, quality and post-render safety gates
        ├── qxfx0-commitment   bounded semantic commitments and lineage
-       └── qxfx0-governance   append-only replay-visible turn decisions
+       └── qxfx0-morphology   Russian case conversion and lemmatization
        │
 qxfx0-persistence  SQLite sessions, graph and semantic state
+qxfx0-types        shared deterministic data model, state invariants and
+                   the append-only governance event log
 
 qxfx0-code         independent typed Rust code registry and orchestrator
-qxfx0-types        shared deterministic data model and state invariants
-qxfx0-morphology   Russian case conversion and lemmatization
 ```
 
 Persistent maps use ordered containers. Semantic-network caches are derived in memory, are invalidated when the graph changes and are deliberately excluded from persisted JSON.

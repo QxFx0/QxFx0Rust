@@ -528,7 +528,6 @@ dependencies = [
  "ed25519-dalek",
  "qxfx0-code",
  "qxfx0-commitment",
- "qxfx0-governance",
  "qxfx0-guard",
  "qxfx0-morphology",
  "qxfx0-persistence",
@@ -556,16 +555,6 @@ dependencies = [
 
 [[package]]
 name = "qxfx0-commitment"
-version = "0.1.1"
-dependencies = [
- "qxfx0-types",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "qxfx0-governance"
 version = "0.1.1"
 dependencies = [
  "qxfx0-types",

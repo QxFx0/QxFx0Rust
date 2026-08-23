@@ -53,7 +53,7 @@ fn a_caught_contradiction_raises_the_practice_angst_and_stays_verifiable() {
     // position and self-refutation on one topic: every odd turn is a fresh
     // contradiction (+0.1 each), so 6 of them cross 0.5 regardless of the
     // witness accrual in between.
-    let mut db = qxfx0_persistence::Persistence::open_memory().expect("db opens");
+    let db = qxfx0_persistence::Persistence::open_memory().expect("db opens");
     for day in 0..13u64 {
         let text = if day % 2 == 1 {
             // Distinct each day: an identical refutation is correctly
