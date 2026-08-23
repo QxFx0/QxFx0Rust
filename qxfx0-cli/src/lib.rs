@@ -1089,6 +1089,20 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
+    // Self-layer V2 canonical invariants (ADR-0043 U2): the pure port of
+    // the Haskell subject core must satisfy its own laws before any
+    // pipeline integration is allowed to consume it.
+    let essence_v2_violations = qxfx0_self_v2::validate_invariants();
+    report.checks.push(DoctorCheck {
+        name: "Self layer V2",
+        passed: essence_v2_violations.is_empty(),
+        details: if essence_v2_violations.is_empty() {
+            "conatus builtin weights positive; essence defaults coherent; empty carrier never commits".into()
+        } else {
+            essence_v2_violations.join("; ")
+        },
+    });
+
     report
 }
 
@@ -1879,7 +1893,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 14);
+        assert_eq!(report.checks.len(), 15);
         assert!(report
             .checks
             .iter()

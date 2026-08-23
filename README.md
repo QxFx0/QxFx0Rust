@@ -39,6 +39,8 @@ qxfx0-cli          CLI: turn, chat, doctor, backup, metrics, sessions, code
 qxfx0-pipeline     Prepare → Route → PlanShadow → Render → Finalize → Guard → Persist
        │
        ├── qxfx0-self         conatus, deliberation, Perspective, semantic episodes
+       ├── qxfx0-self-v2      canonical subject core: Conatus functional + Essence
+       │                      commitment trajectory, B2 ablation hook (ADR-0043 U2)
        ├── qxfx0-semantic     parser, seed graph, activation, selection, composition
        ├── qxfx0-plan-v2      ResponsePlan V2 certificate chain (ADR-0034/0041)
        ├── qxfx0-render       typed semantic-frame rendering

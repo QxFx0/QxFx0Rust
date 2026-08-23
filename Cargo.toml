@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "qxfx0-types",
     "qxfx0-self",
+    "qxfx0-self-v2",
     "qxfx0-semantic",
     "qxfx0-plan-v2",
     "qxfx0-commitment",

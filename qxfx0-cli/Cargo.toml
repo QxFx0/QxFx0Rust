@@ -21,6 +21,7 @@ qxfx0-persistence = { path = "../qxfx0-persistence" }
 qxfx0-gates = { path = "../qxfx0-gates" }
 qxfx0-codex = { path = "../qxfx0-codex" }
 qxfx0-serve = { path = "../qxfx0-serve" }
+qxfx0-self-v2 = { path = "../qxfx0-self-v2" }
 qxfx0-guard = { path = "../qxfx0-guard" }
 qxfx0-render = { path = "../qxfx0-render" }
 qxfx0-pipeline = { path = "../qxfx0-pipeline" }
