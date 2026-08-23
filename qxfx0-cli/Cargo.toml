@@ -18,6 +18,7 @@ qxfx0-plan-v2 = { path = "../qxfx0-plan-v2" }
 qxfx0-commitment = { path = "../qxfx0-commitment" }
 qxfx0-morphology = { path = "../qxfx0-morphology" }
 qxfx0-persistence = { path = "../qxfx0-persistence" }
+qxfx0-gates = { path = "../qxfx0-gates" }
 qxfx0-guard = { path = "../qxfx0-guard" }
 qxfx0-render = { path = "../qxfx0-render" }
 qxfx0-pipeline = { path = "../qxfx0-pipeline" }

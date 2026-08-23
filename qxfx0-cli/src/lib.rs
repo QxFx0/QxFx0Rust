@@ -5,7 +5,10 @@
 
 pub mod codex;
 pub mod measurement;
-pub mod response_plan_v2_gate;
+/// Extracted to the `qxfx0-gates` crate (ADR-0043 U0.6); re-exported under
+/// the historical module path so `main.rs`, tests and external callers are
+/// unaffected.
+pub use qxfx0_gates as response_plan_v2_gate;
 
 use qxfx0_code::{build_full_registry, CodeOrchestrator};
 use qxfx0_persistence::SaveStateTimings;

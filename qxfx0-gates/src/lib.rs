@@ -37,6 +37,20 @@ use qxfx0_plan_v2::{
     PlanningPolicySnapshot, RealizationSnapshot, SelectionPolicy, SelectionPolicySnapshot,
     SelfSelectionContext, TurnContractSnapshot, V2Attempt, V2BudgetPolicy, V2ExecutionResult,
 };
+use qxfx0_types::system_state::{SemanticState, SystemState};
+
+/// A fresh session state over the seed graph — the baseline the canary gates
+/// replay against (moved from the CLI crate with this gate extraction).
+pub fn fresh_state(session_id: &str) -> SystemState {
+    SystemState {
+        session_id: session_id.to_string(),
+        semantic: SemanticState {
+            runtime_graph: qxfx0_semantic::seed_graph(),
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
 
 const MATRIX_PATH: &str = "data/gates/response-plan-v2/template-agreement-matrix.json";
 const MATRIX_SCHEMA_VERSION: u32 = 1;
@@ -234,13 +248,13 @@ fn run_canary_report_gate() -> GateReport {
                 continue;
             }
         };
-        let mut baseline_state = crate::fresh_state(&session_id);
+        let mut baseline_state = fresh_state(&session_id);
         let baseline_output = qxfx0_pipeline::process_turn_with_options(
             &input,
             &mut baseline_state,
             qxfx0_pipeline::TurnOptions::new(),
         );
-        let mut observed_state = crate::fresh_state(&session_id);
+        let mut observed_state = fresh_state(&session_id);
         let (observed_output, trace) = qxfx0_pipeline::process_turn_with_options_and_trace(
             &input,
             &mut observed_state,
