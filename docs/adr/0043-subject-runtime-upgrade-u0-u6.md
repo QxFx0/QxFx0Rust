@@ -1,6 +1,8 @@
 # ADR 0043: Subject-runtime upgrade U0–U6 — from deterministic dialogue runtime to verifiable subject
 
-Status: proposed — U0 in flight (2026-08-23)
+Status: accepted — U0 complete, U1 complete (serve daemon), U2 in flight
+(crate landed; pipeline wiring next) — see
+`docs/operations/session-handoff-2026-08-23.md` for the running state
 
 ## Frame
 
