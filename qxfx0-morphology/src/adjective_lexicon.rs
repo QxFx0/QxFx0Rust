@@ -7,8 +7,8 @@
 //! (`comp`) where the paradigm has one. The canonical bundle is embedded,
 //! verified against a compile-time SHA-256, and precomputed once into
 //! `data/adjective_runtime.bin`; the production loader deserializes that
-//! blob, falling back to the JSON parse only when the blob is missing or
-//! invalid — the same policy as the noun `runtime.bin`.
+//! blob and fails closed if it does not deserialize — the same policy as
+//! the noun `runtime.bin` (ADR-0043 U0.1).
 //!
 //! The precompute matters for cadence. `serde_json`-parsing the ~50 MB
 //! bundle and rebuilding the surface reverse index cost ~1.6 s of CPU in
@@ -335,21 +335,28 @@ fn runtime() -> &'static AdjectiveLexiconRuntime {
     static RUNTIME: OnceLock<AdjectiveLexiconRuntime> = OnceLock::new();
     RUNTIME.get_or_init(|| {
         let started = std::time::Instant::now();
-        let runtime = match load_runtime_from_embedded_blob() {
-            Ok(runtime) => runtime,
-            Err(error) => {
-                eprintln!(
-                    "WARNING: embedded adjective runtime.bin failed ({error}); \
-                     falling back to adjective_lexemes.json parse."
-                );
-                build_runtime_from_embedded_json()
-            }
-        };
+        let runtime = runtime_or_panic(load_runtime_from_embedded_blob());
         ADJECTIVE_RUNTIME_INIT_MS.store(
             u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
             Ordering::Relaxed,
         );
         runtime
+    })
+}
+
+/// Fail-closed blob init (ADR-0043 U0.1): a blob that does not deserialize is
+/// a build-integrity failure, not a slow-turn trigger. The JSON-parse fallback
+/// is deliberately gone — it silently reintroduced the ~1.6 s parse that the
+/// precompute removed.
+fn runtime_or_panic(result: Result<AdjectiveLexiconRuntime, String>) -> AdjectiveLexiconRuntime {
+    result.unwrap_or_else(|error| {
+        panic!(
+            "embedded adjective runtime.bin failed to deserialize ({error}); \
+             regenerate with `cargo run -p qxfx0-morphology --example \
+             prebuild_adjective_runtime` and commit it together with \
+             data/adjective_lexemes.json (ADR-0043 U0.1: fail-closed, \
+             no JSON-parse fallback)"
+        )
     })
 }
 
@@ -446,6 +453,14 @@ mod tests {
         assert_eq!(resolve_surface("фырковистый"), SurfaceLemma::Unknown);
     }
 
+    // --- ADR-0043 U0.1: fail-closed blob init ---
+
+    #[test]
+    #[should_panic(expected = "ADR-0043 U0.1: fail-closed, no JSON-parse fallback")]
+    fn corrupt_adjective_blob_panics_instead_of_json_fallback() {
+        let _ = runtime_or_panic(Err("simulated corruption".to_string()));
+    }
+
     #[test]
     fn lookup_lowercases_its_input() {
         assert!(lookup("ВНУТРЕННИЙ").is_some());
@@ -470,7 +485,9 @@ mod tests {
     #[test]
     fn entries_survive_a_second_lookup_after_the_first_dropped() {
         let first = lookup("внутренний").expect("entry");
-        drop(first);
+        // AdjectiveEntry is Copy: this only ends the first binding's use, the
+        // underlying view must stay valid for the process lifetime.
+        let _ = first;
         let second = lookup("внутренний").expect("entry");
         assert_eq!(second.form("prep_m"), Some("внутреннем"));
     }

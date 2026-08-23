@@ -577,8 +577,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 
 /// One-time cost (ms) of building the process-global morphology runtime,
-/// captured on the first `get_runtime()` call (the embedded ~65 MB lexeme
-/// bundle serde parse + index build). Zero on processes that never exercise
+/// captured on the first `get_runtime()` call (the embedded runtime.bin
+/// bincode deserialize). Zero on processes that never exercise
 /// the morphological lemmatizer (known-graph-atom path).
 static RUNTIME_INIT_MS: AtomicU64 = AtomicU64::new(0);
 
@@ -632,8 +632,9 @@ fn warm_embedded_blob() {
 
 /// Load the process-global runtime from the precomputed bincode blob
 /// (`data/runtime.bin`, embedded via `include_bytes!`). This replaces the
-/// ~65 MB `serde_json` parse + index rebuild, which under a cold page cache was
-/// the dominant `input_normalization_ms` latency component in the cadence soak.
+/// ~12 MB `serde_json` parse + index rebuild of `lexemes.json`, which under a
+/// cold page cache was the dominant `input_normalization_ms` latency
+/// component in the cadence soak.
 /// The blob is produced by `examples/prebuild_morphology_runtime.rs` and is
 /// validated for coherence against the canonical manifest in tests
 /// (`test_embedded_runtime_blob_is_valid`).
@@ -646,13 +647,16 @@ pub fn load_from_embedded_blob() -> MorphologyResult<MorphologyRuntime> {
         .map_err(|e| MorphologyError::BincodeParseError(format!("runtime.bin: {e}")))
 }
 
-/// Policy for handling QXFX0_DATA_DIR override:
+/// Policy for handling QXFX0_DATA_DIR override (ADR-0043 U0.1, fail-closed):
 /// - If QXFX0_DATA_DIR is set, the override directory must contain valid
-///   lexemes.json + manifest.json with matching hashes.
-/// - If the override is invalid (missing files, hash mismatch, malformed JSON),
-///   a warning is printed to stderr and the embedded canonical bundle is used.
-/// - The embedded canonical bundle is always validated at compile time via
-///   `include_bytes!` and is the authoritative fallback.
+///   lexemes.json + manifest.json with matching hashes. An invalid override
+///   panics: the operator asked for that specific morphology authority, and
+///   silently substituting the embedded bundle would cross a semantic
+///   authority boundary without a trace.
+/// - If the embedded runtime blob fails to deserialize, init panics too.
+///   The JSON-parse fallback is deliberately gone: it reintroduced the
+///   multi-second parse that the precompute removed, as an unattributed
+///   latency tail instead of a visible failure.
 /// - An invalid override NEVER silently replaces the runtime with an empty
 ///   morphology runtime.
 pub fn get_runtime() -> &'static MorphologyRuntime {
@@ -661,39 +665,35 @@ pub fn get_runtime() -> &'static MorphologyRuntime {
         if let Ok(data_dir) = std::env::var("QXFX0_DATA_DIR") {
             match load_from_directory(&data_dir) {
                 Ok(runtime) => return runtime,
-                Err(e) => {
-                    eprintln!(
-                        "WARNING: QXFX0_DATA_DIR='{}' override is invalid ({}). \
-                         Falling back to embedded canonical morphology bundle.",
-                        data_dir, e
-                    );
-                }
+                Err(e) => panic!(
+                    "QXFX0_DATA_DIR='{data_dir}' override is invalid ({e}); \
+                     fail-closed: refusing to silently fall back to the \
+                     embedded canonical morphology bundle (ADR-0043 U0.1)"
+                ),
             }
         }
 
-        // Process-global access cannot return `Result` without breaking the public API.
-        // Prefer the precomputed bincode blob (near-instant); the JSON bundle is a
-        // validated fallback for trees that have not regenerated runtime.bin.
         let started = std::time::Instant::now();
-        let runtime = match load_from_embedded_blob() {
-            Ok(runtime) => runtime,
-            Err(e) => {
-                eprintln!(
-                    "WARNING: embedded morphology runtime.bin failed ({e}); \
-                     falling back to lexemes.json parse."
-                );
-                MorphologyRuntime::load_from_bytes(
-                    EMBEDDED_LEXEMES_JSON,
-                    Some(EMBEDDED_MANIFEST_JSON),
-                )
-                .expect("embedded morphology JSON assets are release-validated")
-            }
-        };
+        let runtime = runtime_or_panic(load_from_embedded_blob());
         RUNTIME_INIT_MS.store(
             u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
             Ordering::Relaxed,
         );
         runtime
+    })
+}
+
+/// Fail-closed blob init (ADR-0043 U0.1): a blob that does not deserialize is
+/// a build-integrity failure, not a slow-turn trigger.
+fn runtime_or_panic(result: MorphologyResult<MorphologyRuntime>) -> MorphologyRuntime {
+    result.unwrap_or_else(|e| {
+        panic!(
+            "embedded morphology runtime.bin failed to deserialize ({e}); the \
+             blob and data/lexemes.json have drifted — regenerate with \
+             `cargo run -p qxfx0-morphology --example \
+             prebuild_morphology_runtime` and commit them together \
+             (ADR-0043 U0.1: fail-closed, no JSON-parse fallback)"
+        )
     })
 }
 
@@ -1151,6 +1151,16 @@ mod tests {
 
         // Clean up
         std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    // --- ADR-0043 U0.1: fail-closed blob init ---
+
+    #[test]
+    #[should_panic(expected = "ADR-0043 U0.1: fail-closed, no JSON-parse fallback")]
+    fn corrupt_runtime_blob_panics_instead_of_json_fallback() {
+        let _ = runtime_or_panic(Err(MorphologyError::BincodeParseError(
+            "simulated corruption".to_string(),
+        )));
     }
 
     #[test]
