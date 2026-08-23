@@ -9,6 +9,7 @@ members = [
     "qxfx0-morphology",
     "qxfx0-persistence",
     "qxfx0-gates",
+    "qxfx0-codex",
     "qxfx0-guard",
     "qxfx0-render",
     "qxfx0-pipeline",

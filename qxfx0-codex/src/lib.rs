@@ -12,6 +12,8 @@
 //! только локальную сессию. Содержимое отчёста — чистая функция состояния,
 //! поэтому два отчёта по одному состоянию байт-в-байт совпадают.
 
+pub mod journal;
+
 use qxfx0_pipeline::RendererAuthority;
 use qxfx0_semantic::argued_topic_registry;
 use qxfx0_types::system_state::SystemState;
@@ -1144,7 +1146,7 @@ pub fn verify_diary(markdown: &str, passphrase: Option<&str>) -> DiaryVerificati
 
     let mut state = None;
     for entry in &manifest.entries {
-        let response = match crate::run_journal_turn(
+        let response = match crate::journal::run_journal_turn(
             &db,
             &manifest.session_id,
             &entry.input,
