@@ -16,7 +16,7 @@ The CLI is the supported production surface. It includes:
   (reflexive included), 42,239 adjective and 68 closed-class pronoun
   paradigms, rule-based out-of-vocabulary declension and preposition
   government;
-- 207 seed atoms, 346 semantic relations and 129 curated `FactRecord` values;
+- 207 seed atoms, 346 semantic relations and 151 curated `FactRecord` values;
 - a 71-topic/151-claim audited ResponsePlan V2 corpus with manifest, replay,
   realization-parity and zero-downgrade gates;
 - the «Кодекс» practice loop: deterministic topic revisits, prior-position
@@ -189,16 +189,17 @@ It exits non-zero if any check fails:
 ```text
 QxFx0 Rust v0.1.1 health check:
   [OK] SQLite: schema v10, quick_check/foreign keys/session states valid
-  [OK] Seed graph: 207 atoms, 346 relations, 130 covered topics
-  [OK] Content plan assets: recognition_topics_total=130, content_predicates_total=129, argued_topics_admitted=60, argued_predicates_admitted=60, profile_enabled=audited_v1
+  [OK] Performance diagnostics: opt-in qxfx0.turn-diagnostics.v1 records stage timing, SQLite write-lock/commit timing, and host metadata outside session state
+  [OK] Seed graph: 207 atoms, 346 relations, 141 covered topics
+  [OK] Content plan assets: recognition_topics_total=141, content_predicates_total=151, argued_topics_admitted=71, argued_predicates_admitted=71, profile_enabled=audited_v1
   [OK] Templates: 127 templates for 33 types; direct coverage 24/31 used relation types
   [OK] Morphology: seed dictionary and case conversion operational
   [OK] Verb lexicon: 30809 digest-pinned verb paradigms; conjugation probes operational
   [OK] Adjective lexicon: 42239 digest-pinned adjective paradigms; probes operational
   [OK] Pronoun lexicon: 68 digest-pinned closed-class paradigms
   [OK] Code registry: 97 typed atoms, 1353 relations, 1322 RelComposes edges
-  [OK] Knowledge pack: active immutable pack fingerprint ..., 129 facts
-  [OK] Curated FactRegistry: 129 curated FactId records re-resolve successfully
+  [OK] Knowledge pack: active immutable pack fingerprint sha256:…, 151 facts
+  [OK] Curated FactRegistry: 151 curated FactId records re-resolve successfully
   [OK] Perspective boundary: bounded PerspectiveState valid; fact-grounded rollout default is Disabled
   [OK] Stance authority: signed attestation, bounded provenance, and temporal contract versions valid
   Status: OK
@@ -228,7 +229,7 @@ not flush the operating system's filesystem page cache:
 python3 scripts/benchmark_runtime.py --samples 10
 ```
 
-Renderer breadth is measured independently across all 60 audited topics. The
+Renderer breadth is measured independently across all 71 audited topics. The
 audit reports unique responses and sentences, repeated sentence counts, and
 topic-normalized opening n-grams. It is diagnostic and does not change the
 renderer or semantic state:
@@ -387,7 +388,7 @@ Run it in isolation with:
 cargo test --locked -p qxfx0-pipeline --test structural_corpus
 ```
 
-It validates all 60 admitted topics in fresh sessions and one shared 60-turn
+It validates all 71 admitted topics in fresh sessions and one shared 71-turn
 session: topic and canonical slots, exact predicate set, claim roles,
 derivation, provenance, no repeated claims, terminal punctuation, and explicit
 fallback for recognized but unadmitted content. It observes `plan_shadow`; the
@@ -417,8 +418,8 @@ provided.
 ## Operational limits
 
 - QxFx0 is a deterministic local semantic system, not a general-purpose factual assistant.
-- Recognition covers 130 topics, with declarative rendering currently admitted for 60.
-- The audited profile contains 129 typed claims across 60 admitted topics; each
+- Recognition covers 141 topics, with declarative rendering currently admitted for 71.
+- The audited profile contains 151 typed claims across 71 admitted topics; each
   topic has a thesis and counterpoint, with an optional consequence where the
   corpus supplies one.
 - The first product acceptance proof covers 30 deterministic journal days and
