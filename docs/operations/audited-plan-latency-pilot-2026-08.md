@@ -1,8 +1,9 @@
 # Audit: audited_plan latency pilot
 
 - Status: Renderer gate passed; cadence gate fix implemented (2026-08-21);
-  the 2026-08-22 soak attempt was invalidated by build-host contention and
-  restarted detached on the 71-topic binary
+  both 2026-08-22 soak attempts died of host-side memory pressure, not of
+  the binary — the confirmation soak (v35) now waits behind a quiet-host
+  gate on the 71-topic binary
 - Date: 2026-08-18, addendum 2026-08-21 (true tail attribution)
 - Toolchain: Rust 1.93.1 (`cargo benchmark --audited-plan`), pinned via `rust-toolchain.toml`
 - Instrument: `qxfx0 benchmark --samples 400 --warmup 30 --json` per renderer
@@ -162,11 +163,23 @@ Against the performance gate required by the incident:
   adjective-parse trigger above; it was stopped once its verdict was clear
   (artifacts: `/tmp/opencode/qxfx0-soak-warm-full/`). With the adjective
   precompute the same prompt runs at ~0.4 s (4.5× gate margin). A fresh full
-  1,000-turn @60 s-idle soak on the fixed binary is running detached:
-  started 2026-08-21T20:56Z, dir `/tmp/opencode/qxfx0-soak-adjectives-1000/`
-  (status `pilot.status`, key line `slow_turns=N`; report `pilot.report` with
-  `final_metrics_ok=1`). The cadence gate closes only when that soak lands
-  `slow_turns = 0`.
+  1,000-turn @60 s-idle soak on the fixed binary is the remaining
+  confirmation. Two 2026-08-22 attempts were invalidated by host
+  contention, not by the binary (details in the operational notes): the
+  first (`qxfx0-soak-adjectives-1000`) aborted with six SIGABRT turns while
+  a release rebuild and the full workspace suite ran, and the restart
+  (`qxfx0-soak-v34-1000`) died at turn 95/1,000 when a concurrent test
+  binary (8.5 GB RSS) drove the host into an OOM kill and the systemd scope
+  hosting the soak driver was torn down with it — its 95 completed turns
+  were clean (`turn_failures=0`, `slow_turns=0`, max latency 521 ms). The
+  confirmation run (v35) is relaunched behind a quiet-host gate:
+  `/tmp/opencode/qxfx0-soak-v35-launcher.sh` refuses to start the soak
+  while any cargo/cabal/test workload is running and requires ≥2 GiB
+  `MemAvailable`; it first runs the AGENTS.md build/clippy/test gate in
+  that quiet window (gate log: `/tmp/opencode/qxfx0-gate-v35.log`) and
+  only on a green gate hands off to the soak (launcher log:
+  `/tmp/opencode/qxfx0-soak-v35-launcher.log`). The cadence gate
+  closes only when the v35 soak lands `slow_turns = 0`.
 
 > Methodology note: the original ask included `echo 3 > /proc/sys/vm/drop_caches`
 > before each turn to force a fully cold cache. This host is uid 1000 (not root),
@@ -228,16 +241,25 @@ Operational notes for maintainers:
   `lexemes.json` directly (manual/ops path, not performance-critical).
 - The pre-fault warm path touches `EMBEDDED_RUNTIME_BIN` page-by-page, so it
   tracks any change in blob size/mapping.
-- Soak confirmation: poll `/tmp/opencode/qxfx0-soak-v34-1000/pilot.status`
-  (`slow_turns=N`; expect 0) and `pilot.report` (`final_metrics_ok=1`).
-  Until it lands `slow_turns = 0`, treat the cadence gate as pending
+- Soak confirmation: poll `/tmp/opencode/qxfx0-soak-v35-1000/pilot.status`
+  (`slow_turns=N`; expect 0) and `pilot.report` (`final_metrics_ok=1`);
+  the quiet-host gate log is `/tmp/opencode/qxfx0-soak-v35-launcher.log`.
+  Until v35 lands `slow_turns = 0`, treat the cadence gate as pending
   (renderer gate and p99 metric gate are already met with margin).
-- The first attempt (`qxfx0-soak-adjectives-1000`, started 2026-08-22 00:16)
-  is not evidence of instability either way: six turns aborted (SIGABRT,
-  02:50–02:55 MSK, coredumps on file) exactly while a release rebuild and
-  the full workspace suite ran on the same host, and one later turn went
-  slow under the same load. Operating rule for the confirmation run: no
-  cargo builds or test suites on this host while the soak is in flight.
+- Attempt history on this host — both invalidations came from concurrent
+  load, not from the binary. The first (`qxfx0-soak-adjectives-1000`,
+  started 2026-08-22 00:16): six turns aborted (SIGABRT, 02:50–02:55 MSK,
+  coredumps on file) exactly while a release rebuild and the full workspace
+  suite ran on the same host, and one later turn went slow under the same
+  load. The second (`qxfx0-soak-v34-1000`, started 22:42 MSK): 95 clean
+  turns, then at 00:18–00:23 MSK a concurrently running test binary (kernel
+  OOM log names `qxfx0-test-fast`, anon-rss 8.5 GB) exhausted memory; the
+  kernel killed it at 00:22:58 and the systemd scope hosting the soak
+  driver failed with `oom-kill` and was torn down, taking the driver and
+  its in-flight turn 96 with it. Operating rule for the confirmation run:
+  no cargo builds or test suites on this host while the soak is in flight —
+  the v35 launcher enforces this mechanically by polling for build/test
+  processes before starting.
 
 No further renderer change is required or in scope; the `--audited-plan`
 benchmark flag and `--render-legacy` are both retained for repeatable
