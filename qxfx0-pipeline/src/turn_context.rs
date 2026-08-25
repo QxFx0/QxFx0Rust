@@ -6,7 +6,7 @@
 use crate::conversation_fsm::ConversationState;
 use crate::shadow_plan::ShadowPlanOutcome;
 use crate::RendererAuthority;
-use qxfx0_self::deliberation::ReconcileRule;
+use qxfx0_self::deliberation::{DeliberationTrace, ReconcileRule};
 use qxfx0_semantic::{ParsedProposition, PlanOutcome, PropositionMode, RecoveryTrace};
 use qxfx0_types::system_state::GuardStatus;
 use qxfx0_types::CanonicalMoveFamily;
@@ -69,6 +69,10 @@ pub struct PreparedTurnContext {
     essence_strength: f64,
     deliberation_family: CanonicalMoveFamily,
     deliberation_rule: ReconcileRule,
+    /// The full V1 deliberation verdict. Carried so the V2 subject core
+    /// (ADR-0043 U2) witnesses the same reconciliation the turn actually
+    /// deliberated, not a reconstruction of it.
+    deliberation_trace: DeliberationTrace,
     has_enough: bool,
 }
 
@@ -82,6 +86,7 @@ impl PreparedTurnContext {
         essence_strength: f64,
         deliberation_family: CanonicalMoveFamily,
         deliberation_rule: ReconcileRule,
+        deliberation_trace: DeliberationTrace,
         has_enough: bool,
     ) -> Self {
         Self {
@@ -92,6 +97,7 @@ impl PreparedTurnContext {
             essence_strength,
             deliberation_family,
             deliberation_rule,
+            deliberation_trace,
             has_enough,
         }
     }
@@ -122,6 +128,10 @@ impl PreparedTurnContext {
 
     pub fn deliberation_rule(&self) -> ReconcileRule {
         self.deliberation_rule
+    }
+
+    pub fn deliberation_trace(&self) -> &DeliberationTrace {
+        &self.deliberation_trace
     }
 
     pub fn has_enough(&self) -> bool {

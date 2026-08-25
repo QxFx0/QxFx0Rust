@@ -9,7 +9,9 @@
 
 use super::epoch_day;
 use qxfx0_persistence::Persistence;
-use qxfx0_pipeline::{process_turn_with_options, RendererAuthority, TurnInput, TurnOptions};
+use qxfx0_pipeline::{
+    process_turn_with_options, EssenceAblation, RendererAuthority, TurnInput, TurnOptions,
+};
 use qxfx0_types::system_state::{SemanticState, SystemState};
 
 /// Build a freshly seeded `SystemState` for a given session id.
@@ -93,8 +95,15 @@ fn stamp_practice_day(state: &mut SystemState, day: u64) {
     if let Some(record) = state.dialogue.journal.last_mut() {
         record.day = day;
     }
+    // The journal witness covers the behaviourally-relevant state only: the
+    // ADR-0043 U2 shadow trajectory (`semantic.essence_v2`) is lifted out for
+    // the digest and restored right after. A pre-U2 state serializes
+    // byte-identically either way (the field is skip-when-none), so diaries
+    // recorded before the shadow verify on binaries that carry it.
+    let essence_v2 = state.semantic.essence_v2.take();
     let digest = qxfx0_pipeline::execution_trace::calculate_stable_digest(state)
         .expect("SystemState serializes deterministically for the stable digest");
+    state.semantic.essence_v2 = essence_v2;
     if let Some(record) = state.dialogue.journal.last_mut() {
         record.state_digest = digest;
     }
@@ -112,6 +121,28 @@ pub fn run_journal_turn(
     epoch_day: u64,
     renderer_authority: RendererAuthority,
 ) -> anyhow::Result<String> {
+    run_journal_turn_with_essence_ablation(
+        db,
+        session_id,
+        text,
+        epoch_day,
+        renderer_authority,
+        EssenceAblation::Enabled,
+    )
+}
+
+/// The B2 control-arm journal turn (ADR-0043 U2): identical to
+/// [`run_journal_turn`] except the V2 subject core suppresses commitment
+/// while still witnessing. Explicit experiment surface only — the production
+/// paths delegate with [`EssenceAblation::Enabled`].
+pub fn run_journal_turn_with_essence_ablation(
+    db: &Persistence,
+    session_id: &str,
+    text: &str,
+    epoch_day: u64,
+    renderer_authority: RendererAuthority,
+    essence_v2_ablation: EssenceAblation,
+) -> anyhow::Result<String> {
     let mut state = load_or_create_state(db, session_id)?;
     let input = TurnInput {
         raw_text: text.to_string(),
@@ -120,7 +151,9 @@ pub fn run_journal_turn(
     let output = process_turn_with_options(
         &input,
         &mut state,
-        TurnOptions::new().with_renderer(renderer_authority),
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_essence_v2_ablation(essence_v2_ablation),
     );
     stamp_practice_day(&mut state, epoch_day);
     db.save_state(session_id, &state)?;

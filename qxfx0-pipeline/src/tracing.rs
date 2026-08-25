@@ -29,6 +29,11 @@ pub struct PipelineTrace {
     /// the default schema and never enters persisted session state.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thesis_observation_receipt: Option<qxfx0_types::ThesisObservationReceipt>,
+    /// ADR-0043 U2: the V2 subject-core shadow advance of the turn. Same
+    /// discipline as the thesis receipt — absent from the default schema,
+    /// outside persisted session state, outside the replay signature.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub essence_advance: Option<qxfx0_self_v2::EssenceAdvanceTrace>,
     /// Final authority/guard boundary result, including turns denied before a
     /// receipt could be created.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -54,6 +59,7 @@ impl PipelineTrace {
             steps: Vec::new(),
             authority_receipt: None,
             thesis_observation_receipt: None,
+            essence_advance: None,
             authority_guard_classification: None,
             authority_case_id: None,
             authority_input_class: None,
@@ -98,6 +104,13 @@ impl PipelineTrace {
         receipt.validate()?;
         self.thesis_observation_receipt = Some(receipt);
         Ok(())
+    }
+
+    /// Record the V2 subject-core shadow advance (ADR-0043 U2). Pure
+    /// observation: no validation gate because the summary is evidence, not
+    /// an authority decision.
+    pub fn record_essence_advance(&mut self, advance: qxfx0_self_v2::EssenceAdvanceTrace) {
+        self.essence_advance = Some(advance);
     }
 
     pub fn set_authority_guard_classification(&mut self, classification: &str) {
@@ -239,6 +252,48 @@ mod tests {
     fn default_trace_schema_omits_thesis_observation() {
         let encoded = serde_json::to_value(PipelineTrace::new("default")).unwrap();
         assert!(encoded.get("thesis_observation_receipt").is_none());
+    }
+
+    #[test]
+    fn default_trace_schema_omits_essence_advance() {
+        let encoded = serde_json::to_value(PipelineTrace::new("default")).unwrap();
+        assert!(encoded.get("essence_advance").is_none());
+    }
+
+    #[test]
+    fn essence_advance_evidence_does_not_change_replay_signature() {
+        let mut trace = PipelineTrace::new("essence-v2");
+        trace.record_step(
+            "finalize",
+            "in".into(),
+            "out".into(),
+            std::time::Duration::ZERO,
+            BTreeMap::new(),
+        );
+        let expected = trace
+            .replay_signature()
+            .into_iter()
+            .map(|(stage, input, output)| (stage.to_owned(), input.to_owned(), output.to_owned()))
+            .collect::<Vec<_>>();
+        trace.record_essence_advance(qxfx0_self_v2::EssenceAdvanceTrace {
+            angst_level: 0.2,
+            conatus_scalar: 9.9,
+            ..qxfx0_self_v2::EssenceAdvanceTrace::default()
+        });
+        assert_eq!(
+            trace
+                .replay_signature()
+                .into_iter()
+                .map(|(stage, input, output)| (
+                    stage.to_owned(),
+                    input.to_owned(),
+                    output.to_owned()
+                ))
+                .collect::<Vec<_>>(),
+            expected
+        );
+        let encoded = serde_json::to_value(&trace).unwrap();
+        assert!(encoded.get("essence_advance").is_some());
     }
 
     #[test]

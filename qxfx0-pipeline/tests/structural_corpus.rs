@@ -8,8 +8,9 @@
 //! remains authoritative until a later change makes it render these plans.
 
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_renderer, process_turn_with_trace,
-    process_turn_with_trace_and_renderer, RendererAuthority, TurnInput,
+    process_turn, process_turn_with_options_and_trace, process_turn_with_renderer,
+    process_turn_with_trace, process_turn_with_trace_and_renderer, EssenceAblation,
+    RendererAuthority, TurnInput, TurnOptions,
 };
 use qxfx0_semantic::{argued_topic_registry, FallbackReason};
 use qxfx0_types::system_state::SystemState;
@@ -453,4 +454,116 @@ fn audited_plan_flag_keeps_fallback_and_external_routes_on_legacy_contracts() {
         assert_eq!(flagged_output.response, baseline_output.response, "{name}");
         assert_eq!(flagged_output.blocked, baseline_output.blocked, "{name}");
     }
+}
+
+/// ADR-0043 U2 shadow gate over the audited corpus: the V2 subject core
+/// advances on every corpus turn — witnesses accumulate in
+/// `semantic.essence_v2`, the pipeline trace records the advance — while
+/// visible behaviour stays byte-identical to the B2 ablated control arm
+/// (`CommitDisabled`), and the non-observational state stays parity-equal.
+#[test]
+fn essence_v2_shadow_advances_without_changing_visible_behaviour() {
+    for (turn, case) in corpus_cases().into_iter().enumerate() {
+        let session_id = format!("essence-v2-fresh-{turn}");
+        let mut enabled_state = test_state(&session_id);
+        let mut ablated_state = test_state(&session_id);
+        let input_for = |session_id: String| TurnInput {
+            session_id,
+            raw_text: case.prompt.into(),
+        };
+
+        let (enabled_output, enabled_trace) = process_turn_with_options_and_trace(
+            &input_for(session_id.clone()),
+            &mut enabled_state,
+            TurnOptions::new(),
+        );
+        let (ablated_output, _ablated_trace) = process_turn_with_options_and_trace(
+            &input_for(session_id.clone()),
+            &mut ablated_state,
+            TurnOptions::new().with_essence_v2_ablation(EssenceAblation::CommitDisabled),
+        );
+
+        assert_eq!(
+            enabled_output.response, ablated_output.response,
+            "{}: ablation must not change the response",
+            case.topic
+        );
+        assert_eq!(
+            enabled_output.family, ablated_output.family,
+            "{}: ablation must not change routing",
+            case.topic
+        );
+        assert_eq!(
+            enabled_output.blocked, ablated_output.blocked,
+            "{}: ablation must not change the guard verdict",
+            case.topic
+        );
+        assert!(
+            qxfx0_pipeline::response_plan_v2_state_parity(&enabled_state, &ablated_state),
+            "{}: ablation must not change non-observational state",
+            case.topic
+        );
+        // The shadow really computes and persists in both arms: witnessing
+        // continues under ablation; only the commitment differs.
+        assert!(
+            enabled_trace.essence_advance.is_some(),
+            "{}: the advance must be replay-visible",
+            case.topic
+        );
+        assert!(
+            enabled_state.semantic.essence_v2.is_some(),
+            "{}: the trajectory must persist in state",
+            case.topic
+        );
+        assert!(
+            ablated_state.semantic.essence_v2.is_some(),
+            "{}: the ablated arm still witnesses",
+            case.topic
+        );
+    }
+}
+
+/// The V2 shadow trajectory must survive the state round-trip (each
+/// `qxfx0 turn` is a fresh process: the trajectory lives only if the
+/// serialized form carries it), and pre-U2 snapshots without the field
+/// must keep loading.
+#[test]
+fn essence_v2_trajectory_survives_state_serialization() {
+    let session_id = "essence-v2-long-session";
+    let mut state = test_state(session_id);
+
+    for case in corpus_cases() {
+        let (output, trace) = process_turn_with_options_and_trace(
+            &TurnInput {
+                session_id: session_id.into(),
+                raw_text: case.prompt.into(),
+            },
+            &mut state,
+            TurnOptions::new(),
+        );
+        assert!(!output.blocked, "{}", case.topic);
+        assert!(
+            trace.essence_advance.is_some(),
+            "{}: every successful turn advances the shadow",
+            case.topic
+        );
+    }
+    assert!(state.semantic.essence_v2.is_some());
+
+    let serialized = serde_json::to_value(&state).expect("state serializes");
+    let deserialized: SystemState = serde_json::from_value(serialized).expect("state round-trips");
+    assert!(
+        deserialized.semantic.essence_v2.is_some(),
+        "the shadow trajectory must survive serialization"
+    );
+
+    let mut legacy = serde_json::to_value(&state).expect("state serializes");
+    legacy
+        .get_mut("semantic")
+        .and_then(|semantic| semantic.as_object_mut())
+        .expect("semantic state is an object")
+        .remove("essence_v2");
+    let legacy_state: SystemState =
+        serde_json::from_value(legacy).expect("pre-U2 snapshots keep loading");
+    assert!(legacy_state.semantic.essence_v2.is_none());
 }

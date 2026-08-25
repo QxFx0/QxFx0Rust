@@ -23,6 +23,10 @@ mod vector_pipeline;
 
 pub use stages::{MAX_RUNTIME_ATOMS, MAX_RUNTIME_EDGES};
 
+/// Re-exported so downstream crates (CLI, codex journal, serve) select the
+/// B2 control arm without taking a direct dependency on `qxfx0-self-v2`.
+pub use qxfx0_self_v2::EssenceAblation;
+
 pub use conversation_fsm::{
     fsm_state_discriminant, fsm_state_from_discriminant, initial_state, is_active,
     proposition_to_event, transition as fsm_transition, ConversationEvent, ConversationState,
@@ -169,7 +173,9 @@ pub fn response_plan_v2_canary_digest() -> String {
 
 /// Compares persisted state attributes without considering trace-only evidence.
 /// This is intentionally explicit so rollout tests cannot hide a state change
-/// behind an aggregate digest.
+/// behind an aggregate digest. Observational state is deliberately excluded:
+/// `thesis_state` and the ADR-0043 U2 shadow `semantic.essence_v2` accumulate
+/// evidence without ever being an authority over visible behaviour.
 pub fn response_plan_v2_state_parity(left: &SystemState, right: &SystemState) -> bool {
     fn equal<T: Serialize>(left: &T, right: &T) -> bool {
         match (serde_json::to_vec(left), serde_json::to_vec(right)) {
@@ -584,6 +590,11 @@ pub struct TurnOptions {
     pub thesis_projection: fact_grounded::ThesisProjectionRollout,
     pub response_plan_v2: ResponsePlanV2Mode,
     pub response_plan_v2_authority: ResponsePlanV2Authority,
+    /// B2 ablation arm of the V2 subject core (ADR-0043 U2). `Enabled` is
+    /// the law and the default; `CommitDisabled` is set only by explicit
+    /// test/CLI switches for the ablated control group — never persisted,
+    /// never a runtime default.
+    pub essence_v2_ablation: EssenceAblation,
 }
 
 impl TurnOptions {
@@ -640,6 +651,13 @@ impl TurnOptions {
         if authority == ResponsePlanV2Authority::Canary {
             self.response_plan_v2 = ResponsePlanV2Mode::Canary;
         }
+        self
+    }
+
+    /// Select the B2 ablation arm for the V2 subject core. Test/CLI-only by
+    /// contract; production paths never call this.
+    pub fn with_essence_v2_ablation(mut self, ablation: EssenceAblation) -> Self {
+        self.essence_v2_ablation = ablation;
         self
     }
 }
@@ -1622,6 +1640,7 @@ fn process_turn_internal(
         thesis_projection,
         response_plan_v2,
         response_plan_v2_authority,
+        essence_v2_ablation,
     } = options;
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -1797,13 +1816,24 @@ fn process_turn_internal(
     };
 
     // Stage 5: Finalize
+    // The V2 subject-core advance summary flows through a side channel
+    // (`essence_v2_advance`), never through the digested stage context — the
+    // same replay discipline the thesis observation receipt follows.
+    let mut essence_v2_advance: Option<qxfx0_self_v2::EssenceAdvanceTrace> = None;
     let finalized = match execute_stage(
         &mut trace,
         &mut timings,
         "finalize",
         state,
         rendered,
-        stages::finalize_stage,
+        |state, rendered| {
+            stages::finalize_stage(
+                state,
+                rendered,
+                essence_v2_ablation,
+                &mut essence_v2_advance,
+            )
+        },
     ) {
         Ok(context) => context,
         Err(error) => {
@@ -1961,6 +1991,16 @@ fn process_turn_internal(
     if blocked {
         state.semantic = snapshot.semantic().clone();
         state.dialogue.conversation_state = snapshot.dialogue().conversation_state;
+    }
+
+    // The V2 subject-core shadow advance becomes replay-visible only when the
+    // turn's semantic mutations survived: on a blocked turn the snapshot
+    // restore above rolls `essence_v2` back, so recording the advance here
+    // would testify to a witness that no longer exists.
+    if !blocked {
+        if let Some(trace) = trace {
+            trace.essence_advance = essence_v2_advance;
+        }
     }
 
     // W6: If the guard blocked this turn, replace the response with a recovery string

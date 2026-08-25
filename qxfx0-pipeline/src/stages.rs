@@ -19,6 +19,10 @@ use qxfx0_self::{
     should_commit_essence, witness_essence, Conatus, EssenceMode, EssenceModulation, Salience,
     SelfBlanket,
 };
+use qxfx0_self_v2::{
+    advance_essence, compute_conatus_energy, empty_essence, EssenceAblation, EssenceAdvanceTrace,
+    EssenceTurnInput, SelfBlanketSnapshot,
+};
 use qxfx0_semantic::{
     cached_semantic_network, derive_atoms, network::activate as network_activate,
     normalize_punctuation, seed_graph, ContentSelector, DiscourseComposer, DiscourseStyle,
@@ -116,6 +120,7 @@ pub fn prepare_stage(
         essence_strength,
         deliberation.plan.family,
         deliberation.trace.rule,
+        deliberation.trace,
         has_enough,
     ))
 }
@@ -494,9 +499,17 @@ fn style_from_state(
 }
 
 /// Stage 5: Finalize — witness + commitment + graph growth + derive_atoms.
+///
+/// `essence_v2_ablation` selects the B2 control arm for the V2 subject core
+/// (`Enabled` is the law; `CommitDisabled` exists for the ablated control
+/// group only). `essence_v2_trace` receives the observational advance
+/// summary for the pipeline trace; it is deliberately outside the stage's
+/// typed context so replay digests never cover it.
 pub fn finalize_stage(
     state: &mut SystemState,
     rendered: RenderedTurnContext,
+    essence_v2_ablation: EssenceAblation,
+    essence_v2_trace: &mut Option<EssenceAdvanceTrace>,
 ) -> Result<FinalizedTurnContext, String> {
     let edge_count_before = state.semantic.runtime_graph.edges.len();
     let response = rendered.response().to_owned();
@@ -551,6 +564,49 @@ pub fn finalize_stage(
             state.semantic.essence.commitment = Some(commitment);
         }
     }
+
+    // ADR-0043 U2: advance the V2 subject-core essence in shadow. The blanket
+    // snapshot is read from real state — morphology runtime size, held
+    // identity claims as of this turn's start, this turn's ordinal — and the
+    // trajectory persists through `semantic.essence_v2` so fresh processes
+    // (one per `qxfx0 turn`) accumulate witnesses across the session.
+    // Observational: nothing here feeds routing, rendering, guard or the V1
+    // self layer; the plan-family guard stays trace-only until a separate
+    // release flips it. The V2 blanket check is not ported yet (U3), so the
+    // violation list is empty by construction.
+    let essence_v2_blanket = SelfBlanketSnapshot {
+        morphology_total_size: qxfx0_morphology::get_runtime().stats().total_lexemes as u64,
+        identity_claims_count: state
+            .semantic
+            .semantic_commitments
+            .as_ref()
+            .map(|store| store.active.len() as u64)
+            .unwrap_or(0),
+        turn_count: turn as u64,
+    };
+    let mut essence_v2 = match state.semantic.essence_v2.take() {
+        None => empty_essence(),
+        Some(value) => serde_json::from_value(value).map_err(|error| {
+            format!("essence_v2 shadow state failed to decode (fail-closed): {error}")
+        })?,
+    };
+    let essence_v2_summary = advance_essence(
+        &qxfx0_self_v2::EssenceModulation::default(),
+        essence_v2_ablation,
+        EssenceTurnInput {
+            turn_ordinal: turn,
+            conatus: compute_conatus_energy(essence_v2_blanket, &[]),
+            field: &state.semantic.field,
+            trace: rendered.routed().prepared().deliberation_trace(),
+            proposed_family: rendered.routed().family(),
+        },
+        &mut essence_v2,
+    );
+    state.semantic.essence_v2 = Some(
+        serde_json::to_value(&essence_v2)
+            .map_err(|error| format!("essence_v2 shadow state failed to encode: {error}"))?,
+    );
+    *essence_v2_trace = Some(essence_v2_summary);
 
     // Derive atoms + enrich graph
     let subject_id = AtomId::new(subject.clone());
@@ -1005,7 +1061,8 @@ mod tests {
         let planned = plan_shadow_stage(&mut state, routed).unwrap();
         let rendered = render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();
 
-        let finalized = finalize_stage(&mut state, rendered).unwrap();
+        let finalized =
+            finalize_stage(&mut state, rendered, EssenceAblation::Enabled, &mut None).unwrap();
         let guarded = guard_stage(&mut state, finalized).unwrap();
 
         assert!(guarded.blocked(), "guard should block empty input");
@@ -1090,7 +1147,8 @@ mod tests {
             // so validation stays clean and finalize rebuilds on demand.
             state.semantic.cached_network = None;
 
-            let finalized = finalize_stage(&mut state, rendered).unwrap();
+            let finalized =
+                finalize_stage(&mut state, rendered, EssenceAblation::Enabled, &mut None).unwrap();
             assert!(!finalized.rendered().response().is_empty());
             assert!(
                 state.semantic.runtime_graph.edges.len() <= MAX_RUNTIME_EDGES,

@@ -30,7 +30,8 @@ pub use essence::{
     render_commitment_trigger, render_essence_mode, render_essence_violation, should_commit,
     validate_invariants, validate_plan, witness, Band, CommitmentTrigger, Essence, EssenceAblation,
     EssenceAdvanceTrace, EssenceCommitment, EssenceMode, EssenceModulation, EssenceResetEvent,
-    EssenceTrajectory, EssenceViolation, EssenceWitness, FieldSignature, ValenceBand,
+    EssenceTrajectory, EssenceTurnInput, EssenceViolation, EssenceWitness, FieldSignature,
+    ValenceBand,
 };
 
 #[cfg(test)]

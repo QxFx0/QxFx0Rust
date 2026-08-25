@@ -8,8 +8,8 @@ pub mod measurement;
 /// (ADR-0043 U0.6); re-exported under the historical paths.
 pub use qxfx0_codex as codex;
 pub use qxfx0_codex::journal::{
-    fresh_state, load_or_create_state, run_journal_turn, save_journal_state, stamp_practice_today,
-    today_epoch_day,
+    fresh_state, load_or_create_state, run_journal_turn, run_journal_turn_with_essence_ablation,
+    save_journal_state, stamp_practice_today, today_epoch_day,
 };
 /// Extracted to the `qxfx0-gates` crate (ADR-0043 U0.6); re-exported under
 /// the historical module path so `main.rs`, tests and external callers are
@@ -23,8 +23,8 @@ use qxfx0_pipeline::{
     process_turn_with_options, process_turn_with_options_and_timing,
     process_turn_with_options_and_trace, process_turn_with_options_timing_and_trace,
     process_turn_with_renderer_and_stance_provenance, AnomalyShadowMode, ClarificationMode,
-    DoubtShadowMode, PipelineStageTimings, RendererAuthority, SameTopicSuppressionMode, TurnInput,
-    TurnOptions,
+    DoubtShadowMode, EssenceAblation, PipelineStageTimings, RendererAuthority,
+    SameTopicSuppressionMode, TurnInput, TurnOptions,
 };
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::SystemState;
@@ -228,6 +228,16 @@ struct OwnedAuthorityTrace {
     authority_input_class: Option<String>,
     authority_expected_result: Option<String>,
     authority_expected_guard: Option<String>,
+    /// Observational evidence the serialized trace carries (skip-when-none at
+    /// the source). The verifier does not interpret either: the thesis
+    /// receipt appears on canary turns that also observe thesis projection,
+    /// and `essence_advance` is the ADR-0043 U2 shadow summary present on
+    /// every successful turn. Accepted so the strict external schema stays
+    /// aligned with what the writer emits.
+    #[serde(rename = "thesis_observation_receipt")]
+    _thesis_observation_receipt: Option<serde_json::Value>,
+    #[serde(rename = "essence_advance")]
+    _essence_advance: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1210,11 +1220,14 @@ pub fn run_turn_with_renderer_and_stance_provenance(
 
 /// Run one normal persisted turn while returning observation-only doubt
 /// evidence for an external sink. The trace never enters `SystemState`.
+/// `essence_v2_ablation` selects the B2 control arm (ADR-0043 U2); the CLI
+/// passes `Enabled` unless `--essence-v2-ablation` says otherwise.
 pub fn run_turn_with_renderer_doubt_shadow_trace(
     db: &qxfx0_persistence::Persistence,
     session_id: &str,
     text: &str,
     renderer_authority: RendererAuthority,
+    essence_v2_ablation: EssenceAblation,
 ) -> anyhow::Result<DoubtShadowTracedTurn> {
     let mut state = load_or_create_state(db, session_id)?;
     let input = TurnInput {
@@ -1226,7 +1239,8 @@ pub fn run_turn_with_renderer_doubt_shadow_trace(
         &mut state,
         TurnOptions::new()
             .with_renderer(renderer_authority)
-            .with_doubt_shadow(DoubtShadowMode::TraceOnly),
+            .with_doubt_shadow(DoubtShadowMode::TraceOnly)
+            .with_essence_v2_ablation(essence_v2_ablation),
     );
     save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
@@ -1331,11 +1345,13 @@ pub fn run_turn_with_renderer_diagnostics(
 
 /// Run one turn with both existing timing diagnostics and doubt shadow trace
 /// evidence. This preserves the normal single processing/persistence path.
+/// `essence_v2_ablation` selects the B2 control arm (ADR-0043 U2).
 pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
     db: &qxfx0_persistence::Persistence,
     session_id: &str,
     text: &str,
     renderer_authority: RendererAuthority,
+    essence_v2_ablation: EssenceAblation,
 ) -> anyhow::Result<(
     DiagnosedTurn,
     qxfx0_pipeline::execution_trace::PipelineTrace,
@@ -1353,7 +1369,8 @@ pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
         &mut state,
         TurnOptions::new()
             .with_renderer(renderer_authority)
-            .with_doubt_shadow(DoubtShadowMode::TraceOnly),
+            .with_doubt_shadow(DoubtShadowMode::TraceOnly)
+            .with_essence_v2_ablation(essence_v2_ablation),
     );
     stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
@@ -1845,6 +1862,7 @@ mod tests {
             session_id,
             text,
             RendererAuthority::LegacyShadow,
+            EssenceAblation::Enabled,
         )
         .expect("trace-only turn");
         assert_eq!(traced.response, standard);

@@ -58,6 +58,15 @@ enum ReportScope {
     Negative,
 }
 
+/// CLI surface of the B2 ablation arm (ADR-0043 U2). Mirrors
+/// `qxfx0_pipeline::EssenceAblation` without leaking the crate type into
+/// clap.
+#[derive(Clone, Copy, ValueEnum)]
+enum EssenceV2AblationArg {
+    Enabled,
+    CommitDisabled,
+}
+
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)] // clap owns the one-shot command payload
 enum Commands {
@@ -101,6 +110,12 @@ enum Commands {
         /// Default-off typed provenance recording; it never enables recovery.
         #[arg(long)]
         record_stance_provenance: bool,
+        /// B2 Control-A ablation arm for the V2 subject core (ADR-0043 U2):
+        /// `commit-disabled` suppresses the essence commitment while
+        /// witnessing continues. Experiment surface only; the default is the
+        /// law (`enabled`).
+        #[arg(long, value_enum, default_value_t = EssenceV2AblationArg::Enabled)]
+        essence_v2_ablation: EssenceV2AblationArg,
         #[arg(long, requires = "cognitive_pilot_trace_jsonl")]
         enable_clarification: bool,
         #[arg(long, requires_all = ["cognitive_pilot_trace_jsonl", "enable_clarification"])]
@@ -283,8 +298,15 @@ fn main() -> anyhow::Result<()> {
             record_stance_provenance,
             enable_clarification,
             enable_same_topic_suppression,
+            essence_v2_ablation,
         } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
+            let essence_v2_ablation = match essence_v2_ablation {
+                EssenceV2AblationArg::Enabled => qxfx0_pipeline::EssenceAblation::Enabled,
+                EssenceV2AblationArg::CommitDisabled => {
+                    qxfx0_pipeline::EssenceAblation::CommitDisabled
+                }
+            };
             if let Some(path) = response_plan_v2_shadow_trace_jsonl {
                 if diagnostics_jsonl.is_some()
                     || doubt_shadow_trace_jsonl.is_some()
@@ -450,6 +472,7 @@ fn main() -> anyhow::Result<()> {
                             &cli.session_id,
                             &text,
                             renderer_authority,
+                            essence_v2_ablation,
                         )?;
                     write_doubt_shadow_trace_jsonl(sink, &trace)?;
                     finish_diagnostics(
@@ -479,6 +502,7 @@ fn main() -> anyhow::Result<()> {
                         &cli.session_id,
                         &text,
                         renderer_authority,
+                        essence_v2_ablation,
                     )?;
                     write_doubt_shadow_trace_jsonl(sink, &traced.trace)?;
                     traced.response
@@ -495,6 +519,16 @@ fn main() -> anyhow::Result<()> {
                             &cli.session_id,
                             &text,
                             renderer_authority,
+                        )?
+                    } else if essence_v2_ablation == qxfx0_pipeline::EssenceAblation::CommitDisabled
+                    {
+                        qxfx0_cli::run_journal_turn_with_essence_ablation(
+                            &db,
+                            &cli.session_id,
+                            &text,
+                            day,
+                            renderer_authority,
+                            essence_v2_ablation,
                         )?
                     } else {
                         qxfx0_cli::run_journal_turn(

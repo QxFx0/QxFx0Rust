@@ -385,6 +385,16 @@ impl Persistence {
                 "thesis_state_json exceeds {MAX_THESIS_STATE_JSON_BYTES} bytes"
             )));
         }
+        // ADR-0043 U2 shadow column: NULL carries "no V2 trajectory yet", the
+        // same convention the loader reverses. The value is opaque here; the
+        // pipeline owns its typed shape.
+        let essence_v2_json = match &state.semantic.essence_v2 {
+            Some(value) => Some(
+                serde_json::to_string(value)
+                    .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
+            ),
+            None => None,
+        };
 
         let state_json = serde_json::to_string(state)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
@@ -418,8 +428,8 @@ impl Persistence {
         )?;
 
         tx.execute(
-            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
              ON CONFLICT(session_id) DO UPDATE SET
                 field_json=excluded.field_json,
                 essence_json=excluded.essence_json,
@@ -427,8 +437,9 @@ impl Persistence {
                 commitments_json=excluded.commitments_json,
                 stance_provenance_json=excluded.stance_provenance_json,
                 perspective_json=excluded.perspective_json,
-                thesis_state_json=excluded.thesis_state_json",
-            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json],
+                thesis_state_json=excluded.thesis_state_json,
+                essence_v2_json=excluded.essence_v2_json",
+            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json],
         )?;
         let sqlite_remaining_writes_ms = SaveStateTimings::elapsed_ms(remaining_writes_started);
 
@@ -478,7 +489,7 @@ impl Persistence {
 
         let semantic = conn
             .query_row(
-                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json
+                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json
                  FROM session_semantic WHERE session_id = ?1",
                 params![session_id],
                 |row| {
@@ -490,6 +501,7 @@ impl Persistence {
                         row.get::<_, Option<String>>(4)?,
                         row.get::<_, Option<String>>(5)?,
                         row.get::<_, Option<String>>(6)?,
+                        row.get::<_, Option<String>>(7)?,
                     ))
                 },
             )
@@ -505,6 +517,7 @@ impl Persistence {
                 stance_provenance_json,
                 perspective_json,
                 thesis_state_json,
+                essence_v2_json,
             )),
         ) = (graph, semantic)
         {
@@ -559,6 +572,16 @@ impl Persistence {
                 Some(json) => serde_json::from_str(json)
                     .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
             };
+            // Shadow V2 trajectory: absent/empty stays None (pre-U2 session);
+            // a present value is passed through as-is. The pipeline decodes it
+            // typed and fails closed there.
+            let essence_v2 = match essence_v2_json.as_deref() {
+                Some("null") | Some("") | None => None,
+                Some(json) => Some(
+                    serde_json::from_str(json)
+                        .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
+                ),
+            };
             let perspective = match perspective_json.as_deref() {
                 Some("null") | Some("") | None => Default::default(),
                 Some(json) => serde_json::from_str(json)
@@ -586,6 +609,7 @@ impl Persistence {
                         stance_provenance,
                         perspective,
                         thesis_state,
+                        essence_v2,
                         cached_edge_count: 0,
                         cached_network: None,
                     }
@@ -760,7 +784,7 @@ mod tests {
     }
 
     #[test]
-    fn schema_v9_to_v10_is_additive_idempotent_and_null_defaults() {
+    fn schema_v9_to_current_is_additive_idempotent_and_null_defaults() {
         let mut conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
             "PRAGMA foreign_keys=ON;
@@ -800,7 +824,7 @@ mod tests {
         assert_eq!(
             conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))
                 .unwrap(),
-            10
+            db::migrations::CURRENT_SCHEMA_VERSION
         );
         let after: String = conn
             .query_row(
@@ -818,6 +842,14 @@ mod tests {
             )
             .unwrap();
         assert!(value.is_none());
+        let essence_v2: Option<String> = conn
+            .query_row(
+                "SELECT essence_v2_json FROM session_semantic WHERE session_id=?1",
+                ["v9"],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(essence_v2.is_none());
         assert_eq!(
             conn.query_row("PRAGMA quick_check", [], |r| r.get::<_, String>(0))
                 .unwrap(),
@@ -1446,7 +1478,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 10);
+        assert_eq!(db.schema_version().unwrap(), 11);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -1545,7 +1577,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 10);
+            assert_eq!(db.schema_version().unwrap(), 11);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db

@@ -211,6 +211,13 @@ pub struct SemanticState {
     /// Catalog-authorized thesis lifecycle/projection state. Missing in legacy snapshots.
     #[serde(default, skip_serializing_if = "ThesisState::is_empty")]
     pub thesis_state: ThesisState,
+    /// ADR-0043 U2: the V2 subject-core essence trajectory, shadow-phase.
+    /// Opaque JSON here because `qxfx0-self-v2` depends on this crate; the
+    /// pipeline owns the typed (de)serialization and fails closed on a value
+    /// it cannot decode. Observational: excluded from rollout parity checks
+    /// exactly like `thesis_state`. Missing in pre-U2 snapshots.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub essence_v2: Option<serde_json::Value>,
     /// Cached edge count — when this differs from runtime_graph.edges.len(),
     /// downstream consumers know the SemanticNetwork/ContentSelector cache
     /// is stale and must be rebuilt.
@@ -397,6 +404,7 @@ impl SystemState {
                 perspective: self.semantic.perspective.clone(),
                 stance_provenance: self.semantic.stance_provenance.clone(),
                 thesis_state: self.semantic.thesis_state.clone(),
+                essence_v2: self.semantic.essence_v2.clone(),
                 cached_edge_count: 0,
                 cached_network: None,
             },

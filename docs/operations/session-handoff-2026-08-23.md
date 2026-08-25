@@ -50,11 +50,12 @@ doctor OK, census `--check` green. Workspace is now 17 crates
 
 ## 3. Live pipelines and where their controls are
 
-- **Soak v35** (cadence-gate confirmation): `/tmp/opencode/qxfx0-soak-v35-1000/`
-  (`pilot.status`, `pilot.log`, `turns.jsonl`). Started 2026-08-23 19:58Z
-  on the release binary built at the U0 tree (behavior-identical to HEAD
-  for the soak's purposes; the formal gate should close on the binary that
-  ships — if HEAD is released first, rerun the soak once against it).
+- **Soak v35** (cadence-gate confirmation): **LOST 2026-08-25** — the host
+  rebooted (likely) and `/tmp/opencode/` was wiped together with
+  `pilot.status`/`pilot.report`; no verdict, no soak process, watchdog gone.
+  Relaunch as **v36** against the post-U2 release binary (preferred: the
+  formal gate closes on the binary that ships); use a diagnostic dir that
+  survives reboots (e.g. under `~/QxFx0Runtime/`, not `/tmp`).
   Driver script: `scripts/diagnostic-soak-1000.sh`; quiet-gate launcher:
   `/tmp/opencode/qxfx0-soak-v35-launcher.sh` (waits for no
   cargo/cabal/test processes + ≥2 GiB `MemAvailable`).
@@ -102,6 +103,43 @@ doctor OK, census `--check` green. Workspace is now 17 crates
 4. Ablation wiring: the B2 control arm reads `EssenceAblation::
    CommitDisabled` from an explicit test/CLI-only switch — never a runtime
    default.
+
+**Status 2026-08-25**: items 1–4 are implemented, verified and committed.
+The tree was written blind while soak v35 was in flight; after the soak
+was lost with `/tmp` (§3), the full gate ran on a quiet host: fmt clean,
+clippy `--workspace --all-targets -D warnings` clean, workspace tests
+green (fixes during verification: four persistence schema-marker tests
+and the `ops/README.md` marker updated 10→11), doctor healthy, census
+`--check` green. What landed in the tree:
+
+- `qxfx0-types`: `SemanticState.essence_v2` (nullable opaque JSON, the
+  pipeline owns the typed decode, fail-closed) + the field rides the
+  turn-rollback snapshot.
+- `qxfx0-persistence`: schema **v11** (`essence_v2_json` nullable
+  column, additive migration) + save/load.
+- `qxfx0-pipeline`: `DeliberationTrace` carried through
+  `PreparedTurnContext`; `advance_essence` called in `finalize_stage`
+  from a real blanket snapshot (morphology runtime lexemes, pre-turn
+  commitment count, turn ordinal; violations empty until the V2 blanket
+  check ports in U3); `TurnOptions.essence_v2_ablation` (default
+  `Enabled`); `PipelineTrace.essence_advance` nullable field, recorded
+  only on non-blocked turns, outside replay digests; essence_v2 excluded
+  from `response_plan_v2_state_parity` like `thesis_state`.
+- `qxfx0-codex`: `run_journal_turn_with_essence_ablation`; journal
+  `state_digest` and diary `session_digest` lift the shadow out before
+  hashing, so **pre-U2 diaries still verify on post-U2 binaries**.
+- `qxfx0-cli`: `turn --essence-v2-ablation enabled|commit-disabled`,
+  threaded through the journal and doubt-shadow (incl. diagnostics)
+  paths.
+- `structural_corpus.rs`: B2 parity gate (enabled vs ablated arms over
+  all 71 topics: response/family/blocked byte-equal, state parity, trace
+  + persistence present) and the state-serialization round-trip gate.
+
+Before committing run the full gate (§2 order): `cargo fmt`, workspace
+clippy `-D warnings`, workspace tests, doctor, six V2 gates, census
+`--check`. Suggested message: `feat(self-v2): wire advance_essence into
+Finalize — shadow mode, B2 ablation switch, replay gate (ADR-0043 U2,
+pipeline wiring)`.
 
 ### U3 — «Делиберация»
 Port Field (five components) + Salience contributions + `reconcile`
