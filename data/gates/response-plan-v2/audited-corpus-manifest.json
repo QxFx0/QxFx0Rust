@@ -1,19 +1,19 @@
 {
   "diagnostics": {
-    "claims_total": 171,
-    "exact_clause_surfaces": 63,
-    "fixed_phrase_surfaces": 90,
+    "claims_total": 191,
+    "exact_clause_surfaces": 73,
+    "fixed_phrase_surfaces": 100,
     "governed_clause_surfaces": 18,
-    "topics_total": 81
+    "topics_total": 91
   },
-  "manifest_digest": "047efa17fd49c22d776c57e176ef8262b84fc054eeca7d9c586431a4fbd25876",
+  "manifest_digest": "f806d46f5d1f7c4e20c24be843c27ac5c62d61c3affe80ce2d2a9b1c57e276bf",
   "manifest_id": "response-plan-v2-audited-corpus-v2",
   "schema_version": 2,
   "source_files": {
-    "argued_topics.tsv": "90fed96371bbecef8b4740c9354d30f283b77abb7248c3144756caa99ac9a99d",
+    "argued_topics.tsv": "47581b058faaabac1d986971b4df055454acedadf497069bd7970dcbe25e87d0",
     "concepts.json": "0c17610c9aea4a37f3b1fd87a4a55a149e2c2d5c5968ef0098dc8123fc79b6af",
-    "facts.json": "cb3e1b0e4b9afa9d7455eeea35d5b7dc174bbaf1292c75aea3f6b7295b2d2558",
-    "manifest.json": "791fe14ce1fb07e4f5a54dc5f198193a442d78b8e0147fef691a5647d793402f",
+    "facts.json": "623b755f1e6b19059913a56046bd1eb1bfe64978730219d579df6dbbaa88a681",
+    "manifest.json": "f73b7f2d08cb4c4ef5d05534b04aa4e874e06bc994896b74533b1d778965dfb0",
     "relations.json": "6a5d954c66d9c895b298c11f9e9f82a5d4006423afb409d9e8379bb76e6203d5",
     "valency_frames.tsv": "ffb1cb27c873a412394ab6fa09ec8f75ac793a57775206b84ca8d689eec1da7c"
   },
@@ -1310,6 +1310,62 @@
         }
       }
     },
+    "дом": {
+      "claims": {
+        "74a331994ac0ba9d4b691bff4a5c57f393773faac3ba02ada2b6686fd9124786": {
+          "approved_surface": "покой не в стенах: дом без мира внутри — лишь адрес",
+          "approved_surface_sha256": "525c1bd9c7570f9d2818856577fe9e242c8fb956bcb2c53dc1171e8ef2fbad51",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "0bd7dcb8bf8202fccc3ab063a83cc21856ce7f28b333960373e1d66134c70005",
+          "fact_id": "fact.dom_svyazan.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "дом"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "dom",
+              "source_semantic_id": "concept.дом"
+            }
+          ],
+          "proposition_id": "2078f3d202a43b958337d0292b9738449c6ee8ff2f74cc046beff11ca3cf18ef",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "8da899a1daa096a448d469f7f6071c5e44d1843db04f3a22ccc2538c79f4e8a9": {
+          "approved_surface": "дом связан с покоем",
+          "approved_surface_sha256": "2bf1eacd2f1b4365998c0d088cff704f5b2f9d7dcb6b4514ac7ea39d46d72a22",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "0bd7dcb8bf8202fccc3ab063a83cc21856ce7f28b333960373e1d66134c70005",
+          "expected_clause_surface_sha256": "2bf1eacd2f1b4365998c0d088cff704f5b2f9d7dcb6b4514ac7ea39d46d72a22",
+          "fact_id": "fact.dom_svyazan",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "дом"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "dom",
+              "source_semantic_id": "concept.дом"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "2078f3d202a43b958337d0292b9738449c6ee8ff2f74cc046beff11ca3cf18ef",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
     "дух": {
       "claims": {
         "0c69e9a0bb686afa9f2be25876c290495d7af6b603847346a33c619a5382d8f2": {
@@ -1520,6 +1576,59 @@
             }
           ],
           "proposition_id": "b444633334c8a8b91ef0b2c6352986ca310a937f5317b39387021c619e00bc2a",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
+    "игра": {
+      "claims": {
+        "1f355aaa258ec50ca792d0ada997ac6ea6c11b784d132e89a3597dea2dc25dc8": {
+          "approved_surface": "игра по принуждению — не игра: без свободы это упражнение",
+          "approved_surface_sha256": "35b590c28021415036448c7503e6f910b770522fe8cd44218c2036336577a36e",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "92476a477ec484b6ce59e27ebd48dae689671f75e84f68f4e90af01572e1f4bf",
+          "fact_id": "fact.igra_trebuet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "игра"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "igra",
+              "source_semantic_id": "concept.игра"
+            }
+          ],
+          "proposition_id": "c653f2c60a3dcbca705cf425aadd088af4d3b22b5d92c2d939fb88587d856efb",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "d771eea1373c9dbf3aa14efcc1409f36f64e3b11406edd597b100a6beb6e0810": {
+          "approved_surface": "игра требует свободы",
+          "approved_surface_sha256": "452ca647d55f41e9ad0d08509e41c11648e0f50fa476ad4e0b87ecc544870d2e",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "92476a477ec484b6ce59e27ebd48dae689671f75e84f68f4e90af01572e1f4bf",
+          "expected_clause_surface_sha256": "452ca647d55f41e9ad0d08509e41c11648e0f50fa476ad4e0b87ecc544870d2e",
+          "fact_id": "fact.igra_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "игра"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "igra",
+              "source_semantic_id": "concept.игра"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "c653f2c60a3dcbca705cf425aadd088af4d3b22b5d92c2d939fb88587d856efb",
           "realization_strategy": "clause",
           "surface_validation": "exact_clause"
         }
@@ -2279,6 +2388,50 @@
         }
       }
     },
+    "наука": {
+      "claims": {
+        "22ead1c879d17721b1b4b92389ba342cd6f8d7575cb18ec6616aa5577cfe8e6a": {
+          "approved_surface": "не всё истинное доказуемо: требование доказательств имеет пределы",
+          "approved_surface_sha256": "e22b3e18363c67eef5542a9e4816c844014608cd827235c0e005ca3bd7da1fba",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "4bb677e9ee3e04f0f85bb4fb9d2bf4fd26d69a496310b048507d12925ccfa70c",
+          "fact_id": "fact.nauka_trebuet.counterpoint",
+          "lexical_witnesses": [],
+          "proposition_id": "0898fd0520fbea2c330f1e3f409936681410a74c33cd22ef21a2fe73f9e96f6b",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "b3db9e65d0db47cfff4df7f23bd64e9e34ca13d39f0a5412b1cf481f3c3ac854": {
+          "approved_surface": "наука требует доказательства",
+          "approved_surface_sha256": "c05e2c12ad3939435666d294b4b10f7414eed67fde82b160c92f180efd3ce7e6",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "4bb677e9ee3e04f0f85bb4fb9d2bf4fd26d69a496310b048507d12925ccfa70c",
+          "expected_clause_surface_sha256": "c05e2c12ad3939435666d294b4b10f7414eed67fde82b160c92f180efd3ce7e6",
+          "fact_id": "fact.nauka_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "наука"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "nauka",
+              "source_semantic_id": "concept.наука"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "0898fd0520fbea2c330f1e3f409936681410a74c33cd22ef21a2fe73f9e96f6b",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
     "нация": {
       "claims": {
         "56d2b5e4636f1f2bce0f3237deff496da792a0bf789428435b36e0c0cbb8709a": {
@@ -2329,6 +2482,59 @@
           "proposition_id": "6d01c41db49ace7f05cfa67144d5bcebf234237dab9930366a5f8aed2b0f6582",
           "realization_strategy": "clause",
           "surface_validation": "exact_clause"
+        }
+      }
+    },
+    "обмен": {
+      "claims": {
+        "71238859e2dd2fcb63a30901dc278b1acd34a73aa126cbab526ddb968220c2e4": {
+          "approved_surface": "обмен требует доверия",
+          "approved_surface_sha256": "f10390462998e98cc77fe794ed8f57b5df424d4eccdfb4396325a9c71675e606",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "ae786aedbd24d21f6cc827dbf00ad112dde3f69bdf1140c8d34daf9fd5d64ef7",
+          "expected_clause_surface_sha256": "f10390462998e98cc77fe794ed8f57b5df424d4eccdfb4396325a9c71675e606",
+          "fact_id": "fact.obmen_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "обмен"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "obmen",
+              "source_semantic_id": "concept.обмен"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "a08ced787bff777ae959b2113d02aeaacf25b16e4f69377878bef2eb97535146",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "cc0e9a69adda1c4b1373152c097f7e83b50250221dec9a24716ae9dd8b59fd21": {
+          "approved_surface": "обмен без доверия — лишь торг: выгода считается, а слово нет",
+          "approved_surface_sha256": "915064bfbb2859ab0ae93d374ceb167a47c95aaedff74fc92958b30efad3eb98",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "ae786aedbd24d21f6cc827dbf00ad112dde3f69bdf1140c8d34daf9fd5d64ef7",
+          "fact_id": "fact.obmen_trebuet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "обмен"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "obmen",
+              "source_semantic_id": "concept.обмен"
+            }
+          ],
+          "proposition_id": "a08ced787bff777ae959b2113d02aeaacf25b16e4f69377878bef2eb97535146",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -3071,6 +3277,59 @@
         }
       }
     },
+    "результат": {
+      "claims": {
+        "cfeabf4e9cf379b16059902775eb1a5876da7faeb93469450b00da376fe12341": {
+          "approved_surface": "результат требует труда",
+          "approved_surface_sha256": "39dcc34cb92e7e0919bd07de4b856b48215055c69ad81e1cf5289ede6965cb8e",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "da814596aab922aa49245d7fe254d50b7449601b3f0314e9a9743f9c51134c4b",
+          "expected_clause_surface_sha256": "39dcc34cb92e7e0919bd07de4b856b48215055c69ad81e1cf5289ede6965cb8e",
+          "fact_id": "fact.rezultat_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "результат"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "rezultat",
+              "source_semantic_id": "concept.результат"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "3589b0919732fd3fad7ae37022c956546783ebf84bd916b6524ee963f9a1d8ab",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "eae7e84c0f700d82e615400ab5ebbd20be1ccdae8274f794c07144ec3400b487": {
+          "approved_surface": "случайный результат трудом не заработан: находка — не достижение",
+          "approved_surface_sha256": "b7299a00b7e82d6786351ecf9c7c26af68b1e3a08a82d96b00e9da60c0f33a63",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "da814596aab922aa49245d7fe254d50b7449601b3f0314e9a9743f9c51134c4b",
+          "fact_id": "fact.rezultat_trebuet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "результат"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "rezultat",
+              "source_semantic_id": "concept.результат"
+            }
+          ],
+          "proposition_id": "3589b0919732fd3fad7ae37022c956546783ebf84bd916b6524ee963f9a1d8ab",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
     "ремонт": {
       "claims": {
         "ab2a363734eb16b5118ac3f68ede2aedde4afe6e544a1496caa56284f1b72656": {
@@ -3509,6 +3768,59 @@
         }
       }
     },
+    "семья": {
+      "claims": {
+        "9a7be4cf63b6e93fb23a1ae41cd89b414a7bb883842079628bf3494a5c16d05b": {
+          "approved_surface": "семья без любви — сожительство: ответственность держит, но не греет",
+          "approved_surface_sha256": "4aa99f80aea7af66ebb4f820aa067520fdb3038f6a943bc26c5885fe1e00a278",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "cc80f0b764f34e3d211f8981a50bef62708031715238c056a4c60c3258fb047b",
+          "fact_id": "fact.semya_trebuet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "семья"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "semya",
+              "source_semantic_id": "concept.семья"
+            }
+          ],
+          "proposition_id": "a12ed85314bbb169d1ca690399e49bfdd697920dd723287fce545f7a9753f9be",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "b479dcf4c7d1aefdc1c06fe8231213421457bbe47e30b9900db43d26be43fd36": {
+          "approved_surface": "семья требует любви",
+          "approved_surface_sha256": "52d05f0b3547eb55777a0c7beed2a0abbab82e03d747236bd0f5008b3cbc4bb6",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "cc80f0b764f34e3d211f8981a50bef62708031715238c056a4c60c3258fb047b",
+          "expected_clause_surface_sha256": "52d05f0b3547eb55777a0c7beed2a0abbab82e03d747236bd0f5008b3cbc4bb6",
+          "fact_id": "fact.semya_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "семья"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "semya",
+              "source_semantic_id": "concept.семья"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "a12ed85314bbb169d1ca690399e49bfdd697920dd723287fce545f7a9753f9be",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
     "слушание": {
       "claims": {
         "2f65d098ea8db3350b00c8c78e5cdc885291039305f77e9d4e04467e5da37ecc": {
@@ -3826,6 +4138,59 @@
         }
       }
     },
+    "сомнение": {
+      "claims": {
+        "2aee5434bdc3915ebdc972a732d01c74ef63772a91b6dac18606d8d468077e6f": {
+          "approved_surface": "сомнение во всём подряд — не честность, а отказ судить",
+          "approved_surface_sha256": "55018e5558b067c5cb1b39bc9b8166c0fb11f09fc3c147635f9ce3bcd85dd7c6",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "635bd5209f1a7ad48a24ebe3bdc9df6a7ec474a64e4d182868e03081fc137cd1",
+          "fact_id": "fact.somnenie_kontrastiruet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "сомнение"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "somnenie",
+              "source_semantic_id": "concept.сомнение"
+            }
+          ],
+          "proposition_id": "dc10cba3492a18d7bd5c7c8ecbda8b6e2a6ea31329b76af49ba08824d17888bb",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "2e438b4c1989a2fa9dd10173042c667664aab0b00af6ea401294b455d7a1dec6": {
+          "approved_surface": "сомнение контрастирует с истиной",
+          "approved_surface_sha256": "7872e4da7b99bbbc04140e1ca55fbc064b905e6d754349cb56ca973d93f0c6e2",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "635bd5209f1a7ad48a24ebe3bdc9df6a7ec474a64e4d182868e03081fc137cd1",
+          "expected_clause_surface_sha256": "7872e4da7b99bbbc04140e1ca55fbc064b905e6d754349cb56ca973d93f0c6e2",
+          "fact_id": "fact.somnenie_kontrastiruet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "сомнение"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "somnenie",
+              "source_semantic_id": "concept.сомнение"
+            },
+            {
+              "accepted_surfaces": [
+                "контрастирует"
+              ],
+              "kind": "head",
+              "source_binding": "kontrastiruet",
+              "source_semantic_id": "RelContrastsWith"
+            }
+          ],
+          "proposition_id": "dc10cba3492a18d7bd5c7c8ecbda8b6e2a6ea31329b76af49ba08824d17888bb",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
     "справедливость": {
       "claims": {
         "76f647f8c6fd4c41675590908727a2c29c098fcc8124fc0fb1b622bd49f0ebe0": {
@@ -3953,6 +4318,62 @@
           "proposition_id": "a1eeaa6b0e2bf493dce620e09fb536d221515dc68a68ecbee6209ede2dff4956",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "страдание": {
+      "claims": {
+        "0fce60d6bcdbe33b0a89fd371f49cd8b906a2e8eb73a4fd26a8ce0b675d676d1": {
+          "approved_surface": "не всякое страдание осмысленно: боль без проживания — просто боль",
+          "approved_surface_sha256": "85b8a90f1f71389de8989a4f3609ba9891fda9456aadffab59ee7a98f8ba44ff",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "0c499f95e9f9486822acc95b4154c446d4391211dfd6690ff82ff8a9c940f3d8",
+          "fact_id": "fact.stradanie_svyazan.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "страдание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "stradanie",
+              "source_semantic_id": "concept.страдание"
+            }
+          ],
+          "proposition_id": "2b9d69f7c0c5d7c9226d6f840068a4a7f0e036a9ead486a6edf5b8514927cfae",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "ceebf56a1dbd65fd4d8632c4c1c4c874fae90debf232ad49347d8d5c2ac9fe63": {
+          "approved_surface": "страдание связано со смыслом",
+          "approved_surface_sha256": "f3de6d2b021b12ef5705c0d093c9d35bf414bbc7cea038a93f586b0171b58f75",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "0c499f95e9f9486822acc95b4154c446d4391211dfd6690ff82ff8a9c940f3d8",
+          "expected_clause_surface_sha256": "f3de6d2b021b12ef5705c0d093c9d35bf414bbc7cea038a93f586b0171b58f75",
+          "fact_id": "fact.stradanie_svyazan",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "страдание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "stradanie",
+              "source_semantic_id": "concept.страдание"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "2b9d69f7c0c5d7c9226d6f840068a4a7f0e036a9ead486a6edf5b8514927cfae",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -4100,6 +4521,62 @@
             }
           ],
           "proposition_id": "b84b849a4ecc37a2c0822b87cf885d8ad99e750afaa7aec7ce4d46266416562f",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
+    "талант": {
+      "claims": {
+        "6bf9a95ae0cd157dad36d4760bf059703130edaea4071c5dab9b72b12b5cd64c": {
+          "approved_surface": "талант без труда — задаток: дар раскрывается только работой",
+          "approved_surface_sha256": "ef17dd5c48ef8702d7205e7b6345223c8e377f0dc1de6824fb76996aff8a6640",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "0a88ead20a6b108d5e9e011ded288798302e1ceac1de6a461ff79410f20f48b5",
+          "fact_id": "fact.talant_svyazan.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "талант"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "talant",
+              "source_semantic_id": "concept.талант"
+            }
+          ],
+          "proposition_id": "ac51f5454845ed98e6d184e1400f227482e514d00bfb80d0caed2dfc4c8df742",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "fe6db06664498d3960ccbe4a3c89bf372264a193ee3b66e7974973d27c119814": {
+          "approved_surface": "талант связан с трудом",
+          "approved_surface_sha256": "d6b1a18496c3e0da3fd4321f979d04723fe3eb7c3fa231803888c1ed1e0c7e44",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "0a88ead20a6b108d5e9e011ded288798302e1ceac1de6a461ff79410f20f48b5",
+          "expected_clause_surface_sha256": "d6b1a18496c3e0da3fd4321f979d04723fe3eb7c3fa231803888c1ed1e0c7e44",
+          "fact_id": "fact.talant_svyazan",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "талант"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "talant",
+              "source_semantic_id": "concept.талант"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "ac51f5454845ed98e6d184e1400f227482e514d00bfb80d0caed2dfc4c8df742",
           "realization_strategy": "clause",
           "surface_validation": "exact_clause"
         }
@@ -4261,6 +4738,59 @@
             }
           ],
           "proposition_id": "63a2316b1557ee359fb18ee5aceb046b323c251119c720188297b740f1ccaf1d",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
+    "успех": {
+      "claims": {
+        "32eda26a761c52a4169c082b75b47ae74b8d3fcd91d3812ffd123eab24c9b0f1": {
+          "approved_surface": "успех без труда бывает случайностью: удача — не заслуга",
+          "approved_surface_sha256": "f990df593cb2c34c33361419dfb260d4c54e34df762aebd5d167b20490788ebc",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "04601c89542f184b856e91276fe424fab0826c430b3c6c6795bc2d01bc1d0501",
+          "fact_id": "fact.uspeh_trebuet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "успех"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "uspeh",
+              "source_semantic_id": "concept.успех"
+            }
+          ],
+          "proposition_id": "95b1e6ea491cfa25d27198b932ea85a1ae789d4a205870d47552b3921ffde167",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "cc2f5adfceedd608ce2b16046a3b288581719182129f331bb870a4295419dcd5": {
+          "approved_surface": "успех требует труда",
+          "approved_surface_sha256": "1ce293ea69d36b053d221c33b2b4fd3d7ffb4a695635b36ae7be6700a6145c9f",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "04601c89542f184b856e91276fe424fab0826c430b3c6c6795bc2d01bc1d0501",
+          "expected_clause_surface_sha256": "1ce293ea69d36b053d221c33b2b4fd3d7ffb4a695635b36ae7be6700a6145c9f",
+          "fact_id": "fact.uspeh_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "успех"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "uspeh",
+              "source_semantic_id": "concept.успех"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "95b1e6ea491cfa25d27198b932ea85a1ae789d4a205870d47552b3921ffde167",
           "realization_strategy": "clause",
           "surface_validation": "exact_clause"
         }

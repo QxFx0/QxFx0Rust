@@ -83,3 +83,13 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 творчество	tvorchestvo_predpolagaet	tvorchestvo	predpolagaet	voobrazhenie	творчество предполагает воображение	воображение без воплощения — не творчество: нужен результат, а не только образы	
 уважение	uvazhenie_predpolagaet	uvazhenie	predpolagaet	lichnost	уважение предполагает личность	вежливость — не уважение: без признания личности это лишь форма	
 человек	chelovek_trebuet	chelovek	trebuet	svoboda	человек требует свободы	человек не сводится к нуждам: свобода и сознание даны ему, а не выведены из требований	
+дом	dom_svyazan	dom	svyazan	pokoy	дом связан с покоем	покой не в стенах: дом без мира внутри — лишь адрес	
+игра	igra_trebuet	igra	trebuet	svoboda	игра требует свободы	игра по принуждению — не игра: без свободы это упражнение	
+результат	rezultat_trebuet	rezultat	trebuet	trud	результат требует труда	случайный результат трудом не заработан: находка — не достижение	
+семья	semya_trebuet	semya	trebuet	lyubov	семья требует любви	семья без любви — сожительство: ответственность держит, но не греет	
+сомнение	somnenie_kontrastiruet	somnenie	kontrastiruet	istina	сомнение контрастирует с истиной	сомнение во всём подряд — не честность, а отказ судить	
+обмен	obmen_trebuet	obmen	trebuet	doverie	обмен требует доверия	обмен без доверия — лишь торг: выгода считается, а слово нет	
+страдание	stradanie_svyazan	stradanie	svyazan	smysl	страдание связано со смыслом	не всякое страдание осмысленно: боль без проживания — просто боль	
+талант	talant_svyazan	talant	svyazan	trud	талант связан с трудом	талант без труда — задаток: дар раскрывается только работой	
+успех	uspeh_trebuet	uspeh	trebuet	trud	успех требует труда	успех без труда бывает случайностью: удача — не заслуга	
+наука	nauka_trebuet	nauka	trebuet	dokazatelstvo	наука требует доказательства	не всё истинное доказуемо: требование доказательств имеет пределы	

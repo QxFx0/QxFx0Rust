@@ -1570,7 +1570,7 @@ fn test_shadow_plan_trace_records_unknown_topic_recovery() {
 fn test_shadow_plan_refuses_unaudited_content_for_recognized_topic() {
     let input = TurnInput {
         session_id: "trace-unadmitted-topic".into(),
-        raw_text: "что такое дом?".into(),
+        raw_text: "что такое природа?".into(),
     };
     let mut state = test_state(&input.session_id);
     let (output, trace) = process_turn_with_options_and_trace(
@@ -1605,18 +1605,18 @@ fn test_shadow_plan_refuses_unaudited_content_for_recognized_topic() {
     );
     assert_eq!(
         plan_step.metadata.get("plan_topic").map(String::as_str),
-        Some("дом")
+        Some("природа")
     );
 }
 
 #[test]
 fn test_recognized_but_unadmitted_topic_carries_corpus_boundary_marker() {
-    // Honesty boundary (141 recognized / 81 admitted): a graph-composed
+    // Honesty boundary (141 recognized / 91 admitted): a graph-composed
     // response for a recognized topic without an admitted declarative plan
     // must say so on its surface, while admitted topics stay byte-identical.
     let unadmitted = TurnInput {
         session_id: "trace-boundary-marker".into(),
-        raw_text: "что такое дом?".into(),
+        raw_text: "что такое природа?".into(),
     };
     let mut unadmitted_state = test_state(&unadmitted.session_id);
     let (output, trace) = process_turn_with_options_and_trace(
@@ -1627,7 +1627,7 @@ fn test_recognized_but_unadmitted_topic_carries_corpus_boundary_marker() {
     assert!(
         output
             .response
-            .contains("Граница корпуса: тема «дом» распознана"),
+            .contains("Граница корпуса: тема «природа» распознана"),
         "unadmitted-topic response must carry the boundary marker, got: {}",
         output.response
     );
@@ -1647,7 +1647,7 @@ fn test_recognized_but_unadmitted_topic_carries_corpus_boundary_marker() {
     let mut twin_state = test_state("trace-boundary-marker-twin");
     let twin = TurnInput {
         session_id: "trace-boundary-marker-twin".into(),
-        raw_text: "что такое дом?".into(),
+        raw_text: "что такое природа?".into(),
     };
     let twin_output = process_turn_with_options(&twin, &mut twin_state, TurnOptions::new());
     assert_eq!(output.response, twin_output.response);

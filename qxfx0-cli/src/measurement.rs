@@ -383,10 +383,10 @@ mod tests {
     #[test]
     fn renderer_audit_covers_every_admitted_topic() {
         let report = run_renderer_diversity_audit(3).unwrap();
-        assert_eq!(report.audited_topics, 81);
-        assert_eq!(report.ready_plans, 81);
+        assert_eq!(report.audited_topics, 91);
+        assert_eq!(report.ready_plans, 91);
         assert!(report.blocked_topics.is_empty());
-        assert_eq!(report.topics.len(), 81);
-        assert_eq!(report.unique_responses, 81);
+        assert_eq!(report.topics.len(), 91);
+        assert_eq!(report.unique_responses, 91);
     }
 }

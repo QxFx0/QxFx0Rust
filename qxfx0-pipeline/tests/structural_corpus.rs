@@ -256,8 +256,8 @@ fn audited_v1_fixture_matches_the_admission_boundary() {
         .map(|topic| topic.topic().as_str())
         .collect::<BTreeSet<_>>();
 
-    assert_eq!(cases.len(), 81);
-    assert_eq!(fixture_topics.len(), 81);
+    assert_eq!(cases.len(), 91);
+    assert_eq!(fixture_topics.len(), 91);
     assert_eq!(fixture_topics, admitted_topics);
 }
 
@@ -271,7 +271,7 @@ fn audited_v1_structural_gate_passes_in_fresh_sessions() {
 }
 
 #[test]
-fn audited_v1_structural_gate_passes_in_one_eighty_turn_session() {
+fn audited_v1_structural_gate_passes_in_one_ninety_turn_session() {
     let session_id = "structural-long-session";
     let mut state = test_state(session_id);
 
@@ -279,8 +279,8 @@ fn audited_v1_structural_gate_passes_in_one_eighty_turn_session() {
         assert_structural_plan(case, &mut state, session_id, turn + 1);
     }
 
-    assert_eq!(state.dialogue.turn_count, 81);
-    assert_eq!(state.dialogue.history.len(), 81);
+    assert_eq!(state.dialogue.turn_count, 91);
+    assert_eq!(state.dialogue.history.len(), 91);
 }
 
 #[test]
@@ -290,7 +290,7 @@ fn recognized_but_unadmitted_topic_keeps_an_explicit_fallback_reason() {
     let (output, trace) = process_turn_with_options_and_trace(
         &TurnInput {
             session_id: session_id.into(),
-            raw_text: "что такое дом?".into(),
+            raw_text: "что такое природа?".into(),
         },
         &mut state,
         TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
@@ -309,7 +309,10 @@ fn recognized_but_unadmitted_topic_keeps_an_explicit_fallback_reason() {
         metadata.get("fallback_reason").map(String::as_str),
         Some(FallbackReason::NoAdmissiblePredicate.as_str())
     );
-    assert_eq!(metadata.get("plan_topic").map(String::as_str), Some("дом"));
+    assert_eq!(
+        metadata.get("plan_topic").map(String::as_str),
+        Some("природа")
+    );
 }
 
 fn assert_plan_renderer_surface(
@@ -374,7 +377,7 @@ fn audited_plan_renderer_passes_surface_gate_in_fresh_sessions() {
 }
 
 #[test]
-fn audited_plan_renderer_passes_surface_gate_in_one_eighty_turn_session() {
+fn audited_plan_renderer_passes_surface_gate_in_one_ninety_turn_session() {
     let session_id = "surface-long-session";
     let mut state = test_state(session_id);
 
@@ -382,8 +385,8 @@ fn audited_plan_renderer_passes_surface_gate_in_one_eighty_turn_session() {
         assert_plan_renderer_surface(case, &mut state, session_id, turn + 1);
     }
 
-    assert_eq!(state.dialogue.turn_count, 81);
-    assert_eq!(state.dialogue.history.len(), 81);
+    assert_eq!(state.dialogue.turn_count, 91);
+    assert_eq!(state.dialogue.history.len(), 91);
 }
 
 #[test]
@@ -423,7 +426,7 @@ fn shadow_mode_compares_plan_surface_without_changing_legacy_output() {
 #[test]
 fn audited_plan_flag_keeps_fallback_and_external_routes_on_legacy_contracts() {
     for (name, prompt) in [
-        ("unadmitted", "что такое дом?"),
+        ("unadmitted", "что такое природа?"),
         ("greeting", "привет"),
         ("purpose", "в чём функция стола?"),
         ("world-cause", "почему небо голубое?"),

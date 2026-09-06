@@ -10,14 +10,14 @@ The CLI is the supported production surface. It includes:
 
 - atomic SQLite persistence and automatic compatibility migration to schema v10;
 - seven-stage turn processing with guard rollback and governance events;
-- 141 recognized topics, of which 81 have audited declarative content with
-  171 typed claims;
+- 141 recognized topics, of which 91 have audited declarative content with
+  191 typed claims;
 - 20k-lemma noun morphology plus 30,809 digest-pinned verb paradigms
   (reflexive included), 42,239 adjective and 68 closed-class pronoun
   paradigms, rule-based out-of-vocabulary declension and preposition
   government;
-- 207 seed atoms, 346 semantic relations and 171 curated `FactRecord` values;
-- an 81-topic/171-claim audited ResponsePlan V2 corpus with manifest, replay,
+- 207 seed atoms, 346 semantic relations and 191 curated `FactRecord` values;
+- a 91-topic/191-claim audited ResponsePlan V2 corpus with manifest, replay,
   realization-parity and zero-downgrade gates;
 - the «Кодекс» practice loop: deterministic topic revisits, prior-position
   callbacks, explicit contradiction events, practice-day reporting and a
@@ -140,7 +140,7 @@ Example output:
 Ежедневная петля:
 
 ```bash
-# 1. Тема дня: детерминированный выбор из 81 аудированной темы (UTC-день),
+# 1. Тема дня: детерминированный выбор из 91 аудированной темы (UTC-день),
 #    тезис и контрпункт из проверенного корпуса, два вопроса для записи.
 qxfx0 reflect
 qxfx0 reflect свобода          # явная тема; неаудированная — отказ с ошибкой
@@ -211,15 +211,15 @@ QxFx0 Rust v0.1.1 health check:
   [OK] SQLite: schema v10, quick_check/foreign keys/session states valid
   [OK] Performance diagnostics: opt-in qxfx0.turn-diagnostics.v1 records stage timing, SQLite write-lock/commit timing, and host metadata outside session state
   [OK] Seed graph: 207 atoms, 346 relations, 141 covered topics
-  [OK] Content plan assets: recognition_topics_total=141, content_predicates_total=171, argued_topics_admitted=81, argued_predicates_admitted=81, profile_enabled=audited_v1
+  [OK] Content plan assets: recognition_topics_total=141, content_predicates_total=191, argued_topics_admitted=91, argued_predicates_admitted=91, profile_enabled=audited_v1
   [OK] Templates: 127 templates for 33 types; direct coverage 24/31 used relation types
   [OK] Morphology: seed dictionary and case conversion operational
   [OK] Verb lexicon: 30809 digest-pinned verb paradigms; conjugation probes operational
   [OK] Adjective lexicon: 42239 digest-pinned adjective paradigms; probes operational
   [OK] Pronoun lexicon: 68 digest-pinned closed-class paradigms
   [OK] Code registry: 97 typed atoms, 1353 relations, 1322 RelComposes edges
-  [OK] Knowledge pack: active immutable pack fingerprint sha256:…, 171 facts
-  [OK] Curated FactRegistry: 171 curated FactId records re-resolve successfully
+  [OK] Knowledge pack: active immutable pack fingerprint sha256:…, 191 facts
+  [OK] Curated FactRegistry: 191 curated FactId records re-resolve successfully
   [OK] Perspective boundary: bounded PerspectiveState valid; fact-grounded rollout default is Disabled
   [OK] Stance authority: signed attestation, bounded provenance, and temporal contract versions valid
   Status: OK
@@ -260,7 +260,7 @@ not flush the operating system's filesystem page cache:
 python3 scripts/benchmark_runtime.py --samples 10
 ```
 
-Renderer breadth is measured independently across all 81 audited topics. The
+Renderer breadth is measured independently across all 91 audited topics. The
 audit reports unique responses and sentences, repeated sentence counts, and
 topic-normalized opening n-grams. It is diagnostic and does not change the
 renderer or semantic state:
@@ -419,7 +419,7 @@ Run it in isolation with:
 cargo test --locked -p qxfx0-pipeline --test structural_corpus
 ```
 
-It validates all 81 admitted topics in fresh sessions and one shared 81-turn
+It validates all 91 admitted topics in fresh sessions and one shared 91-turn
 session: topic and canonical slots, exact predicate set, claim roles,
 derivation, provenance, no repeated claims, terminal punctuation, and explicit
 fallback for recognized but unadmitted content. It observes `plan_shadow`; the
@@ -449,13 +449,13 @@ provided.
 ## Operational limits
 
 - QxFx0 is a deterministic local semantic system, not a general-purpose factual assistant.
-- Recognition covers 141 topics, with declarative rendering currently admitted for 81.
-- The remaining 60 recognized topics are answered from graph composition, and
+- Recognition covers 141 topics, with declarative rendering currently admitted for 91.
+- The remaining 50 recognized topics are answered from graph composition, and
   every such response carries an explicit `Граница корпуса` boundary sentence
   (plus `boundary_marker=true` in the render trace): graph-composed reflection,
   not an audited claim. Falling back silently would let composed surfaces pass
   as curated knowledge.
-- The audited profile contains 171 typed claims across 81 admitted topics; each
+- The audited profile contains 191 typed claims across 91 admitted topics; each
   topic has a thesis and counterpoint, with an optional consequence where the
   corpus supplies one.
 - The first product acceptance proof covers 30 deterministic journal days and
