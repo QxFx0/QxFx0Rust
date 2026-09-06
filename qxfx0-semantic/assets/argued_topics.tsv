@@ -93,3 +93,13 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 талант	talant_svyazan	talant	svyazan	trud	талант связан с трудом	талант без труда — задаток: дар раскрывается только работой	
 успех	uspeh_trebuet	uspeh	trebuet	trud	успех требует труда	успех без труда бывает случайностью: удача — не заслуга	
 наука	nauka_trebuet	nauka	trebuet	dokazatelstvo	наука требует доказательства	не всё истинное доказуемо: требование доказательств имеет пределы	
+дружба	druzhba_trebuet	druzhba	trebuet	doverie	дружба требует доверия	дружба с проверками — не дружба: доверие не требует расписок	
+желание	zhelanie_predpolagaet	zhelanie	predpolagaet	svoboda	желание предполагает свободу	не всякое желание свободно: влечение не спрашивает разрешения	
+коммуникация	kommunikatsiya_napravlena	kommunikatsiya	napravlena	ponimanie	коммуникация направлена на понимание	поток сообщений — не коммуникация: без понимания это шум	
+культура	kultura_trebuet	kultura	trebuet	yazyk	культура требует языка	мёртвый язык хранит культуру, но не продолжает её	
+мораль	moral_napravlena	moral	napravlena	dobro	мораль направлена на добро	мораль без добра — регламент: правила есть, а добра нет	
+мотивация	motivatsiya_trebuet	motivatsiya	trebuet	smysl	мотивация требует смысла	мотивация без смысла — допинг: разгоняет, но не ведёт	
+образование	obrazovanie_napravlena	obrazovanie	napravlena	znanie	образование направлено на знание	образование, направленное мимо знания, — конвейер дипломов	
+развитие	razvitie_napravlena	razvitie	napravlena	lichnost	развитие направлено на личность	рост — не развитие: больше не значит зрелее	
+ревность	revnost_kontrastiruet	revnost	kontrastiruet	doverie	ревность контрастирует с доверием	ревность сторожит не доверие, а страх потери	
+технология	tekhnologiya_podderzhivaet	tekhnologiya	podderzhivaet	progress	технология поддерживает прогресс	не всякая технология — прогресс: ускорение — не направление	

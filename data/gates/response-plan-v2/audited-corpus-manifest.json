@@ -1,19 +1,19 @@
 {
   "diagnostics": {
-    "claims_total": 191,
-    "exact_clause_surfaces": 73,
-    "fixed_phrase_surfaces": 100,
+    "claims_total": 211,
+    "exact_clause_surfaces": 83,
+    "fixed_phrase_surfaces": 110,
     "governed_clause_surfaces": 18,
-    "topics_total": 91
+    "topics_total": 101
   },
-  "manifest_digest": "f806d46f5d1f7c4e20c24be843c27ac5c62d61c3affe80ce2d2a9b1c57e276bf",
+  "manifest_digest": "c58009c1cf8da6926927cc3d45929c0812fbb69e32111f086ee7abb1d276d24e",
   "manifest_id": "response-plan-v2-audited-corpus-v2",
   "schema_version": 2,
   "source_files": {
-    "argued_topics.tsv": "47581b058faaabac1d986971b4df055454acedadf497069bd7970dcbe25e87d0",
-    "concepts.json": "0c17610c9aea4a37f3b1fd87a4a55a149e2c2d5c5968ef0098dc8123fc79b6af",
-    "facts.json": "623b755f1e6b19059913a56046bd1eb1bfe64978730219d579df6dbbaa88a681",
-    "manifest.json": "f73b7f2d08cb4c4ef5d05534b04aa4e874e06bc994896b74533b1d778965dfb0",
+    "argued_topics.tsv": "a7286b40eb429b2386da957f930f35910d4baae2dab00f7d42ee63f7166db26c",
+    "concepts.json": "017ba3f7e4712c1aa576f5f57b225a44902b6b4aaede9f121e29871f887afd11",
+    "facts.json": "8751b075fd3b80015734c4b625260d385754352fc0706a1b380bea7340d24f54",
+    "manifest.json": "07ea43b89c822fe99de99e157491ed7f472c37f3a387a18bd59043cf50ae4c5e",
     "relations.json": "6a5d954c66d9c895b298c11f9e9f82a5d4006423afb409d9e8379bb76e6203d5",
     "valency_frames.tsv": "ffb1cb27c873a412394ab6fa09ec8f75ac793a57775206b84ca8d689eec1da7c"
   },
@@ -1366,6 +1366,67 @@
         }
       }
     },
+    "дружба": {
+      "claims": {
+        "4267455260596df7830b705c3f02670aa82a88605fec82e73e2cec93cf344618": {
+          "approved_surface": "дружба с проверками — не дружба: доверие не требует расписок",
+          "approved_surface_sha256": "7480e674654172381e6a5e017ed374951c22b270e656e382a66157fa3daebcba",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "6937c6f235645afdb7db6662edce39a99766a9e0e71fcd3b69542fc750286982",
+          "fact_id": "fact.druzhba_trebuet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "дружба"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "druzhba",
+              "source_semantic_id": "concept.дружба"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "f69ba56891eb7da9a3444334d71ec0791bdbfdfeffcc1ea9f71369f60d5fb2db",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "9c9b13a6beff53b8beab1fe436756889ab75c92f9b717e745b364809f1b5b981": {
+          "approved_surface": "дружба требует доверия",
+          "approved_surface_sha256": "d2ae476b2b8fc5fe4452c268e9dec53a5d745bb9b6d521ed88d633669cb375dd",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "6937c6f235645afdb7db6662edce39a99766a9e0e71fcd3b69542fc750286982",
+          "expected_clause_surface_sha256": "d2ae476b2b8fc5fe4452c268e9dec53a5d745bb9b6d521ed88d633669cb375dd",
+          "fact_id": "fact.druzhba_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "дружба"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "druzhba",
+              "source_semantic_id": "concept.дружба"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "f69ba56891eb7da9a3444334d71ec0791bdbfdfeffcc1ea9f71369f60d5fb2db",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
     "дух": {
       "claims": {
         "0c69e9a0bb686afa9f2be25876c290495d7af6b603847346a33c619a5382d8f2": {
@@ -1416,6 +1477,59 @@
           "proposition_id": "d66283a605240468fa32ea1cfc31691233577adcced1ef3c5f215ee0e4253609",
           "realization_strategy": "clause",
           "surface_validation": "exact_clause"
+        }
+      }
+    },
+    "желание": {
+      "claims": {
+        "2ee52deb8ec1ce34e86991275d6dfe0188c1f587bdfa246406996c20b306c76a": {
+          "approved_surface": "желание предполагает свободу",
+          "approved_surface_sha256": "19115505e5792bcc03a11b879d4630032e9722ad0c10378ee32da055ea37d2fc",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "caf6a4c2b9f1e37a82b3f007e98891ec6d887ba80fca7a63c06466fe7a4b5092",
+          "expected_clause_surface_sha256": "19115505e5792bcc03a11b879d4630032e9722ad0c10378ee32da055ea37d2fc",
+          "fact_id": "fact.zhelanie_predpolagaet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "желание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "zhelanie",
+              "source_semantic_id": "concept.желание"
+            },
+            {
+              "accepted_surfaces": [
+                "предполагает"
+              ],
+              "kind": "head",
+              "source_binding": "predpolagaet",
+              "source_semantic_id": "RelPresupposes"
+            }
+          ],
+          "proposition_id": "a97e99651bfefb4fa713753ff7d5c448d297c5f0a8b02cfcbe20956b51053d24",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "e42124ecd7847d9a7066639fd7511d5363f7142e41b7b881311b7cdf80ae64c5": {
+          "approved_surface": "не всякое желание свободно: влечение не спрашивает разрешения",
+          "approved_surface_sha256": "d15c149be2c7f6fd26f815bb14da1143d02f1983ae41305873c9cf46bef0ef92",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "caf6a4c2b9f1e37a82b3f007e98891ec6d887ba80fca7a63c06466fe7a4b5092",
+          "fact_id": "fact.zhelanie_predpolagaet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "желание"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "zhelanie",
+              "source_semantic_id": "concept.желание"
+            }
+          ],
+          "proposition_id": "a97e99651bfefb4fa713753ff7d5c448d297c5f0a8b02cfcbe20956b51053d24",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -1962,6 +2076,62 @@
         }
       }
     },
+    "коммуникация": {
+      "claims": {
+        "0b247d6e146f45a6329ed1f4cfd9ff4098e9bde2d8134f27da632c34e193595d": {
+          "approved_surface": "коммуникация направлена на понимание",
+          "approved_surface_sha256": "2d4ec223122523ee90363cffb2b468fd8a293759eaf696876915955035265c3f",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "e601d9b466e4815abf68e3f2af7ddf2824982087ad744ec63354197170e31fd6",
+          "expected_clause_surface_sha256": "2d4ec223122523ee90363cffb2b468fd8a293759eaf696876915955035265c3f",
+          "fact_id": "fact.kommunikatsiya_napravlena",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "коммуникация"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "kommunikatsiya",
+              "source_semantic_id": "concept.коммуникация"
+            },
+            {
+              "accepted_surfaces": [
+                "направлен",
+                "направлена",
+                "направлено",
+                "направлены"
+              ],
+              "kind": "head",
+              "source_binding": "napravlena",
+              "source_semantic_id": "RelDirectedAt"
+            }
+          ],
+          "proposition_id": "210a8963ec4201637a70aaff5fc289c9af32fd1d6ff2794948c808ba5b364ca7",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "93d24cc76a92571e3a83486f82aca7d8d3bb2d2b7c819cbb48898bb73449cced": {
+          "approved_surface": "поток сообщений — не коммуникация: без понимания это шум",
+          "approved_surface_sha256": "28d4cbc430b790d83416819cbd537f5e48117a468be2b6aec3cc610a9e1241a3",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "e601d9b466e4815abf68e3f2af7ddf2824982087ad744ec63354197170e31fd6",
+          "fact_id": "fact.kommunikatsiya_napravlena.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "коммуникация"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "kommunikatsiya",
+              "source_semantic_id": "concept.коммуникация"
+            }
+          ],
+          "proposition_id": "210a8963ec4201637a70aaff5fc289c9af32fd1d6ff2794948c808ba5b364ca7",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
     "красота": {
       "claims": {
         "123a4fb50cdda1a0c079eaa266ef56032d292f393102a8e3f07805bc596bb12d": {
@@ -2012,6 +2182,50 @@
           "proposition_id": "da0bd9c909b049fb5354884056294bf9e7420066ce341e37cad153b31ca85e0e",
           "realization_strategy": "clause",
           "surface_validation": "exact_clause"
+        }
+      }
+    },
+    "культура": {
+      "claims": {
+        "c87eced081f849bf55970f850e98d6d22858ecee0a8277743d4c5c85b081cd32": {
+          "approved_surface": "культура требует языка",
+          "approved_surface_sha256": "7c9fc71ea8b265466f517bd55ca606f82ca4c019162cf8dd6652511cc838ed29",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "0b382ba3ac8c1c3e86ebeb0826743b71e1a5c9a2090bc288dd27cc10ff43deef",
+          "expected_clause_surface_sha256": "7c9fc71ea8b265466f517bd55ca606f82ca4c019162cf8dd6652511cc838ed29",
+          "fact_id": "fact.kultura_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "культура"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "kultura",
+              "source_semantic_id": "concept.культура"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "8d0e7f45675d690b890a573e23d7652c6d6a3e236da9cebd47b67b1baec32a2c",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "fff4c1f4a3f743dfbc42d151105896ec8c76da4b5519928ed4522f66b3ce16af": {
+          "approved_surface": "мёртвый язык хранит культуру, но не продолжает её",
+          "approved_surface_sha256": "0b6bbc8822add65a5b10b6081dfe2e0c8127a3c8358e7fd8e319fa8d2f557ee5",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "0b382ba3ac8c1c3e86ebeb0826743b71e1a5c9a2090bc288dd27cc10ff43deef",
+          "fact_id": "fact.kultura_trebuet.counterpoint",
+          "lexical_witnesses": [],
+          "proposition_id": "8d0e7f45675d690b890a573e23d7652c6d6a3e236da9cebd47b67b1baec32a2c",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
         }
       }
     },
@@ -2173,6 +2387,115 @@
           "proposition_id": "8a51856cbcf0210d79a9e3253eca6cfa0ecdc7c421b0ad855dd3b3596add3fd9",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "мораль": {
+      "claims": {
+        "dc3eee6ff0a6d58f8237b801c8eabc04830be02d147ed89aacb360bda4f3d98c": {
+          "approved_surface": "мораль без добра — регламент: правила есть, а добра нет",
+          "approved_surface_sha256": "1bbbb0c53d9cb6ebba2761732ac949a7a47bfed03ca5f678dd767e2070d776c6",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "9ed7324379a459339be7fd8f6f9a251240d4b1b915ea992f94f2f82747542917",
+          "fact_id": "fact.moral_napravlena.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "мораль"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "moral",
+              "source_semantic_id": "concept.мораль"
+            }
+          ],
+          "proposition_id": "bd18f2d4f664e696826cc2c38f91e7ee50be30f4eea3c7a677a1c84b0ea20756",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "fdf72a3641ccf75439c657bfc020386caf4ef4128dc2d9f0a7227f68ffb678b8": {
+          "approved_surface": "мораль направлена на добро",
+          "approved_surface_sha256": "d22ccf0e177da33be2d0a40c449957a115450a59a7e2e832ab84b933f6d39601",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "9ed7324379a459339be7fd8f6f9a251240d4b1b915ea992f94f2f82747542917",
+          "expected_clause_surface_sha256": "d22ccf0e177da33be2d0a40c449957a115450a59a7e2e832ab84b933f6d39601",
+          "fact_id": "fact.moral_napravlena",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "мораль"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "moral",
+              "source_semantic_id": "concept.мораль"
+            },
+            {
+              "accepted_surfaces": [
+                "направлен",
+                "направлена",
+                "направлено",
+                "направлены"
+              ],
+              "kind": "head",
+              "source_binding": "napravlena",
+              "source_semantic_id": "RelDirectedAt"
+            }
+          ],
+          "proposition_id": "bd18f2d4f664e696826cc2c38f91e7ee50be30f4eea3c7a677a1c84b0ea20756",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
+    "мотивация": {
+      "claims": {
+        "01c2dc4706b95fc796cd867d8ecf1864ee5a18e057fd01c506d94da1f15e343e": {
+          "approved_surface": "мотивация без смысла — допинг: разгоняет, но не ведёт",
+          "approved_surface_sha256": "c758e8dfdcba3498f6c8316ac7edc134aee1b1914adc74661fd4f9ad364a3d33",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "e3022383d3573bae773d5c73ff4c6fbe4cb0ed3bf7f3127624ced60df51e7b24",
+          "fact_id": "fact.motivatsiya_trebuet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "мотивация"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "motivatsiya",
+              "source_semantic_id": "concept.мотивация"
+            }
+          ],
+          "proposition_id": "b544423c3b5d6fa4778c5e0c27394875828a1881f850aa5f7c24f5f2fdf1a9bf",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "86817a81d84e372f4f46145cad895d2cfb3767f1ebd500f21c7d9d4bdcc97fc4": {
+          "approved_surface": "мотивация требует смысла",
+          "approved_surface_sha256": "24e76772dabe89a90d251fb5b9bd572a997881bcc5476a61b199e7a59222bbe8",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "e3022383d3573bae773d5c73ff4c6fbe4cb0ed3bf7f3127624ced60df51e7b24",
+          "expected_clause_surface_sha256": "24e76772dabe89a90d251fb5b9bd572a997881bcc5476a61b199e7a59222bbe8",
+          "fact_id": "fact.motivatsiya_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "мотивация"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "motivatsiya",
+              "source_semantic_id": "concept.мотивация"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "b544423c3b5d6fa4778c5e0c27394875828a1881f850aa5f7c24f5f2fdf1a9bf",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -2533,6 +2856,62 @@
             }
           ],
           "proposition_id": "a08ced787bff777ae959b2113d02aeaacf25b16e4f69377878bef2eb97535146",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "образование": {
+      "claims": {
+        "a8d7e0ac43f1b82d5d841dd2209f2a1bfdbcef0356d29f1e584d4ac05b585e73": {
+          "approved_surface": "образование направлено на знание",
+          "approved_surface_sha256": "d6d452151eda1b248ec7c018984454e0cd939aa97462edd1c3f795c38ce83462",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "72b528ff94ffc2c71d67eec97d9405e06bedce44e1d825463d31b708418c5ddf",
+          "expected_clause_surface_sha256": "d6d452151eda1b248ec7c018984454e0cd939aa97462edd1c3f795c38ce83462",
+          "fact_id": "fact.obrazovanie_napravlena",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "образование"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "obrazovanie",
+              "source_semantic_id": "concept.образование"
+            },
+            {
+              "accepted_surfaces": [
+                "направлен",
+                "направлена",
+                "направлено",
+                "направлены"
+              ],
+              "kind": "head",
+              "source_binding": "napravlena",
+              "source_semantic_id": "RelDirectedAt"
+            }
+          ],
+          "proposition_id": "e8c9ef39c35ba682674f3bdc7d9773de855907006e77d60fa0ed81229ba4d229",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "fbcc074e12af093c21df30a9b260487b93db4b7a52e4cca5519a135c3b844fcf": {
+          "approved_surface": "образование, направленное мимо знания, — конвейер дипломов",
+          "approved_surface_sha256": "9945e4c7b569204a695b6c007d7856da8074362eb2082b418393b6fff5adf877",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "72b528ff94ffc2c71d67eec97d9405e06bedce44e1d825463d31b708418c5ddf",
+          "fact_id": "fact.obrazovanie_napravlena.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "образование"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "obrazovanie",
+              "source_semantic_id": "concept.образование"
+            }
+          ],
+          "proposition_id": "e8c9ef39c35ba682674f3bdc7d9773de855907006e77d60fa0ed81229ba4d229",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
         }
@@ -3172,6 +3551,62 @@
         }
       }
     },
+    "развитие": {
+      "claims": {
+        "42e3ad2dcb5ea200b886aa4deb37040566479237d13d51e09f599d652884b99c": {
+          "approved_surface": "развитие направлено на личность",
+          "approved_surface_sha256": "4509aa61aa1b5e4a0dc7a1e411a0cb8eb99f8b79f87627cd7f781fe0ab4746f9",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "8cfc5c14ffe7c43515af0496f867fa5b8ce6d7190a326283c4be626e1894217e",
+          "expected_clause_surface_sha256": "4509aa61aa1b5e4a0dc7a1e411a0cb8eb99f8b79f87627cd7f781fe0ab4746f9",
+          "fact_id": "fact.razvitie_napravlena",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "развитие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "razvitie",
+              "source_semantic_id": "concept.развитие"
+            },
+            {
+              "accepted_surfaces": [
+                "направлен",
+                "направлена",
+                "направлено",
+                "направлены"
+              ],
+              "kind": "head",
+              "source_binding": "napravlena",
+              "source_semantic_id": "RelDirectedAt"
+            }
+          ],
+          "proposition_id": "2e89adb64f86691f593a001980920c171a8dfa097bb6b1e97ed7fa53acc079f6",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "e9cd62418e31bfdf7bcd7a4019438757b7d3ad86313e80b00e02e16dd0ef2fae": {
+          "approved_surface": "рост — не развитие: больше не значит зрелее",
+          "approved_surface_sha256": "c1175f97c862b61cf652c377dff45932a97bb0850129dd9d95e25b31379bd131",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "8cfc5c14ffe7c43515af0496f867fa5b8ce6d7190a326283c4be626e1894217e",
+          "fact_id": "fact.razvitie_napravlena.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "развитие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "razvitie",
+              "source_semantic_id": "concept.развитие"
+            }
+          ],
+          "proposition_id": "2e89adb64f86691f593a001980920c171a8dfa097bb6b1e97ed7fa53acc079f6",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
     "разум": {
       "claims": {
         "c15140edaabd1cda7d1318cbbd20d8ddc39e1e6c64477d7f2dde93ea92e02632": {
@@ -3221,6 +3656,59 @@
           "proposition_id": "859e9c3fabd93cb1398e611c5ecbb6213ce8c5f39b29a2a7a14d15b2406939ec",
           "realization_strategy": "clause",
           "surface_validation": "governed_clause"
+        }
+      }
+    },
+    "ревность": {
+      "claims": {
+        "3c93e4b8714747ae301cc681f09eca91301dadbb0a434fd6c2797f6273117e8b": {
+          "approved_surface": "ревность сторожит не доверие, а страх потери",
+          "approved_surface_sha256": "2291413af7ccd204ea328077c8063edf66241806ac98aad6ea86feb7c8ccf808",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "6b8f25be233071219ab62219a37d9ccb1d1d49425595ed6515cb6220ba064baf",
+          "fact_id": "fact.revnost_kontrastiruet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "ревность"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "revnost",
+              "source_semantic_id": "concept.ревность"
+            }
+          ],
+          "proposition_id": "001238ec4f833ae01197405140c0c376868fa4594d5e9939e4bdc7a1c4aa54d4",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "ad356235896abce99d40262e913834f13090e41f901728eba4c180778086caac": {
+          "approved_surface": "ревность контрастирует с доверием",
+          "approved_surface_sha256": "c1fc72c8911fa95de1d082c85bb9e04076ae8c173e2bfdbff4e9856cae67e485",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "6b8f25be233071219ab62219a37d9ccb1d1d49425595ed6515cb6220ba064baf",
+          "expected_clause_surface_sha256": "c1fc72c8911fa95de1d082c85bb9e04076ae8c173e2bfdbff4e9856cae67e485",
+          "fact_id": "fact.revnost_kontrastiruet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "ревность"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "revnost",
+              "source_semantic_id": "concept.ревность"
+            },
+            {
+              "accepted_surfaces": [
+                "контрастирует"
+              ],
+              "kind": "head",
+              "source_binding": "kontrastiruet",
+              "source_semantic_id": "RelContrastsWith"
+            }
+          ],
+          "proposition_id": "001238ec4f833ae01197405140c0c376868fa4594d5e9939e4bdc7a1c4aa54d4",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -4630,6 +5118,59 @@
             }
           ],
           "proposition_id": "68ef6898d591656b271049e6588ed2ee4c36b5e8a56c526318d2ffdc80047e24",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "технология": {
+      "claims": {
+        "3502cba7face4cba38f29e0a48d38faa015f0477e884d14eacac40c4d616526f": {
+          "approved_surface": "технология поддерживает прогресс",
+          "approved_surface_sha256": "6a3baa4e5e518a053b084c12d042618ab51490f5b176a43e45cfdc7f27a373e6",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "44e05819f921e13081911c51ef7112bc288e6dc0e3db78d6afdd8e8936d7bbd8",
+          "expected_clause_surface_sha256": "6a3baa4e5e518a053b084c12d042618ab51490f5b176a43e45cfdc7f27a373e6",
+          "fact_id": "fact.tekhnologiya_podderzhivaet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "технология"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "tekhnologiya",
+              "source_semantic_id": "concept.технология"
+            },
+            {
+              "accepted_surfaces": [
+                "поддерживает"
+              ],
+              "kind": "head",
+              "source_binding": "podderzhivaet",
+              "source_semantic_id": "RelSupports"
+            }
+          ],
+          "proposition_id": "df55298cfb4e4188554a923562dc96bd602f174c92c5a9c91fe61259d03ed8e7",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "e0f67778b4cc7a6025e028f2251bc91dbe8de38f27b18bf6a282840460d115da": {
+          "approved_surface": "не всякая технология — прогресс: ускорение — не направление",
+          "approved_surface_sha256": "15780188d4211b99e04c39234d23a64e47ed47e2137102d32c2be577ffbaf0c7",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "44e05819f921e13081911c51ef7112bc288e6dc0e3db78d6afdd8e8936d7bbd8",
+          "fact_id": "fact.tekhnologiya_podderzhivaet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "технология"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "tekhnologiya",
+              "source_semantic_id": "concept.технология"
+            }
+          ],
+          "proposition_id": "df55298cfb4e4188554a923562dc96bd602f174c92c5a9c91fe61259d03ed8e7",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
         }

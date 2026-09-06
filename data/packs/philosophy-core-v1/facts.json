@@ -598,6 +598,40 @@
     }
   },
   {
+    "predicate_ref": "druzhba_trebuet",
+    "record": {
+      "id": "fact.druzhba_trebuet",
+      "subject": "concept.дружба",
+      "relation": "RelRequires",
+      "object": "concept.доверие",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:druzhba_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "druzhba_trebuet.counterpoint",
+    "record": {
+      "id": "fact.druzhba_trebuet.counterpoint",
+      "subject": "concept.дружба",
+      "relation": "RelRequires",
+      "object": "concept.доверие",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:druzhba_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "dukh_vyrazhaet",
     "record": {
       "id": "fact.dukh_vyrazhaet",
@@ -1220,6 +1254,74 @@
     }
   },
   {
+    "predicate_ref": "kommunikatsiya_napravlena",
+    "record": {
+      "id": "fact.kommunikatsiya_napravlena",
+      "subject": "concept.коммуникация",
+      "relation": "RelDirectedAt",
+      "object": "concept.понимание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:kommunikatsiya_napravlena",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "kommunikatsiya_napravlena.counterpoint",
+    "record": {
+      "id": "fact.kommunikatsiya_napravlena.counterpoint",
+      "subject": "concept.коммуникация",
+      "relation": "RelDirectedAt",
+      "object": "concept.понимание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:kommunikatsiya_napravlena",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "kultura_trebuet",
+    "record": {
+      "id": "fact.kultura_trebuet",
+      "subject": "concept.культура",
+      "relation": "RelRequires",
+      "object": "concept.язык",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:kultura_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "kultura_trebuet.counterpoint",
+    "record": {
+      "id": "fact.kultura_trebuet.counterpoint",
+      "subject": "concept.культура",
+      "relation": "RelRequires",
+      "object": "concept.язык",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:kultura_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "labor_resources",
     "record": {
       "id": "fact.labor_resources",
@@ -1404,6 +1506,74 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:memory_information_process.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "moral_napravlena",
+    "record": {
+      "id": "fact.moral_napravlena",
+      "subject": "concept.мораль",
+      "relation": "RelDirectedAt",
+      "object": "concept.добро",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:moral_napravlena",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "moral_napravlena.counterpoint",
+    "record": {
+      "id": "fact.moral_napravlena.counterpoint",
+      "subject": "concept.мораль",
+      "relation": "RelDirectedAt",
+      "object": "concept.добро",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:moral_napravlena",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "motivatsiya_trebuet",
+    "record": {
+      "id": "fact.motivatsiya_trebuet",
+      "subject": "concept.мотивация",
+      "relation": "RelRequires",
+      "object": "concept.смысл",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:motivatsiya_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "motivatsiya_trebuet.counterpoint",
+    "record": {
+      "id": "fact.motivatsiya_trebuet.counterpoint",
+      "subject": "concept.мотивация",
+      "relation": "RelRequires",
+      "object": "concept.смысл",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:motivatsiya_trebuet",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
@@ -1642,6 +1812,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:obmen_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "obrazovanie_napravlena",
+    "record": {
+      "id": "fact.obrazovanie_napravlena",
+      "subject": "concept.образование",
+      "relation": "RelDirectedAt",
+      "object": "concept.знание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:obrazovanie_napravlena",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "obrazovanie_napravlena.counterpoint",
+    "record": {
+      "id": "fact.obrazovanie_napravlena.counterpoint",
+      "subject": "concept.образование",
+      "relation": "RelDirectedAt",
+      "object": "concept.знание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:obrazovanie_napravlena",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
@@ -1915,6 +2119,40 @@
     }
   },
   {
+    "predicate_ref": "razvitie_napravlena",
+    "record": {
+      "id": "fact.razvitie_napravlena",
+      "subject": "concept.развитие",
+      "relation": "RelDirectedAt",
+      "object": "concept.личность",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:razvitie_napravlena",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "razvitie_napravlena.counterpoint",
+    "record": {
+      "id": "fact.razvitie_napravlena.counterpoint",
+      "subject": "concept.развитие",
+      "relation": "RelDirectedAt",
+      "object": "concept.личность",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:razvitie_napravlena",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "reason_proof",
     "record": {
       "id": "fact.reason_proof",
@@ -2150,6 +2388,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:rest_absence.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "revnost_kontrastiruet",
+    "record": {
+      "id": "fact.revnost_kontrastiruet",
+      "subject": "concept.ревность",
+      "relation": "RelContrastsWith",
+      "object": "concept.доверие",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:revnost_kontrastiruet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "revnost_kontrastiruet.counterpoint",
+    "record": {
+      "id": "fact.revnost_kontrastiruet.counterpoint",
+      "subject": "concept.ревность",
+      "relation": "RelContrastsWith",
+      "object": "concept.доверие",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:revnost_kontrastiruet",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
@@ -2810,6 +3082,40 @@
     }
   },
   {
+    "predicate_ref": "tekhnologiya_podderzhivaet",
+    "record": {
+      "id": "fact.tekhnologiya_podderzhivaet",
+      "subject": "concept.технология",
+      "relation": "RelSupports",
+      "object": "concept.прогресс",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:tekhnologiya_podderzhivaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "tekhnologiya_podderzhivaet.counterpoint",
+    "record": {
+      "id": "fact.tekhnologiya_podderzhivaet.counterpoint",
+      "subject": "concept.технология",
+      "relation": "RelSupports",
+      "object": "concept.прогресс",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:tekhnologiya_podderzhivaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "time_irreversible",
     "record": {
       "id": "fact.time_irreversible",
@@ -3329,6 +3635,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:zakon_napravlena",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "zhelanie_predpolagaet",
+    "record": {
+      "id": "fact.zhelanie_predpolagaet",
+      "subject": "concept.желание",
+      "relation": "RelPresupposes",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:zhelanie_predpolagaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "zhelanie_predpolagaet.counterpoint",
+    "record": {
+      "id": "fact.zhelanie_predpolagaet.counterpoint",
+      "subject": "concept.желание",
+      "relation": "RelPresupposes",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:zhelanie_predpolagaet",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
