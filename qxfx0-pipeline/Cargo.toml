@@ -2,19 +2,20 @@
 name = "qxfx0-pipeline"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
 [dependencies]
-qxfx0-types = { path = "../qxfx0-types" }
-qxfx0-self = { path = "../qxfx0-self" }
-qxfx0-self-v2 = { path = "../qxfx0-self-v2" }
-qxfx0-semantic = { path = "../qxfx0-semantic" }
-qxfx0-plan-v2 = { path = "../qxfx0-plan-v2" }
-qxfx0-morphology = { path = "../qxfx0-morphology" }
-qxfx0-commitment = { path = "../qxfx0-commitment" }
-qxfx0-guard = { path = "../qxfx0-guard" }
-qxfx0-render = { path = "../qxfx0-render" }
+qxfx0-types = { path = "../qxfx0-types", version = "0.1.1" }
+qxfx0-self = { path = "../qxfx0-self", version = "0.1.1" }
+qxfx0-self-v2 = { path = "../qxfx0-self-v2", version = "0.1.1" }
+qxfx0-semantic = { path = "../qxfx0-semantic", version = "0.1.1" }
+qxfx0-plan-v2 = { path = "../qxfx0-plan-v2", version = "0.1.1" }
+qxfx0-morphology = { path = "../qxfx0-morphology", version = "0.1.1" }
+qxfx0-commitment = { path = "../qxfx0-commitment", version = "0.1.1" }
+qxfx0-guard = { path = "../qxfx0-guard", version = "0.1.1" }
+qxfx0-render = { path = "../qxfx0-render", version = "0.1.1" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
@@ -22,4 +23,4 @@ thiserror.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-qxfx0-persistence = { path = "../qxfx0-persistence" }
+qxfx0-persistence = { path = "../qxfx0-persistence", version = "0.1.1" }

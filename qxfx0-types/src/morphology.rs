@@ -17,7 +17,7 @@ pub enum SourceTier {
 }
 
 impl SourceTier {
-    /// Keyword string form used by both JSON and the precomputed bincode
+    /// Keyword string form used by both JSON and the precomputed postcard
     /// morphology blob. Kept in sync with `FromStr` below so Serialize/
     /// Deserialize are symmetric (the derived `Serialize` would emit a variant
     /// index, which the manual `Deserialize` could not read back).
@@ -32,7 +32,7 @@ impl SourceTier {
 }
 
 // --- Serialize mirrors the string-keyed Deserialize above (keyword form) ---
-// so the type round-trips under serde_json AND bincode.
+// so the type round-trips under serde_json AND postcard.
 impl Serialize for SourceTier {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -93,7 +93,7 @@ pub enum PartOfSpeech {
 }
 
 impl PartOfSpeech {
-    /// Lowercase keyword mirroring `FromStr`; symmetric for JSON + bincode.
+    /// Lowercase keyword mirroring `FromStr`; symmetric for JSON + postcard.
     pub fn as_str(&self) -> &'static str {
         match self {
             PartOfSpeech::Noun => "noun",
@@ -467,7 +467,7 @@ pub struct LexemeEntry {
 
 // Serialize delegates to the flat layout (`FlatLexemeEntry`) so that Serialize
 // is symmetric with the manual flat-layout `Deserialize` above; this keeps JSON
-// output identical and makes bincode round-tripping possible for the
+// output identical and makes postcard round-tripping possible for the
 // precomputed morphology blob.
 impl Serialize for LexemeEntry {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

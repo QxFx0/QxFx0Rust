@@ -2,12 +2,13 @@
 name = "qxfx0-morphology"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
 [dependencies]
-qxfx0-types = { path = "../qxfx0-types" }
-bincode = "1.3"
+qxfx0-types = { path = "../qxfx0-types", version = "0.1.1" }
+postcard = { version = "1", default-features = false, features = ["alloc"] }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

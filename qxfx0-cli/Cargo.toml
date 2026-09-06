@@ -1,8 +1,9 @@
 [package]
 name = "qxfx0-cli"
 default-run = "qxfx0"
-version.workspace = true
+version = "0.1.1"
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
@@ -11,21 +12,21 @@ name = "qxfx0"
 path = "src/main.rs"
 
 [dependencies]
-qxfx0-types = { path = "../qxfx0-types" }
-qxfx0-self = { path = "../qxfx0-self" }
-qxfx0-semantic = { path = "../qxfx0-semantic" }
-qxfx0-plan-v2 = { path = "../qxfx0-plan-v2" }
-qxfx0-commitment = { path = "../qxfx0-commitment" }
-qxfx0-morphology = { path = "../qxfx0-morphology" }
-qxfx0-persistence = { path = "../qxfx0-persistence" }
-qxfx0-gates = { path = "../qxfx0-gates" }
-qxfx0-codex = { path = "../qxfx0-codex" }
-qxfx0-serve = { path = "../qxfx0-serve" }
-qxfx0-self-v2 = { path = "../qxfx0-self-v2" }
-qxfx0-guard = { path = "../qxfx0-guard" }
-qxfx0-render = { path = "../qxfx0-render" }
-qxfx0-pipeline = { path = "../qxfx0-pipeline" }
-qxfx0-code = { path = "../qxfx0-code" }
+qxfx0-types = { path = "../qxfx0-types", version = "0.1.1" }
+qxfx0-self = { path = "../qxfx0-self", version = "0.1.1" }
+qxfx0-semantic = { path = "../qxfx0-semantic", version = "0.1.1" }
+qxfx0-plan-v2 = { path = "../qxfx0-plan-v2", version = "0.1.1" }
+qxfx0-commitment = { path = "../qxfx0-commitment", version = "0.1.1" }
+qxfx0-morphology = { path = "../qxfx0-morphology", version = "0.1.1" }
+qxfx0-persistence = { path = "../qxfx0-persistence", version = "0.1.1" }
+qxfx0-gates = { path = "../qxfx0-gates", version = "0.1.1" }
+qxfx0-codex = { path = "../qxfx0-codex", version = "0.1.1" }
+qxfx0-serve = { path = "../qxfx0-serve", version = "0.1.1" }
+qxfx0-self-v2 = { path = "../qxfx0-self-v2", version = "0.1.1" }
+qxfx0-guard = { path = "../qxfx0-guard", version = "0.1.1" }
+qxfx0-render = { path = "../qxfx0-render", version = "0.1.1" }
+qxfx0-pipeline = { path = "../qxfx0-pipeline", version = "0.1.1" }
+qxfx0-code = { path = "../qxfx0-code", version = "0.1.1" }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

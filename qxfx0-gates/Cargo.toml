@@ -2,15 +2,16 @@
 name = "qxfx0-gates"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
 [dependencies]
-qxfx0-plan-v2 = { path = "../qxfx0-plan-v2" }
-qxfx0-pipeline = { path = "../qxfx0-pipeline" }
-qxfx0-semantic = { path = "../qxfx0-semantic" }
-qxfx0-types = { path = "../qxfx0-types" }
-qxfx0-morphology = { path = "../qxfx0-morphology" }
+qxfx0-plan-v2 = { path = "../qxfx0-plan-v2", version = "0.1.1" }
+qxfx0-pipeline = { path = "../qxfx0-pipeline", version = "0.1.1" }
+qxfx0-semantic = { path = "../qxfx0-semantic", version = "0.1.1" }
+qxfx0-types = { path = "../qxfx0-types", version = "0.1.1" }
+qxfx0-morphology = { path = "../qxfx0-morphology", version = "0.1.1" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

@@ -2,12 +2,13 @@
 name = "qxfx0-semantic"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
 [dependencies]
-qxfx0-types = { path = "../qxfx0-types" }
-qxfx0-morphology = { path = "../qxfx0-morphology" }
+qxfx0-types = { path = "../qxfx0-types", version = "0.1.1" }
+qxfx0-morphology = { path = "../qxfx0-morphology", version = "0.1.1" }
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true

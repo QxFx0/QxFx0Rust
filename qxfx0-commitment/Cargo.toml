@@ -2,11 +2,12 @@
 name = "qxfx0-commitment"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
 [dependencies]
-qxfx0-types = { path = "../qxfx0-types" }
+qxfx0-types = { path = "../qxfx0-types", version = "0.1.1" }
 serde.workspace = true
 thiserror.workspace = true
 

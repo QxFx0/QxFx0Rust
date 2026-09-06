@@ -42,6 +42,12 @@ jobs:
       - name: Audit dependencies
         run: cargo audit --deny unsound
 
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --version 0.20.2 --locked
+
+      - name: Check dependency policy
+        run: cargo deny check
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -64,6 +70,9 @@ jobs:
           test -s coverage/lcov.info
           test -s coverage/summary.txt
 
+      - name: Enforce coverage floor
+        run: python3 scripts/check_coverage.py
+
       - name: Upload coverage reports
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -77,6 +86,15 @@ jobs:
 
       - name: Run production health check
         run: target/release/qxfx0 --db "$RUNNER_TEMP/qxfx0-doctor.db" doctor
+
+      - name: Run cadence smoke soak
+        env:
+          QXFX0_BIN: ${{ github.workspace }}/target/release/qxfx0
+          QXFX0_DIAGNOSTIC_DIR: ${{ runner.temp }}/qxfx0-cadence-smoke
+          QXFX0_DIAGNOSTIC_TURNS: "30"
+          QXFX0_DIAGNOSTIC_INTERVAL_SECONDS: "0"
+          QXFX0_MAX_RESPONSE_MS: "2000"
+        run: bash scripts/diagnostic-soak-1000.sh
 
       - name: Verify committed census matches the binary
         run: python3 scripts/generate_census.py --check --binary target/release/qxfx0

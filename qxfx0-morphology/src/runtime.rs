@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 const EMBEDDED_LEXEMES_JSON: &[u8] = include_bytes!("../../data/lexemes.json");
 const EMBEDDED_MANIFEST_JSON: &[u8] = include_bytes!("../../data/manifest.json");
 
-/// Pre-parsed, pre-indexed morphology runtime (bincode of the full
+/// Pre-parsed, pre-indexed morphology runtime (postcard of the full
 /// `MorphologyRuntime`), generated from the canonical JSON bundle at build
 /// time by `examples/prebuild_morphology_runtime.rs`. The embedded loader
 /// (`get_runtime`) prefers this blob and only falls back to parsing the ~65 MB
@@ -34,9 +34,20 @@ pub const EMBEDDED_LEXEMES_SIZE_BYTES: usize = EMBEDDED_LEXEMES_JSON.len();
 pub const EMBEDDED_MANIFEST_SIZE_BYTES: usize = EMBEDDED_MANIFEST_JSON.len();
 pub const EMBEDDED_BUNDLE_SIZE_BYTES: usize =
     EMBEDDED_LEXEMES_SIZE_BYTES + EMBEDDED_MANIFEST_SIZE_BYTES;
-/// Size of the precomputed bincode runtime blob.
+/// Size of the precomputed postcard runtime blob.
 pub const EMBEDDED_RUNTIME_SIZE_BYTES: usize = EMBEDDED_RUNTIME_BIN.len();
 
+/// postcard codec helpers (serde, varint length prefixes).
+/// Format differs from the retired bincode blobs: blobs must be regenerated
+/// with the matching prebuild example after any lexeme/manifest change.
+#[allow(dead_code)]
+pub(crate) fn encode_blob<T: serde::Serialize>(value: &T) -> Result<Vec<u8>, String> {
+    postcard::to_allocvec(value).map_err(|e| format!("encode: {e}"))
+}
+
+pub(crate) fn decode_blob<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, String> {
+    postcard::from_bytes(bytes).map_err(|e| format!("{e}"))
+}
 /// Error type for morphology operations.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum MorphologyError {
@@ -45,7 +56,7 @@ pub enum MorphologyError {
     #[error("Failed to parse JSON: {0}")]
     JsonParseError(String),
     #[error("Failed to parse precomputed runtime blob: {0}")]
-    BincodeParseError(String),
+    BlobParseError(String),
     #[error("Asset validation failed: {0}")]
     ValidationError(String),
     #[error("No lexemes loaded")]
@@ -61,7 +72,7 @@ impl PartialEq for MorphologyError {
         match (self, other) {
             (Self::AssetReadError(a), Self::AssetReadError(b)) => a == b,
             (Self::JsonParseError(a), Self::JsonParseError(b)) => a == b,
-            (Self::BincodeParseError(a), Self::BincodeParseError(b)) => a == b,
+            (Self::BlobParseError(a), Self::BlobParseError(b)) => a == b,
             (Self::ValidationError(a), Self::ValidationError(b)) => a == b,
             (Self::EmptyLexicon, Self::EmptyLexicon) => true,
             (Self::Ambiguous(a), Self::Ambiguous(b)) => a == b,
@@ -578,7 +589,7 @@ use std::sync::OnceLock;
 
 /// One-time cost (ms) of building the process-global morphology runtime,
 /// captured on the first `get_runtime()` call (the embedded runtime.bin
-/// bincode deserialize). Zero on processes that never exercise
+/// postcard deserialize). Zero on processes that never exercise
 /// the morphological lemmatizer (known-graph-atom path).
 static RUNTIME_INIT_MS: AtomicU64 = AtomicU64::new(0);
 
@@ -591,8 +602,8 @@ pub fn runtime_init_elapsed_ms() -> u64 {
 static RUNTIME_BLOB_WARM_MS: AtomicU64 = AtomicU64::new(0);
 
 /// One-time, process-global cost (ms) of eagerly faulting the embedded runtime
-/// blob (`data/runtime.bin`, ~20.7 MB `include_bytes!`'d into `.rodata`) into the
-/// page table before bincode deserializes it. Incurred on the first
+/// blob (`data/runtime.bin`, ~12.9 MB `include_bytes!`'d into `.rodata`) into the
+/// page table before postcard deserializes it. Incurred on the first
 /// `load_from_embedded_blob()` call in a process; zero otherwise. On the
 /// cadence soak this is the pre-fault that converts the stochastic cold-page
 /// fault tail (interleaved with `BTreeMap` construction during deserialize) into
@@ -602,7 +613,7 @@ pub fn runtime_blob_warm_ms() -> u64 {
 }
 
 /// Force the OS to resolve the embedded runtime blob's pages eagerly and in
-/// order before `bincode::deserialize` randomly walks the resulting `BTreeMap`.
+/// order before postcard deserialization randomly walks the resulting `BTreeMap`.
 ///
 /// `EMBEDDED_RUNTIME_BIN` is mapped into the process's read-only data segment by
 /// the loader; on a per-turn subprocess the pages are cold every turn. Without
@@ -630,7 +641,7 @@ fn warm_embedded_blob() {
     );
 }
 
-/// Load the process-global runtime from the precomputed bincode blob
+/// Load the process-global runtime from the precomputed postcard blob
 /// (`data/runtime.bin`, embedded via `include_bytes!`). This replaces the
 /// ~12 MB `serde_json` parse + index rebuild of `lexemes.json`, which under a
 /// cold page cache was the dominant `input_normalization_ms` latency
@@ -643,8 +654,8 @@ pub fn load_from_embedded_blob() -> MorphologyResult<MorphologyRuntime> {
     // stochastic cold page-fault cost does not interleave with BTreeMap
     // construction under host memory pressure (cadence-soak tail on index-7).
     warm_embedded_blob();
-    bincode::deserialize(EMBEDDED_RUNTIME_BIN)
-        .map_err(|e| MorphologyError::BincodeParseError(format!("runtime.bin: {e}")))
+    decode_blob(EMBEDDED_RUNTIME_BIN)
+        .map_err(|e| MorphologyError::BlobParseError(format!("runtime.bin: {e}")))
 }
 
 /// Policy for handling QXFX0_DATA_DIR override (ADR-0043 U0.1, fail-closed):
@@ -1158,7 +1169,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "ADR-0043 U0.1: fail-closed, no JSON-parse fallback")]
     fn corrupt_runtime_blob_panics_instead_of_json_fallback() {
-        let _ = runtime_or_panic(Err(MorphologyError::BincodeParseError(
+        let _ = runtime_or_panic(Err(MorphologyError::BlobParseError(
             "simulated corruption".to_string(),
         )));
     }
@@ -1177,7 +1188,7 @@ mod tests {
 
     #[test]
     fn test_embedded_runtime_blob_is_valid() {
-        // The precomputed bincode blob must deserialize and be coherent with
+        // The precomputed postcard blob must deserialize and be coherent with
         // the canonical manifest: non-empty lexemes, manifest present, and the
         // recorded lexeme hash must equal the manifest's recorded hash for
         // lexemes.json. This guarantees the build-time prebuild did not drift
@@ -1187,15 +1198,14 @@ mod tests {
             Some(include_bytes!("../../data/manifest.json")),
         )
         .expect("canonical bundle must be valid");
-        let rt_bytes = bincode::serialize(&canonical).expect("rt serialize");
+        let rt_bytes = encode_blob(&canonical).expect("rt serialize");
         assert_eq!(
             rt_bytes.len(),
             EMBEDDED_RUNTIME_BIN.len(),
             "in-memory serialized size != stored blob size"
         );
-        // in-memory round-trip proves the type layout bincode-able
-        let _rt_back: MorphologyRuntime =
-            bincode::deserialize(&rt_bytes).expect("in-memory round-trip");
+        // in-memory round-trip proves the type layout postcard-encodable
+        let _rt_back: MorphologyRuntime = decode_blob(&rt_bytes).expect("in-memory round-trip");
         let runtime = load_from_embedded_blob().expect("embedded runtime.bin must be valid");
         assert!(!runtime.lexemes.is_empty());
     }

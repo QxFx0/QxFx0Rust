@@ -5,9 +5,9 @@
 //!
 //! Reads the canonical `data/lexemes.json` + `data/manifest.json` (validated,
 //! hashed, version-checked by `MorphologyRuntime::load_from_bytes`), then
-//! `bincode`-serializes the **fully-built, indexed** runtime to
+//! `postcard`-serializes the **fully-built, indexed** runtime to
 //! `data/runtime.bin`. The production loader (`get_runtime`) reads that blob
-//! via `include_bytes!` + `bincode::deserialize`, which avoids re-parsing the
+//! via `include_bytes!` + postcard deserialize, which avoids re-parsing the
 //! ~65 MB embedded `lexemes.json` and rebuilding the surface/lemma indexes on
 //! every cold `qxfx0 turn` process — the dominant `input_normalization_ms` tail
 //! under 60s idle cadence.
@@ -35,7 +35,7 @@ fn main() {
     let runtime = MorphologyRuntime::load_from_bytes(&lexemes, Some(&manifest))
         .expect("embedded morphology bundle must validate at prebuild time");
 
-    let encoded = bincode::serialize(&runtime).expect("encode runtime");
+    let encoded = postcard::to_allocvec(&runtime).expect("encode runtime");
     let dest = data_dir.join("runtime.bin");
     fs::write(&dest, &encoded).unwrap_or_else(|e| {
         panic!("failed to write {}: {e}", dest.display());

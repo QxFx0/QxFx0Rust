@@ -14,7 +14,7 @@
 //! bundle and rebuilding the surface reverse index cost ~1.6 s of CPU in
 //! every fresh `qxfx0 turn` process that lemmatizes an adjective surface,
 //! which dominated the `input_normalization_ms` tail of the cadence soak.
-//! Even a bincode blob of the built `BTreeMap`s still pays ~1 s of per-node
+//! Even a postcard blob of the built `BTreeMap`s still pays ~1 s of per-node
 //! allocation on deserialize, so the blob is **flat and zero-copy**: two
 //! large string buffers plus POD index vectors. Deserializing it is a pair
 //! of `memcpy`s; lookups are binary searches over the sorted buffers.
@@ -315,9 +315,9 @@ pub fn build_runtime_from_embedded_json() -> AdjectiveLexiconRuntime {
     }
 }
 
-/// Deserialize the embedded precomputed adjective runtime blob.
+/// Deserialize the embedded precomputed adjective runtime blob (postcard).
 pub fn load_runtime_from_embedded_blob() -> Result<AdjectiveLexiconRuntime, String> {
-    bincode::deserialize(ADJECTIVE_RUNTIME_BIN)
+    crate::runtime::decode_blob(ADJECTIVE_RUNTIME_BIN)
         .map_err(|error| format!("adjective runtime.bin: {error}"))
 }
 

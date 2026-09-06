@@ -1,0 +1,58 @@
+# cargo-deny policy for QxFx0Rust.
+# Enforced in CI (`ci.yml` release-gate) via `cargo deny check`.
+# Rationale: the retired `bincode` (RUSTSEC-2025-0141, unmaintained) slipped
+# through `cargo audit --deny unsound` because that lint only covers
+# `unsound` informational advisories. `unmaintained = "deny"` below closes
+# that exact hole.
+
+[graph]
+targets = ["x86_64-unknown-linux-gnu"]
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+yanked = "deny"
+unmaintained = "all"
+ignore = []
+
+[licenses]
+# Allow-list mirrors the licenses actually present in Cargo.lock
+# (`cargo deny list` to re-audit). Unlisted licenses fail the check by
+# design: adding a dependency with a new license requires an explicit
+# allow-list entry in this file.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.8
+exceptions = []
+
+[licenses.private]
+ignore = true
+
+[bans]
+# deny: duplicate crate versions fail the gate (verified zero duplicates;
+# `cargo deny check bans` is clean). Un-skip explicitly if a duplicate is
+# ever unavoidable.
+multiple-versions = "deny"
+wildcards = "deny"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow = []
+allow-workspace = true
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
