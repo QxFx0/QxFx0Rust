@@ -1,15 +1,10 @@
-// Exercises the deprecated process_turn_* convenience wrappers until removal:
-// they stay public API until then, and this coverage keeps them honest.
-#![allow(deprecated)]
-
 //! Structural acceptance gate for the audited content-plan corpus.
 //!
 //! This gate observes the shadow plan. The legacy renderer intentionally
 //! remains authoritative until a later change makes it render these plans.
 
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_options_and_trace, process_turn_with_renderer,
-    process_turn_with_trace, process_turn_with_trace_and_renderer, EssenceAblation,
+    process_turn_with_options, process_turn_with_options_and_trace, EssenceAblation,
     RendererAuthority, TurnInput, TurnOptions,
 };
 use qxfx0_semantic::{argued_topic_registry, FallbackReason};
@@ -134,12 +129,13 @@ fn assert_structural_plan(
     let expected = registry
         .get(case.topic)
         .unwrap_or_else(|| panic!("fixture topic '{}' must be admitted", case.topic));
-    let (output, trace) = process_turn_with_trace(
+    let (output, trace) = process_turn_with_options_and_trace(
         &TurnInput {
             session_id: session_id.into(),
             raw_text: case.prompt.into(),
         },
         state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
     );
     let metadata = plan_metadata(&trace);
     let expected_predicates = expected_predicates(expected);
@@ -291,12 +287,13 @@ fn audited_v1_structural_gate_passes_in_one_sixty_turn_session() {
 fn recognized_but_unadmitted_topic_keeps_an_explicit_fallback_reason() {
     let session_id = "structural-unadmitted";
     let mut state = test_state(session_id);
-    let (output, trace) = process_turn_with_trace(
+    let (output, trace) = process_turn_with_options_and_trace(
         &TurnInput {
             session_id: session_id.into(),
             raw_text: "что такое знание?".into(),
         },
         &mut state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
     );
     let metadata = plan_metadata(&trace);
 
@@ -328,13 +325,13 @@ fn assert_plan_renderer_surface(
         .unwrap()
         .get(case.topic)
         .unwrap_or_else(|| panic!("fixture topic '{}' must be admitted", case.topic));
-    let (output, trace) = process_turn_with_trace_and_renderer(
+    let (output, trace) = process_turn_with_options_and_trace(
         &TurnInput {
             session_id: session_id.into(),
             raw_text: case.prompt.into(),
         },
         state,
-        RendererAuthority::AuditedPlan,
+        TurnOptions::new().with_renderer(RendererAuthority::AuditedPlan),
     );
     let render = render_metadata(&trace);
 
@@ -396,12 +393,13 @@ fn audited_plan_renderer_passes_surface_gate_in_one_sixty_turn_session() {
 fn shadow_mode_compares_plan_surface_without_changing_legacy_output() {
     let session_id = "surface-shadow";
     let mut state = test_state(session_id);
-    let (_, trace) = process_turn_with_trace(
+    let (_, trace) = process_turn_with_options_and_trace(
         &TurnInput {
             session_id: session_id.into(),
             raw_text: "что такое свобода?".into(),
         },
         &mut state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
     );
     let render = render_metadata(&trace);
 
@@ -441,14 +439,14 @@ fn audited_plan_flag_keeps_fallback_and_external_routes_on_legacy_contracts() {
             session_id: baseline_session,
             raw_text: prompt.into(),
         };
-        let baseline_output = process_turn(&input, &mut baseline);
-        let flagged_output = process_turn_with_renderer(
+        let baseline_output = process_turn_with_options(&input, &mut baseline, TurnOptions::new());
+        let flagged_output = process_turn_with_options(
             &TurnInput {
                 session_id: flagged_session,
                 raw_text: prompt.into(),
             },
             &mut flagged,
-            RendererAuthority::AuditedPlan,
+            TurnOptions::new().with_renderer(RendererAuthority::AuditedPlan),
         );
 
         assert_eq!(flagged_output.response, baseline_output.response, "{name}");

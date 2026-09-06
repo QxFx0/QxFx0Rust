@@ -236,6 +236,7 @@ pub fn render_stage(
                 plan_surface_available: true,
                 plan_surface_matches_output: Some(true),
                 plan_render_error: None,
+                boundary_marker: false,
             },
         ));
     }
@@ -253,6 +254,7 @@ pub fn render_stage(
                 plan_surface_available: false,
                 plan_surface_matches_output: None,
                 plan_render_error: None,
+                boundary_marker: false,
             },
         ));
     }
@@ -277,6 +279,7 @@ pub fn render_stage(
                     plan_surface_available: true,
                     plan_surface_matches_output: Some(true),
                     plan_render_error: None,
+                    boundary_marker: false,
                 },
             ));
         }
@@ -316,6 +319,7 @@ pub fn render_stage(
                     .as_deref()
                     .map(|surface| surface == normalize_punctuation(&response)),
                 plan_render_error,
+                boundary_marker: false,
             },
         ));
     }
@@ -398,6 +402,26 @@ pub fn render_stage(
             "Я не знаю этот смысл, но он вызывает определенный резонанс в моей системе.".into();
     }
 
+    // Corpus-boundary honesty (141 recognized / 71 admitted): a recognized
+    // topic without an admitted declarative plan must not read like audited
+    // knowledge. The shadow plan already records `no_admissible_predicate`;
+    // mirror that boundary into the user-facing surface with a deterministic
+    // marker (topic in nominative quotes, no inflection needed). Admitted
+    // topics and typed non-declarative frames keep their contracts
+    // byte-identical.
+    let boundary_marker = !subject.trim().is_empty()
+        && matches!(
+            planned.shadow_plan(),
+            PlanOutcome::Fallback(plan) if plan.reason() == FallbackReason::NoAdmissiblePredicate
+        );
+    if boundary_marker {
+        response.push(' ');
+        response.push_str(&format!(
+            "Граница корпуса: тема «{}» распознана, но аудированного тезиса по ней пока нет — это размышление по связям графа, а не проверенное утверждение.",
+            subject.trim()
+        ));
+    }
+
     Ok(RenderedTurnContext::new(
         planned,
         normalize_punctuation(&response),
@@ -414,6 +438,7 @@ pub fn render_stage(
                 .as_deref()
                 .map(|surface| surface == normalize_punctuation(&response)),
             plan_render_error,
+            boundary_marker,
         },
     ))
 }

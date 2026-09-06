@@ -128,8 +128,6 @@ fn validate_input_session(session_id: &str) -> Result<(), StanceRequestPreparati
 }
 
 #[cfg(test)]
-// Exercises the deprecated process_turn_* wrappers until removal.
-#[allow(deprecated)]
 mod tests {
     #[test]
     fn reflection_phrases_extract_the_governed_topic() {
@@ -175,7 +173,7 @@ mod tests {
     }
 
     use super::*;
-    use crate::{execution_trace::calculate_stable_digest, process_turn};
+    use crate::{execution_trace::calculate_stable_digest, process_turn_with_options, TurnOptions};
 
     #[test]
     fn prepare_is_pure_deterministic_and_matches_the_pipeline_topic() {
@@ -196,7 +194,7 @@ mod tests {
         assert!(!serialized.contains(&input.raw_text));
 
         let mut executed_state = state;
-        process_turn(&input, &mut executed_state);
+        process_turn_with_options(&input, &mut executed_state, TurnOptions::new());
         assert_eq!(
             executed_state.dialogue.last_topic.as_deref(),
             Some(first.normalized_topic.as_str())

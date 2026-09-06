@@ -450,6 +450,11 @@ provided.
 
 - QxFx0 is a deterministic local semantic system, not a general-purpose factual assistant.
 - Recognition covers 141 topics, with declarative rendering currently admitted for 71.
+- The remaining 70 recognized topics are answered from graph composition, and
+  every such response carries an explicit `Граница корпуса` boundary sentence
+  (plus `boundary_marker=true` in the render trace): graph-composed reflection,
+  not an audited claim. Falling back silently would let composed surfaces pass
+  as curated knowledge.
 - The audited profile contains 151 typed claims across 71 admitted topics; each
   topic has a thesis and counterpoint, with an optional consequence where the
   corpus supplies one.

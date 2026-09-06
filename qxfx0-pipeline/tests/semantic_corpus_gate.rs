@@ -1,7 +1,3 @@
-// Exercises the deprecated process_turn_* convenience wrappers until removal:
-// they stay public API until then, and this coverage keeps them honest.
-#![allow(deprecated)]
-
 //! Routing gate over the semantic corpus tiers P0/P1/P2 (110 rows).
 //!
 //! The corpus originates from the Haskell QxFx0 project (see
@@ -19,7 +15,7 @@
 //! - the total number of CMRepair-routed rows must not grow;
 //! - no row may end up blocked or with an empty response.
 
-use qxfx0_pipeline::{process_turn, TurnInput};
+use qxfx0_pipeline::{process_turn_with_options, TurnInput, TurnOptions};
 use qxfx0_types::system_state::SystemState;
 use std::path::PathBuf;
 
@@ -54,7 +50,7 @@ fn route_row(row: &CorpusRow) -> (String, String, String, bool) {
         session_id: row.id.clone(),
         raw_text: row.input.clone(),
     };
-    let output = process_turn(&input, &mut state);
+    let output = process_turn_with_options(&input, &mut state, TurnOptions::new());
     (
         row.id.clone(),
         row.tier.clone(),

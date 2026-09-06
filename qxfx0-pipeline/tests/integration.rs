@@ -1,16 +1,8 @@
-// Exercises the deprecated process_turn_* convenience wrappers until removal:
-// they stay public API until then, and this coverage keeps them honest.
-#![allow(deprecated)]
-
 //! Integration tests — replay determinism, multi-turn persistence, end-to-end pipeline.
 
 use qxfx0_pipeline::fact_grounded::ThesisProjectionRollout;
 use qxfx0_pipeline::{
-    process_turn, process_turn_with_options, process_turn_with_options_and_trace,
-    process_turn_with_trace, process_turn_with_trace_and_renderer_and_anomaly_shadow,
-    process_turn_with_trace_and_renderer_and_doubt_shadow,
-    process_turn_with_trace_and_renderer_and_features,
-    process_turn_with_trace_and_renderer_and_features_and_suppression,
+    process_turn_with_options, process_turn_with_options_and_trace,
     response_plan_v2_canary_allowlist, response_plan_v2_canary_digest,
     response_plan_v2_state_parity, AnomalyShadowMode, ClarificationMode, DoubtShadowMode,
     RendererAuthority, ResponsePlanV2Authority, ResponsePlanV2Mode, SameTopicSuppressionMode,
@@ -43,7 +35,7 @@ fn test_replay_determinism_5_turns() {
             session_id: "replay1".into(),
             raw_text: text.to_string(),
         };
-        let out = process_turn(&input, &mut state1);
+        let out = process_turn_with_options(&input, &mut state1, TurnOptions::new());
         outputs1.push(out.response);
     }
 
@@ -54,7 +46,7 @@ fn test_replay_determinism_5_turns() {
             session_id: "replay2".into(),
             raw_text: text.to_string(),
         };
-        let out = process_turn(&input, &mut state2);
+        let out = process_turn_with_options(&input, &mut state2, TurnOptions::new());
         outputs2.push(out.response);
     }
 
@@ -123,12 +115,13 @@ fn test_pr1_typed_context_output_parity() {
     {
         let session_id = format!("typed-context-parity-{index}");
         let mut state = test_state(&session_id);
-        let output = process_turn(
+        let output = process_turn_with_options(
             &TurnInput {
                 session_id,
                 raw_text: raw_text.into(),
             },
             &mut state,
+            TurnOptions::new(),
         );
 
         assert_eq!(output.response, expected_response, "surface for {raw_text}");
@@ -149,7 +142,7 @@ fn test_multi_turn_state_advances() {
         session_id: "advance".into(),
         raw_text: "что такое свобода?".into(),
     };
-    let out1 = process_turn(&input1, &mut state);
+    let out1 = process_turn_with_options(&input1, &mut state, TurnOptions::new());
     assert_eq!(state.dialogue.turn_count, 1);
     assert!(!out1.response.is_empty());
 
@@ -157,7 +150,7 @@ fn test_multi_turn_state_advances() {
         session_id: "advance".into(),
         raw_text: "что ты думаешь об истине?".into(),
     };
-    let out2 = process_turn(&input2, &mut state);
+    let out2 = process_turn_with_options(&input2, &mut state, TurnOptions::new());
     assert_eq!(state.dialogue.turn_count, 2);
     assert!(!out2.response.is_empty());
     assert_ne!(
@@ -181,7 +174,7 @@ fn test_persistence_round_trip_3_turns() {
             session_id: "persist-test".into(),
             raw_text: text.to_string(),
         };
-        process_turn(&input, &mut state);
+        process_turn_with_options(&input, &mut state, TurnOptions::new());
     }
 
     db.save_state("persist-test", &state).unwrap();
@@ -200,7 +193,7 @@ fn test_graph_growth_across_turns() {
         session_id: "growth".into(),
         raw_text: "что такое свобода?".into(),
     };
-    process_turn(&input, &mut state);
+    process_turn_with_options(&input, &mut state, TurnOptions::new());
     let initial_edges = state.semantic.runtime_graph.edges.len();
 
     // Use a known topic that will generate a response (not blocked by guard)
@@ -208,7 +201,7 @@ fn test_graph_growth_across_turns() {
         session_id: "growth".into(),
         raw_text: "что такое память?".into(),
     };
-    process_turn(&input, &mut state);
+    process_turn_with_options(&input, &mut state, TurnOptions::new());
 
     // Graph may grow from derived atoms + new topic registration
     // The seed graph already has all topics, so growth comes from
@@ -238,8 +231,8 @@ fn test_atmosphere_affects_output() {
         raw_text: "что такое свобода?".into(),
     };
 
-    let out_warm = process_turn(&warm_input, &mut state_warm);
-    let out_terse = process_turn(&terse_input, &mut state_terse);
+    let out_warm = process_turn_with_options(&warm_input, &mut state_warm, TurnOptions::new());
+    let out_terse = process_turn_with_options(&terse_input, &mut state_terse, TurnOptions::new());
 
     assert!(!out_warm.response.is_empty());
     assert!(!out_terse.response.is_empty());
@@ -258,7 +251,7 @@ fn test_governance_log_grows_per_turn() {
             session_id: "gov".into(),
             raw_text: format!("что такое тест{}", i),
         };
-        process_turn(&input, &mut state);
+        process_turn_with_options(&input, &mut state, TurnOptions::new());
     }
 
     assert_eq!(state.governance_log.len(), 5);
@@ -278,7 +271,7 @@ fn test_essence_trajectory_accumulates() {
             session_id: "essence".into(),
             raw_text: text.to_string(),
         };
-        process_turn(&input, &mut state);
+        process_turn_with_options(&input, &mut state, TurnOptions::new());
     }
 
     assert!(state.semantic.essence.trajectory_committed);
@@ -293,7 +286,7 @@ fn test_commitment_store_populated() {
         session_id: "commit".into(),
         raw_text: "что такое свобода?".into(),
     };
-    process_turn(&input, &mut state);
+    process_turn_with_options(&input, &mut state, TurnOptions::new());
 
     assert!(
         state.semantic.semantic_commitments.is_some(),
@@ -314,14 +307,14 @@ fn test_fsm_state_transitions_across_turns() {
         session_id: "fsm".into(),
         raw_text: "что такое свобода?".into(),
     };
-    process_turn(&input, &mut state);
+    process_turn_with_options(&input, &mut state, TurnOptions::new());
     assert!(state.dialogue.conversation_state.is_some());
 
     let input = TurnInput {
         session_id: "fsm".into(),
         raw_text: "что ты думаешь об истине?".into(),
     };
-    process_turn(&input, &mut state);
+    process_turn_with_options(&input, &mut state, TurnOptions::new());
     let fsm = state.dialogue.conversation_state.unwrap();
     // Reflect mode should have transitioned to Reflecting state (discriminant 6)
     assert_eq!(fsm, 6, "Reflect mode should reach Reflecting state");
@@ -337,7 +330,7 @@ fn test_blocked_turn_preserves_state() {
         session_id: "block".into(),
         raw_text: "".into(),
     };
-    let output = process_turn(&input, &mut state);
+    let output = process_turn_with_options(&input, &mut state, TurnOptions::new());
 
     assert!(output.blocked);
     assert_eq!(
@@ -363,7 +356,7 @@ fn test_reflect_pamyat_not_blocked() {
         session_id: "pamyat".into(),
         raw_text: "что ты думаешь о памяти?".into(),
     };
-    let output = process_turn(&input, &mut state);
+    let output = process_turn_with_options(&input, &mut state, TurnOptions::new());
     assert!(
         !output.blocked,
         "Reflect mode for 'память' should not be blocked. Response: '{}'",
@@ -380,7 +373,7 @@ fn test_reflect_svoboda_not_blocked() {
         session_id: "svoboda".into(),
         raw_text: "что ты думаешь о свободе?".into(),
     };
-    let output = process_turn(&input, &mut state);
+    let output = process_turn_with_options(&input, &mut state, TurnOptions::new());
     assert!(
         !output.blocked,
         "Reflect mode for 'свобода' should not be blocked. Response: '{}'",
@@ -397,7 +390,7 @@ fn test_fsm_rollback_on_blocked_turn() {
         session_id: "fsm-rollback".into(),
         raw_text: "что такое свобода?".into(),
     };
-    process_turn(&input, &mut state);
+    process_turn_with_options(&input, &mut state, TurnOptions::new());
     let fsm_after_turn1 = state.dialogue.conversation_state;
 
     // Second turn with empty input — should be blocked
@@ -405,7 +398,7 @@ fn test_fsm_rollback_on_blocked_turn() {
         session_id: "fsm-rollback".into(),
         raw_text: "".into(),
     };
-    let output = process_turn(&input, &mut state);
+    let output = process_turn_with_options(&input, &mut state, TurnOptions::new());
 
     assert!(output.blocked);
     assert_eq!(
@@ -435,12 +428,13 @@ fn test_language_acceptance_matrix() {
             session_id: format!("acceptance-{name}"),
             ..SystemState::default()
         };
-        let output = process_turn(
+        let output = process_turn_with_options(
             &TurnInput {
                 session_id: state.session_id.clone(),
                 raw_text: text.into(),
             },
             &mut state,
+            TurnOptions::new(),
         );
 
         assert!(!output.blocked, "{name} was blocked: {}", output.response);
@@ -477,12 +471,13 @@ fn test_derived_semantic_cache_is_not_persisted() {
         session_id: "cache-roundtrip".into(),
         ..SystemState::default()
     };
-    let output = process_turn(
+    let output = process_turn_with_options(
         &TurnInput {
             session_id: state.session_id.clone(),
             raw_text: "в чём функция стола?".into(),
         },
         &mut state,
+        TurnOptions::new(),
     );
     assert!(!output.blocked);
     let _ = qxfx0_semantic::cached_semantic_network(&mut state.semantic);
@@ -507,8 +502,16 @@ fn test_stage_trace_is_replay_deterministic() {
     };
     let mut second = first.clone();
 
-    let (first_output, first_trace) = process_turn_with_trace(&input, &mut first);
-    let (second_output, second_trace) = process_turn_with_trace(&input, &mut second);
+    let (first_output, first_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut first,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+    );
+    let (second_output, second_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut second,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+    );
 
     assert_eq!(first_output.response, second_output.response);
     assert_eq!(first_trace.request_id, second_trace.request_id);
@@ -924,32 +927,35 @@ fn same_topic_suppression_is_bounded_shadowed_and_limited() {
     };
     let mut prior_state = test_state(session_id);
     prior_state.semantic.field.confidence = 0.0;
-    let (first, _) = process_turn_with_trace_and_renderer_and_features(
+    let (first, _) = process_turn_with_options_and_trace(
         &input,
         &mut prior_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::Disabled,
-        ClarificationMode::LimitedEnabled,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::LimitedEnabled),
     );
     assert_eq!(first.family, qxfx0_types::CanonicalMoveFamily::CMClarify);
 
     let mut baseline_state = prior_state.clone();
     let mut shadow_state = prior_state.clone();
-    let (baseline, _) = process_turn_with_trace_and_renderer_and_features_and_suppression(
+    let (baseline, _) = process_turn_with_options_and_trace(
         &input,
         &mut baseline_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::Disabled,
-        ClarificationMode::LimitedEnabled,
-        SameTopicSuppressionMode::Disabled,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::LimitedEnabled)
+            .with_suppression(SameTopicSuppressionMode::Disabled),
     );
-    let (shadow, shadow_trace) = process_turn_with_trace_and_renderer_and_features_and_suppression(
+    let (shadow, shadow_trace) = process_turn_with_options_and_trace(
         &input,
         &mut shadow_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::Disabled,
-        ClarificationMode::LimitedEnabled,
-        SameTopicSuppressionMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::LimitedEnabled)
+            .with_suppression(SameTopicSuppressionMode::TraceOnly),
     );
     assert_eq!(baseline.response, shadow.response);
     assert_eq!(baseline.family, shadow.family);
@@ -976,15 +982,15 @@ fn same_topic_suppression_is_bounded_shadowed_and_limited() {
     );
 
     let mut enabled_state = prior_state.clone();
-    let (enabled, enabled_trace) =
-        process_turn_with_trace_and_renderer_and_features_and_suppression(
-            &input,
-            &mut enabled_state,
-            RendererAuthority::LegacyShadow,
-            DoubtShadowMode::Disabled,
-            ClarificationMode::LimitedEnabled,
-            SameTopicSuppressionMode::LimitedEnabled,
-        );
+    let (enabled, enabled_trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut enabled_state,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::LimitedEnabled)
+            .with_suppression(SameTopicSuppressionMode::LimitedEnabled),
+    );
     assert_eq!(enabled.family, qxfx0_types::CanonicalMoveFamily::CMDefine);
     assert!(!enabled.response.contains("Мне нужно уточнение"));
     let enabled_step = enabled_trace
@@ -1006,15 +1012,15 @@ fn same_topic_suppression_is_bounded_shadowed_and_limited() {
         raw_text: "что такое другойчайник?".into(),
     };
     let mut different_state = prior_state.clone();
-    let (different, different_trace) =
-        process_turn_with_trace_and_renderer_and_features_and_suppression(
-            &different_input,
-            &mut different_state,
-            RendererAuthority::LegacyShadow,
-            DoubtShadowMode::Disabled,
-            ClarificationMode::LimitedEnabled,
-            SameTopicSuppressionMode::LimitedEnabled,
-        );
+    let (different, different_trace) = process_turn_with_options_and_trace(
+        &different_input,
+        &mut different_state,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::LimitedEnabled)
+            .with_suppression(SameTopicSuppressionMode::LimitedEnabled),
+    );
     assert_eq!(
         different.family,
         qxfx0_types::CanonicalMoveFamily::CMClarify
@@ -1030,13 +1036,14 @@ fn same_topic_suppression_is_bounded_shadowed_and_limited() {
     );
 
     let mut replay_state = prior_state;
-    let (_, replay_trace) = process_turn_with_trace_and_renderer_and_features_and_suppression(
+    let (_, replay_trace) = process_turn_with_options_and_trace(
         &input,
         &mut replay_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::Disabled,
-        ClarificationMode::LimitedEnabled,
-        SameTopicSuppressionMode::LimitedEnabled,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::LimitedEnabled)
+            .with_suppression(SameTopicSuppressionMode::LimitedEnabled),
     );
     assert_eq!(
         serde_json::to_vec(&enabled_trace).unwrap(),
@@ -1053,19 +1060,21 @@ fn clarification_route_is_default_off_shadowed_and_limited() {
     let mut disabled_state = test_state(&input.session_id);
     disabled_state.semantic.field.confidence = 0.0;
     let mut shadow_state = disabled_state.clone();
-    let (disabled_output, disabled_trace) = process_turn_with_trace_and_renderer_and_features(
+    let (disabled_output, disabled_trace) = process_turn_with_options_and_trace(
         &input,
         &mut disabled_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::Disabled,
-        ClarificationMode::Disabled,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::Disabled),
     );
-    let (shadow_output, shadow_trace) = process_turn_with_trace_and_renderer_and_features(
+    let (shadow_output, shadow_trace) = process_turn_with_options_and_trace(
         &input,
         &mut shadow_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::Disabled,
-        ClarificationMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::TraceOnly),
     );
 
     assert_eq!(disabled_output.response, shadow_output.response);
@@ -1093,12 +1102,13 @@ fn clarification_route_is_default_off_shadowed_and_limited() {
 
     let mut enabled_state = test_state(&input.session_id);
     enabled_state.semantic.field.confidence = 0.0;
-    let (enabled_output, enabled_trace) = process_turn_with_trace_and_renderer_and_features(
+    let (enabled_output, enabled_trace) = process_turn_with_options_and_trace(
         &input,
         &mut enabled_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::Disabled,
-        ClarificationMode::LimitedEnabled,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled)
+            .with_clarification(ClarificationMode::LimitedEnabled),
     );
     assert_eq!(
         enabled_output.family,
@@ -1134,12 +1144,13 @@ fn clarification_route_is_default_off_shadowed_and_limited() {
 fn doubt_shadow_trace_is_observational_deterministic_and_bounded() {
     let session_id = "doubt-shadow-parity";
     let mut prior_state = test_state(session_id);
-    let prior = process_turn(
+    let prior = process_turn_with_options(
         &TurnInput {
             session_id: session_id.into(),
             raw_text: "что такое свобода?".into(),
         },
         &mut prior_state,
+        TurnOptions::new(),
     );
     assert!(!prior.blocked, "setup turn must be a confirmed decision");
     // Make the pure score exceed the clarification threshold. The proposed
@@ -1152,17 +1163,19 @@ fn doubt_shadow_trace_is_observational_deterministic_and_bounded() {
     };
     let mut disabled_state = prior_state.clone();
     let mut enabled_state = prior_state.clone();
-    let (disabled_output, disabled_trace) = process_turn_with_trace_and_renderer_and_doubt_shadow(
+    let (disabled_output, disabled_trace) = process_turn_with_options_and_trace(
         &input,
         &mut disabled_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::Disabled,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::Disabled),
     );
-    let (enabled_output, enabled_trace) = process_turn_with_trace_and_renderer_and_doubt_shadow(
+    let (enabled_output, enabled_trace) = process_turn_with_options_and_trace(
         &input,
         &mut enabled_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::TraceOnly),
     );
 
     assert_eq!(enabled_output.response, disabled_output.response);
@@ -1264,11 +1277,12 @@ fn doubt_shadow_trace_is_observational_deterministic_and_bounded() {
     assert!(recall_count <= capacity);
 
     let mut replay_state = prior_state;
-    let (_, replay_trace) = process_turn_with_trace_and_renderer_and_doubt_shadow(
+    let (_, replay_trace) = process_turn_with_options_and_trace(
         &input,
         &mut replay_state,
-        RendererAuthority::LegacyShadow,
-        DoubtShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_doubt_shadow(DoubtShadowMode::TraceOnly),
     );
     assert_eq!(
         serde_json::to_vec(&enabled_trace).unwrap(),
@@ -1287,17 +1301,19 @@ fn anomaly_shadow_trace_is_observational_deterministic_and_bounded() {
     disabled_state.semantic.essence.angst = 0.95;
     let mut enabled_state = disabled_state.clone();
 
-    let (disabled_output, disabled_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+    let (disabled_output, disabled_trace) = process_turn_with_options_and_trace(
         &input,
         &mut disabled_state,
-        RendererAuthority::LegacyShadow,
-        AnomalyShadowMode::Disabled,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_anomaly_shadow(AnomalyShadowMode::Disabled),
     );
-    let (enabled_output, enabled_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+    let (enabled_output, enabled_trace) = process_turn_with_options_and_trace(
         &input,
         &mut enabled_state,
-        RendererAuthority::LegacyShadow,
-        AnomalyShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
     );
 
     assert_eq!(enabled_output.response, disabled_output.response);
@@ -1381,11 +1397,12 @@ fn anomaly_shadow_trace_is_observational_deterministic_and_bounded() {
 
     let mut replay_state = test_state(&input.session_id);
     replay_state.semantic.essence.angst = 0.95;
-    let (_, replay_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+    let (_, replay_trace) = process_turn_with_options_and_trace(
         &input,
         &mut replay_state,
-        RendererAuthority::LegacyShadow,
-        AnomalyShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
     );
     assert_eq!(
         serde_json::to_vec(&enabled_trace).unwrap(),
@@ -1413,11 +1430,12 @@ fn anomaly_shadow_proposes_temporal_recovery_from_persisted_provenance_only() {
         });
     let before = qxfx0_pipeline::execution_trace::calculate_stable_digest(&state).unwrap();
 
-    let (output, trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+    let (output, trace) = process_turn_with_options_and_trace(
         &input,
         &mut state,
-        RendererAuthority::LegacyShadow,
-        AnomalyShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
     );
     assert!(!output.blocked);
     let anomaly = trace
@@ -1448,7 +1466,7 @@ fn anomaly_shadow_shared_session_replay_is_persistence_stable() {
         session_id: session_id.into(),
         raw_text: "что такое свобода?".into(),
     };
-    process_turn(&setup, &mut seeded);
+    process_turn_with_options(&setup, &mut seeded, TurnOptions::new());
     seeded.semantic.essence.angst = 0.95;
 
     let first_db = qxfx0_persistence::Persistence::open_memory().unwrap();
@@ -1461,20 +1479,22 @@ fn anomaly_shadow_shared_session_replay_is_persistence_stable() {
     };
 
     let mut first_state = first_db.load_state(session_id).unwrap().unwrap();
-    let (first_output, first_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+    let (first_output, first_trace) = process_turn_with_options_and_trace(
         &input,
         &mut first_state,
-        RendererAuthority::LegacyShadow,
-        AnomalyShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
     );
     first_db.save_state(session_id, &first_state).unwrap();
 
     let mut replay_state = replay_db.load_state(session_id).unwrap().unwrap();
-    let (replay_output, replay_trace) = process_turn_with_trace_and_renderer_and_anomaly_shadow(
+    let (replay_output, replay_trace) = process_turn_with_options_and_trace(
         &input,
         &mut replay_state,
-        RendererAuthority::LegacyShadow,
-        AnomalyShadowMode::TraceOnly,
+        TurnOptions::new()
+            .with_renderer(RendererAuthority::LegacyShadow)
+            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
     );
     replay_db.save_state(session_id, &replay_state).unwrap();
 
@@ -1499,7 +1519,11 @@ fn test_shadow_plan_trace_records_unknown_topic_recovery() {
         raw_text: "что такое кванточайник?".into(),
     };
     let mut state = test_state(&input.session_id);
-    let (output, trace) = process_turn_with_trace(&input, &mut state);
+    let (output, trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+    );
     let plan_step = trace
         .steps
         .iter()
@@ -1549,7 +1573,11 @@ fn test_shadow_plan_refuses_unaudited_content_for_recognized_topic() {
         raw_text: "что такое знание?".into(),
     };
     let mut state = test_state(&input.session_id);
-    let (output, trace) = process_turn_with_trace(&input, &mut state);
+    let (output, trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+    );
     let plan_step = trace
         .steps
         .iter()
@@ -1582,6 +1610,74 @@ fn test_shadow_plan_refuses_unaudited_content_for_recognized_topic() {
 }
 
 #[test]
+fn test_recognized_but_unadmitted_topic_carries_corpus_boundary_marker() {
+    // Honesty boundary (141 recognized / 71 admitted): a graph-composed
+    // response for a recognized topic without an admitted declarative plan
+    // must say so on its surface, while admitted topics stay byte-identical.
+    let unadmitted = TurnInput {
+        session_id: "trace-boundary-marker".into(),
+        raw_text: "что такое счастье?".into(),
+    };
+    let mut unadmitted_state = test_state(&unadmitted.session_id);
+    let (output, trace) = process_turn_with_options_and_trace(
+        &unadmitted,
+        &mut unadmitted_state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+    );
+    assert!(
+        output
+            .response
+            .contains("Граница корпуса: тема «счастье» распознана"),
+        "unadmitted-topic response must carry the boundary marker, got: {}",
+        output.response
+    );
+    let render_step = trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "render")
+        .expect("render step must exist");
+    assert_eq!(
+        render_step
+            .metadata
+            .get("boundary_marker")
+            .map(String::as_str),
+        Some("true")
+    );
+    // Deterministic: the same input in a twin session replays byte-identical.
+    let mut twin_state = test_state("trace-boundary-marker-twin");
+    let twin = TurnInput {
+        session_id: "trace-boundary-marker-twin".into(),
+        raw_text: "что такое счастье?".into(),
+    };
+    let twin_output = process_turn_with_options(&twin, &mut twin_state, TurnOptions::new());
+    assert_eq!(output.response, twin_output.response);
+
+    let admitted = TurnInput {
+        session_id: "trace-boundary-admitted".into(),
+        raw_text: "что такое свобода?".into(),
+    };
+    let mut admitted_state = test_state(&admitted.session_id);
+    let (admitted_output, admitted_trace) = process_turn_with_options_and_trace(
+        &admitted,
+        &mut admitted_state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+    );
+    assert!(
+        !admitted_output.response.contains("Граница корпуса"),
+        "admitted-topic response must not carry the boundary marker"
+    );
+    let admitted_render = admitted_trace
+        .steps
+        .iter()
+        .find(|step| step.stage == "render")
+        .expect("render step must exist");
+    assert!(
+        !admitted_render.metadata.contains_key("boundary_marker"),
+        "admitted-topic render trace must not gain new digest keys"
+    );
+}
+
+#[test]
 fn test_all_audited_topics_reach_content_plan_in_fresh_sessions() {
     let registry = qxfx0_semantic::argued_topic_registry().unwrap();
 
@@ -1592,7 +1688,11 @@ fn test_all_audited_topics_reach_content_plan_in_fresh_sessions() {
             raw_text: format!("что такое {}?", topic.topic().as_str()),
         };
         let mut state = test_state(&session_id);
-        let (_, trace) = process_turn_with_trace(&input, &mut state);
+        let (_, trace) = process_turn_with_options_and_trace(
+            &input,
+            &mut state,
+            TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+        );
         let plan_step = trace
             .steps
             .iter()
@@ -1626,7 +1726,11 @@ fn test_guard_trace_uses_typed_quality_recovery() {
         raw_text: String::new(),
     };
     let mut state = test_state(&input.session_id);
-    let (output, trace) = process_turn_with_trace(&input, &mut state);
+    let (output, trace) = process_turn_with_options_and_trace(
+        &input,
+        &mut state,
+        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+    );
     let guard_step = trace
         .steps
         .iter()
@@ -1675,12 +1779,13 @@ fn test_session_mismatch_is_blocked_without_mutation() {
         ..SystemState::default()
     };
     let before = qxfx0_pipeline::execution_trace::calculate_stable_digest(&state).unwrap();
-    let output = process_turn(
+    let output = process_turn_with_options(
         &TurnInput {
             session_id: "other-session".into(),
             raw_text: "что такое свобода?".into(),
         },
         &mut state,
+        TurnOptions::new(),
     );
     let after = qxfx0_pipeline::execution_trace::calculate_stable_digest(&state).unwrap();
 
@@ -1726,12 +1831,13 @@ fn test_rc_pilot_language_regressions() {
     };
 
     for turn in 0..20 {
-        let output = process_turn(
+        let output = process_turn_with_options(
             &TurnInput {
                 session_id: state.session_id.clone(),
                 raw_text: prompts[turn % prompts.len()].into(),
             },
             &mut state,
+            TurnOptions::new(),
         );
         let normalized = output.response.to_lowercase();
         for fragment in forbidden {
@@ -1765,12 +1871,13 @@ fn test_soak_1000_turns_has_bounded_state() {
     let mut warmed_graph_size = None;
 
     for turn in 0..1_000 {
-        let output = process_turn(
+        let output = process_turn_with_options(
             &TurnInput {
                 session_id: state.session_id.clone(),
                 raw_text: topics[turn % topics.len()].into(),
             },
             &mut state,
+            TurnOptions::new(),
         );
         assert!(!output.blocked, "soak turn {turn} was blocked");
         if turn == 99 {
@@ -2049,7 +2156,7 @@ fn novel_topic_at_runtime_edge_bound_does_not_brick_session() {
             session_id: session.clone(),
             raw_text: "что такое свобода?".into(),
         };
-        process_turn(&seed, &mut state);
+        process_turn_with_options(&seed, &mut state, TurnOptions::new());
 
         // Fill the graph to just below the bound using edges between two
         // existing seed atoms so every endpoint stays valid.
@@ -2072,7 +2179,7 @@ fn novel_topic_at_runtime_edge_bound_does_not_brick_session() {
             session_id: session.clone(),
             raw_text: "что такое флюгегехаймен?".into(),
         };
-        let bounded = process_turn(&novel, &mut state);
+        let bounded = process_turn_with_options(&novel, &mut state, TurnOptions::new());
         assert!(!bounded.response.is_empty());
         assert!(
             state.semantic.runtime_graph.edges.len() <= MAX_RUNTIME_EDGES,
@@ -2087,7 +2194,7 @@ fn novel_topic_at_runtime_edge_bound_does_not_brick_session() {
 
         // The session must keep accepting turns instead of being bricked by a
         // persisted invariant violation.
-        let follow = process_turn(&novel, &mut state);
+        let follow = process_turn_with_options(&novel, &mut state, TurnOptions::new());
         assert!(
             !matches!(follow.guard_status, GuardStatus::InvariantBlock(_)),
             "session bricked at remaining={remaining}: {:?}",
@@ -2109,7 +2216,7 @@ fn commitment_capacity_is_recorded_not_silent() {
         session_id: "commit-capacity".into(),
         raw_text: "что такое свобода?".into(),
     };
-    process_turn(&seed, &mut state);
+    process_turn_with_options(&seed, &mut state, TurnOptions::new());
 
     let mut store = SemanticCommitmentStore::default();
     for index in 0..qxfx0_commitment::MAX_COMMITMENTS {
@@ -2135,7 +2242,7 @@ fn commitment_capacity_is_recorded_not_silent() {
         session_id: "commit-capacity".into(),
         raw_text: "что такое флюгегехаймен?".into(),
     };
-    let output = process_turn(&turn, &mut state);
+    let output = process_turn_with_options(&turn, &mut state, TurnOptions::new());
     assert!(!output.response.is_empty());
 
     let store = state.semantic.semantic_commitments.as_ref().unwrap();
@@ -2156,7 +2263,7 @@ fn commitment_capacity_is_recorded_not_silent() {
     assert!(state.validate().is_empty());
 
     // The session keeps accepting turns instead of degrading.
-    let follow = process_turn(&turn, &mut state);
+    let follow = process_turn_with_options(&turn, &mut state, TurnOptions::new());
     assert!(!follow.response.is_empty());
     assert!(state.validate().is_empty());
 }
@@ -2171,7 +2278,7 @@ fn oversized_input_is_rejected_before_stage_work() {
         session_id: "oversized".into(),
         raw_text: "что такое свобода?".into(),
     };
-    process_turn(&seed, &mut state);
+    process_turn_with_options(&seed, &mut state, TurnOptions::new());
     let semantic_before = serde_json::to_value(&state.semantic).unwrap();
 
     let oversized = "а".repeat(8193);
@@ -2179,7 +2286,7 @@ fn oversized_input_is_rejected_before_stage_work() {
         session_id: "oversized".into(),
         raw_text: oversized,
     };
-    let output = process_turn(&input, &mut state);
+    let output = process_turn_with_options(&input, &mut state, TurnOptions::new());
 
     assert!(output.blocked);
     assert_eq!(

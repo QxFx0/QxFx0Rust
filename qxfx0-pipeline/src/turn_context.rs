@@ -220,6 +220,7 @@ pub struct RenderedTurnContext {
     plan_surface_available: bool,
     plan_surface_matches_output: Option<bool>,
     plan_render_error: Option<String>,
+    boundary_marker: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -229,6 +230,7 @@ pub(crate) struct RenderEvidence {
     pub(crate) plan_surface_available: bool,
     pub(crate) plan_surface_matches_output: Option<bool>,
     pub(crate) plan_render_error: Option<String>,
+    pub(crate) boundary_marker: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -270,6 +272,7 @@ impl RenderedTurnContext {
             plan_surface_available: evidence.plan_surface_available,
             plan_surface_matches_output: evidence.plan_surface_matches_output,
             plan_render_error: evidence.plan_render_error,
+            boundary_marker: evidence.boundary_marker,
         }
     }
 
@@ -299,6 +302,12 @@ impl RenderedTurnContext {
 
     pub fn renderer_source(&self) -> RendererSource {
         self.renderer_source
+    }
+
+    /// Whether the response carries the corpus-boundary marker appended for
+    /// recognized-but-unadmitted topics (graph-composed, not audited).
+    pub fn boundary_marker(&self) -> bool {
+        self.boundary_marker
     }
 }
 
@@ -560,6 +569,11 @@ impl StageTraceContext for RenderedTurnContext {
         }
         if let Some(error) = &self.plan_render_error {
             metadata.insert("plan_render_error".into(), error.clone());
+        }
+        // Inserted only when true so stage digests of marker-free turns stay
+        // byte-identical to the pre-marker corpus.
+        if self.boundary_marker {
+            metadata.insert("boundary_marker".into(), "true".into());
         }
         metadata
     }
