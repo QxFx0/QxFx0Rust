@@ -2,9 +2,9 @@
   "checks": {
     "Adjective lexicon": "42239 digest-pinned adjective paradigms; probes operational",
     "Code registry": "97 typed atoms, 1353 relations, 1322 RelComposes edges",
-    "Content plan assets": "recognition_topics_total=141, content_predicates_total=151, argued_topics_admitted=71, argued_predicates_admitted=71, profile_enabled=audited_v1",
-    "Curated FactRegistry": "151 curated FactId records re-resolve successfully",
-    "Knowledge pack": "active immutable pack fingerprint sha256:711a342706b19796ed2e1a657b62f6163cfff4f153fad048554ce6d19fc80843, 151 facts",
+    "Content plan assets": "recognition_topics_total=141, content_predicates_total=171, argued_topics_admitted=81, argued_predicates_admitted=81, profile_enabled=audited_v1",
+    "Curated FactRegistry": "171 curated FactId records re-resolve successfully",
+    "Knowledge pack": "active immutable pack fingerprint sha256:f6f6ec8db32faf0b2e80e21877a5f4b89d4e11704fb5af708c856e44af08ec39, 171 facts",
     "Pronoun lexicon": "68 digest-pinned closed-class paradigms",
     "Seed graph": "207 atoms, 346 relations, 141 covered topics",
     "Templates": "127 templates for 33 types; direct coverage 24/31 used relation types",

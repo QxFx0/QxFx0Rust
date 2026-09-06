@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn recognized_but_unadmitted_topic_has_explicit_fallback() {
-        let outcome = build_outcome(PropositionMode::Define, "знание", true).unwrap();
+        let outcome = build_outcome(PropositionMode::Define, "дом", true).unwrap();
         let fallback = outcome
             .fallback()
             .expect("recognized non-argued topic must not claim content authority");

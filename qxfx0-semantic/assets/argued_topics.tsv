@@ -73,3 +73,13 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 ремонт	remont_vosstanavlivaet	remont	vosstanavlivaet	sistema	ремонт восстанавливает систему	ремонт предполагает диагностику поломки	
 рынок	rynok_predpolagaet	rynok	predpolagaet	obmen	рынок предполагает обмен	рынок выражает экономическую рациональность	
 цифра	tsifra_formalizuet	tsifra	formalizuet	opyt	цифра формализует опыт	цифра формализует опыт счёта	
+диалог	dialog_napravlena	dialog	napravlena	ponimanie	диалог направлен на понимание	не всякий разговор — диалог: без готовности понять это обмен репликами	
+добро	dobro_kontrastiruet	dobro	kontrastiruet	zlo	добро контрастирует со злом	противопоставление упрощает: в живом поступке добро и зло часто смешаны	
+знание	znanie_trebuet	znanie	trebuet	istina	знание требует истины	знание без проверки — лишь убеждение: заблуждение тоже выглядит знанием	
+мудрость	mudrost_predpolagaet	mudrost	predpolagaet	znanie	мудрость предполагает знание	эрудиция — не мудрость: знание без прожитого опыта не ведёт	
+понимание	ponimanie_predpolagaet	ponimanie	predpolagaet	znanie	понимание предполагает знание	знать факты — не значит понять: понимание не следует из знания автоматически	
+совесть	sovest_podderzhivaet	sovest	podderzhivaet	otvetstvennost	совесть поддерживает ответственность	совесть бывает ложной: вина без вины тоже мучает	
+счастье	schaste_trebuet	schaste	trebuet	svoboda	счастье требует свободы	свобода не гарантирует счастья: свободный выбор бывает бременем	
+творчество	tvorchestvo_predpolagaet	tvorchestvo	predpolagaet	voobrazhenie	творчество предполагает воображение	воображение без воплощения — не творчество: нужен результат, а не только образы	
+уважение	uvazhenie_predpolagaet	uvazhenie	predpolagaet	lichnost	уважение предполагает личность	вежливость — не уважение: без признания личности это лишь форма	
+человек	chelovek_trebuet	chelovek	trebuet	svoboda	человек требует свободы	человек не сводится к нуждам: свобода и сознание даны ему, а не выведены из требований	

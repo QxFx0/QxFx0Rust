@@ -237,9 +237,9 @@ impl ArguedTopicRegistry {
             }
         }
 
-        if topics.len() != 71 {
+        if topics.len() != 81 {
             return Err(format!(
-                "audited_v1 must admit exactly 71 topics, found {}",
+                "audited_v1 must admit exactly 81 topics, found {}",
                 topics.len()
             ));
         }
@@ -328,11 +328,11 @@ mod tests {
         let metrics = registry.metrics();
 
         assert_eq!(metrics.recognition_topics_total, 141);
-        assert_eq!(metrics.argued_topics_admitted, 71);
-        assert_eq!(metrics.argued_predicates_admitted, 71);
-        assert_eq!(metrics.content_predicates_total, 151);
-        assert_eq!(registry.facts().len(), 151);
-        assert_eq!(registry.facts().count_by_status(FactStatus::Curated), 151);
+        assert_eq!(metrics.argued_topics_admitted, 81);
+        assert_eq!(metrics.argued_predicates_admitted, 81);
+        assert_eq!(metrics.content_predicates_total, 171);
+        assert_eq!(registry.facts().len(), 171);
+        assert_eq!(registry.facts().count_by_status(FactStatus::Curated), 171);
         assert_eq!(metrics.profile_enabled, "audited_v1");
     }
 

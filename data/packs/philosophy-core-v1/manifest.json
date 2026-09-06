@@ -1,13 +1,13 @@
 {
- "pack_id": "philosophy-core-v1",
- "pack_version": 1,
- "schema_version": 1,
- "source_repository": "QxFx0",
- "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
- "license": "MIT",
- "files": {
-  "concepts.json": "0c17610c9aea4a37f3b1fd87a4a55a149e2c2d5c5968ef0098dc8123fc79b6af",
-  "facts.json": "d45c05313b4ca1297ab2d70477302ebe90580cade4bbbb5d00d3b98bd05e6de1",
-  "relations.json": "6a5d954c66d9c895b298c11f9e9f82a5d4006423afb409d9e8379bb76e6203d5"
- }
+  "pack_id": "philosophy-core-v1",
+  "pack_version": 1,
+  "schema_version": 1,
+  "source_repository": "QxFx0",
+  "source_commit": "49440f81b6c84700f44082a28494a04dab7b3689",
+  "license": "MIT",
+  "files": {
+    "concepts.json": "0c17610c9aea4a37f3b1fd87a4a55a149e2c2d5c5968ef0098dc8123fc79b6af",
+    "facts.json": "cb3e1b0e4b9afa9d7455eeea35d5b7dc174bbaf1292c75aea3f6b7295b2d2558",
+    "relations.json": "6a5d954c66d9c895b298c11f9e9f82a5d4006423afb409d9e8379bb76e6203d5"
+  }
 }
