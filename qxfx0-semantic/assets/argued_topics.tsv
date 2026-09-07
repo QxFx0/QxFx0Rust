@@ -123,3 +123,13 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 стресс	stress_razrushaet	stress	razrushaet	zdorove	стресс разрушает здоровье	короткий стресс закаляет: разрушает только хронический	
 ценность	tsennost_trebuet	tsennost	trebuet	obmen	ценность требует обмена	ценность, которую нельзя обменять, — реликвия: хранится, но не работает	
 этика	etika_trebuet	etika	trebuet	razum	этика требует разума	этика без разума — обычай: так принято, а почему — забыто	
+воображение	voobrazhenie_trebuet	voobrazhenie	trebuet	svoboda	воображение требует свободы	воображение работает и в неволе: узник фантазирует свободнее тюремщика	
+гармония	garmoniya_svyazan	garmoniya	svyazan	krasota	гармония связана с красотой	гармония без напряжения — фон: ровное не запоминается	
+здоровье	zdorove_svyazan	zdorove	svyazan	priroda	здоровье связано с природой	природа не гарантирует здоровья: естественное бывает и больным	
+значение	znachenie_trebuet	znachenie	trebuet	soznanie	значение требует сознания	значение существует лишь для понимающего: без сознания это чернила	
+необходимость	neobhodimost_kontrastiruet	neobhodimost	kontrastiruet	svoboda	необходимость контрастирует со свободой	необходимость противоречит свободе лишь отчасти: признанная необходимость освобождает	
+поступок	postupok_predpolagaet	postupok	predpolagaet	otvetstvennost	поступок предполагает ответственность	поступок без ответственности — случайность: сделал, но не отвечаешь	
+привязанность	privyazannost_svyazan	privyazannost	svyazan	lyubov	привязанность связана с любовью	привязанность без любви — привычка: держит, но не греет	
+процесс	protsess_svyazan	protsess	svyazan	rezultat	процесс связан с результатом	процесс без результата — холостой ход: движение есть, а прибытия нет	
+ресурс	resurs_trebuet	resurs	trebuet	vybor	ресурс требует выбора	ресурс без выбора — клад: лежит, но не работает	
+система	sistema_trebuet	sistema	trebuet	poryadok	система требует порядка	система без порядка — куча: элементы есть, а целого нет	

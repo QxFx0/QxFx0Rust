@@ -983,6 +983,40 @@
     }
   },
   {
+    "predicate_ref": "garmoniya_svyazan",
+    "record": {
+      "id": "fact.garmoniya_svyazan",
+      "subject": "concept.гармония",
+      "relation": "RelRelatedTo",
+      "object": "concept.красота",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:garmoniya_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "garmoniya_svyazan.counterpoint",
+    "record": {
+      "id": "fact.garmoniya_svyazan.counterpoint",
+      "subject": "concept.гармония",
+      "relation": "RelRelatedTo",
+      "object": "concept.красота",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:garmoniya_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "gnev_kontrastiruet",
     "record": {
       "id": "fact.gnev_kontrastiruet",
@@ -2090,6 +2124,40 @@
     }
   },
   {
+    "predicate_ref": "neobhodimost_kontrastiruet",
+    "record": {
+      "id": "fact.neobhodimost_kontrastiruet",
+      "subject": "concept.необходимость",
+      "relation": "RelContrastsWith",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:neobhodimost_kontrastiruet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "neobhodimost_kontrastiruet.counterpoint",
+    "record": {
+      "id": "fact.neobhodimost_kontrastiruet.counterpoint",
+      "subject": "concept.необходимость",
+      "relation": "RelContrastsWith",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:neobhodimost_kontrastiruet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "obektivnost_trebuet",
     "record": {
       "id": "fact.obektivnost_trebuet",
@@ -2319,6 +2387,40 @@
     }
   },
   {
+    "predicate_ref": "postupok_predpolagaet",
+    "record": {
+      "id": "fact.postupok_predpolagaet",
+      "subject": "concept.поступок",
+      "relation": "RelPresupposes",
+      "object": "concept.ответственность",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:postupok_predpolagaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "postupok_predpolagaet.counterpoint",
+    "record": {
+      "id": "fact.postupok_predpolagaet.counterpoint",
+      "subject": "concept.поступок",
+      "relation": "RelPresupposes",
+      "object": "concept.ответственность",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:postupok_predpolagaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "power_influence",
     "record": {
       "id": "fact.power_influence",
@@ -2425,6 +2527,40 @@
     }
   },
   {
+    "predicate_ref": "privyazannost_svyazan",
+    "record": {
+      "id": "fact.privyazannost_svyazan",
+      "subject": "concept.привязанность",
+      "relation": "RelRelatedTo",
+      "object": "concept.любовь",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:privyazannost_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "privyazannost_svyazan.counterpoint",
+    "record": {
+      "id": "fact.privyazannost_svyazan.counterpoint",
+      "subject": "concept.привязанность",
+      "relation": "RelRelatedTo",
+      "object": "concept.любовь",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:privyazannost_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "prizvanie_svyazan",
     "record": {
       "id": "fact.prizvanie_svyazan",
@@ -2487,6 +2623,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:progress_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "protsess_svyazan",
+    "record": {
+      "id": "fact.protsess_svyazan",
+      "subject": "concept.процесс",
+      "relation": "RelRelatedTo",
+      "object": "concept.результат",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:protsess_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "protsess_svyazan.counterpoint",
+    "record": {
+      "id": "fact.protsess_svyazan.counterpoint",
+      "subject": "concept.процесс",
+      "relation": "RelRelatedTo",
+      "object": "concept.результат",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:protsess_svyazan",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
@@ -2938,6 +3108,40 @@
     }
   },
   {
+    "predicate_ref": "resurs_trebuet",
+    "record": {
+      "id": "fact.resurs_trebuet",
+      "subject": "concept.ресурс",
+      "relation": "RelRequires",
+      "object": "concept.выбор",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:resurs_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "resurs_trebuet.counterpoint",
+    "record": {
+      "id": "fact.resurs_trebuet.counterpoint",
+      "subject": "concept.ресурс",
+      "relation": "RelRequires",
+      "object": "concept.выбор",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:resurs_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "revnost_kontrastiruet",
     "record": {
       "id": "fact.revnost_kontrastiruet",
@@ -3280,6 +3484,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:silence_speech.counterpoint",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "sistema_trebuet",
+    "record": {
+      "id": "fact.sistema_trebuet",
+      "subject": "concept.система",
+      "relation": "RelRequires",
+      "object": "concept.порядок",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:sistema_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "sistema_trebuet.counterpoint",
+    "record": {
+      "id": "fact.sistema_trebuet.counterpoint",
+      "subject": "concept.система",
+      "relation": "RelRequires",
+      "object": "concept.порядок",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:sistema_trebuet",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
@@ -4126,6 +4364,40 @@
     }
   },
   {
+    "predicate_ref": "voobrazhenie_trebuet",
+    "record": {
+      "id": "fact.voobrazhenie_trebuet",
+      "subject": "concept.воображение",
+      "relation": "RelRequires",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:voobrazhenie_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "voobrazhenie_trebuet.counterpoint",
+    "record": {
+      "id": "fact.voobrazhenie_trebuet.counterpoint",
+      "subject": "concept.воображение",
+      "relation": "RelRequires",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:voobrazhenie_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "vosproizvodimost_podderzhivaet",
     "record": {
       "id": "fact.vosproizvodimost_podderzhivaet",
@@ -4287,6 +4559,40 @@
     }
   },
   {
+    "predicate_ref": "zdorove_svyazan",
+    "record": {
+      "id": "fact.zdorove_svyazan",
+      "subject": "concept.здоровье",
+      "relation": "RelRelatedTo",
+      "object": "concept.природа",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:zdorove_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "zdorove_svyazan.counterpoint",
+    "record": {
+      "id": "fact.zdorove_svyazan.counterpoint",
+      "subject": "concept.здоровье",
+      "relation": "RelRelatedTo",
+      "object": "concept.природа",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:zdorove_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "zhelanie_predpolagaet",
     "record": {
       "id": "fact.zhelanie_predpolagaet",
@@ -4383,6 +4689,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:zlo_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "znachenie_trebuet",
+    "record": {
+      "id": "fact.znachenie_trebuet",
+      "subject": "concept.значение",
+      "relation": "RelRequires",
+      "object": "concept.сознание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:znachenie_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "znachenie_trebuet.counterpoint",
+    "record": {
+      "id": "fact.znachenie_trebuet.counterpoint",
+      "subject": "concept.значение",
+      "relation": "RelRequires",
+      "object": "concept.сознание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:znachenie_trebuet",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"

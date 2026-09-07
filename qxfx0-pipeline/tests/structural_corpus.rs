@@ -256,8 +256,8 @@ fn audited_v1_fixture_matches_the_admission_boundary() {
         .map(|topic| topic.topic().as_str())
         .collect::<BTreeSet<_>>();
 
-    assert_eq!(cases.len(), 121);
-    assert_eq!(fixture_topics.len(), 121);
+    assert_eq!(cases.len(), 131);
+    assert_eq!(fixture_topics.len(), 131);
     assert_eq!(fixture_topics, admitted_topics);
 }
 
@@ -271,7 +271,7 @@ fn audited_v1_structural_gate_passes_in_fresh_sessions() {
 }
 
 #[test]
-fn audited_v1_structural_gate_passes_in_one_hundred_twenty_turn_session() {
+fn audited_v1_structural_gate_passes_in_one_hundred_thirty_turn_session() {
     let session_id = "structural-long-session";
     let mut state = test_state(session_id);
 
@@ -279,8 +279,8 @@ fn audited_v1_structural_gate_passes_in_one_hundred_twenty_turn_session() {
         assert_structural_plan(case, &mut state, session_id, turn + 1);
     }
 
-    assert_eq!(state.dialogue.turn_count, 121);
-    assert_eq!(state.dialogue.history.len(), 121);
+    assert_eq!(state.dialogue.turn_count, 131);
+    assert_eq!(state.dialogue.history.len(), 131);
 }
 
 #[test]
@@ -377,7 +377,7 @@ fn audited_plan_renderer_passes_surface_gate_in_fresh_sessions() {
 }
 
 #[test]
-fn audited_plan_renderer_passes_surface_gate_in_one_hundred_twenty_turn_session() {
+fn audited_plan_renderer_passes_surface_gate_in_one_hundred_thirty_turn_session() {
     let session_id = "surface-long-session";
     let mut state = test_state(session_id);
 
@@ -385,8 +385,8 @@ fn audited_plan_renderer_passes_surface_gate_in_one_hundred_twenty_turn_session(
         assert_plan_renderer_surface(case, &mut state, session_id, turn + 1);
     }
 
-    assert_eq!(state.dialogue.turn_count, 121);
-    assert_eq!(state.dialogue.history.len(), 121);
+    assert_eq!(state.dialogue.turn_count, 131);
+    assert_eq!(state.dialogue.history.len(), 131);
 }
 
 #[test]
