@@ -120,10 +120,23 @@ pub fn check_topic_relevance(topic: &str, rendered: &str) -> Option<String> {
     });
 
     if !has_overlap {
-        Some(format!("нулевое совпадение с темой: {}", canonical_topic))
-    } else {
-        None
+        // Lemma fallback: substring/stemming above cannot see short or
+        // vowel-final topics through inflection («зле», «добра»,
+        // «времени», «смерти» never contain «зло»/«добро»/«время»/«смерть»
+        // as substrings). Lemmatizing both sides closes that recall gap
+        // without the false positives of shorter stems («зл» would also
+        // match «козлы»). Runs only when the cheap checks missed, so the
+        // hot path is unchanged.
+        let topic_lemma = qxfx0_morphology::lemmatize_surface(&canonical_topic);
+        let lemma_overlap = lower
+            .split(|c: char| !c.is_alphabetic())
+            .filter(|t| !t.is_empty())
+            .any(|token| qxfx0_morphology::lemmatize_surface(token) == topic_lemma);
+        if !lemma_overlap {
+            return Some(format!("нулевое совпадение с темой: {}", canonical_topic));
+        }
     }
+    None
 }
 
 /// Check for content density.
@@ -441,6 +454,19 @@ mod tests {
         assert!(check_topic_relevance("свoбода", "свобода предполагает выбор").is_none());
         assert!(check_topic_relevance("свобода", "рассуждая о свободе").is_none());
         assert!(check_topic_relevance("свобода", "механика шестерёнок").is_some());
+    }
+
+    #[test]
+    fn topic_relevance_sees_inflected_short_topics() {
+        // «зле»/«злом» never contain «зло» as a substring; the lemma
+        // fallback must still see them, while unrelated «козлы» stays out.
+        assert!(check_topic_relevance("зло", "Давай подумаем о зле").is_none());
+        assert!(check_topic_relevance("добро", "во имя добра").is_none());
+        assert!(check_topic_relevance("время", "со временем").is_none());
+        assert!(check_topic_relevance("смерть", "перед смертью").is_none());
+        assert!(check_topic_relevance("любовь", "о любви").is_none());
+        assert!(check_topic_relevance("зло", "козлы в огороде").is_some());
+        assert!(check_topic_relevance("зло", "механика шестерёнок").is_some());
     }
 
     #[test]

@@ -832,7 +832,7 @@ fn run_replay_gate() -> GateReport {
     }
 }
 
-/// Phase B: the audited corpus — semantic + authority parity over all 101
+/// Phase B: the audited corpus — semantic + authority parity over all 111
 /// topics. Every stated claim of every topic must traverse the whole chain
 /// (admission → evidence → assertion) and land on a `ClaimAuthority`; the
 /// manifest must lock the exact asset bytes the release binary carries.
@@ -1405,7 +1405,7 @@ mod tests {
             "canary report failed: {:?}",
             report.violations
         );
-        assert!(report.details.contains("audited_turns=101"));
+        assert!(report.details.contains("audited_turns=111"));
         assert!(report.details.contains("attestation_parity_violations=0"));
         assert!(report.details.contains("unauthorized_v1_fallbacks=0"));
     }

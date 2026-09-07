@@ -944,11 +944,11 @@ mod tests {
     }
 
     #[test]
-    fn the_corpus_closes_over_101_topics_and_211_claims() {
+    fn the_corpus_closes_over_111_topics_and_231_claims() {
         let report = audit_audited_corpus().expect("whole corpus must authorize");
-        assert_eq!(report.topics, 101);
-        assert_eq!(report.statements, 211);
-        assert_eq!(report.curated, 211);
+        assert_eq!(report.topics, 111);
+        assert_eq!(report.statements, 231);
+        assert_eq!(report.curated, 231);
         assert_eq!(report.derived_curated, 0);
     }
 

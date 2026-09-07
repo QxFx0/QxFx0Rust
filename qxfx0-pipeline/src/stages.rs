@@ -402,7 +402,7 @@ pub fn render_stage(
             "Я не знаю этот смысл, но он вызывает определенный резонанс в моей системе.".into();
     }
 
-    // Corpus-boundary honesty (141 recognized / 101 admitted): a recognized
+    // Corpus-boundary honesty (141 recognized / 111 admitted): a recognized
     // topic without an admitted declarative plan must not read like audited
     // knowledge. The shadow plan already records `no_admissible_predicate`;
     // mirror that boundary into the user-facing surface with a deterministic

@@ -1883,6 +1883,17 @@
     "version": 1
   },
   {
+    "concept_id": "concept.цель",
+    "graph_atom_id": "цель",
+    "canonical_lemma": "цель",
+    "aliases": [],
+    "ontology_kind": "abstract_concept",
+    "status": "curated",
+    "source_pack": "philosophy-core-v1",
+    "source_ref": "concept:цель",
+    "version": 1
+  },
+  {
     "concept_id": "concept.ценность",
     "graph_atom_id": "ценность",
     "canonical_lemma": "ценность",

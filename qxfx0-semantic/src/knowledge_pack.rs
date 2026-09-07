@@ -733,8 +733,8 @@ mod tests {
     fn active_pack_census_and_coverage() {
         let p = active_pack_set();
         assert_eq!(p.summaries().len(), 4);
-        assert_eq!(p.resolver().concept_count(), 177);
-        assert_eq!(p.facts().len(), 211);
+        assert_eq!(p.resolver().concept_count(), 178);
+        assert_eq!(p.facts().len(), 231);
         assert_eq!(p.overlay_theses().len(), 15);
         assert_eq!(p.overlay_relations().len(), 21);
         assert_eq!(p.lifecycle_scenarios().len(), 6);

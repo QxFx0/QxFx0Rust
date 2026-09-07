@@ -103,3 +103,13 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 развитие	razvitie_napravlena	razvitie	napravlena	lichnost	развитие направлено на личность	рост — не развитие: больше не значит зрелее	
 ревность	revnost_kontrastiruet	revnost	kontrastiruet	doverie	ревность контрастирует с доверием	ревность сторожит не доверие, а страх потери	
 технология	tekhnologiya_podderzhivaet	tekhnologiya	podderzhivaet	progress	технология поддерживает прогресс	не всякая технология — прогресс: ускорение — не направление	
+внимание	vnimanie_trebuet	vnimanie	trebuet	soznanie	внимание требует сознания	внимание цепляется и без сознания: взгляд останавливается сам	
+гнев	gnev_kontrastiruet	gnev	kontrastiruet	svoboda	гнев контрастирует со свободой	гнев раба — тоже гнев: несвобода его не отменяет, а рождает	
+демократия	demokratiya_trebuet	demokratiya	trebuet	ravenstvo	демократия требует равенства	равенство голосов — не равенство сил: вес голоса зависит от многого	
+зло	zlo_svyazan	zlo	svyazan	svoboda	зло связано со свободой	связь не оправдание: свобода — условие зла, а не его причина	
+интерпретация	interpretatsiya_svyazan	interpretatsiya	svyazan	istina	интерпретация связана с истиной	связь с истиной надо доказать: интерпретация легко выдаёт желаемое за действительное	
+интуиция	intuitsiya_kontrastiruet	intuitsiya	kontrastiruet	razum	интуиция контрастирует с разумом	интуиция без разума — чутьё: угадывает, но не объясняет	
+информация	informatsiya_trebuet	informatsiya	trebuet	vnimanie	информация требует внимания	информация без внимания — шум: непрочитанное не информирует	
+конфликт	konflikt_kontrastiruet	konflikt	kontrastiruet	ponimanie	конфликт контрастирует с пониманием	конфликт редко проясняет: спорящие перестают слышать	
+личность	lichnost_trebuet	lichnost	trebuet	soznanie	личность требует сознания	личность — не только сознание: характер шире осознаваемого	
+дисциплина	distsiplina_podderzhivaet	distsiplina	podderzhivaet	tsel	дисциплина поддерживает цель	дисциплина без цели — муштра: порядок есть, а смысла нет	

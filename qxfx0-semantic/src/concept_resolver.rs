@@ -373,7 +373,7 @@ mod tests {
     #[test]
     fn embedded_registry_covers_every_seed_topic() {
         let resolver = get_resolver();
-        assert_eq!(resolver.concept_count(), 177);
+        assert_eq!(resolver.concept_count(), 178);
         for topic in crate::COVERED_TOPICS {
             match resolver.resolve(topic) {
                 ResolutionOutcome::Resolved(entry) => assert_eq!(entry.atom_id.as_str(), *topic),
