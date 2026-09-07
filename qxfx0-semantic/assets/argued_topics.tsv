@@ -113,3 +113,13 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 конфликт	konflikt_kontrastiruet	konflikt	kontrastiruet	ponimanie	конфликт контрастирует с пониманием	конфликт редко проясняет: спорящие перестают слышать	
 личность	lichnost_trebuet	lichnost	trebuet	soznanie	личность требует сознания	личность — не только сознание: характер шире осознаваемого	
 дисциплина	distsiplina_podderzhivaet	distsiplina	podderzhivaet	tsel	дисциплина поддерживает цель	дисциплина без цели — муштра: порядок есть, а смысла нет	
+грусть	grust_svyazan	grust	svyazan	smysl	грусть связана со смыслом	грусть без смысла — хандра: тоска без предмета	
+призвание	prizvanie_svyazan	prizvanie	svyazan	smysl	призвание связано со смыслом	призвание без смысла — карьера: лестница есть, а верха нет	
+прогресс	progress_trebuet	progress	trebuet	vremya	прогресс требует времени	прогресс без направления — дрейф: движение есть, а пути нет	
+путешествие	puteshestvie_trebuet	puteshestvie	trebuet	svoboda	путешествие требует свободы	путешествие без свободы — переезд: меняется адрес, а не взгляд	
+работа	rabota_kontrastiruet	rabota	kontrastiruet	svoboda	работа контрастирует со свободой	работа против свободы — каторга: несвободный труд уродует	
+равенство	ravenstvo_kontrastiruet	ravenstvo	kontrastiruet	svoboda	равенство контрастирует со свободой	равенство, стирающее различия, — уравниловка: справедливость учитывает разное	
+радость	radost_svyazan	radost	svyazan	smysl	радость связана со смыслом	радость по заказу — не радость: веселье не вызывается	
+стресс	stress_razrushaet	stress	razrushaet	zdorove	стресс разрушает здоровье	короткий стресс закаляет: разрушает только хронический	
+ценность	tsennost_trebuet	tsennost	trebuet	obmen	ценность требует обмена	ценность, которую нельзя обменять, — реликвия: хранится, но не работает	
+этика	etika_trebuet	etika	trebuet	razum	этика требует разума	этика без разума — обычай: так принято, а почему — забыто	

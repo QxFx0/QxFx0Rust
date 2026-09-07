@@ -906,8 +906,8 @@ mod tests {
                 Some(&"false".into())
             );
         }
-        assert_eq!(topics, 111);
-        assert_eq!(claims, 231);
+        assert_eq!(topics, 121);
+        assert_eq!(claims, 251);
     }
 
     fn parity_input(session_id: &str) -> TurnInput {

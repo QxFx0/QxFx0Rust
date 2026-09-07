@@ -262,7 +262,7 @@ mod tests {
             prove_leaf_admission(fact_id, pack, argued).expect("pack fact");
             admitted += 1;
         }
-        assert_eq!(admitted, 231);
+        assert_eq!(admitted, 251);
         assert_eq!(
             pack.facts().len(),
             argued.facts().len(),
@@ -282,7 +282,7 @@ mod tests {
                 admitted += 1;
             }
         }
-        assert_eq!(admitted, 231);
+        assert_eq!(admitted, 251);
     }
 
     /// `is_curated` is the shared fact-membership view: a draft or deprecated

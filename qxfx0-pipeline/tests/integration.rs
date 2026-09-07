@@ -1611,7 +1611,7 @@ fn test_shadow_plan_refuses_unaudited_content_for_recognized_topic() {
 
 #[test]
 fn test_recognized_but_unadmitted_topic_carries_corpus_boundary_marker() {
-    // Honesty boundary (141 recognized / 111 admitted): a graph-composed
+    // Honesty boundary (141 recognized / 121 admitted): a graph-composed
     // response for a recognized topic without an admitted declarative plan
     // must say so on its surface, while admitted topics stay byte-identical.
     let unadmitted = TurnInput {
