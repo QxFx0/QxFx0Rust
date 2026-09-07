@@ -133,3 +133,6 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 процесс	protsess_svyazan	protsess	svyazan	rezultat	процесс связан с результатом	процесс без результата — холостой ход: движение есть, а прибытия нет	
 ресурс	resurs_trebuet	resurs	trebuet	vybor	ресурс требует выбора	ресурс без выбора — клад: лежит, но не работает	
 система	sistema_trebuet	sistema	trebuet	poryadok	система требует порядка	система без порядка — куча: элементы есть, а целого нет	
+скорость	skorost_svyazan	skorost	svyazan	vremya	скорость связана со временем	скорость без направления — суета: быстро, но неизвестно куда	
+спокойствие	spokoistvie_svyazan	spokoistvie	svyazan	svoboda	спокойствие связано со свободой	спокойствие без свободы — оцепенение: тихо, но не мирно	
+существование	suschestvovanie_svyazan	suschestvovanie	svyazan	soznanie	существование связано с сознанием	существование без сознания — наличие: есть, но не присутствует	

@@ -508,7 +508,7 @@ mod tests {
                 certified += 1;
             }
         }
-        assert_eq!(certified, 271);
+        assert_eq!(certified, 277);
     }
 
     #[test]

@@ -1,19 +1,19 @@
 {
   "diagnostics": {
-    "claims_total": 271,
-    "exact_clause_surfaces": 113,
-    "fixed_phrase_surfaces": 140,
+    "claims_total": 277,
+    "exact_clause_surfaces": 116,
+    "fixed_phrase_surfaces": 143,
     "governed_clause_surfaces": 18,
-    "topics_total": 131
+    "topics_total": 134
   },
-  "manifest_digest": "189f1f2c7801a8c7a2210509e6196fcb6f1850ff155defda8b2d2c0543f1309a",
+  "manifest_digest": "d639983813a6a91b642c87cfe8663425ccc3a3e99034ee4db29c4f49d85bd4f8",
   "manifest_id": "response-plan-v2-audited-corpus-v2",
   "schema_version": 2,
   "source_files": {
-    "argued_topics.tsv": "5956ebc38ddf108c003ee59326ddda4ec967445157caa466c8da7330dedf4458",
+    "argued_topics.tsv": "3836776eca4aaad3a027e5e77f56d6c8db1326533276743e7bd7b1a0cc1175b5",
     "concepts.json": "399b0fac5a935c345912ef3dbe7b92ef438b87950a085c2b886926e0736bcb18",
-    "facts.json": "6e1429699cb10e5a9a3036e7ff2e0c116223d3036d569337d176669362b0e11f",
-    "manifest.json": "f18ffbc7bb34a1de32ad31e1ac320847e7dcc0cd68f2ec6ec6963828ec7d976b",
+    "facts.json": "72673546f6a4361244c28079b21acc95e1de75c5898dfa1bfa62db1a6f556208",
+    "manifest.json": "6f4e940e409e4fe934358baa17804f1701002ca61e1dd9d62d6d79ade0c0ae0b",
     "relations.json": "6a5d954c66d9c895b298c11f9e9f82a5d4006423afb409d9e8379bb76e6203d5",
     "valency_frames.tsv": "ffb1cb27c873a412394ab6fa09ec8f75ac793a57775206b84ca8d689eec1da7c"
   },
@@ -5740,6 +5740,62 @@
         }
       }
     },
+    "скорость": {
+      "claims": {
+        "0c76ace1e9ebe0e5082deda27211b0debc1b1068a9e5bd24079156917fb024f7": {
+          "approved_surface": "скорость без направления — суета: быстро, но неизвестно куда",
+          "approved_surface_sha256": "55e26b0f78ea9cd6862e41629f305ee8a176d630ee4c779e10e0306c103eccb0",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "1f0ecbbae7524ed1c8140e34fc3b12c62938bbe2f0180c86a776b52f27deb07e",
+          "fact_id": "fact.skorost_svyazan.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "скорость"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "skorost",
+              "source_semantic_id": "concept.скорость"
+            }
+          ],
+          "proposition_id": "fc9efe69f8d4d7bf9b876bc56ab55e62333c6ae9af3f2ea796672d67b68750f0",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "df235b594f891d464ae9a6921eefe51b7d285653e79b8d2c47ec9ddd64598632": {
+          "approved_surface": "скорость связана со временем",
+          "approved_surface_sha256": "ea7d2de2193fd6688a13e0840068641a63025dca9ec31b620e306e311d5d1cc0",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "1f0ecbbae7524ed1c8140e34fc3b12c62938bbe2f0180c86a776b52f27deb07e",
+          "expected_clause_surface_sha256": "ea7d2de2193fd6688a13e0840068641a63025dca9ec31b620e306e311d5d1cc0",
+          "fact_id": "fact.skorost_svyazan",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "скорость"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "skorost",
+              "source_semantic_id": "concept.скорость"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "fc9efe69f8d4d7bf9b876bc56ab55e62333c6ae9af3f2ea796672d67b68750f0",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
     "слушание": {
       "claims": {
         "2f65d098ea8db3350b00c8c78e5cdc885291039305f77e9d4e04467e5da37ecc": {
@@ -6110,6 +6166,62 @@
         }
       }
     },
+    "спокойствие": {
+      "claims": {
+        "5d54aab6107cc98ca7099e1caf6fee5e42b866bdee23bec39f55c551214afc1d": {
+          "approved_surface": "спокойствие связано со свободой",
+          "approved_surface_sha256": "f96b2d2277e798525f86316e8cbebdeeb1698370e8ee3a14fa1c9580213d8ecc",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "54451448526d863a2800e35476341a5cc116b04996d32d2262e6bc8c79b1ce5c",
+          "expected_clause_surface_sha256": "f96b2d2277e798525f86316e8cbebdeeb1698370e8ee3a14fa1c9580213d8ecc",
+          "fact_id": "fact.spokoistvie_svyazan",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "спокойствие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "spokoistvie",
+              "source_semantic_id": "concept.спокойствие"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "1c8a0349b7192015ded5c3ee4ab2c56b32e10be08cafe24e67290b9987dee26c",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "ae6c00ab6c0d38e4d0b107aa8039badfe5366e068c91d7f96baa1241e3a8ba17": {
+          "approved_surface": "спокойствие без свободы — оцепенение: тихо, но не мирно",
+          "approved_surface_sha256": "3f810336a3ddf767e6478f658280c2a0f6ba2ab52b6b07ad9cc584683c8663ca",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "54451448526d863a2800e35476341a5cc116b04996d32d2262e6bc8c79b1ce5c",
+          "fact_id": "fact.spokoistvie_svyazan.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "спокойствие"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "spokoistvie",
+              "source_semantic_id": "concept.спокойствие"
+            }
+          ],
+          "proposition_id": "1c8a0349b7192015ded5c3ee4ab2c56b32e10be08cafe24e67290b9987dee26c",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
     "справедливость": {
       "claims": {
         "76f647f8c6fd4c41675590908727a2c29c098fcc8124fc0fb1b622bd49f0ebe0": {
@@ -6406,6 +6518,62 @@
           "proposition_id": "63df15fcf80514ce3ea1b9ca3ce1bf6939d1a535ff2a26cf9053967675867ec4",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "существование": {
+      "claims": {
+        "38f23d9c09248503f09b95105dd5f0c39f2a5dd735b14650042947774daa23b6": {
+          "approved_surface": "существование без сознания — наличие: есть, но не присутствует",
+          "approved_surface_sha256": "d06f7584343cfdc48a89496ccc2cba4f0d3ff96344440ce9bedb3bbc10589abd",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "2aa458524564b638705380a79f68d60d352355e9fd72c95979fc9a8138b34c4b",
+          "fact_id": "fact.suschestvovanie_svyazan.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "существование"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "suschestvovanie",
+              "source_semantic_id": "concept.существование"
+            }
+          ],
+          "proposition_id": "5d989fd944d250753ce8bff20fce37bf9379ba836fdc7c1e92ef18e5092b7d28",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "cc9227715babed1a612c299b9857e2c5cb5c4f977c2d2f445f00ece0b4a8bd48": {
+          "approved_surface": "существование связано с сознанием",
+          "approved_surface_sha256": "ebe80615cde8e632a0dde31fc1a99c7d72e35bddb6f45b69939de8ea0c19c582",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "2aa458524564b638705380a79f68d60d352355e9fd72c95979fc9a8138b34c4b",
+          "expected_clause_surface_sha256": "ebe80615cde8e632a0dde31fc1a99c7d72e35bddb6f45b69939de8ea0c19c582",
+          "fact_id": "fact.suschestvovanie_svyazan",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "существование"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "suschestvovanie",
+              "source_semantic_id": "concept.существование"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "5d989fd944d250753ce8bff20fce37bf9379ba836fdc7c1e92ef18e5092b7d28",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },

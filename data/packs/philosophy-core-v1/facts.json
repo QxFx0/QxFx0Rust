@@ -3524,6 +3524,40 @@
     }
   },
   {
+    "predicate_ref": "skorost_svyazan",
+    "record": {
+      "id": "fact.skorost_svyazan",
+      "subject": "concept.скорость",
+      "relation": "RelRelatedTo",
+      "object": "concept.время",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:skorost_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "skorost_svyazan.counterpoint",
+    "record": {
+      "id": "fact.skorost_svyazan.counterpoint",
+      "subject": "concept.скорость",
+      "relation": "RelRelatedTo",
+      "object": "concept.время",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:skorost_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "slushanie_otkryvaet",
     "record": {
       "id": "fact.slushanie_otkryvaet",
@@ -3694,6 +3728,40 @@
     }
   },
   {
+    "predicate_ref": "spokoistvie_svyazan",
+    "record": {
+      "id": "fact.spokoistvie_svyazan",
+      "subject": "concept.спокойствие",
+      "relation": "RelRelatedTo",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:spokoistvie_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "spokoistvie_svyazan.counterpoint",
+    "record": {
+      "id": "fact.spokoistvie_svyazan.counterpoint",
+      "subject": "concept.спокойствие",
+      "relation": "RelRelatedTo",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:spokoistvie_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "stanovlenie_svyazan",
     "record": {
       "id": "fact.stanovlenie_svyazan",
@@ -3790,6 +3858,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:stress_razrushaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "suschestvovanie_svyazan",
+    "record": {
+      "id": "fact.suschestvovanie_svyazan",
+      "subject": "concept.существование",
+      "relation": "RelRelatedTo",
+      "object": "concept.сознание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:suschestvovanie_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "suschestvovanie_svyazan.counterpoint",
+    "record": {
+      "id": "fact.suschestvovanie_svyazan.counterpoint",
+      "subject": "concept.существование",
+      "relation": "RelRelatedTo",
+      "object": "concept.сознание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:suschestvovanie_svyazan",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
