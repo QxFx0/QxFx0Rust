@@ -21,9 +21,9 @@ LCOV_PATH = os.path.join(
     "lcov.info",
 )
 
-# Calibrated 2026-09: workspace baseline ~87.75% (waves 3-4 + robustness
-# gates included), floor 86% leaves room for line-count churn while
-# catching a real coverage drop.
+# Calibrated 2026-09: workspace baseline ~87.8% (waves 3-10, robustness
+# gates, morphology extensions and hysteresis included), floor 86% leaves
+# room for line-count churn while catching a real coverage drop.
 MIN_LINE_COVERAGE = 86.0
 
 
