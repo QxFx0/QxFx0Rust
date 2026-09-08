@@ -19,16 +19,33 @@ They are not accidental duplicates: v1 is authority, v2 is the experiment
 that may one day replace it. Merging them now would either bless unproven
 semantics (v2) or churn the hot path for aesthetics.
 
+## Verdict experiment (run 2026-09-08, probe
+`qxfx0-pipeline/examples/b2_ablation_probe.rs`)
+
+Both arms over the full admitted corpus (fresh sessions: angst 0.05,
+zero commitments/violations/suppressions in either arm — v2 sleeps on
+single turns) and over a 64-turn challenged свобода session:
+
+- long-enabled: v1 commits, v2 commits once, then 25 violations;
+- long-ablated: v1 commits, 43 suppressions, 0 violations;
+- visible behaviour identical in both arms (already gated).
+
+Reading: v2's commitment is a one-shot irrevocable latch — after it
+fires, every further challenge is a violation; the ablation arm, in
+turn, vetoes nearly every turn (43/57). Both postures are degenerate
+as turn authority, while v1 already commits in the same scenario.
+Marginal value of v2 today = violation-sensitivity + replay-visible
+trajectory, not better commitment.
+
 ## Decision (proposed)
 
-1. Keep both crates. Document the boundary instead of merging:
-   v1 = turn authority, v2 = shadow canonical core under ablation.
-2. No unification work until the B2 ablation experiment yields a verdict
-   (visible-behaviour parity + a product decision on which semantics win).
-3. When that verdict lands, the migration is: move Prepare/Finalize call
-   sites to v2 behind the existing `TurnOptions.essence_v2_ablation`
-   switch, retire v1 modules one by one, then delete the crate — never a
-   flag-day rewrite.
+1. Keep both crates (v1 authority, v2 shadow). No unification until v2
+   gains hysteresis (commitment budget / per-topic commitment /
+   violation decay) and this probe shows non-degenerate dynamics.
+2. Re-run the probe as the acceptance gate for that tuning.
+3. When that verdict lands, migrate Prepare/Finalize call sites behind
+   the existing `TurnOptions.essence_v2_ablation` switch, retire v1
+   modules one by one — never a flag-day rewrite.
 
 ## Consequences
 
