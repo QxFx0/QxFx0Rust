@@ -358,8 +358,7 @@ pub fn resolve(
             NounPhrase::Lexical { lemma } => lemma,
             NounPhrase::FixedPhrase { .. } => return Err(RealizationError::UninflectableSubject),
         };
-        let subject_surface = inflect(morphology, subject_lemma, Case::Nominative)?;
-        let agreement = subject_agreement(morphology, subject_lemma);
+        let (subject_surface, agreement) = resolve_subject(morphology, subject_lemma)?;
         resolved_slots += 1;
 
         let head_surface = frame.head().realize(agreement).to_string();
@@ -384,9 +383,12 @@ pub fn resolve(
                         fixed_phrases += 1;
                         Some(text.clone())
                     }
-                    Some(NounPhrase::Lexical { lemma }) => {
-                        Some(inflect(morphology, lemma, Case::Nominative)?)
-                    }
+                    Some(NounPhrase::Lexical { lemma }) => Some(inflect(
+                        morphology,
+                        lemma,
+                        Case::Nominative,
+                        Number::Singular,
+                    )?),
                     None => None,
                 };
                 if surface.is_some() {
@@ -416,7 +418,9 @@ pub fn resolve(
                     NounPhrase::FixedPhrase { .. } => None,
                 };
                 let surface = match phrase {
-                    NounPhrase::Lexical { lemma } => inflect(morphology, lemma, required)?,
+                    NounPhrase::Lexical { lemma } => {
+                        inflect(morphology, lemma, required, Number::Singular)?
+                    }
                     NounPhrase::FixedPhrase {
                         text,
                         declared_case,
@@ -509,23 +513,24 @@ fn inflect(
     morphology: &MorphologyRuntime,
     lemma: &str,
     case: Case,
+    number: Number,
 ) -> Result<String, RealizationError> {
     if morphology.get_lexeme(lemma).is_none() {
         return Err(RealizationError::UnknownLemma {
             lemma: lemma.to_string(),
         });
     }
-    let surface = morphology
-        .inflect(lemma, case, Number::Singular)
-        .ok_or_else(|| RealizationError::IncompleteForm {
+    let surface = morphology.inflect(lemma, case, number).ok_or_else(|| {
+        RealizationError::IncompleteForm {
             lemma: lemma.to_string(),
             case,
-        })?;
+        }
+    })?;
     verify_round_trip(
         morphology,
         lemma,
         case,
-        Number::Singular,
+        number,
         &surface,
         RoundTripClass::Bijective,
     )
@@ -534,6 +539,59 @@ fn inflect(
         case,
     })?;
     Ok(surface)
+}
+
+/// Resolve the thesis subject to its nominative surface plus agreement.
+///
+/// Number is inferred, never assumed singular:
+/// - a lexeme with an empty singular nominative but a filled plural one
+///   is pluralia tantum (деньги) and composes in the plural;
+/// - a surface without its own lexeme resolves through the analysis
+///   index, preferring a nominative reading (отношения -> отношение,
+///   plural);
+/// - a verb lemma with no nominal reading is an infinitive subject
+///   (помнить): fixed citation surface with impersonal neuter-singular
+///   agreement, which finite heads realize correctly.
+///
+/// Anything else is UnknownLemma, as before.
+fn resolve_subject(
+    morphology: &MorphologyRuntime,
+    lemma: &str,
+) -> Result<(String, AgreementFeatures), RealizationError> {
+    if let Some(entry) = morphology.get_lexeme(lemma) {
+        if entry.forms.nom_sg.is_empty() && !entry.forms.nom_pl.is_empty() {
+            let surface = inflect(morphology, lemma, Case::Nominative, Number::Plural)?;
+            let agreement = AgreementFeatures::new(entry.features.gender, Number::Plural);
+            return Ok((surface, agreement));
+        }
+        let surface = inflect(morphology, lemma, Case::Nominative, Number::Singular)?;
+        let agreement = subject_agreement(morphology, lemma);
+        return Ok((surface, agreement));
+    }
+    let mut nominative: Vec<(String, Number)> = Vec::new();
+    for candidate in morphology.get_candidates(lemma) {
+        if candidate.case_number.case == Case::Nominative {
+            let entry = (candidate.entry.lemma.clone(), candidate.case_number.number);
+            if !nominative.contains(&entry) {
+                nominative.push(entry);
+            }
+        }
+    }
+    if let [(resolved_lemma, number)] = nominative.as_slice() {
+        let surface = inflect(morphology, resolved_lemma, Case::Nominative, *number)?;
+        let agreement = subject_agreement(morphology, resolved_lemma);
+        let agreement = AgreementFeatures::new(agreement.gender, *number);
+        return Ok((surface, agreement));
+    }
+    if qxfx0_morphology::verb_lexicon::lookup(lemma).is_some() {
+        return Ok((
+            lemma.to_string(),
+            AgreementFeatures::new(Gender::Neuter, Number::Singular),
+        ));
+    }
+    Err(RealizationError::UnknownLemma {
+        lemma: lemma.to_string(),
+    })
 }
 
 /// Read agreement features from the curated bundle.

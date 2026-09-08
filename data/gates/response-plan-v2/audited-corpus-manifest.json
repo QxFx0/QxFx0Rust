@@ -1,21 +1,21 @@
 {
   "diagnostics": {
-    "claims_total": 277,
-    "exact_clause_surfaces": 116,
-    "fixed_phrase_surfaces": 143,
+    "claims_total": 291,
+    "exact_clause_surfaces": 123,
+    "fixed_phrase_surfaces": 150,
     "governed_clause_surfaces": 18,
-    "topics_total": 134
+    "topics_total": 141
   },
-  "manifest_digest": "d639983813a6a91b642c87cfe8663425ccc3a3e99034ee4db29c4f49d85bd4f8",
+  "manifest_digest": "343309d067230d5cdba51ad85bddca33ba492790b7430886e6002e386b8452c3",
   "manifest_id": "response-plan-v2-audited-corpus-v2",
   "schema_version": 2,
   "source_files": {
-    "argued_topics.tsv": "3836776eca4aaad3a027e5e77f56d6c8db1326533276743e7bd7b1a0cc1175b5",
+    "argued_topics.tsv": "45ee9e250fd8e74e276cd4a7c883c8ffdc287e3b7feb2e496bba0c0eac22a3cd",
     "concepts.json": "399b0fac5a935c345912ef3dbe7b92ef438b87950a085c2b886926e0736bcb18",
-    "facts.json": "72673546f6a4361244c28079b21acc95e1de75c5898dfa1bfa62db1a6f556208",
-    "manifest.json": "6f4e940e409e4fe934358baa17804f1701002ca61e1dd9d62d6d79ade0c0ae0b",
-    "relations.json": "6a5d954c66d9c895b298c11f9e9f82a5d4006423afb409d9e8379bb76e6203d5",
-    "valency_frames.tsv": "ffb1cb27c873a412394ab6fa09ec8f75ac793a57775206b84ca8d689eec1da7c"
+    "facts.json": "85cdae005b3fe949f1c9a68c778264a6f9c820abd2d84fb93ac92421df52beae",
+    "manifest.json": "102d800d6ab8cb3310b1b8e036039e29eef17106e2bc2505010ad3f1338571c6",
+    "relations.json": "7689145e09ff9d6ec875b475981955fd0e324d313f247d9eb14dd4558e4c81e5",
+    "valency_frames.tsv": "387c5d97d3cb3dbd3d2d0e1216e1ba2545d1e897ce7575a101aefc0763db44d1"
   },
   "topics": {
     "аксиома": {
@@ -1154,6 +1154,73 @@
           "fact_id": "fact.demokratiya_trebuet.counterpoint",
           "lexical_witnesses": [],
           "proposition_id": "aa3eacec0d90691d93195151a44b6ccb996e3d333b633530c7f85fb13393c495",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "деньги": {
+      "claims": {
+        "11463995dfbe75baae35c5c6a631e30c8c0a22fdad5ace76ac7693ffd9e2835d": {
+          "approved_surface": "деньги связаны со свободой",
+          "approved_surface_sha256": "2c57bca7bbfc461effa5b86252c55d661c6744f83b91a0852affd9a613c662f3",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "d29f1a40bc7c6ccedc0c268d7cb310d8816a11d788e4d3e6ec664b82d85720a8",
+          "expected_clause_surface_sha256": "2c57bca7bbfc461effa5b86252c55d661c6744f83b91a0852affd9a613c662f3",
+          "fact_id": "fact.dengi_svyazan",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "деньги"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "dengi",
+              "source_semantic_id": "concept.деньги"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "85335447423e7b3e5c65912368733937f36956e09a1d5c6ba1495978336d5ca4",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "8470fb7cc7c05a0289768e5b591ebca4137a73a71cdb8fd0423253f1bfba5443": {
+          "approved_surface": "деньги связаны со свободой лишь внешне: обеспеченность — не освобождение",
+          "approved_surface_sha256": "78f91f8118f9fb5214424586201025ea76fde667540294c882b550a0e95af63a",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "d29f1a40bc7c6ccedc0c268d7cb310d8816a11d788e4d3e6ec664b82d85720a8",
+          "fact_id": "fact.dengi_svyazan.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "деньги"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "dengi",
+              "source_semantic_id": "concept.деньги"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "85335447423e7b3e5c65912368733937f36956e09a1d5c6ba1495978336d5ca4",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
         }
@@ -3067,6 +3134,59 @@
         }
       }
     },
+    "метод": {
+      "claims": {
+        "8be70c91a76fdf5d50e9cb7e6857ec0b33c516f387d0ae33bccdc1e27cc1e627": {
+          "approved_surface": "метод поддерживает цель",
+          "approved_surface_sha256": "0515e995102465932a0e2014b4f89266a94d6f7a75178edbcb89448cecc1d762",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "1d235fe3a9824fe1780108a88891737bf25b0059cdc1cf7e1d53d3ce1b16a636",
+          "expected_clause_surface_sha256": "0515e995102465932a0e2014b4f89266a94d6f7a75178edbcb89448cecc1d762",
+          "fact_id": "fact.metod_podderzhivaet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "метод"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "metod",
+              "source_semantic_id": "concept.метод"
+            },
+            {
+              "accepted_surfaces": [
+                "поддерживает"
+              ],
+              "kind": "head",
+              "source_binding": "podderzhivaet",
+              "source_semantic_id": "RelSupports"
+            }
+          ],
+          "proposition_id": "e7b547feba4f31c49a10c8ba1f6cc38c7782290c0735b16547aae11bd5c2e009",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "a1ac174d05afd8b968e48a63a6c3023ee7423e793d5dd297e761521521576d91": {
+          "approved_surface": "метод без цели — ритуал: шаги есть, а идти некуда",
+          "approved_surface_sha256": "d4b1c80f7647811a28ba0e292fd918dd52f9161dfa908037b559e9e59c495d0a",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "1d235fe3a9824fe1780108a88891737bf25b0059cdc1cf7e1d53d3ce1b16a636",
+          "fact_id": "fact.metod_podderzhivaet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "метод"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "metod",
+              "source_semantic_id": "concept.метод"
+            }
+          ],
+          "proposition_id": "e7b547feba4f31c49a10c8ba1f6cc38c7782290c0735b16547aae11bd5c2e009",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
     "мнение": {
       "claims": {
         "072dcd9ad36c5430f880102a6d72f14084011edc51147ce3fff7b14f1cbc4734": {
@@ -3911,6 +4031,51 @@
         }
       }
     },
+    "отношения": {
+      "claims": {
+        "a489293872ae678992641b8fe1179c3820d3dd86b37e1675ba244c3ab3eb7135": {
+          "approved_surface": "отношения без доверия — соседство: рядом, но не вместе",
+          "approved_surface_sha256": "da38dd86cdcdae81815d7e08f823c9459edbda39c8fb6ca1732809b23716d1ea",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "ec6b752d98fb6a89df37d9edca669eb88a56d93c81d7a95c90a9b7ed089bb17d",
+          "fact_id": "fact.otnosheniya_trebuet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "отношения"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "otnosheniya",
+              "source_semantic_id": "concept.отношения"
+            }
+          ],
+          "proposition_id": "acc7235d8f3f0526acb99148524c25fe7ade32505858e18042a0ddab21fd483a",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "cbec9a302fc8b301ad0894043b95eaf95500011f281b9b18be0209a586856535": {
+          "approved_surface": "отношения требуют доверия",
+          "approved_surface_sha256": "4a27865b35a8a4e6732d9df6a3b92821b2daa4502d65cd35d232e8dde9445c76",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "ec6b752d98fb6a89df37d9edca669eb88a56d93c81d7a95c90a9b7ed089bb17d",
+          "expected_clause_surface_sha256": "4a27865b35a8a4e6732d9df6a3b92821b2daa4502d65cd35d232e8dde9445c76",
+          "fact_id": "fact.otnosheniya_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "отношения"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "otnosheniya",
+              "source_semantic_id": "concept.отношения"
+            }
+          ],
+          "proposition_id": "acc7235d8f3f0526acb99148524c25fe7ade32505858e18042a0ddab21fd483a",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        }
+      }
+    },
     "память": {
       "claims": {
         "b1f34bc00d602b4c322b9a6d3218331fbcd5c78c7c63435b650881f780cdcfbd": {
@@ -4013,6 +4178,50 @@
           "proposition_id": "5e14024ebcddbb06ccb2bfcc80b247d30aa279dcc6381cb75003db858e1e184d",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "помнить": {
+      "claims": {
+        "03a1a61a8d32fcb257763a7bc39472712ee7cf86f51178eb43735032cf834c99": {
+          "approved_surface": "сознание не гарантирует памяти: забывать — тоже его работа",
+          "approved_surface_sha256": "229bb38c81b4ccf5db160863945bc12d50166389abf6bbb480e8cbe48e136906",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "40dab140dc8f81bdd1643d92d0e670a25cb82283f975327ee77538eb0a8b452a",
+          "fact_id": "fact.pomnit_trebuet.counterpoint",
+          "lexical_witnesses": [],
+          "proposition_id": "639bd41f26e579be0e895c971ec45d8cce61a249a3cb71b1679a9090253330bc",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "d53f203308b3b6b5c4eb09b0ea0fc11c5ec8300bcb58d51977401eeb03d846d5": {
+          "approved_surface": "помнить требует сознания",
+          "approved_surface_sha256": "5d6bc49e33eab84d8db7908afb3fc02fc6a806c12a6ff803a113fa63ed32e6de",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "40dab140dc8f81bdd1643d92d0e670a25cb82283f975327ee77538eb0a8b452a",
+          "expected_clause_surface_sha256": "5d6bc49e33eab84d8db7908afb3fc02fc6a806c12a6ff803a113fa63ed32e6de",
+          "fact_id": "fact.pomnit_trebuet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "помнить"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "pomnit",
+              "source_semantic_id": "concept.помнить"
+            },
+            {
+              "accepted_surfaces": [
+                "требует"
+              ],
+              "kind": "head",
+              "source_binding": "trebuet",
+              "source_semantic_id": "RelRequires"
+            }
+          ],
+          "proposition_id": "639bd41f26e579be0e895c971ec45d8cce61a249a3cb71b1679a9090253330bc",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -4170,6 +4379,51 @@
             }
           ],
           "proposition_id": "7281a5ba280ff6641c55628566971cde01197e23c69f9240a2147eaed1d622c3",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "права": {
+      "claims": {
+        "4f1a5d22402eabd0d0b3753e106646eeaf27d351614d2cbec96fbb663e018c87": {
+          "approved_surface": "права предполагают свободу",
+          "approved_surface_sha256": "feb0cfbdc0152005d1e9b4ae3131ff0417a0b85979e756beacafe2a9a476aab2",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "442cb8d347802546b9896da8b704c03c14f0e53967572f9e890303cd7f1fe056",
+          "expected_clause_surface_sha256": "feb0cfbdc0152005d1e9b4ae3131ff0417a0b85979e756beacafe2a9a476aab2",
+          "fact_id": "fact.prava_predpolagaet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "права"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "prava",
+              "source_semantic_id": "concept.права"
+            }
+          ],
+          "proposition_id": "5dcf39b9578a58dbd79ec479ca047b02de5612285a1bfb044241a853538c97e3",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "d3a5df48084d0f6a28c58c85ad953a08c7b323a95f0e636bfa857a9caa9718d7": {
+          "approved_surface": "права без свободы — бумага: записанное не значит действующее",
+          "approved_surface_sha256": "0fee7eeb9b5b2123b1020c3d432dd0fefb9b7247ab59f68c00459dae85f5459f",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "442cb8d347802546b9896da8b704c03c14f0e53967572f9e890303cd7f1fe056",
+          "fact_id": "fact.prava_predpolagaet.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "права"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "prava",
+              "source_semantic_id": "concept.права"
+            }
+          ],
+          "proposition_id": "5dcf39b9578a58dbd79ec479ca047b02de5612285a1bfb044241a853538c97e3",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
         }
@@ -4390,6 +4644,50 @@
           "proposition_id": "f141322c341ff4a7a6a43d2757c47016be0a4cbaeb2ed235f979f2ee56270da5",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "природа": {
+      "claims": {
+        "9fb265f6f7cb97184c2efc9d7dc39d7eb791fb91b8538546b0e7ee79ad383368": {
+          "approved_surface": "человек не сводится к природе: включённость — не исчерпанность",
+          "approved_surface_sha256": "4665e2bf6cf1d18bbcdb95958eb762f5789f5b01dfd80ea8c1e5dc6bbbfdfc55",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "83edaf0fd953e2ac6e73d75e0112b62a659da71f58f4565412ca1090b16a34c8",
+          "fact_id": "fact.priroda_vklyuchaet.counterpoint",
+          "lexical_witnesses": [],
+          "proposition_id": "9b62ad861530b598ae83ad1032339cb7aba26b672327406d7dc0e76303e6ad9d",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        },
+        "a22841c0158f15d291d6571ef0bbef55ca435a1b578bf33b95caf4709791fd3c": {
+          "approved_surface": "природа включает человека",
+          "approved_surface_sha256": "28c6b75a650f49475272444b0c4d43a475b8d49c330af81656e6a8d940217637",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "83edaf0fd953e2ac6e73d75e0112b62a659da71f58f4565412ca1090b16a34c8",
+          "expected_clause_surface_sha256": "28c6b75a650f49475272444b0c4d43a475b8d49c330af81656e6a8d940217637",
+          "fact_id": "fact.priroda_vklyuchaet",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "природа"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "priroda",
+              "source_semantic_id": "concept.природа"
+            },
+            {
+              "accepted_surfaces": [
+                "включает"
+              ],
+              "kind": "head",
+              "source_binding": "vklyuchaet",
+              "source_semantic_id": "RelIncludes"
+            }
+          ],
+          "proposition_id": "9b62ad861530b598ae83ad1032339cb7aba26b672327406d7dc0e76303e6ad9d",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
         }
       }
     },
@@ -6217,6 +6515,62 @@
             }
           ],
           "proposition_id": "1c8a0349b7192015ded5c3ee4ab2c56b32e10be08cafe24e67290b9987dee26c",
+          "realization_strategy": "fixed_phrase",
+          "surface_validation": "audited_verbatim"
+        }
+      }
+    },
+    "спор": {
+      "claims": {
+        "0c1dd4fb6792f8cd9323d15f9e2019b26c89c5c7436401b35543963cee7cdf1f": {
+          "approved_surface": "спор связан с истиной",
+          "approved_surface_sha256": "eeb0127571cfae038a5cf36427c8cb8c0ae9582a7fba92553f044cc070c5c958",
+          "canonical_path": "0.thesis",
+          "discourse_root_digest": "f6dd0165860637562016db28a5b21b0ed3c34053b6d8b664b14d2222e85ba0e4",
+          "expected_clause_surface_sha256": "eeb0127571cfae038a5cf36427c8cb8c0ae9582a7fba92553f044cc070c5c958",
+          "fact_id": "fact.spor_svyazan",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "спор"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "spor",
+              "source_semantic_id": "concept.спор"
+            },
+            {
+              "accepted_surfaces": [
+                "связан",
+                "связана",
+                "связано",
+                "связаны"
+              ],
+              "kind": "head",
+              "source_binding": "svyazan",
+              "source_semantic_id": "RelRelatedTo"
+            }
+          ],
+          "proposition_id": "9ce1f836c9bb8136b35bcbc454614e315b80af24fc5e3ec9aae88049784d20c1",
+          "realization_strategy": "clause",
+          "surface_validation": "exact_clause"
+        },
+        "172fa8b203a217fae179bff9ecd813abe3129b394d51ecde5306735127c794bd": {
+          "approved_surface": "спор, где важна только победа, глух к истине",
+          "approved_surface_sha256": "21dbbc444aec88a3942029b03de492eb99ea818f8f78c1e9b8972ce1abd9ee1c",
+          "canonical_path": "1.counterpoint",
+          "discourse_root_digest": "f6dd0165860637562016db28a5b21b0ed3c34053b6d8b664b14d2222e85ba0e4",
+          "fact_id": "fact.spor_svyazan.counterpoint",
+          "lexical_witnesses": [
+            {
+              "accepted_surfaces": [
+                "спор"
+              ],
+              "kind": "subject_lemma",
+              "source_binding": "spor",
+              "source_semantic_id": "concept.спор"
+            }
+          ],
+          "proposition_id": "9ce1f836c9bb8136b35bcbc454614e315b80af24fc5e3ec9aae88049784d20c1",
           "realization_strategy": "fixed_phrase",
           "surface_validation": "audited_verbatim"
         }

@@ -402,13 +402,13 @@ pub fn render_stage(
             "Я не знаю этот смысл, но он вызывает определенный резонанс в моей системе.".into();
     }
 
-    // Corpus-boundary honesty (141 recognized / 134 admitted): a recognized
-    // topic without an admitted declarative plan must not read like audited
-    // knowledge. The shadow plan already records `no_admissible_predicate`;
-    // mirror that boundary into the user-facing surface with a deterministic
-    // marker (topic in nominative quotes, no inflection needed). Admitted
-    // topics and typed non-declarative frames keep their contracts
-    // byte-identical.
+    // Corpus-boundary honesty (141 recognized / 141 admitted): while the
+    // boundary was open, legacy-graph responses for recognized-but-
+    // unadmitted topics carried a deterministic boundary sentence. Coverage
+    // is now complete, so this arm is unreachable defensive code: it fires
+    // only if a topic ever leaves the admitted set again, keeping the
+    // fallback honest instead of silent. Trace key is emitted only when
+    // set, so admitted-topic digests are unchanged.
     let boundary_marker = !subject.trim().is_empty()
         && matches!(
             planned.shadow_plan(),

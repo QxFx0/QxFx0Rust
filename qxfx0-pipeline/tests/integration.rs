@@ -1567,91 +1567,44 @@ fn test_shadow_plan_trace_records_unknown_topic_recovery() {
 }
 
 #[test]
-fn test_shadow_plan_refuses_unaudited_content_for_recognized_topic() {
-    let input = TurnInput {
-        session_id: "trace-unadmitted-topic".into(),
-        raw_text: "что такое природа?".into(),
-    };
-    let mut state = test_state(&input.session_id);
-    let (output, trace) = process_turn_with_options_and_trace(
-        &input,
-        &mut state,
-        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
-    );
-    let plan_step = trace
-        .steps
-        .iter()
-        .find(|step| step.stage == "plan_shadow")
-        .expect("shadow plan step must exist");
-
-    assert!(
-        !output.response.is_empty(),
-        "legacy renderer remains active"
-    );
-    assert_eq!(
-        plan_step.metadata.get("plan_outcome").map(String::as_str),
-        Some("fallback")
-    );
-    assert_eq!(
-        plan_step
-            .metadata
-            .get("fallback_reason")
-            .map(String::as_str),
-        Some("no_admissible_predicate")
-    );
-    assert_eq!(
-        plan_step.metadata.get("subject_kind").map(String::as_str),
-        Some("known_topic")
-    );
-    assert_eq!(
-        plan_step.metadata.get("plan_topic").map(String::as_str),
-        Some("природа")
-    );
+fn test_shadow_plan_admits_every_recognized_topic() {
+    // Full coverage: no recognized topic falls back anymore. The
+    // unknown-topic fallback machinery stays covered by its own test.
+    for topic in qxfx0_semantic::COVERED_TOPICS {
+        let session_id = format!("trace-admitted-{topic}");
+        let input = TurnInput {
+            session_id: session_id.clone(),
+            raw_text: format!("что такое {topic}?"),
+        };
+        let mut state = test_state(&session_id);
+        let (output, trace) = process_turn_with_options_and_trace(
+            &input,
+            &mut state,
+            TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
+        );
+        let plan_step = trace
+            .steps
+            .iter()
+            .find(|step| step.stage == "plan_shadow")
+            .expect("shadow plan step must exist");
+        assert!(!output.response.is_empty(), "{topic} rendered empty");
+        assert_eq!(
+            plan_step.metadata.get("plan_outcome").map(String::as_str),
+            Some("ready"),
+            "{topic} must reach a ready plan"
+        );
+        assert_eq!(
+            plan_step.metadata.get("plan_topic").map(String::as_str),
+            Some(*topic)
+        );
+    }
 }
 
 #[test]
-fn test_recognized_but_unadmitted_topic_carries_corpus_boundary_marker() {
-    // Honesty boundary (141 recognized / 134 admitted): a graph-composed
-    // response for a recognized topic without an admitted declarative plan
-    // must say so on its surface, while admitted topics stay byte-identical.
-    let unadmitted = TurnInput {
-        session_id: "trace-boundary-marker".into(),
-        raw_text: "что такое природа?".into(),
-    };
-    let mut unadmitted_state = test_state(&unadmitted.session_id);
-    let (output, trace) = process_turn_with_options_and_trace(
-        &unadmitted,
-        &mut unadmitted_state,
-        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
-    );
-    assert!(
-        output
-            .response
-            .contains("Граница корпуса: тема «природа» распознана"),
-        "unadmitted-topic response must carry the boundary marker, got: {}",
-        output.response
-    );
-    let render_step = trace
-        .steps
-        .iter()
-        .find(|step| step.stage == "render")
-        .expect("render step must exist");
-    assert_eq!(
-        render_step
-            .metadata
-            .get("boundary_marker")
-            .map(String::as_str),
-        Some("true")
-    );
-    // Deterministic: the same input in a twin session replays byte-identical.
-    let mut twin_state = test_state("trace-boundary-marker-twin");
-    let twin = TurnInput {
-        session_id: "trace-boundary-marker-twin".into(),
-        raw_text: "что такое природа?".into(),
-    };
-    let twin_output = process_turn_with_options(&twin, &mut twin_state, TurnOptions::new());
-    assert_eq!(output.response, twin_output.response);
-
+fn test_admitted_topics_carry_no_corpus_boundary_marker() {
+    // Full coverage: every topic is admitted, so no response may carry
+    // the defensive corpus-boundary marker, and the render trace must not
+    // gain new digest keys.
     let admitted = TurnInput {
         session_id: "trace-boundary-admitted".into(),
         raw_text: "что такое свобода?".into(),

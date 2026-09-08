@@ -33,6 +33,9 @@
     "semantic_id": "RelExpresses"
   },
   {
+    "semantic_id": "RelIncludes"
+  },
+  {
     "semantic_id": "RelIsA"
   },
   {

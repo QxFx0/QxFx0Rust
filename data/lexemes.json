@@ -127836,6 +127836,28 @@
     }
   },
   {
+    "lemma": "деньги",
+    "pos": "noun",
+    "gender": "unknown",
+    "animacy": "inanimate",
+    "source_tier": "curated",
+    "quality": 1.0,
+    "forms": {
+      "nom_sg": "",
+      "nom_pl": "деньги",
+      "gen_sg": "",
+      "gen_pl": "денег",
+      "dat_sg": "",
+      "dat_pl": "деньгам",
+      "acc_sg": "",
+      "acc_pl": "деньги",
+      "ins_sg": "",
+      "ins_pl": "деньгами",
+      "prep_sg": "",
+      "prep_pl": "деньгах"
+    }
+  },
+  {
     "lemma": "деонтология",
     "pos": "noun",
     "gender": "feminine",
@@ -183022,28 +183044,6 @@
     }
   },
   {
-    "lemma": "кода",
-    "pos": "noun",
-    "gender": "feminine",
-    "animacy": "inanimate",
-    "source_tier": "curated",
-    "quality": 1.0,
-    "forms": {
-      "nom_sg": "кода",
-      "nom_pl": "коды",
-      "gen_sg": "коды",
-      "gen_pl": "код",
-      "dat_sg": "коде",
-      "dat_pl": "кодам",
-      "acc_sg": "коду",
-      "acc_pl": "коды",
-      "ins_sg": "кодой",
-      "ins_pl": "кодами",
-      "prep_sg": "коде",
-      "prep_pl": "кодах"
-    }
-  },
-  {
     "lemma": "кодак",
     "pos": "noun",
     "gender": "masculine",
@@ -219330,28 +219330,6 @@
       "acc_sg": "метод",
       "acc_pl": "методы",
       "ins_sg": "методом",
-      "ins_pl": "методами",
-      "prep_sg": "методе",
-      "prep_pl": "методах"
-    }
-  },
-  {
-    "lemma": "метода",
-    "pos": "noun",
-    "gender": "feminine",
-    "animacy": "inanimate",
-    "source_tier": "curated",
-    "quality": 1.0,
-    "forms": {
-      "nom_sg": "метода",
-      "nom_pl": "методы",
-      "gen_sg": "методы",
-      "gen_pl": "метод",
-      "dat_sg": "методе",
-      "dat_pl": "методам",
-      "acc_sg": "методу",
-      "acc_pl": "методы",
-      "ins_sg": "методой",
       "ins_pl": "методами",
       "prep_sg": "методе",
       "prep_pl": "методах"
@@ -363186,28 +363164,6 @@
       "acc_sg": "спор",
       "acc_pl": "споры",
       "ins_sg": "спором",
-      "ins_pl": "спорами",
-      "prep_sg": "споре",
-      "prep_pl": "спорах"
-    }
-  },
-  {
-    "lemma": "спора",
-    "pos": "noun",
-    "gender": "feminine",
-    "animacy": "inanimate",
-    "source_tier": "curated",
-    "quality": 1.0,
-    "forms": {
-      "nom_sg": "спора",
-      "nom_pl": "споры",
-      "gen_sg": "споры",
-      "gen_pl": "спор",
-      "dat_sg": "споре",
-      "dat_pl": "спорам",
-      "acc_sg": "спору",
-      "acc_pl": "споры",
-      "ins_sg": "спорой",
       "ins_pl": "спорами",
       "prep_sg": "споре",
       "prep_pl": "спорах"

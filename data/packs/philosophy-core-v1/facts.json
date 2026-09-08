@@ -394,6 +394,40 @@
     }
   },
   {
+    "predicate_ref": "dengi_svyazan",
+    "record": {
+      "id": "fact.dengi_svyazan",
+      "subject": "concept.деньги",
+      "relation": "RelRelatedTo",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:dengi_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "dengi_svyazan.counterpoint",
+    "record": {
+      "id": "fact.dengi_svyazan.counterpoint",
+      "subject": "concept.деньги",
+      "relation": "RelRelatedTo",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:dengi_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "dialog_napravlena",
     "record": {
       "id": "fact.dialog_napravlena",
@@ -1886,6 +1920,40 @@
     }
   },
   {
+    "predicate_ref": "metod_podderzhivaet",
+    "record": {
+      "id": "fact.metod_podderzhivaet",
+      "subject": "concept.метод",
+      "relation": "RelSupports",
+      "object": "concept.цель",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:metod_podderzhivaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "metod_podderzhivaet.counterpoint",
+    "record": {
+      "id": "fact.metod_podderzhivaet.counterpoint",
+      "subject": "concept.метод",
+      "relation": "RelSupports",
+      "object": "concept.цель",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:metod_podderzhivaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "moral_napravlena",
     "record": {
       "id": "fact.moral_napravlena",
@@ -2319,6 +2387,40 @@
     }
   },
   {
+    "predicate_ref": "otnosheniya_trebuet",
+    "record": {
+      "id": "fact.otnosheniya_trebuet",
+      "subject": "concept.отношения",
+      "relation": "RelRequires",
+      "object": "concept.доверие",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:otnosheniya_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "otnosheniya_trebuet.counterpoint",
+    "record": {
+      "id": "fact.otnosheniya_trebuet.counterpoint",
+      "subject": "concept.отношения",
+      "relation": "RelRequires",
+      "object": "concept.доверие",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:otnosheniya_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "poeziya_vyrazhaet",
     "record": {
       "id": "fact.poeziya_vyrazhaet",
@@ -2347,6 +2449,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:poeziya_vyrazhaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "pomnit_trebuet",
+    "record": {
+      "id": "fact.pomnit_trebuet",
+      "subject": "concept.помнить",
+      "relation": "RelRequires",
+      "object": "concept.сознание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:pomnit_trebuet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "pomnit_trebuet.counterpoint",
+    "record": {
+      "id": "fact.pomnit_trebuet.counterpoint",
+      "subject": "concept.помнить",
+      "relation": "RelRequires",
+      "object": "concept.сознание",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:pomnit_trebuet",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
@@ -2459,6 +2595,40 @@
     }
   },
   {
+    "predicate_ref": "prava_predpolagaet",
+    "record": {
+      "id": "fact.prava_predpolagaet",
+      "subject": "concept.права",
+      "relation": "RelPresupposes",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:prava_predpolagaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "prava_predpolagaet.counterpoint",
+    "record": {
+      "id": "fact.prava_predpolagaet.counterpoint",
+      "subject": "concept.права",
+      "relation": "RelPresupposes",
+      "object": "concept.свобода",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:prava_predpolagaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
     "predicate_ref": "pravo_ustanavlivaet",
     "record": {
       "id": "fact.pravo_ustanavlivaet",
@@ -2487,6 +2657,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:pravo_ustanavlivaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "priroda_vklyuchaet",
+    "record": {
+      "id": "fact.priroda_vklyuchaet",
+      "subject": "concept.природа",
+      "relation": "RelIncludes",
+      "object": "concept.человек",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:priroda_vklyuchaet",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "priroda_vklyuchaet.counterpoint",
+    "record": {
+      "id": "fact.priroda_vklyuchaet.counterpoint",
+      "subject": "concept.природа",
+      "relation": "RelIncludes",
+      "object": "concept.человек",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:priroda_vklyuchaet",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"
@@ -3756,6 +3960,40 @@
       "confidence_basis_points": 9000,
       "source_pack": "philosophy-core-v1",
       "source_ref": "predicate:spokoistvie_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "spor_svyazan",
+    "record": {
+      "id": "fact.spor_svyazan",
+      "subject": "concept.спор",
+      "relation": "RelRelatedTo",
+      "object": "concept.истина",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:spor_svyazan",
+      "valid_from": null,
+      "valid_to": null,
+      "status": "curated"
+    }
+  },
+  {
+    "predicate_ref": "spor_svyazan.counterpoint",
+    "record": {
+      "id": "fact.spor_svyazan.counterpoint",
+      "subject": "concept.спор",
+      "relation": "RelRelatedTo",
+      "object": "concept.истина",
+      "kind": "interpretive_claim",
+      "conditions": [],
+      "confidence_basis_points": 9000,
+      "source_pack": "philosophy-core-v1",
+      "source_ref": "predicate:spor_svyazan",
       "valid_from": null,
       "valid_to": null,
       "status": "curated"

@@ -164,8 +164,9 @@ impl HeadConjugation {
 #[serde(rename_all = "snake_case")]
 pub enum HeadKind {
     /// A finite verb. Russian present tense agrees in person and number but
-    /// not in gender, so one surface serves every subject.
-    Finite { surface: String },
+    /// not in gender. Both surfaces are derived from the verb lexicon at
+    /// load time (3rd singular + 3rd plural); the TSV pins the singular.
+    Finite { singular: String, plural: String },
     /// A short participle or adjective, which agrees with the subject in
     /// gender and number. Order is fixed: masculine, feminine, neuter, plural.
     Agreeing {
@@ -179,12 +180,16 @@ pub enum HeadKind {
 impl HeadKind {
     /// Realize the head for a subject's features.
     ///
-    /// A finite head ignores them, which is why passing the wrong gender to a
-    /// finite verb is harmless while passing it to a short form is the
-    /// `разум направлена` defect.
+    /// A finite head selects by number only (gender never matters for finite
+    /// verbs); an agreeing head additionally selects by gender in singular.
+    /// This is why passing the wrong gender to a finite verb is harmless
+    /// while passing it to a short form is the `разум направлена` defect.
     pub fn realize(&self, features: AgreementFeatures) -> &str {
         match self {
-            Self::Finite { surface } => surface,
+            Self::Finite { singular, plural } => match features.number {
+                Number::Plural => plural,
+                Number::Singular => singular,
+            },
             Self::Agreeing {
                 masculine,
                 feminine,
@@ -306,7 +311,8 @@ impl ValencyLexicon {
             let head = parse_head(line, columns[1].trim(), columns[2].trim())?;
             let complement = parse_complement(line, columns[3].trim())?;
             let strategy = parse_conjugation(line, columns[4].trim(), columns[5].trim())?;
-            let conjugation = verify_conjugation(line, &relation_id, &head, strategy)?;
+            let conjugation = verify_conjugation(line, &relation_id, &head, strategy.clone())?;
+            let head = complete_finite_plural(line, &relation_id, head, &strategy)?;
             if frames.contains_key(&relation_id) {
                 return Err(ValencyError::DuplicateRelation(relation_id));
             }
@@ -395,7 +401,10 @@ impl ValencyLexicon {
 fn parse_head(line: usize, kind: &str, forms: &str) -> Result<HeadKind, ValencyError> {
     match kind {
         "finite" => Ok(HeadKind::Finite {
-            surface: forms.to_string(),
+            singular: forms.to_string(),
+            // The plural is derived from the verb paradigm at load time by
+            // `complete_finite_plural`; the TSV pins the singular only.
+            plural: String::new(),
         }),
         "agreeing" => {
             let parts: Vec<&str> = forms.split(',').map(str::trim).collect();
@@ -503,6 +512,42 @@ fn parse_conjugation(
     }
 }
 
+/// Derive the 3rd-plural surface for a finite head. Fail-closed like the
+/// singular verification: a verb paradigm without f3pl cannot head a
+/// clause over a plural subject, and silently reusing the singular would
+/// fabricate agreement («деньги требует»).
+fn complete_finite_plural(
+    line: usize,
+    relation_id: &str,
+    head: HeadKind,
+    strategy: &ConjugationStrategy,
+) -> Result<HeadKind, ValencyError> {
+    match (head, strategy) {
+        (HeadKind::Finite { singular, .. }, ConjugationStrategy::Finite3 { lemma }) => {
+            let plural = qxfx0_morphology::verb_lexicon::lookup(lemma)
+                .and_then(|entry| entry.form("f3pl"))
+                .ok_or_else(|| ValencyError::MissingDerivationCell {
+                    line,
+                    relation: relation_id.to_string(),
+                    pinned: singular.clone(),
+                    lemma: lemma.clone(),
+                    cell: "f3pl".into(),
+                })?;
+            Ok(HeadKind::Finite {
+                singular,
+                plural: plural.to_string(),
+            })
+        }
+        // Pinned heads (copulas) do not inflect: both numbers share the
+        // single pinned surface.
+        (HeadKind::Finite { singular, .. }, ConjugationStrategy::Pinned) => Ok(HeadKind::Finite {
+            plural: singular.clone(),
+            singular,
+        }),
+        (head, _) => Ok(head),
+    }
+}
+
 /// Derive the paradigm behind a strategy and cross-check it against the
 /// pinned surface. Fail-closed: a drifted asset is a release invariant, not
 /// a turn-level error.
@@ -513,23 +558,23 @@ fn verify_conjugation(
     strategy: ConjugationStrategy,
 ) -> Result<HeadConjugation, ValencyError> {
     match (&strategy, head) {
-        (ConjugationStrategy::Finite3 { lemma }, HeadKind::Finite { surface }) => {
+        (ConjugationStrategy::Finite3 { lemma }, HeadKind::Finite { singular, .. }) => {
             let Some(entry) = qxfx0_morphology::verb_lexicon::lookup(lemma) else {
                 return Err(ValencyError::MissingDerivationCell {
                     line,
                     relation: relation_id.to_string(),
-                    pinned: surface.clone(),
+                    pinned: singular.clone(),
                     lemma: lemma.clone(),
                     cell: "verb_lexicon".into(),
                 });
             };
             match entry.form("f3sg") {
-                Some(derived) if derived == surface => {}
+                Some(derived) if derived == singular => {}
                 Some(derived) => {
                     return Err(ValencyError::ConjugationMismatch {
                         line,
                         relation: relation_id.to_string(),
-                        pinned: surface.clone(),
+                        pinned: singular.clone(),
                         lemma: lemma.clone(),
                         derived: derived.to_string(),
                     })
@@ -538,7 +583,7 @@ fn verify_conjugation(
                     return Err(ValencyError::MissingDerivationCell {
                         line,
                         relation: relation_id.to_string(),
-                        pinned: surface.clone(),
+                        pinned: singular.clone(),
                         lemma: lemma.clone(),
                         cell: "f3sg".into(),
                     })
@@ -727,7 +772,7 @@ mod tests {
     #[test]
     fn embedded_lexicon_parses_and_covers_the_audited_relations() {
         let lexicon = valency_lexicon();
-        assert_eq!(lexicon.len(), 30, "one frame per admitted relation");
+        assert_eq!(lexicon.len(), 32, "one frame per admitted relation");
         assert!(!lexicon.fingerprint().is_empty());
     }
 
@@ -737,7 +782,7 @@ mod tests {
     fn finite_heads_are_derived_from_the_verb_lexicon() {
         let lexicon = valency_lexicon();
         for (id, frame) in lexicon.iter() {
-            let HeadKind::Finite { surface } = frame.head() else {
+            let HeadKind::Finite { singular, plural } = frame.head() else {
                 continue;
             };
             match frame.conjugation().strategy() {
@@ -747,11 +792,24 @@ mod tests {
                         .expect("relation exists")
                         .expect("f3sg cell exists");
                     assert_eq!(
-                        &derived, surface,
+                        &derived, singular,
                         "{id}: pinned surface disagrees with {lemma} paradigm"
                     );
+                    let derived_plural = lexicon
+                        .conjugated_head(id, VerbPerson::ThirdPlural)
+                        .expect("relation exists")
+                        .expect("f3pl cell exists");
+                    assert_eq!(
+                        &derived_plural, plural,
+                        "{id}: plural surface disagrees with {lemma} paradigm"
+                    );
                 }
-                ConjugationStrategy::Pinned => {}
+                ConjugationStrategy::Pinned => {
+                    assert_eq!(
+                        singular, plural,
+                        "{id}: pinned finite head must share one surface"
+                    );
+                }
                 ConjugationStrategy::AgreeingShort { .. } => {
                     panic!("{id}: short-form strategy on a finite head")
                 }

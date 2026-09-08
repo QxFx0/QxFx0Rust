@@ -7,7 +7,7 @@ use qxfx0_pipeline::{
     process_turn_with_options, process_turn_with_options_and_trace, EssenceAblation,
     RendererAuthority, TurnInput, TurnOptions,
 };
-use qxfx0_semantic::{argued_topic_registry, FallbackReason};
+use qxfx0_semantic::argued_topic_registry;
 use qxfx0_types::system_state::SystemState;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -256,8 +256,8 @@ fn audited_v1_fixture_matches_the_admission_boundary() {
         .map(|topic| topic.topic().as_str())
         .collect::<BTreeSet<_>>();
 
-    assert_eq!(cases.len(), 134);
-    assert_eq!(fixture_topics.len(), 134);
+    assert_eq!(cases.len(), 141);
+    assert_eq!(fixture_topics.len(), 141);
     assert_eq!(fixture_topics, admitted_topics);
 }
 
@@ -271,7 +271,7 @@ fn audited_v1_structural_gate_passes_in_fresh_sessions() {
 }
 
 #[test]
-fn audited_v1_structural_gate_passes_in_one_hundred_thirty_four_turn_session() {
+fn audited_v1_structural_gate_passes_in_one_hundred_forty_one_turn_session() {
     let session_id = "structural-long-session";
     let mut state = test_state(session_id);
 
@@ -279,40 +279,29 @@ fn audited_v1_structural_gate_passes_in_one_hundred_thirty_four_turn_session() {
         assert_structural_plan(case, &mut state, session_id, turn + 1);
     }
 
-    assert_eq!(state.dialogue.turn_count, 134);
-    assert_eq!(state.dialogue.history.len(), 134);
+    assert_eq!(state.dialogue.turn_count, 141);
+    assert_eq!(state.dialogue.history.len(), 141);
 }
 
 #[test]
-fn recognized_but_unadmitted_topic_keeps_an_explicit_fallback_reason() {
-    let session_id = "structural-unadmitted";
-    let mut state = test_state(session_id);
-    let (output, trace) = process_turn_with_options_and_trace(
-        &TurnInput {
-            session_id: session_id.into(),
-            raw_text: "что такое природа?".into(),
-        },
-        &mut state,
-        TurnOptions::new().with_renderer(RendererAuthority::LegacyShadow),
-    );
-    let metadata = plan_metadata(&trace);
-
-    assert!(
-        !output.blocked,
-        "legacy renderer remains active during shadow mode"
-    );
-    assert_eq!(
-        metadata.get("plan_outcome").map(String::as_str),
-        Some("fallback")
-    );
-    assert_eq!(
-        metadata.get("fallback_reason").map(String::as_str),
-        Some(FallbackReason::NoAdmissiblePredicate.as_str())
-    );
-    assert_eq!(
-        metadata.get("plan_topic").map(String::as_str),
-        Some("природа")
-    );
+fn admission_boundary_is_closed_over_recognized_topics() {
+    // Full coverage: fixture, registry and recognition coincide, so the
+    // recognized-but-unadmitted fallback is unreachable. Unknown topics
+    // still fall back (covered by the unknown-topic unit test).
+    let cases = corpus_cases();
+    let fixture_topics = cases.iter().map(|case| case.topic).collect::<BTreeSet<_>>();
+    let admitted_topics = argued_topic_registry()
+        .unwrap()
+        .topics()
+        .map(|topic| topic.topic().as_str())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(fixture_topics, admitted_topics);
+    for topic in qxfx0_semantic::COVERED_TOPICS {
+        assert!(
+            admitted_topics.contains(topic),
+            "recognized topic '{topic}' must be admitted"
+        );
+    }
 }
 
 fn assert_plan_renderer_surface(
@@ -377,7 +366,7 @@ fn audited_plan_renderer_passes_surface_gate_in_fresh_sessions() {
 }
 
 #[test]
-fn audited_plan_renderer_passes_surface_gate_in_one_hundred_thirty_four_turn_session() {
+fn audited_plan_renderer_passes_surface_gate_in_one_hundred_forty_one_turn_session() {
     let session_id = "surface-long-session";
     let mut state = test_state(session_id);
 
@@ -385,8 +374,8 @@ fn audited_plan_renderer_passes_surface_gate_in_one_hundred_thirty_four_turn_ses
         assert_plan_renderer_surface(case, &mut state, session_id, turn + 1);
     }
 
-    assert_eq!(state.dialogue.turn_count, 134);
-    assert_eq!(state.dialogue.history.len(), 134);
+    assert_eq!(state.dialogue.turn_count, 141);
+    assert_eq!(state.dialogue.history.len(), 141);
 }
 
 #[test]
@@ -426,7 +415,6 @@ fn shadow_mode_compares_plan_surface_without_changing_legacy_output() {
 #[test]
 fn audited_plan_flag_keeps_fallback_and_external_routes_on_legacy_contracts() {
     for (name, prompt) in [
-        ("unadmitted", "что такое природа?"),
         ("greeting", "привет"),
         ("purpose", "в чём функция стола?"),
         ("world-cause", "почему небо голубое?"),

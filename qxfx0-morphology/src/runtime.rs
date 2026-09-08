@@ -1175,6 +1175,50 @@ mod tests {
     }
 
     #[test]
+    fn short_stems_resolve_bijectively_without_phantom_twins() {
+        // Regression: the feminine conversion artifacts спора/метода/кода
+        // made спор/метод/код surface-ambiguous and failed V2 thesis
+        // realization (Bijective). They are removed from the bundle; the
+        // masculine nominatives must resolve to themselves.
+        use qxfx0_types::morphology::MorphologyLookup;
+        let runtime = get_runtime();
+        for lemma in ["спор", "метод", "код"] {
+            match runtime.lemmatize(lemma) {
+                MorphologyLookup::Resolved(resolution) => {
+                    assert_eq!(resolution.lemma, lemma, "{lemma} misresolved");
+                    assert!(
+                        runtime
+                            .inflect(
+                                lemma,
+                                qxfx0_types::morphology::Case::Nominative,
+                                qxfx0_types::morphology::Number::Singular
+                            )
+                            .as_deref()
+                            == Some(lemma),
+                        "{lemma} lost its nominative"
+                    );
+                }
+                other => panic!("{lemma} did not resolve uniquely: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn pluralia_tantum_resolve_in_the_plural() {
+        // деньги has no singular: the tantum entry resolves nominative
+        // plural to itself so plural thesis subjects compose.
+        use qxfx0_types::morphology::{MorphologyLookup, Number};
+        let runtime = get_runtime();
+        match runtime.lemmatize("деньги") {
+            MorphologyLookup::Resolved(resolution) => {
+                assert_eq!(resolution.lemma, "деньги");
+                assert_eq!(resolution.number, Number::Plural);
+            }
+            other => panic!("деньги did not resolve uniquely: {other:?}"),
+        }
+    }
+
+    #[test]
     fn test_embedded_bundle_is_valid() {
         // The embedded bundle should always load successfully
         let runtime = MorphologyRuntime::load_from_bytes(

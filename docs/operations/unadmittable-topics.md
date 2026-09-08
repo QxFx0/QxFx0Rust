@@ -1,33 +1,32 @@
-# Unadmittable topics (as of the 134-topic corpus)
+# Unadmittable topics (as of the 141-topic corpus)
 
-Seven recognized topics cannot be admitted under the current machine.
-Each was attempted or analyzed; the refusal evidence is fail-closed
-output from the gates, not editorial choice. Revisit only with a
-machine change (morphology/realizer support), not with more curation.
+Full coverage is reached: all 141 recognized topics are admitted. Six
+topics were refused fail-closed along the way and remain instructive;
+each refusal below is gate output, not editorial choice. Revisit only
+with a machine change, not with more curation.
 
 | Topic | Class | Evidence |
 |---|---|---|
-| деньги | pluralia tantum | `UnknownLemma` (cf. данные, excluded in wave 2) |
-| отношения | pluralia tantum | `UnknownLemma` (wave 8 gate) |
-| права | pluralia tantum | same class (not attempted; nominative is plural) |
-| помнить | verb topic | thesis subject must be a nominal lemma the realizer can inflect |
-| метод | IncompleteForm nominative | short masculine consonant stem (wave 8 gate; cf. код, спор) |
-| спор | IncompleteForm nominative | short masculine consonant stem (wave 6 gate) |
+| деньги | pluralia tantum | admitted in wave 10 via the tantum entry + plural heads |
+| отношения | pluralia tantum via singular-lemma resolution | admitted in wave 10 (отношение + inferred plural) |
+| права | same as отношения | admitted in wave 10 |
+| помнить | verb topic | admitted in wave 10 via the infinitive-subject branch |
+| метод | IncompleteForm nominative (short masculine stem) | admitted in wave 10 after removing the feminine phantom метода |
+| спор | IncompleteForm nominative (short masculine stem) | admitted in wave 10 after removing the feminine phantom спора |
 
-A seventh recognized topic stays out deliberately:
+Resolved machine gaps (kept here as the record):
 
-| Topic | Reason |
-|---|---|
-| природа | fallback exemplar for the recognized-but-unadmitted path in the pipeline gates (`NoAdmissiblePredicate`, corpus-boundary marker). Admitting it would orphan those tests; it is admittable (frame-ready: `RelRelatedTo`/человек) and is the designated first topic of any future wave. |
+- feminine conversion artifacts спора/метода/кода deleted from the
+  noun bundle (no such nouns exist); `short_stems_resolve_bijectively`
+  guards the return;
+- plural subjects: number inferred (tantum entry or nominative-candidate
+  resolution), finite heads derive f3pl at load, agreeing heads already
+  carried plural forms;
+- infinitive subjects: fixed citation surface + impersonal
+  neuter-singular agreement (finite heads only);
+- frames `vklyuchaet` (RelIncludes) and `strukturiruet` (RelStructures)
+  derived from the verb lexicon.
 
-Selection rules for future waves (distilled from waves 2-8 refusals):
-
-- prefer subjects whose nominative the morphology runtime realizes
-  (multisyllabic or vowel-final nouns; avoid short masculine
-  consonant stems, pluralia tantum, verb infinitives);
-- verify prepositional government against
-  `qxfx0-plan-v2/assets/preposition_allomorphs.tsv`, adding attested
-  rows only (seed `ru_original` is the attestation bar);
-- confirm the topic is in `COVERED_TOPICS` (a seed atom alone is not
-  enough — see честь in wave 4);
-- run the phase gate early: it is the cheapest composition check.
+The recognized-but-unadmitted fallback (exemplar природа through wave
+9) is now unreachable: the pipeline tests assert the closed boundary
+instead, and the corpus-boundary marker remains as defensive code.

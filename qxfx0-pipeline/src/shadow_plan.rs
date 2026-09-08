@@ -301,17 +301,19 @@ mod tests {
     }
 
     #[test]
-    fn recognized_but_unadmitted_topic_has_explicit_fallback() {
-        let outcome = build_outcome(PropositionMode::Define, "природа", true).unwrap();
-        let fallback = outcome
-            .fallback()
-            .expect("recognized non-argued topic must not claim content authority");
-
-        assert_eq!(fallback.reason(), FallbackReason::NoAdmissiblePredicate);
-        assert!(matches!(
-            fallback.subject(),
-            Some(FallbackSubject::KnownTopic(_))
-        ));
+    fn admission_boundary_is_closed_over_recognized_topics() {
+        // Full coverage: every recognized topic has an admitted declarative
+        // plan, so the recognized-but-unadmitted fallback is unreachable.
+        // The fallback machinery stays covered by the unknown-topic test.
+        let registry = argued_topic_registry().expect("bundled audited profile must parse");
+        for topic in qxfx0_semantic::COVERED_TOPICS {
+            let outcome = build_outcome(PropositionMode::Define, topic, true).unwrap();
+            assert!(
+                outcome.ready().is_some(),
+                "recognized topic '{topic}' must be admitted"
+            );
+        }
+        let _ = registry;
     }
 
     #[test]

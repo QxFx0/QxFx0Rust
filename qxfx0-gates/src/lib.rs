@@ -593,7 +593,7 @@ fn contains_whole_word_surface(text: &str, accepted: &str) -> bool {
 fn valency_head_surfaces(relation_id: &str) -> Option<Vec<String>> {
     let frame = valency_lexicon().get(relation_id).ok()?;
     Some(match frame.head() {
-        HeadKind::Finite { surface } => vec![surface.clone()],
+        HeadKind::Finite { singular, plural } => vec![singular.clone(), plural.clone()],
         HeadKind::Agreeing {
             masculine,
             feminine,
@@ -832,7 +832,7 @@ fn run_replay_gate() -> GateReport {
     }
 }
 
-/// Phase B: the audited corpus — semantic + authority parity over all 134
+/// Phase B: the audited corpus — semantic + authority parity over all 141
 /// topics. Every stated claim of every topic must traverse the whole chain
 /// (admission → evidence → assertion) and land on a `ClaimAuthority`; the
 /// manifest must lock the exact asset bytes the release binary carries.
@@ -1182,8 +1182,17 @@ fn run_phase_c() -> GateReport {
                     "head" => {
                         witness.source_semantic_id == claim_fact.relation.as_str()
                             && witness.source_binding == relation_binding.as_str()
-                            && valency_head_surfaces(relation_binding.as_str())
-                                .is_some_and(|surfaces| surfaces == witness.accepted_surfaces)
+                            && valency_head_surfaces(relation_binding.as_str()).is_some_and(
+                                |surfaces| {
+                                    // The live lexicon derives plural heads
+                                    // the manifest predates; every pinned
+                                    // surface must still be a live one.
+                                    witness
+                                        .accepted_surfaces
+                                        .iter()
+                                        .all(|accepted| surfaces.contains(accepted))
+                                },
+                            )
                     }
                     _ => false,
                 };
@@ -1405,7 +1414,7 @@ mod tests {
             "canary report failed: {:?}",
             report.violations
         );
-        assert!(report.details.contains("audited_turns=134"));
+        assert!(report.details.contains("audited_turns=141"));
         assert!(report.details.contains("attestation_parity_violations=0"));
         assert!(report.details.contains("unauthorized_v1_fallbacks=0"));
     }

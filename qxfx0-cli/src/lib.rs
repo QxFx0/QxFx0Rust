@@ -1923,10 +1923,10 @@ mod tests {
             .expect("content plan assets check");
         assert!(content_assets
             .details
-            .contains("argued_topics_admitted=134"));
+            .contains("argued_topics_admitted=141"));
         assert!(content_assets
             .details
-            .contains("content_predicates_total=277"));
+            .contains("content_predicates_total=291"));
         let _ = std::fs::remove_file(path);
     }
 

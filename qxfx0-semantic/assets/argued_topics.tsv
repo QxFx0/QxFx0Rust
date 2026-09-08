@@ -136,3 +136,10 @@ topic	predicate_id	subject_id	relation_id	object_id	thesis_surface	counterpoint_
 скорость	skorost_svyazan	skorost	svyazan	vremya	скорость связана со временем	скорость без направления — суета: быстро, но неизвестно куда	
 спокойствие	spokoistvie_svyazan	spokoistvie	svyazan	svoboda	спокойствие связано со свободой	спокойствие без свободы — оцепенение: тихо, но не мирно	
 существование	suschestvovanie_svyazan	suschestvovanie	svyazan	soznanie	существование связано с сознанием	существование без сознания — наличие: есть, но не присутствует	
+деньги	dengi_svyazan	dengi	svyazan	svoboda	деньги связаны со свободой	деньги связаны со свободой лишь внешне: обеспеченность — не освобождение	
+метод	metod_podderzhivaet	metod	podderzhivaet	tsel	метод поддерживает цель	метод без цели — ритуал: шаги есть, а идти некуда	
+отношения	otnosheniya_trebuet	otnosheniya	trebuet	doverie	отношения требуют доверия	отношения без доверия — соседство: рядом, но не вместе	
+помнить	pomnit_trebuet	pomnit	trebuet	soznanie	помнить требует сознания	сознание не гарантирует памяти: забывать — тоже его работа	
+права	prava_predpolagaet	prava	predpolagaet	svoboda	права предполагают свободу	права без свободы — бумага: записанное не значит действующее	
+природа	priroda_vklyuchaet	priroda	vklyuchaet	chelovek	природа включает человека	человек не сводится к природе: включённость — не исчерпанность	
+спор	spor_svyazan	spor	svyazan	istina	спор связан с истиной	спор, где важна только победа, глух к истине	
