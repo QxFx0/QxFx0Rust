@@ -30,12 +30,19 @@ single turns) and over a 64-turn challenged свобода session:
 - long-ablated: v1 commits, 43 suppressions, 0 violations;
 - visible behaviour identical in both arms (already gated).
 
-Reading: v2's commitment is a one-shot irrevocable latch — after it
-fires, every further challenge is a violation; the ablation arm, in
-turn, vetoes nearly every turn (43/57). Both postures are degenerate
-as turn authority, while v1 already commits in the same scenario.
+Reading (corrected after measuring runs, not just totals): the 25
+violations are intermittent (max run 4/8) — disagreement inside a held
+position, which a commitment should survive. The hysteresis backstop
+(release after 8 *consecutive* violations, angst halved, witnesses
+kept) covers the sustained case the probe never reaches; unit tests
+lock all three behaviors (release, counter reset, no immediate
+recommit on the angst path) plus the documented erosion re-fire.
+The ablation arm suppressing 43/57 turns is informative, not broken:
+angst pins high in challenged sessions, so nearly every turn would
+commit — the control records exactly that.
 Marginal value of v2 today = violation-sensitivity + replay-visible
-trajectory, not better commitment.
+trajectory, not better commitment. No merge until a product decision
+needs v2 as turn authority.
 
 ## Decision (proposed)
 

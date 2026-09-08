@@ -522,4 +522,175 @@ mod tests {
     fn invariants_hold_on_the_defaults() {
         assert!(validate_invariants().is_empty());
     }
+
+    fn commit_dialogical(modulation: &EssenceModulation) -> Essence {
+        // Drives the enabled arm to a commitment with an admissible
+        // family, mirroring advance_essence_validates_plans_after_commitment.
+        let accrue = trace(
+            ReconcileRule::RuleHolisticAdvantage,
+            Agreement::PartialAgreement,
+            0.8,
+        );
+        let mut essence = empty_essence();
+        for turn in 0..16 {
+            let summary = advance_essence(
+                modulation,
+                EssenceAblation::Enabled,
+                EssenceTurnInput {
+                    turn_ordinal: turn,
+                    conatus: eroded_conatus(),
+                    field: &field_mid(),
+                    trace: &accrue,
+                    proposed_family: CanonicalMoveFamily::CMReflect,
+                },
+                &mut essence,
+            );
+            if summary.committed.is_some() {
+                assert!(matches!(essence, Essence::Committed(_, _)));
+                return essence;
+            }
+        }
+        panic!("the enabled arm must commit within 16 turns");
+    }
+
+    fn violating_summary(
+        modulation: &EssenceModulation,
+        essence: &mut Essence,
+        turn: usize,
+    ) -> EssenceAdvanceTrace {
+        advance_essence(
+            modulation,
+            EssenceAblation::Enabled,
+            EssenceTurnInput {
+                turn_ordinal: turn,
+                conatus: eroded_conatus(),
+                field: &field_mid(),
+                trace: &trace(
+                    ReconcileRule::RuleHolisticAdvantage,
+                    Agreement::PartialAgreement,
+                    0.8,
+                ),
+                // CMDistinguish is inadmissible for the dialogical mode
+                // the accrue trajectory extracts.
+                proposed_family: CanonicalMoveFamily::CMDistinguish,
+            },
+            essence,
+        )
+    }
+
+    #[test]
+    fn sustained_violations_release_the_commitment() {
+        let modulation = EssenceModulation::default();
+        let window = modulation.violation_release_window;
+        assert!(window > 1, "test needs a multi-turn window");
+        let mut essence = commit_dialogical(&modulation);
+        for turn in 0..window {
+            let summary = violating_summary(&modulation, &mut essence, 100 + turn);
+            assert!(summary.violation.is_some(), "turn {turn} must violate");
+            assert_eq!(
+                summary.released_commitment,
+                turn + 1 == window,
+                "release fires exactly on the window-reaching turn"
+            );
+        }
+        assert!(
+            matches!(essence, Essence::Uncommitted(_)),
+            "sustained counter-evidence must release the commitment"
+        );
+        let Essence::Uncommitted(trajectory) = &essence else {
+            unreachable!("checked above");
+        };
+        // Witnesses survive the release; angst is halved below the
+        // commitment threshold, so no immediate recommit follows.
+        assert!(!trajectory.witnesses.is_empty());
+        assert!(trajectory.angst_level < modulation.angst_commitment_threshold);
+        assert_eq!(trajectory.consecutive_violations, 0);
+    }
+
+    #[test]
+    fn admissible_turn_resets_the_violation_counter() {
+        let modulation = EssenceModulation::default();
+        let window = modulation.violation_release_window;
+        let mut essence = commit_dialogical(&modulation);
+        let accrue = trace(
+            ReconcileRule::RuleHolisticAdvantage,
+            Agreement::PartialAgreement,
+            0.8,
+        );
+        for turn in 0..window - 1 {
+            assert!(violating_summary(&modulation, &mut essence, turn)
+                .violation
+                .is_some());
+        }
+        // One admissible turn resets the counter: a further window-1
+        // violations must not release.
+        advance_essence(
+            &modulation,
+            EssenceAblation::Enabled,
+            EssenceTurnInput {
+                turn_ordinal: window,
+                conatus: eroded_conatus(),
+                field: &field_mid(),
+                trace: &accrue,
+                proposed_family: CanonicalMoveFamily::CMReflect,
+            },
+            &mut essence,
+        );
+        for turn in 0..window - 1 {
+            let summary = violating_summary(&modulation, &mut essence, 200 + turn);
+            assert!(summary.violation.is_some());
+            assert!(
+                !summary.released_commitment,
+                "reset counter must not reach the window"
+            );
+        }
+        assert!(matches!(essence, Essence::Committed(_, _)));
+    }
+
+    #[test]
+    fn release_does_not_recommit_immediately() {
+        let modulation = EssenceModulation::default();
+        let window = modulation.violation_release_window;
+        let mut essence = commit_dialogical(&modulation);
+        for turn in 0..window {
+            violating_summary(&modulation, &mut essence, turn);
+        }
+        assert!(matches!(essence, Essence::Uncommitted(_)));
+        // Same violating family right after the release, but with healthy
+        // conatus and full agreement: angst was halved below the threshold
+        // and now decays further, so no new trigger fires.
+        let summary = advance_essence(
+            &modulation,
+            EssenceAblation::Enabled,
+            EssenceTurnInput {
+                turn_ordinal: window,
+                conatus: healthy_conatus(),
+                field: &field_mid(),
+                trace: &trace(ReconcileRule::RuleAgreement, Agreement::FullAgreement, 0.0),
+                proposed_family: CanonicalMoveFamily::CMDistinguish,
+            },
+            &mut essence,
+        );
+        assert_eq!(summary.trigger, None);
+        assert!(summary.committed.is_none());
+    }
+
+    #[test]
+    fn sustained_erosion_recommits_after_release() {
+        // Documented, not forbidden: if the conatus evidence stays
+        // collapsed, the erosion trigger refires right after a release and
+        // the commitment reforms. Persistent conditions, persistent
+        // commitment — the hysteresis deadband covers the angst path,
+        // not a world that never recovers.
+        let modulation = EssenceModulation::default();
+        let window = modulation.violation_release_window;
+        let mut essence = commit_dialogical(&modulation);
+        for turn in 0..window {
+            violating_summary(&modulation, &mut essence, turn);
+        }
+        assert!(matches!(essence, Essence::Uncommitted(_)));
+        let summary = violating_summary(&modulation, &mut essence, window);
+        assert_eq!(summary.trigger, Some(CommitmentTrigger::ConatusErosion));
+        assert!(summary.committed.is_some());
+    }
 }

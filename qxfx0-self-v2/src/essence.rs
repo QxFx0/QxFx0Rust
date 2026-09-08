@@ -148,6 +148,12 @@ pub struct EssenceTrajectory {
     pub angst_level: f64,
     pub conatus_floor: f64,
     pub capacity: usize,
+    /// Consecutive plan-family violations against the live commitment.
+    /// Reset by any admissible turn; reaching `violation_release_window`
+    /// releases a stale commitment (hysteresis). Added post-U2; old
+    /// snapshots load it as zero via the serde default.
+    #[serde(default)]
+    pub consecutive_violations: u32,
 }
 
 /// Tunables. Defaults follow the Haskell calibrated set (Phase 10 §4):
@@ -167,6 +173,16 @@ pub struct EssenceModulation {
     pub band_high_edge: f64,
     pub valence_low_edge: f64,
     pub valence_high_edge: f64,
+    /// Sustained-violation hysteresis: a live commitment is released after
+    /// this many consecutive plan-family violations, so a stale commitment
+    /// cannot violate forever (commit-once-violate-everything). Must be
+    /// positive; 8 matches the conatus window scale.
+    #[serde(default = "default_violation_release_window")]
+    pub violation_release_window: usize,
+}
+
+fn default_violation_release_window() -> usize {
+    8
 }
 
 /// The original Phase 9 defaults, kept for regression locks (their
@@ -185,6 +201,7 @@ pub fn phase9_essence_modulation() -> EssenceModulation {
         band_high_edge: 0.67,
         valence_low_edge: -0.33,
         valence_high_edge: 0.33,
+        violation_release_window: default_violation_release_window(),
     }
 }
 
@@ -268,6 +285,7 @@ pub fn empty_trajectory() -> EssenceTrajectory {
         angst_level: 0.0,
         conatus_floor: 1.0,
         capacity: EssenceModulation::default().trajectory_capacity,
+        consecutive_violations: 0,
     }
 }
 
@@ -513,6 +531,10 @@ pub struct EssenceAdvanceTrace {
     pub violation: Option<EssenceViolation>,
     /// True when the B2 ablation arm suppressed a would-be commitment.
     pub ablated_commit_suppressed: bool,
+    /// True when sustained violations released the live commitment this
+    /// turn (hysteresis). The violation itself is still recorded above.
+    #[serde(default)]
+    pub released_commitment: bool,
 }
 
 /// Groups the per-turn inputs of [`advance_essence`] (argument-count
@@ -564,7 +586,7 @@ pub fn advance_essence(
         ..EssenceAdvanceTrace::default()
     };
 
-    let commitment = match existing_commitment {
+    let mut commitment = match existing_commitment {
         Some(commitment) => Some(commitment),
         None => match should_commit(modulation, &trajectory) {
             Some(trigger) => match ablation {
@@ -587,6 +609,20 @@ pub fn advance_essence(
     if let Some(fixed) = &commitment {
         if let Err(violation) = validate_plan(fixed, proposed_family) {
             summary.violation = Some(violation);
+            // Hysteresis: sustained counter-evidence releases a stale
+            // commitment instead of violating forever. The release halves
+            // angst (deadband below the commitment threshold, so no
+            // immediate recommit) and keeps the witnesses; the violation
+            // that triggered it stays visible in the trace.
+            trajectory.consecutive_violations = trajectory.consecutive_violations.saturating_add(1);
+            if trajectory.consecutive_violations >= modulation.violation_release_window as u32 {
+                trajectory.consecutive_violations = 0;
+                trajectory.angst_level *= 0.5;
+                summary.released_commitment = true;
+                commitment = None;
+            }
+        } else {
+            trajectory.consecutive_violations = 0;
         }
     }
 
@@ -620,6 +656,9 @@ pub fn validate_invariants() -> Vec<String> {
     }
     if modulation.conatus_floor_window == 0 {
         violations.push("essence-v2 default conatus_floor_window must be positive".into());
+    }
+    if modulation.violation_release_window == 0 {
+        violations.push("essence-v2 default violation_release_window must be positive".into());
     }
     if modulation.band_low_edge >= modulation.band_high_edge {
         violations.push("essence-v2 default band edges are not ordered".into());

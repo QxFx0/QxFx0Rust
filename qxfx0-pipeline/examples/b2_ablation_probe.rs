@@ -90,6 +90,9 @@ fn main() {
         let mut committed = 0usize;
         let mut suppressed = 0usize;
         let mut violations = 0usize;
+        let mut releases = 0usize;
+        let mut max_run = 0usize;
+        let mut run = 0usize;
         let mut angst_sum = 0.0f64;
         let mut n = 0usize;
         for _ in 0..8 {
@@ -110,13 +113,20 @@ fn main() {
                     }
                     if adv.violation.is_some() {
                         violations += 1;
+                        run += 1;
+                        max_run = max_run.max(run);
+                    } else {
+                        run = 0;
+                    }
+                    if adv.released_commitment {
+                        releases += 1;
                     }
                 }
             }
         }
         let v1 = state.semantic.essence.commitment.is_some();
         println!(
-            "long-{arm_name}: turns={n} v1_committed={v1} v2_committed={committed} suppressed={suppressed} violations={violations} mean_angst={:.4}",
+            "long-{arm_name}: turns={n} v1_committed={v1} v2_committed={committed} suppressed={suppressed} violations={violations} max_run={max_run} releases={releases} mean_angst={:.4}",
             angst_sum / n.max(1) as f64,
         );
     }
