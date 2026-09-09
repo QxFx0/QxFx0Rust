@@ -190,6 +190,34 @@ a *checked* fact (the erosion trigger has teeth if it ever breaks), not an
 assumption. Locks: 5 blanket unit tests + the corpus shadow gate; workspace
 green.
 
+**Status 2026-09-09 (U3.3 reconcile + doubt loop landed, shadow)**:
+`qxfx0-self-v2::deliberation` ports the Haskell Phase-8 six-rule ladder
+(`reconcile` keyed on the canonical `SelfVerdictV2`: Conatus override →
+agreement → salience lead above the 0.7 escalation floor → single-axis
+advantage → tied-fallback-formal; recovery causes merge by severity and are
+never silenced; the Rust plan vocabulary carries family + recovery +
+confidence, so the differ classification and divergence denominator are 4→2
+in lockstep with the record). `proposal_pair_from_field` materialises both
+hemispheric proposals (editorial content mirrors V1 prepare's proposal
+shapes; the algebra is canonical). `deliberate_shadow` adds the doubt loop
+(Haskell doubt law keyed on the canonical gate: complement of confidence,
+gate floor 0.9, counterfactual/content ambiguity +0.2, threshold 0.75,
+same-topic-confirmed suppression with V1 recall semantics) and the
+applied-vs-reconciled comparison, attached in `finalize_stage` as
+`EssenceAdvanceTrace.deliberation_shadow` (nullable, serde-default —
+pre-U3.3 trace JSONs load unchanged; never feeds routing, the witness hash
+or persisted state). Route is untouched: V1 `family_for_mode` stays the
+authority; the flip reads the reconciled==applied statistic off the trace
+corpus in a separate release (law 3). The suppression fact rides
+`PreparedTurnContext` (`serde(skip)` so stage digests stay byte-identical).
+Doctor: `validate_deliberation_invariants` joined the self-layer check.
+Locks: 11 deliberation unit tests + the corpus shadow gate (replay-visible
+on every turn, records the applied family, routing byte-equal to the
+ablated arm). **U3 is now complete in shadow**; episodic recall V2-port is
+intentionally left to the doubt-policy consumer at flip time (V1 recall
+already runs in `record_doubt_shadow`/`clarification_decision` and the V2
+shadow mirrors its suppression semantics exactly).
+
 ### U4 — «Мост обучения»
 `qxfx0-bridge` behind a feature flag (no network in default builds),
 runtime edge store with reinforce/decay/retire (Haskell

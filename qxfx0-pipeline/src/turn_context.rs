@@ -74,6 +74,12 @@ pub struct PreparedTurnContext {
     /// deliberated, not a reconstruction of it.
     deliberation_trace: DeliberationTrace,
     has_enough: bool,
+    /// ADR-0043 U3 shadow: the doubt-loop suppression fact read from the
+    /// *previous* turn (V1's immediate_confirmed_same_topic semantics).
+    /// `serde(skip)`: the stage digests stay byte-identical across the
+    /// shadow's landing — this evidence never enters the replay signature.
+    #[serde(skip)]
+    same_topic_decision_confirmed: bool,
 }
 
 impl PreparedTurnContext {
@@ -88,6 +94,7 @@ impl PreparedTurnContext {
         deliberation_rule: ReconcileRule,
         deliberation_trace: DeliberationTrace,
         has_enough: bool,
+        same_topic_decision_confirmed: bool,
     ) -> Self {
         Self {
             input,
@@ -99,6 +106,7 @@ impl PreparedTurnContext {
             deliberation_rule,
             deliberation_trace,
             has_enough,
+            same_topic_decision_confirmed,
         }
     }
 
@@ -136,6 +144,10 @@ impl PreparedTurnContext {
 
     pub fn has_enough(&self) -> bool {
         self.has_enough
+    }
+
+    pub fn same_topic_decision_confirmed(&self) -> bool {
+        self.same_topic_decision_confirmed
     }
 }
 

@@ -2,8 +2,9 @@
 
 Status: accepted — U0 complete, U1 complete (serve daemon), U2 complete
 (crate + pipeline wiring + hysteresis landed; ADR-0044 verdict recorded) —
-U3 in flight (canonical Salience controller landed in shadow 2026-09-09;
-reconcile/doubt-loop/episodic-recall next) — see
+U3 complete in shadow (salience + blanket + canonical reconcile/doubt-loop
+landed 2026-09-09, all replay-visible, V1 still routes; the dispatch flip
+is a separate release gated on the shadow trace corpus) — see
 `docs/operations/session-handoff-2026-08-23.md` for the running state
 
 ## Frame
@@ -78,7 +79,16 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   shadow trace (fail-closed data, never a turn-path panic), and the previous
   blanket persists through the new additive schema-v12 `blanket_v2_json`
   column so a fresh per-turn process can run the transition check.
-  Reconcile / doubt loop / episodic recall wiring remains.
+  Reconcile / doubt loop / episodic recall landed as U3.3:
+  `qxfx0-self-v2::deliberation` ports the Haskell Phase-8 six-rule ladder
+  keyed on the canonical salience verdict (Conatus override → agreement →
+  salience lead → single-axis advantage → tied-fallback-formal, recovery
+  merged by severity and never silenced), and `deliberate_shadow` attaches
+  the reconciled-vs-applied comparison plus the doubt-loop escalation
+  (V2 Conatus-gate floor 0.9, counterfactual ambiguity +0.2,
+  same-topic-confirmed suppression) to the same replay-visible
+  `EssenceAdvanceTrace` — V1 remains the routing authority and the flip
+  reads the agreement statistic off the trace corpus.
 - **U4 «Мост обучения»** — `qxfx0-bridge` behind a feature flag (default
   build has no network — privacy stays an architectural fact). Runtime
   edge store with reinforce/decay/retire (Haskell `RuntimeLLMFeedback` is

@@ -522,6 +522,31 @@ fn essence_v2_shadow_advances_without_changing_visible_behaviour() {
             "{}: the trajectory must persist in state",
             case.topic
         );
+        // ADR-0043 U3: the canonical deliberation ladder reconciles over the
+        // salience verdict on every turn and honestly records the V1 family
+        // it shadowed — the applied-vs-reconciled comparison that measures
+        // flip-readiness — while routing stays byte-identical to the
+        // ablated arm (asserted above).
+        let shadow = enabled_trace
+            .essence_advance
+            .as_ref()
+            .and_then(|advance| advance.deliberation_shadow.as_ref())
+            .unwrap_or_else(|| {
+                panic!(
+                    "{}: the deliberation shadow must be replay-visible",
+                    case.topic
+                )
+            });
+        assert_eq!(
+            shadow.applied_family, enabled_output.family,
+            "{}: the shadow must record the applied V1 family",
+            case.topic
+        );
+        assert_eq!(
+            shadow.applied_family, ablated_output.family,
+            "{}: the reconciled family must not have altered routing",
+            case.topic
+        );
         assert!(
             enabled_state.semantic.blanket_v2.is_some(),
             "{}: the blanket record must persist for the transition check",

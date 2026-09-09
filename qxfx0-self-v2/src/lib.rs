@@ -1,6 +1,6 @@
 //! qxfx0-self-v2 — the canonical subject-core port (ADR-0043 U2/U3).
 //!
-//! Four modules, ported phase-by-phase from the Haskell reference (its
+//! Five modules, ported phase-by-phase from the Haskell reference (its
 //! fact-checked AGENTS.md is the readiness map) with V1 `qxfx0-self`
 //! untouched:
 //!
@@ -18,16 +18,28 @@
 //! - [`blanket`]: the structural self-identity invariants (ADR-0043 U3) —
 //!   session stability, morphology presence and turn / identity-claim
 //!   monotonicity across the commit-time transition.
+//! - [`deliberation`]: the Phase-8 canonical six-rule reconciliation of
+//!   the hemispheric proposals (ADR-0043 U3) — the ladder meant to replace
+//!   route's priority switching, plus the doubt-loop escalation keyed on
+//!   the canonical Conatus gate. Shadow evidence until the flip.
 //!
 //! Everything here is pure and total; the pipeline integrates it in shadow
 //! (Finalize advance, replay-visible trace fields, fail-closed decode).
 
 pub mod blanket;
 pub mod conatus;
+pub mod deliberation;
 pub mod essence;
 pub mod salience;
 
 pub use blanket::{check_blanket_transition, check_initial_blanket, BlanketRecord};
+pub use deliberation::{
+    classify_agreement, compute_divergence, deliberate_shadow, plans_equal_mod_confidence,
+    proposal_pair_from_field, reconcile, render_agreement_v2, render_reconcile_rule_v2,
+    validate_deliberation_invariants, AgreementV2, DeliberationModulationV2,
+    DeliberationShadowTrace, DeliberationV2, PlanV2, ReconcileRuleV2,
+    BUILTIN_DELIBERATION_MODULATION, DOUBT_CLARIFICATION_THRESHOLD,
+};
 
 pub use conatus::{
     compute_conatus_energy, compute_conatus_energy_with, compute_conatus_gradient,

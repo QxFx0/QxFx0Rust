@@ -550,6 +550,14 @@ pub struct EssenceAdvanceTrace {
     /// [`advance_essence`]; pre-U3 trace JSONs load it as empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub blanket_violations: Vec<crate::conatus::BlanketViolation>,
+    /// ADR-0043 U3: the canonical deliberation ladder reconciled over the
+    /// V2 salience verdict — the family V2 would route to, the doubt-loop
+    /// escalation, and the applied-vs-reconciled comparison that measures
+    /// flip-readiness on a trace corpus. Set by the pipeline next to
+    /// `self_verdict`; never feeds routing or persisted state. Pre-U3
+    /// trace JSONs load `None`.
+    #[serde(default)]
+    pub deliberation_shadow: Option<crate::deliberation::DeliberationShadowTrace>,
 }
 
 /// Groups the per-turn inputs of [`advance_essence`] (argument-count
@@ -705,5 +713,8 @@ pub fn validate_invariants() -> Vec<String> {
     // ADR-0043 U3: the canonical salience controller rides the same doctor
     // check — its builtin weights are the shadow verdict's only tuning.
     violations.extend(crate::salience::validate_salience_invariants());
+    // ADR-0043 U3: the canonical deliberation ladder too (escalation floor,
+    // doubt threshold, safe-default totality).
+    violations.extend(crate::deliberation::validate_deliberation_invariants());
     violations
 }

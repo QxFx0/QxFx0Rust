@@ -113,6 +113,25 @@ pub fn prepare_stage(
         .atoms
         .contains_key(&AtomId::new(input.subject()));
 
+    // ADR-0043 U3 shadow: the doubt-loop suppression fact, read from the
+    // *previous* turn's state (last_turn_decision still carries it here —
+    // line above overwrites it). Same semantics as V1's
+    // immediate_confirmed_same_topic recall.
+    let same_topic_decision_confirmed = {
+        let confirmed = state.last_turn_decision.as_ref().is_some_and(|decision| {
+            matches!(
+                decision.guard_status,
+                GuardStatus::Allowed | GuardStatus::InvariantWarn(_)
+            )
+        });
+        confirmed
+            && state
+                .dialogue
+                .last_topic
+                .as_deref()
+                .is_some_and(|previous| previous == input.subject())
+    };
+
     Ok(PreparedTurnContext::new(
         input,
         conatus_energy,
@@ -123,6 +142,7 @@ pub fn prepare_stage(
         deliberation.trace.rule,
         deliberation.trace,
         has_enough,
+        same_topic_decision_confirmed,
     ))
 }
 
@@ -663,6 +683,18 @@ pub fn finalize_stage(
         &mut essence_v2,
     );
     essence_v2_summary.blanket_violations = conatus_violations;
+    // ADR-0043 U3 shadow: reconcile the canonical deliberation ladder over
+    // the salience verdict the advance just computed, and record the
+    // applied-vs-reconciled comparison. Observational only — route/family
+    // is untouched (V1 authority); this is the flip-readiness evidence.
+    if let Some(verdict) = &essence_v2_summary.self_verdict {
+        essence_v2_summary.deliberation_shadow = Some(qxfx0_self_v2::deliberate_shadow(
+            &verdict.salience,
+            &state.semantic.field,
+            rendered.routed().family(),
+            rendered.routed().prepared().same_topic_decision_confirmed(),
+        ));
+    }
     state.semantic.essence_v2 = Some(
         serde_json::to_value(&essence_v2)
             .map_err(|error| format!("essence_v2 shadow state failed to encode: {error}"))?,

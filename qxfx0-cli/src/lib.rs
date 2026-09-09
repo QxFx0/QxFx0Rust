@@ -1107,7 +1107,7 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         name: "Self layer V2",
         passed: essence_v2_violations.is_empty(),
         details: if essence_v2_violations.is_empty() {
-            "conatus builtin weights positive; essence defaults coherent; empty carrier never commits; salience builtins coherent"
+            "conatus builtin weights positive; essence defaults coherent; empty carrier never commits; salience + deliberation builtins coherent"
                 .into()
         } else {
             essence_v2_violations.join("; ")
