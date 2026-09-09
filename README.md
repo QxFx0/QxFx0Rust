@@ -8,7 +8,7 @@ The system is self-contained: it does not call an LLM or an external knowledge s
 
 The CLI is the supported production surface. It includes:
 
-- atomic SQLite persistence and automatic compatibility migration to schema v10;
+- atomic SQLite persistence and automatic compatibility migration to schema v12;
 - seven-stage turn processing with guard rollback and governance events;
 - 141 recognized topics, of which 141 have audited declarative content with
   291 typed claims;
@@ -194,7 +194,7 @@ qxfx0 verify-diary diary-signed.md --passphrase "моя фраза"
 
 `doctor` is an executable health gate, not an informational banner. It checks:
 
-- SQLite `quick_check`, foreign keys, schema v10 and every stored session;
+- SQLite `quick_check`, foreign keys, schema v12 and every stored session;
 - seed-graph identities, endpoints, indexes and covered topics;
 - concept, fact and active knowledge-pack manifests, hashes and conflicts;
 - FactId-grounded Perspective capacity and curated counterpoint links;
@@ -208,7 +208,7 @@ It exits non-zero if any check fails:
 
 ```text
 QxFx0 Rust v0.1.1 health check:
-  [OK] SQLite: schema v10, quick_check/foreign keys/session states valid
+  [OK] SQLite: schema v12, quick_check/foreign keys/session states valid
   [OK] Performance diagnostics: opt-in qxfx0.turn-diagnostics.v1 records stage timing, SQLite write-lock/commit timing, and host metadata outside session state
   [OK] Seed graph: 207 atoms, 346 relations, 141 covered topics
   [OK] Content plan assets: recognition_topics_total=141, content_predicates_total=291, argued_topics_admitted=141, argued_predicates_admitted=141, profile_enabled=audited_v1
@@ -271,7 +271,7 @@ target/release/qxfx0 renderer-audit --opening-words 3 --json
 
 ## SQLite migration, backup and recovery
 
-The database is upgraded automatically on open. Migration v10 is idempotent and transactional. It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
+The database is upgraded automatically on open. Migrations are idempotent and transactional (current version: v12). It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
 
 Back up before upgrading a valuable database. The built-in command opens the
 source read-only, uses SQLite's online backup API, verifies the partial copy,
@@ -471,3 +471,12 @@ MIT
 ### Thesis projection rollout and schema v10
 
 SQLite schema v10 additively reserves nullable `session_semantic.thesis_state_json`; v9 rows are not rewritten and NULL loads as an empty bounded projection. `ThesisProjectionRollout` is explicit and default-off: `Disabled` preserves the production path, while `Shadow` validates catalog-bound receipts without state mutation. There is deliberately no pipeline or CLI write mode: thesis lifecycle persistence requires a separate policy, retention/export/delete design, and evidence window. User or generated text never creates thesis authority.
+
+### Subject-core shadow and schema v11/v12
+
+Schema v11 adds nullable `session_semantic.essence_v2_json` (the ADR-0043 U2
+V2 subject-core trajectory) and v12 adds `blanket_v2_json` (the U3 structural
+self-blanket record). Both are observational: the pipeline owns their typed
+(fail-closed) decode, they never feed routing, rendering or guard, they are
+excluded from rollout parity checks and from the journal/diary digests, and
+pre-v11/v12 rows load unchanged (NULL means "no shadow state yet").

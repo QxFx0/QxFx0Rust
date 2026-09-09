@@ -96,14 +96,17 @@ fn stamp_practice_day(state: &mut SystemState, day: u64) {
         record.day = day;
     }
     // The journal witness covers the behaviourally-relevant state only: the
-    // ADR-0043 U2 shadow trajectory (`semantic.essence_v2`) is lifted out for
-    // the digest and restored right after. A pre-U2 state serializes
-    // byte-identically either way (the field is skip-when-none), so diaries
-    // recorded before the shadow verify on binaries that carry it.
+    // ADR-0043 U2 shadow trajectory (`semantic.essence_v2`) and the U3
+    // blanket record (`semantic.blanket_v2`) are lifted out for the digest
+    // and restored right after. A pre-U2 state serializes byte-identically
+    // either way (both fields are skip-when-none), so diaries recorded
+    // before the shadow verify on binaries that carry it.
     let essence_v2 = state.semantic.essence_v2.take();
+    let blanket_v2 = state.semantic.blanket_v2.take();
     let digest = qxfx0_pipeline::execution_trace::calculate_stable_digest(state)
         .expect("SystemState serializes deterministically for the stable digest");
     state.semantic.essence_v2 = essence_v2;
+    state.semantic.blanket_v2 = blanket_v2;
     if let Some(record) = state.dialogue.journal.last_mut() {
         record.state_digest = digest;
     }

@@ -496,9 +496,35 @@ fn essence_v2_shadow_advances_without_changing_visible_behaviour() {
             "{}: the advance must be replay-visible",
             case.topic
         );
+        // ADR-0043 U3: the canonical salience controller verdict rides the
+        // same shadow trace on every turn, still with no visible effect.
+        assert!(
+            enabled_trace
+                .essence_advance
+                .as_ref()
+                .is_some_and(|advance| advance.self_verdict.is_some()),
+            "{}: the self verdict must be replay-visible",
+            case.topic
+        );
+        // ADR-0043 U3: the structural self-blanket persists for the next
+        // turn's transition check, and the corpus sessions are healthy — the
+        // violation list is empty as a *checked* fact, not an assumption.
+        assert!(
+            enabled_trace
+                .essence_advance
+                .as_ref()
+                .is_some_and(|advance| advance.blanket_violations.is_empty()),
+            "{}: a clean corpus session must report no blanket rupture",
+            case.topic
+        );
         assert!(
             enabled_state.semantic.essence_v2.is_some(),
             "{}: the trajectory must persist in state",
+            case.topic
+        );
+        assert!(
+            enabled_state.semantic.blanket_v2.is_some(),
+            "{}: the blanket record must persist for the transition check",
             case.topic
         );
         assert!(
@@ -535,12 +561,17 @@ fn essence_v2_trajectory_survives_state_serialization() {
         );
     }
     assert!(state.semantic.essence_v2.is_some());
+    assert!(state.semantic.blanket_v2.is_some());
 
     let serialized = serde_json::to_value(&state).expect("state serializes");
     let deserialized: SystemState = serde_json::from_value(serialized).expect("state round-trips");
     assert!(
         deserialized.semantic.essence_v2.is_some(),
         "the shadow trajectory must survive serialization"
+    );
+    assert_eq!(
+        deserialized.semantic.blanket_v2, state.semantic.blanket_v2,
+        "the blanket record must survive serialization byte-exactly"
     );
 
     let mut legacy = serde_json::to_value(&state).expect("state serializes");
@@ -552,4 +583,20 @@ fn essence_v2_trajectory_survives_state_serialization() {
     let legacy_state: SystemState =
         serde_json::from_value(legacy).expect("pre-U2 snapshots keep loading");
     assert!(legacy_state.semantic.essence_v2.is_none());
+
+    let mut legacy = serde_json::to_value(&state).expect("state serializes");
+    legacy
+        .get_mut("semantic")
+        .and_then(|semantic| semantic.as_object_mut())
+        .expect("semantic state is an object")
+        .remove("essence_v2");
+    legacy
+        .get_mut("semantic")
+        .and_then(|semantic| semantic.as_object_mut())
+        .expect("semantic state is an object")
+        .remove("blanket_v2");
+    let legacy_state: SystemState =
+        serde_json::from_value(legacy).expect("pre-U2 snapshots keep loading");
+    assert!(legacy_state.semantic.essence_v2.is_none());
+    assert!(legacy_state.semantic.blanket_v2.is_none());
 }

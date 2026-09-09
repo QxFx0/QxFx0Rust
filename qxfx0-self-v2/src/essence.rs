@@ -535,6 +535,21 @@ pub struct EssenceAdvanceTrace {
     /// turn (hysteresis). The violation itself is still recorded above.
     #[serde(default)]
     pub released_commitment: bool,
+    /// ADR-0043 U3 shadow: the canonical V2 salience controller verdict over
+    /// the turn's Field × Conatus (content saliency 0.0 until spectral
+    /// clustering lands). Trace evidence only — it never feeds routing, the
+    /// witness hash or any persisted field. Old snapshots load `None`.
+    #[serde(default)]
+    pub self_verdict: Option<crate::salience::SelfVerdictV2>,
+    /// ADR-0043 U3: structural self-blanket violations detected across this
+    /// turn's transition (session stability, morphology presence, turn and
+    /// identity-claim monotonicity). Empty means the blanket held. The same
+    /// list feeds the conatus violation penalty, so a nonzero count is
+    /// witnessable as a lower `conatus_scalar` too — this field names the
+    /// rupture instead of only its scalar shadow. Set by the pipeline after
+    /// [`advance_essence`]; pre-U3 trace JSONs load it as empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub blanket_violations: Vec<crate::conatus::BlanketViolation>,
 }
 
 /// Groups the per-turn inputs of [`advance_essence`] (argument-count
@@ -583,6 +598,12 @@ pub fn advance_essence(
     let mut summary = EssenceAdvanceTrace {
         angst_level: trajectory.angst_level,
         conatus_scalar: conatus.scalar,
+        self_verdict: Some(crate::salience::compute_self_verdict(
+            crate::salience::SalienceWeightsV2::default(),
+            conatus,
+            field,
+            0.0,
+        )),
         ..EssenceAdvanceTrace::default()
     };
 
@@ -681,5 +702,8 @@ pub fn validate_invariants() -> Vec<String> {
     if extract_mode(&empty) != EssenceMode::Contemplative {
         violations.push("essence-v2 empty trajectory must extract contemplative".into());
     }
+    // ADR-0043 U3: the canonical salience controller rides the same doctor
+    // check — its builtin weights are the shadow verdict's only tuning.
+    violations.extend(crate::salience::validate_salience_invariants());
     violations
 }

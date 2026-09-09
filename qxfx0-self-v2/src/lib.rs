@@ -1,6 +1,6 @@
-//! qxfx0-self-v2 — the canonical subject-core port (ADR-0043 U2).
+//! qxfx0-self-v2 — the canonical subject-core port (ADR-0043 U2/U3).
 //!
-//! Two modules, ported phase-by-phase from the Haskell reference (its
+//! Four modules, ported phase-by-phase from the Haskell reference (its
 //! fact-checked AGENTS.md is the readiness map) with V1 `qxfx0-self`
 //! untouched:
 //!
@@ -11,12 +11,23 @@
 //!   morphisms (witness / should_commit / extract_mode / commit /
 //!   collapse), post-commitment plan validation, the replay-visible reset
 //!   event, and the B2 Control-A ablation hook present from day one.
+//! - [`salience`]: the Phase-5 canonical controller verdict over
+//!   Field × Conatus (ADR-0043 U3) — per-signal contributions, the
+//!   uncontested Conatus gate, the dead-band hemisphere dispatch and the
+//!   bounded post-commitment weight adaptation.
+//! - [`blanket`]: the structural self-identity invariants (ADR-0043 U3) —
+//!   session stability, morphology presence and turn / identity-claim
+//!   monotonicity across the commit-time transition.
 //!
-//! Everything here is pure and total; the pipeline integration (Prepare/
-//! Finalize hooks, persisted trace fields) is the next U2 step.
+//! Everything here is pure and total; the pipeline integrates it in shadow
+//! (Finalize advance, replay-visible trace fields, fail-closed decode).
 
+pub mod blanket;
 pub mod conatus;
 pub mod essence;
+pub mod salience;
+
+pub use blanket::{check_blanket_transition, check_initial_blanket, BlanketRecord};
 
 pub use conatus::{
     compute_conatus_energy, compute_conatus_energy_with, compute_conatus_gradient,
@@ -32,6 +43,13 @@ pub use essence::{
     EssenceAdvanceTrace, EssenceCommitment, EssenceMode, EssenceModulation, EssenceResetEvent,
     EssenceTrajectory, EssenceTurnInput, EssenceViolation, EssenceWitness, FieldSignature,
     ValenceBand,
+};
+pub use salience::{
+    adapt_salience_weights, compute_salience, compute_salience_builtin, compute_self_verdict,
+    conatus_gate_fires, contributions, is_holistic_family, render_v2_salience_driver,
+    salience_hemisphere, validate_salience_invariants, Hemisphere, SalienceContributions,
+    SalienceVerdictV2, SalienceWeightsV2, SelfVerdictV2, V2SalienceDriver,
+    BUILTIN_SALIENCE_WEIGHTS,
 };
 
 #[cfg(test)]

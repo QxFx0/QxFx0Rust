@@ -20,8 +20,9 @@ use qxfx0_self::{
     SelfBlanket,
 };
 use qxfx0_self_v2::{
-    advance_essence, compute_conatus_energy, empty_essence, EssenceAblation, EssenceAdvanceTrace,
-    EssenceTurnInput, SelfBlanketSnapshot,
+    advance_essence, check_blanket_transition, check_initial_blanket, compute_conatus_energy,
+    empty_essence, BlanketRecord, EssenceAblation, EssenceAdvanceTrace, EssenceTurnInput,
+    SelfBlanketSnapshot,
 };
 use qxfx0_semantic::{
     cached_semantic_network, derive_atoms, network::activate as network_activate,
@@ -597,9 +598,14 @@ pub fn finalize_stage(
     // (one per `qxfx0 turn`) accumulate witnesses across the session.
     // Observational: nothing here feeds routing, rendering, guard or the V1
     // self layer; the plan-family guard stays trace-only until a separate
-    // release flips it. The V2 blanket check is not ported yet (U3), so the
-    // violation list is empty by construction.
-    let essence_v2_blanket = SelfBlanketSnapshot {
+    // release flips it. ADR-0043 U3: the V2 blanket transition is checked
+    // across the turn — the previous record persists through
+    // `semantic.blanket_v2` so a fresh per-turn process still witnesses
+    // session stability, morphology presence and turn / identity-claim
+    // monotonicity. Violations are fail-closed DATA: they feed the conatus
+    // penalty (−λ·|v|) and ride the trace as named ruptures, never a panic.
+    let essence_v2_blanket = BlanketRecord {
+        session_id: state.session_id.clone(),
         morphology_total_size: qxfx0_morphology::get_runtime().stats().total_lexemes as u64,
         identity_claims_count: state
             .semantic
@@ -609,27 +615,61 @@ pub fn finalize_stage(
             .unwrap_or(0),
         turn_count: turn as u64,
     };
+    let previous_blanket =
+        match state.semantic.blanket_v2.take() {
+            None => None,
+            Some(value) => Some(serde_json::from_value::<BlanketRecord>(value).map_err(
+                |error| format!("blanket_v2 shadow state failed to decode (fail-closed): {error}"),
+            )?),
+        };
+    let structural_violations = match &previous_blanket {
+        Some(previous) => check_blanket_transition(previous, &essence_v2_blanket),
+        None => check_initial_blanket(&essence_v2_blanket),
+    };
+    let conatus_violations: Vec<qxfx0_self_v2::BlanketViolation> =
+        structural_violations.into_iter().map(Into::into).collect();
+    if !conatus_violations.is_empty() {
+        tracing::warn!(
+            "V2 self-blanket ruptures: {:?}",
+            conatus_violations
+                .iter()
+                .map(|violation| violation.code.clone())
+                .collect::<Vec<_>>()
+        );
+    }
     let mut essence_v2 = match state.semantic.essence_v2.take() {
         None => empty_essence(),
         Some(value) => serde_json::from_value(value).map_err(|error| {
             format!("essence_v2 shadow state failed to decode (fail-closed): {error}")
         })?,
     };
-    let essence_v2_summary = advance_essence(
+    let mut essence_v2_summary = advance_essence(
         &qxfx0_self_v2::EssenceModulation::default(),
         essence_v2_ablation,
         EssenceTurnInput {
             turn_ordinal: turn,
-            conatus: compute_conatus_energy(essence_v2_blanket, &[]),
+            conatus: compute_conatus_energy(
+                SelfBlanketSnapshot {
+                    morphology_total_size: essence_v2_blanket.morphology_total_size,
+                    identity_claims_count: essence_v2_blanket.identity_claims_count,
+                    turn_count: essence_v2_blanket.turn_count,
+                },
+                &conatus_violations,
+            ),
             field: &state.semantic.field,
             trace: rendered.routed().prepared().deliberation_trace(),
             proposed_family: rendered.routed().family(),
         },
         &mut essence_v2,
     );
+    essence_v2_summary.blanket_violations = conatus_violations;
     state.semantic.essence_v2 = Some(
         serde_json::to_value(&essence_v2)
             .map_err(|error| format!("essence_v2 shadow state failed to encode: {error}"))?,
+    );
+    state.semantic.blanket_v2 = Some(
+        serde_json::to_value(&essence_v2_blanket)
+            .map_err(|error| format!("blanket_v2 shadow state failed to encode: {error}"))?,
     );
     *essence_v2_trace = Some(essence_v2_summary);
 

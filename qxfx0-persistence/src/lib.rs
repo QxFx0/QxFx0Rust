@@ -395,6 +395,16 @@ impl Persistence {
             ),
             None => None,
         };
+        // ADR-0043 U3 blanket column: NULL carries "no V2 blanket yet",
+        // the same convention as the shadow trajectory. Opaque here; the
+        // pipeline owns the typed shape.
+        let blanket_v2_json = match &state.semantic.blanket_v2 {
+            Some(value) => Some(
+                serde_json::to_string(value)
+                    .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
+            ),
+            None => None,
+        };
 
         let state_json = serde_json::to_string(state)
             .map_err(|e| PersistenceError::Serialization(e.to_string()))?;
@@ -428,8 +438,8 @@ impl Persistence {
         )?;
 
         tx.execute(
-            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            "INSERT INTO session_semantic (session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json, blanket_v2_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
              ON CONFLICT(session_id) DO UPDATE SET
                 field_json=excluded.field_json,
                 essence_json=excluded.essence_json,
@@ -438,8 +448,9 @@ impl Persistence {
                 stance_provenance_json=excluded.stance_provenance_json,
                 perspective_json=excluded.perspective_json,
                 thesis_state_json=excluded.thesis_state_json,
-                essence_v2_json=excluded.essence_v2_json",
-            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json],
+                essence_v2_json=excluded.essence_v2_json,
+                blanket_v2_json=excluded.blanket_v2_json",
+            params![session_id, field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json, blanket_v2_json],
         )?;
         let sqlite_remaining_writes_ms = SaveStateTimings::elapsed_ms(remaining_writes_started);
 
@@ -489,7 +500,7 @@ impl Persistence {
 
         let semantic = conn
             .query_row(
-                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json
+                "SELECT field_json, essence_json, adjunction_json, commitments_json, stance_provenance_json, perspective_json, thesis_state_json, essence_v2_json, blanket_v2_json
                  FROM session_semantic WHERE session_id = ?1",
                 params![session_id],
                 |row| {
@@ -502,6 +513,7 @@ impl Persistence {
                         row.get::<_, Option<String>>(5)?,
                         row.get::<_, Option<String>>(6)?,
                         row.get::<_, Option<String>>(7)?,
+                        row.get::<_, Option<String>>(8)?,
                     ))
                 },
             )
@@ -518,6 +530,7 @@ impl Persistence {
                 perspective_json,
                 thesis_state_json,
                 essence_v2_json,
+                blanket_v2_json,
             )),
         ) = (graph, semantic)
         {
@@ -582,6 +595,15 @@ impl Persistence {
                         .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
                 ),
             };
+            // ADR-0043 U3 blanket record: same convention as the shadow
+            // trajectory — absent/empty stays None (pre-U3 session).
+            let blanket_v2 = match blanket_v2_json.as_deref() {
+                Some("null") | Some("") | None => None,
+                Some(json) => Some(
+                    serde_json::from_str(json)
+                        .map_err(|e| PersistenceError::Serialization(e.to_string()))?,
+                ),
+            };
             let perspective = match perspective_json.as_deref() {
                 Some("null") | Some("") | None => Default::default(),
                 Some(json) => serde_json::from_str(json)
@@ -610,6 +632,7 @@ impl Persistence {
                         perspective,
                         thesis_state,
                         essence_v2,
+                        blanket_v2,
                         cached_edge_count: 0,
                         cached_network: None,
                     }
@@ -850,6 +873,14 @@ mod tests {
             )
             .unwrap();
         assert!(essence_v2.is_none());
+        let blanket_v2: Option<String> = conn
+            .query_row(
+                "SELECT blanket_v2_json FROM session_semantic WHERE session_id=?1",
+                ["v9"],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(blanket_v2.is_none());
         assert_eq!(
             conn.query_row("PRAGMA quick_check", [], |r| r.get::<_, String>(0))
                 .unwrap(),
@@ -1478,7 +1509,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 11);
+        assert_eq!(db.schema_version().unwrap(), 12);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -1577,7 +1608,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 11);
+            assert_eq!(db.schema_version().unwrap(), 12);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db

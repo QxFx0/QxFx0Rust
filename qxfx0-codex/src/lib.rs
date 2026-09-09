@@ -810,10 +810,12 @@ pub fn renderer_authority_from_label(label: &str) -> Option<RendererAuthority> {
 fn session_digest(state: &SystemState) -> String {
     // Same witness basis as the per-turn journal digest in
     // `journal::stamp_practice_day`: observational shadow state
-    // (`semantic.essence_v2`, ADR-0043 U2) is excluded so the final diary
-    // digest stays comparable across the shadow's landing.
+    // (`semantic.essence_v2`, ADR-0043 U2; `semantic.blanket_v2`, U3) is
+    // excluded so the final diary digest stays comparable across the
+    // shadow's landings.
     let mut visible = state.clone();
     visible.semantic.essence_v2 = None;
+    visible.semantic.blanket_v2 = None;
     qxfx0_pipeline::execution_trace::calculate_stable_digest(&visible)
         .expect("SystemState serializes deterministically for the stable digest")
 }

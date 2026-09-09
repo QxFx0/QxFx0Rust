@@ -218,6 +218,15 @@ pub struct SemanticState {
     /// exactly like `thesis_state`. Missing in pre-U2 snapshots.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub essence_v2: Option<serde_json::Value>,
+    /// ADR-0043 U3: the previous turn's structural self-blanket
+    /// (`QxFx0.Self.Blanket` port), persisted so the commit-time transition
+    /// invariants (turn/identity-claim monotonicity, session stability) can
+    /// be checked in a fresh per-turn process. Same opacity and fail-closed
+    /// decode discipline as `essence_v2`; observational (never feeds routing,
+    /// rendering or guard, and outside the rollout parity field list).
+    /// Missing in pre-U3 snapshots.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blanket_v2: Option<serde_json::Value>,
     /// Cached edge count — when this differs from runtime_graph.edges.len(),
     /// downstream consumers know the SemanticNetwork/ContentSelector cache
     /// is stale and must be rebuilt.
@@ -405,6 +414,7 @@ impl SystemState {
                 stance_provenance: self.semantic.stance_provenance.clone(),
                 thesis_state: self.semantic.thesis_state.clone(),
                 essence_v2: self.semantic.essence_v2.clone(),
+                blanket_v2: self.semantic.blanket_v2.clone(),
                 cached_edge_count: 0,
                 cached_network: None,
             },

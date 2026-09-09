@@ -9,7 +9,10 @@ use rusqlite::{Connection, Result};
 /// rewriting session rows, so databases from either lineage upgrade safely.
 /// Version 11 adds the nullable `essence_v2_json` shadow column
 /// (ADR-0043 U2); absent means "no V2 trajectory yet".
-pub const CURRENT_SCHEMA_VERSION: i64 = 11;
+/// Version 12 adds the nullable `blanket_v2_json` column (ADR-0043 U3): the
+/// previous turn's structural self-blanket the transition invariants check
+/// against; absent means "no V2 blanket yet".
+pub const CURRENT_SCHEMA_VERSION: i64 = 12;
 
 /// Error type for schema compatibility failures.
 #[derive(Debug)]
@@ -68,6 +71,7 @@ CREATE TABLE IF NOT EXISTS session_semantic (
     perspective_json TEXT,
     thesis_state_json TEXT,
     essence_v2_json TEXT,
+    blanket_v2_json TEXT,
     FOREIGN KEY (session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE
 );
 
@@ -129,6 +133,16 @@ pub fn apply_migrations(conn: &mut Connection) -> Result<(), MigrationError> {
     };
     if !has_essence_v2_column {
         tx.execute_batch("ALTER TABLE session_semantic ADD COLUMN essence_v2_json TEXT")?;
+    }
+    let has_blanket_v2_column = {
+        let mut statement = tx.prepare("PRAGMA table_info(session_semantic)")?;
+        let names = statement
+            .query_map([], |row| row.get::<_, String>(1))?
+            .collect::<Result<Vec<_>>>()?;
+        names.iter().any(|name| name == "blanket_v2_json")
+    };
+    if !has_blanket_v2_column {
+        tx.execute_batch("ALTER TABLE session_semantic ADD COLUMN blanket_v2_json TEXT")?;
     }
     tx.pragma_update(None, "user_version", CURRENT_SCHEMA_VERSION)?;
     tx.commit()?;
