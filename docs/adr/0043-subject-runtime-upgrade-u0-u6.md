@@ -1,7 +1,9 @@
 # ADR 0043: Subject-runtime upgrade U0–U6 — from deterministic dialogue runtime to verifiable subject
 
-Status: accepted — U0 complete, U1 complete (serve daemon), U2 in flight
-(crate landed; pipeline wiring next) — see
+Status: accepted — U0 complete, U1 complete (serve daemon), U2 complete
+(crate + pipeline wiring + hysteresis landed; ADR-0044 verdict recorded) —
+U3 in flight (canonical Salience controller landed in shadow 2026-09-09;
+reconcile/doubt-loop/episodic-recall next) — see
 `docs/operations/session-handoff-2026-08-23.md` for the running state
 
 ## Frame
@@ -63,6 +65,20 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   in route, doubt loop (threshold → CMClarify), episodic recall. Shadow
   mode first — new routing computed and logged, not applied; flip in a
   separate release after shadow comparison on the soak corpus.
+  Landed so far: the canonical Salience controller (`qxfx0-self-v2::
+  salience`, Haskell Phase-5 port — contributions, uncontested Conatus
+  gate, dead-band hemisphere dispatch, bounded weight adaptation) rides
+  the U2 shadow advance as `EssenceAdvanceTrace.self_verdict`: replay-
+  visible, outside the witness hash and every persisted field, locked by
+  the structural-corpus shadow gate and the doctor self-layer check.
+  Field already exists in `qxfx0-types`; the structural self-blanket
+  (`QxFx0.Self.Invariants` port — session stability, morphology presence,
+  turn / identity-claim monotonicity) landed as U3.2: it is checked every
+  turn in finalize, its violations feed the conatus penalty and ride the
+  shadow trace (fail-closed data, never a turn-path panic), and the previous
+  blanket persists through the new additive schema-v12 `blanket_v2_json`
+  column so a fresh per-turn process can run the transition check.
+  Reconcile / doubt loop / episodic recall wiring remains.
 - **U4 «Мост обучения»** — `qxfx0-bridge` behind a feature flag (default
   build has no network — privacy stays an architectural fact). Runtime
   edge store with reinforce/decay/retire (Haskell `RuntimeLLMFeedback` is
@@ -109,6 +125,9 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
 ## Sequencing note
 
 The v35 cadence-confirmation soak (see
-`docs/operations/audited-plan-latency-pilot-2026-08.md`) is paused while U0
-lands, then relaunched on the U0 tree — the formal gate should close on the
-binary that actually ships.
+`docs/operations/audited-plan-latency-pilot-2026-08.md`) was paused while U0
+landed, then relaunched on the shipping tree — the formal gate should close on
+the binary that actually ships. **CLOSED by v36** (2026-08-26, 1000/1000
+turns @60 s idle, `slow_turns=0`, p99 697 ms) against the post-U2 release
+binary. Future U-phase landings that touch the turn path re-run the cadence
+soak as before (manual/nightly; CI keeps the 30-turn smoke).

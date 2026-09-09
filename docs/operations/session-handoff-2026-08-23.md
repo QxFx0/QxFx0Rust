@@ -53,19 +53,19 @@ doctor OK, census `--check` green. Workspace is now 17 crates
 - **Soak v35** (cadence-gate confirmation): **LOST 2026-08-25** — the host
   rebooted (likely) and `/tmp/opencode/` was wiped together with
   `pilot.status`/`pilot.report`; no verdict, no soak process, watchdog gone.
-  Relaunch as **v36** against the post-U2 release binary (preferred: the
-  formal gate closes on the binary that ships); use a diagnostic dir that
-  survives reboots (e.g. under `~/QxFx0Runtime/`, not `/tmp`).
-  Driver script: `scripts/diagnostic-soak-1000.sh`; quiet-gate launcher:
-  `/tmp/opencode/qxfx0-soak-v35-launcher.sh` (waits for no
-  cargo/cabal/test processes + ≥2 GiB `MemAvailable`).
-  **Watchdog**: cron automation «soak-конвейер: статус каждые 30 минут»
-  (id in `CronList`) — reports status, restarts a dead driver as v36+ on a
-  quiet host, verifies the verdict and self-deletes on completion.
-  Closure criterion: `slow_turns=0`, `final_doctor_ok=1`,
-  `final_metrics_ok=1` in `pilot.report`; then update
-  `docs/operations/audited-plan-latency-pilot-2026-08.md` (close the
-  cadence gate) — that edit is still owed.
+  **CLOSED by v36** (`~/QxFx0Runtime/qxfx0-soak-v36-1000/`, launched
+  2026-08-25 13:56Z against the release binary built 8 s after `ce59b14`
+  landed — the shipping-tree requirement held): 1000/1000 turns,
+  `turn_failures=0`, `slow_turns=0`, `final_doctor_ok=1`,
+  `final_metrics_ok=1`, p50 352 ms / p95 557 ms / p99 697 ms. The owed
+  closure edit in `docs/operations/audited-plan-latency-pilot-2026-08.md`
+  is now done (2026-09-09 session): header + gate-verification + ops
+  notes all record the v36 verdict.
+  Driver script: `scripts/diagnostic-soak-1000.sh`; quiet-gate launcher
+  recipe: wait for no cargo/cabal/test processes + ≥2 GiB `MemAvailable`
+  before starting (the old `/tmp` launcher copy is gone; recreate before
+  the next confirmation soak). Diagnostic dirs belong under
+  `~/QxFx0Runtime/`, never `/tmp`.
 - **Census**: after any content/morphology wave —
   `cargo build --release -p qxfx0-cli && python3 scripts/generate_census.py`
   and commit `data/census.json` together with the change; CI fails on
@@ -146,6 +146,49 @@ Port Field (five components) + Salience contributions + `reconcile`
 replacing priority switching + doubt loop + episodic recall, each landing
 in Shadow; calibration of constants stays deferred until a trace corpus
 exists (discipline, not debt).
+
+**Status 2026-09-09 (U3.1 landed)**: the canonical Salience controller is
+ported into `qxfx0-self-v2::salience` (Haskell `QxFx0.Self.Salience`,
+Phase 5 / ADR-0010): signed per-signal contributions, the uncontested
+Conatus gate (bias 0 / confidence 1 / `conatus_gate`), sigmoid bias,
+dispersion confidence, dead-band hemisphere dispatch (Tied → formal),
+`is_holistic_family`, bounded Phase-B weight adaptation (lr 0.02, clamp
+[0,2], anti-drift 1.0, zero-signal identity), and
+`validate_salience_invariants` wired into the doctor self-layer check via
+`validate_invariants`. Shadow integration: `advance_essence` computes the
+verdict and carries it as `EssenceAdvanceTrace.self_verdict` (nullable,
+serde-default — pre-U3 trace JSONs load unchanged; never enters the
+witness hash, persisted state or replay digests). Locks: 12 salience unit
+tests + the structural-corpus shadow gate asserts the verdict is
+replay-visible on every turn with behaviour byte-identical to the ablated
+arm. Content saliency stays 0.0 (spectral clustering deferred). Gate at
+HEAD: 896/896 workspace tests, fmt/clippy clean, six V2 gates green,
+doctor OK, census `--check` green. Remaining U3: reconcile replacing the
+priority switch in route (shadow), doubt loop, episodic recall.
+
+**Status 2026-09-09 (U3.2 blanket landed)**: the V2 structural self-blanket
+is ported into `qxfx0-self-v2::blanket` (Haskell `QxFx0.Self.Invariants` +
+`QxFx0.Self.Blanket`): `check_initial_blanket` (non-empty session identity,
+strictly-positive morphology) and `check_blanket_transition` (adds session
+stability, turn-count and identity-claim monotonicity). The transition check
+needs the *previous* blanket across turns, which a fresh per-turn process has
+nowhere to keep, so it persists as a new observational field
+(`SemanticState.blanket_v2`, opaque JSON, the pipeline owns the fail-closed
+decode; rides the rollback snapshot; outside `response_plan_v2_state_parity`
+and lifted out of the journal/diary digests exactly like `essence_v2`, so
+pre-U3 diaries verify). `finalize_stage` checks the blanket every turn:
+the violation list now feeds `compute_conatus_energy` (−λ·|v| penalty) and
+rides `EssenceAdvanceTrace.blanket_violations` (nullable, serde-default,
+`skip_serializing_if = "Vec::is_empty"`) — the U2 comment "violation list is
+empty by construction" is retired. Ruptures are fail-closed DATA (a
+`tracing::warn`, never a turn-path panic), matching the Haskell
+`IdentityRupture`-as-data reading. Persistence: schema **v12**
+(`blanket_v2_json` nullable column, additive migration mirroring v10/v11;
+the v9→current test asserts the new column is NULL on legacy rows).
+On healthy sessions the list is empty by construction still — but that is now
+a *checked* fact (the erosion trigger has teeth if it ever breaks), not an
+assumption. Locks: 5 blanket unit tests + the corpus shadow gate; workspace
+green.
 
 ### U4 — «Мост обучения»
 `qxfx0-bridge` behind a feature flag (no network in default builds),
