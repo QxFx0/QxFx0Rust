@@ -1,9 +1,8 @@
 # Audit: audited_plan latency pilot
 
-- Status: Renderer gate passed; cadence gate fix implemented (2026-08-21);
-  both 2026-08-22 soak attempts died of host-side memory pressure, not of
-  the binary — the confirmation soak (v35) now waits behind a quiet-host
-  gate on the 71-topic binary
+- Status: Renderer gate passed; end-to-end cadence gate CLOSED by the v36
+  confirmation soak (1000 turns, `slow_turns=0`, p99 697 ms) on the
+  post-U2 binary — see the gate-verification section
 - Date: 2026-08-18, addendum 2026-08-21 (true tail attribution)
 - Toolchain: Rust 1.93.1 (`cargo benchmark --audited-plan`), pinned via `rust-toolchain.toml`
 - Instrument: `qxfx0 benchmark --samples 400 --warmup 30 --json` per renderer
@@ -157,7 +156,7 @@ Against the performance gate required by the incident:
 - **Renderer gate — PASS.** In-process `qxfx0 benchmark --samples 200 --warmup 20
   --audited-plan --json`: p50 = 13.6 ms, p95 = 14.7 ms, **p99 = 15.3 ms** (max
   15.9 ms), vs `legacy_shadow` p99 = 101.7 ms ≈ 7× headroom, zero failures. ✅
-- **End-to-end cadence gate — fix implemented, soak confirmation running.**
+- **End-to-end cadence gate — CLOSED (v36, 2026-08-26, post-U2 binary).**
   The warm-fix soak (840/1,000 turns, 60 s idle, blob pre-fault binary)
   ended with `turn_failures=0` but **`slow_turns = 5`** — all five the idx-6
   adjective-parse trigger above; it was stopped once its verdict was clear
@@ -172,14 +171,17 @@ Against the performance gate required by the incident:
   binary (8.5 GB RSS) drove the host into an OOM kill and the systemd scope
   hosting the soak driver was torn down with it — its 95 completed turns
   were clean (`turn_failures=0`, `slow_turns=0`, max latency 521 ms). The
-  confirmation run (v35) is relaunched behind a quiet-host gate:
-  `/tmp/opencode/qxfx0-soak-v35-launcher.sh` refuses to start the soak
-  while any cargo/cabal/test workload is running and requires ≥2 GiB
-  `MemAvailable`; it first runs the AGENTS.md build/clippy/test gate in
-  that quiet window (gate log: `/tmp/opencode/qxfx0-gate-v35.log`) and
-  only on a green gate hands off to the soak (launcher log:
-  `/tmp/opencode/qxfx0-soak-v35-launcher.log`). The cadence gate
-  closes only when the v35 soak lands `slow_turns = 0`.
+  confirmation run (v35) launched behind the quiet-host gate lost its
+  artifacts to a host reboot on 2026-08-25 (`/tmp/opencode` was wiped with
+  `pilot.status`/`pilot.report`; no verdict, no soak process, watchdog
+  gone). v36 relaunched to `~/QxFx0Runtime/qxfx0-soak-v36-1000/` (survives
+  reboots) 8 seconds after the U2 pipeline-wiring commit `ce59b14` landed,
+  on the release binary built from that tree — closing the ADR-0043
+  sequencing note's requirement that the formal gate confirm the shipping
+  binary. Verdict (from `pilot.status` + `pilot.report` + `summary.report`,
+  1000/1000 turns @60 s idle): `turn_failures=0`, `slow_turns=0`,
+  `final_doctor_ok=1`, `final_metrics_ok=1`, p50 = 352 ms, p95 = 557 ms,
+  **p99 = 697 ms** — 2.9× under the 2,000 ms budget. Cadence gate CLOSED.
 
 > Methodology note: the original ask included `echo 3 > /proc/sys/vm/drop_caches`
 > before each turn to force a fully cold cache. This host is uid 1000 (not root),
@@ -241,11 +243,12 @@ Operational notes for maintainers:
   `lexemes.json` directly (manual/ops path, not performance-critical).
 - The pre-fault warm path touches `EMBEDDED_RUNTIME_BIN` page-by-page, so it
   tracks any change in blob size/mapping.
-- Soak confirmation: poll `/tmp/opencode/qxfx0-soak-v35-1000/pilot.status`
-  (`slow_turns=N`; expect 0) and `pilot.report` (`final_metrics_ok=1`);
-  the quiet-host gate log is `/tmp/opencode/qxfx0-soak-v35-launcher.log`.
-  Until v35 lands `slow_turns = 0`, treat the cadence gate as pending
-  (renderer gate and p99 metric gate are already met with margin).
+- Soak confirmation (closed 2026-08-26): the v36 artifacts live in
+  `~/QxFx0Runtime/qxfx0-soak-v36-1000/` (`pilot.status` `slow_turns=0`,
+  `pilot.report` `final_metrics_ok=1`, `summary.report` with the latency
+  percentiles); the v35 artifacts under `/tmp/opencode` were lost to the
+  2026-08-25 reboot. Future confirmation soaks must live outside `/tmp`
+  and behind the quiet-host rule below.
 - Attempt history on this host — both invalidations came from concurrent
   load, not from the binary. The first (`qxfx0-soak-adjectives-1000`,
   started 2026-08-22 00:16): six turns aborted (SIGABRT, 02:50–02:55 MSK,
