@@ -3,8 +3,8 @@ use qxfx0_cli::measurement::{run_renderer_diversity_audit, run_runtime_benchmark
 use qxfx0_cli::{
     append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
     create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
-    create_response_plan_v2_shadow_trace_sink, load_or_create_state, run_doctor,
-    run_operational_metrics, run_turn_with_renderer_and_stance_provenance,
+    create_response_plan_v2_shadow_trace_sink, load_or_create_state, run_bridge_maintenance,
+    run_doctor, run_operational_metrics, run_turn_with_renderer_and_stance_provenance,
     run_turn_with_renderer_anomaly_shadow_trace, run_turn_with_renderer_cognitive_pilot,
     run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
@@ -238,6 +238,14 @@ enum Commands {
         paths: Vec<PathBuf>,
         #[arg(long, value_enum, default_value_t = ReportScope::All)]
         scope: ReportScope,
+    },
+    /// Between-turn learning-bridge maintenance (ADR-0043 U4): decay, retire
+    /// and prune stored runtime edges over every session the bridge touched.
+    /// Never a turn-path command; sessions with no bridge store are skipped.
+    BridgeMaintain {
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -1117,6 +1125,36 @@ fn main() -> anyhow::Result<()> {
                 "{}",
                 serde_json::to_string_pretty(&authority_report(paths, false, scope)?)?
             );
+            Ok(())
+        }
+        Commands::BridgeMaintain { json } => {
+            let report = run_bridge_maintenance(&cli.db)?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else if report.sessions_touched == 0 {
+                println!(
+                    "bridge maintenance: no sessions carry a bridge store (the bridge sleeps)"
+                );
+            } else {
+                for session in &report.sessions {
+                    println!(
+                        "{:<24} edges {:>4} -> {:>4}  runtime {:>4} -> {:>4}  quarantined {}",
+                        session.session_id,
+                        session.edges_before,
+                        session.edges_after,
+                        session.runtime_edges_before,
+                        session.runtime_edges_after,
+                        session.quarantined,
+                    );
+                }
+                println!(
+                    "sessions touched: {}; totals: edges {} -> {}, runtime after {}",
+                    report.sessions_touched,
+                    report.total_edges_before,
+                    report.total_edges_after,
+                    report.total_runtime_edges_after,
+                );
+            }
             Ok(())
         }
     }

@@ -4,9 +4,10 @@ Status: accepted — U0 complete, U1 complete (serve daemon), U2 complete
 (crate + pipeline wiring + hysteresis landed; ADR-0044 verdict recorded) —
 U3 complete in shadow (salience + blanket + canonical reconcile/doubt-loop
 landed 2026-09-09, all replay-visible, V1 still routes; the dispatch flip
-is a separate release gated on the shadow trace corpus) — U4 in flight
-(U4.1 landed 2026-09-10: `qxfx0-bridge` pure algebra + candidate seam,
-no pipeline wiring, network behind a default-off feature) — see
+is a separate release gated on the shadow trace corpus) — U4 complete
+(U4.1 + U4.2 landed 2026-09-10: `qxfx0-bridge` algebra + worker +
+quarantine + schema v13 + `bridge-maintain`, zero visible behavior change
+gated by corpus equality; candidate fetching/promotion is U5) — see
 `docs/operations/session-handoff-2026-08-23.md` for the running state
 
 ## Frame
@@ -110,9 +111,21 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   review-gated HTTP dependency is its own supply-chain decision). Nothing
   is wired into the pipeline yet; `validate_bridge_invariants` rides the
   doctor `Learning bridge` check, which also asserts the default build
-  carries no network surface. Remaining U4: the between-turn worker, the
-  SQLite quarantine tables, and the corpus-equality gate once anything
-  touches the graph.
+  carries no network surface. U4.2 landed the rest: `worker`
+  (`process_turn_boundary`) is the pure between-turn cycle — admit
+  (quarantining refusals with named reasons, never silently), fold the
+  ladder, decay/prune; `quarantine` is the bounded, insertion-ordered
+  review ledger the U5 queue reads; schema **v13** adds the
+  `session_bridge_edges` / `session_bridge_quarantine` tables beside the
+  session state, and the CLI `bridge-maintain` command runs the decay
+  half of the cycle per session (the queue is daemon-side, candidate
+  fetching is U5). The U4 gate is executable, not intended:
+  `bridge_is_not_linked_into_the_turn_path` scans every workspace manifest
+  (only `qxfx0-cli`, and dev/test edges, may name the crate) and
+  `a_live_untouched_bridge_store_leaves_the_corpus_byte_identical` runs the
+  twelve soak prompts twice with a live, populated bridge store open —
+  responses, routing, guard verdicts and parity state are byte-equal and
+  `SystemState` still has no bridge fields.
 - **U5 «Промоушен»** — gates per the Haskell design: informativeness with
   a semantic-gain threshold, versioned gate policy, draft overlay →
   activate → human release → rollback. CLI: `promotion list/approve/

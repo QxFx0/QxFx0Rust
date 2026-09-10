@@ -180,6 +180,35 @@ pub fn edge_by_pair<'a>(
     store.get(&(from.clone(), to.clone()))
 }
 
+/// Serialize the store for persistence. A `BTreeMap` with a tuple key is
+/// not a legal JSON object (keys must be strings), so the canonical wire
+/// shape is the ordered edge vector — deterministic because the map is
+/// already key-ordered. `None` (empty store) encodes to `null` so the
+/// maintenance path can clear the row.
+pub fn edges_to_json(store: &RuntimeEdgeStore) -> String {
+    if store.is_empty() {
+        return "null".to_string();
+    }
+    let edges: Vec<&BridgeEdge> = store.values().collect();
+    serde_json::to_string(&edges).expect("BridgeEdge is a JSON array of objects")
+}
+
+/// Rebuild the store from its persisted vector form. A corrupt blob is a
+/// hard error (fail-closed) — the maintenance path refuses to proceed on
+/// unparseable evidence rather than silently dropping the store.
+pub fn edges_from_json(json: &str) -> Result<RuntimeEdgeStore, String> {
+    if json.trim() == "null" {
+        return Ok(RuntimeEdgeStore::new());
+    }
+    let edges: Vec<BridgeEdge> =
+        serde_json::from_str(json).map_err(|error| format!("bridge edges_json: {error}"))?;
+    let mut store = RuntimeEdgeStore::new();
+    for edge in edges {
+        store.insert((edge.from.clone(), edge.to.clone()), edge);
+    }
+    Ok(store)
+}
+
 /// The reinforcement step (Haskell `reinforceRuntimeEdge`): total; a
 /// non-runtime edge is returned unchanged (corroboration only moves
 /// working evidence), a conflict retires the edge (`None`).
@@ -324,6 +353,27 @@ fn decay_edge(
             },
         ))
     }
+}
+
+/// Encode a runtime-edge store to its persisted JSON form. A `BTreeMap`
+/// with a non-string key does not serialize as a JSON object, so the
+/// canonical shape is the key-sorted edge *list* — the pair key lives in
+/// each edge's own `from`/`to`. Deterministic: BTreeMap order is the
+/// serialization order, so a fresh process reads back exactly what the
+/// worker wrote.
+pub fn encode_store(store: &RuntimeEdgeStore) -> Result<String, serde_json::Error> {
+    serde_json::to_string(&store.values().collect::<Vec<_>>())
+}
+
+/// Decode the persisted JSON form back into a store. A malformed blob is an
+/// error (fail-closed), never a silently-empty store: a corrupt bridge
+/// table is an operator problem, not a reason to forget the evidence.
+pub fn decode_store(encoded: &str) -> Result<RuntimeEdgeStore, serde_json::Error> {
+    let edges: Vec<BridgeEdge> = serde_json::from_str(encoded)?;
+    Ok(edges
+        .into_iter()
+        .map(|edge| ((edge.from.clone(), edge.to.clone()), edge))
+        .collect())
 }
 
 /// Structural invariants for `doctor`. The bridge must be a pure scalar
@@ -533,6 +583,22 @@ mod tests {
         let e = edge(0.5);
         assert!((e.weight - 0.5 * relation_type_weight(RelationType::RelRelatedTo)).abs() < 1e-12);
         assert!(relation_type_weight(RelationType::RelRelatedTo) > 0.0);
+    }
+
+    #[test]
+    fn store_codec_round_trips_and_empty_is_not_none() {
+        let mut store = RuntimeEdgeStore::new();
+        store.insert((AtomId::new("свобода"), AtomId::new("выбор")), edge(0.6));
+        let encoded = encode_store(&store).expect("serializes");
+        let decoded = decode_store(&encoded).expect("deserializes");
+        assert_eq!(decoded, store);
+        // Key order is preserved (BTreeMap), so the encoding is stable.
+        assert_eq!(encoded, encode_store(&decoded).unwrap());
+        // An empty store encodes; decode of "[]" is an empty map, not None.
+        assert_eq!(encode_store(&RuntimeEdgeStore::new()).unwrap(), "[]");
+        assert!(decode_store("[]").unwrap().is_empty());
+        // A malformed blob is a decode error, never a silent empty store.
+        assert!(decode_store("{not a list}").is_err());
     }
 
     #[test]

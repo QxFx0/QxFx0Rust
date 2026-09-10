@@ -96,6 +96,12 @@ impl BoundedCorroborationQueue {
         true
     }
 
+    /// Consume the queue and return its events in insertion order (used by
+    /// the worker's admission pass, which quarantines per event).
+    pub fn into_events(self) -> Vec<CorroborationEvent> {
+        self.events.into_iter().collect()
+    }
+
     /// Drain the queue in insertion order and fold each event into the
     /// runtime store. Returns the new store and the per-event traces; a
     /// no-op event (absent key, or an off-store edge for a conflict) still

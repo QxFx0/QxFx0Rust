@@ -548,6 +548,7 @@ version = "0.1.1"
 dependencies = [
  "qxfx0-types",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -668,6 +669,7 @@ dependencies = [
 name = "qxfx0-pipeline"
 version = "0.1.1"
 dependencies = [
+ "qxfx0-bridge",
  "qxfx0-commitment",
  "qxfx0-guard",
  "qxfx0-morphology",

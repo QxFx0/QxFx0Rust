@@ -28,13 +28,20 @@
 
 pub mod candidates;
 pub mod corroboration;
+pub mod quarantine;
 pub mod runtime_edges;
+pub mod worker;
 
 pub use candidates::{CandidateError, CandidateSource};
 pub use corroboration::{BoundedCorroborationQueue, CorroborationEvent, DEFAULT_QUEUE_CAPACITY};
-pub use runtime_edges::{
-    apply_corroboration, apply_corroboration_event, edge_by_pair, promote_if_ready,
-    relation_type_weight, runtime_edge_count, runtime_edges, validate_bridge_invariants,
-    BridgeEdge, BridgeEdgeSource, BridgeOutcome, Corroboration, DecayConfig, RuntimeEdgeStore,
-    RUNTIME_EDGE_CAP, RUNTIME_PROMOTION_CONFIDENCE, RUNTIME_PROMOTION_CO_OCCURRENCE,
+pub use quarantine::{
+    QuarantineLedger, QuarantineReason, QuarantinedEvent, DEFAULT_QUARANTINE_CAPACITY,
 };
+pub use runtime_edges::{
+    apply_corroboration, apply_corroboration_event, decode_store, edge_by_pair, encode_store,
+    promote_if_ready, relation_type_weight, runtime_edge_count, runtime_edges,
+    validate_bridge_invariants, BridgeEdge, BridgeEdgeSource, BridgeOutcome, Corroboration,
+    DecayConfig, RuntimeEdgeStore, RUNTIME_EDGE_CAP, RUNTIME_PROMOTION_CONFIDENCE,
+    RUNTIME_PROMOTION_CO_OCCURRENCE,
+};
+pub use worker::{admission_reason, process_turn_boundary, WorkerReport};

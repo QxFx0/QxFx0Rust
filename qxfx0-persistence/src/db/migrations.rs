@@ -12,7 +12,11 @@ use rusqlite::{Connection, Result};
 /// Version 12 adds the nullable `blanket_v2_json` column (ADR-0043 U3): the
 /// previous turn's structural self-blanket the transition invariants check
 /// against; absent means "no V2 blanket yet".
-pub const CURRENT_SCHEMA_VERSION: i64 = 12;
+/// Version 13 adds the learning-bridge tables (ADR-0043 U4): a per-session
+/// runtime-edge store and a per-event quarantine ledger. They live beside —
+/// never inside — the session state, so the bridge can only ever be read and
+/// written by its own maintenance path, never on the turn path.
+pub const CURRENT_SCHEMA_VERSION: i64 = 13;
 
 /// Error type for schema compatibility failures.
 #[derive(Debug)]
@@ -72,6 +76,20 @@ CREATE TABLE IF NOT EXISTS session_semantic (
     thesis_state_json TEXT,
     essence_v2_json TEXT,
     blanket_v2_json TEXT,
+    FOREIGN KEY (session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS session_bridge_edges (
+    session_id TEXT PRIMARY KEY,
+    edges_json TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS session_bridge_quarantine (
+    session_id TEXT NOT NULL,
+    seq INTEGER NOT NULL,
+    entry_json TEXT NOT NULL,
+    PRIMARY KEY (session_id, seq),
     FOREIGN KEY (session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE
 );
 

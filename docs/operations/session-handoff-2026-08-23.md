@@ -261,12 +261,49 @@ into the turn path.
   (back-pressure, first-sighting, no fabrication, promote-through-
   drain), offline source determinism, invariant lock.
 
-Remaining U4: the between-turn worker (drain + fold + boundary decay
-cadence — the shape already exists; wiring it to a scheduler is an
-operator-runtime decision), the SQLite quarantine tables, and the
-corpus-equality gate once anything touches the graph (the ADR law).
-Once U5 opens the promotion door, the bridge edge store's own schema
-versioning joins the migration chain.
+**Status 2026-09-10 (U4.2 landed — U4 complete)**: the worker, the
+quarantine and the schema landed, and the ADR's "zero visible behavior
+change" gate became executable.
+- `qxfx0-bridge::worker` — `process_turn_boundary` is the pure between-turn
+  cycle: admission first (`admission_reason` refuses unknown endpoints,
+  empty identities and self-loops — every refusal is quarantined with a
+  named reason, never silently dropped), then the reinforce/retire fold,
+  then boundary decay + cap prune. The `BoundedCorroborationQueue` gained
+  `into_events` for the pass; `encode_store`/`decode_store` persist the
+  BTreeMap as a key-sorted edge list (non-string map keys do not serialize
+  as JSON objects; a malformed blob is a decode error, never a silent
+  empty store).
+- `qxfx0-bridge::quarantine` — bounded insertion-ordered `QuarantineLedger`
+  with `QuarantineReason` (`UnknownEndpoint` / `Degenerate` /
+  `QueueOverflow` / `QuarantineFull`); this list is exactly the U5 review
+  queue.
+- Persistence schema **v13**: `session_bridge_edges` (one opaque
+  serialized store per session) and `session_bridge_quarantine`
+  (append-ordered `(session_id, seq, entry_json)`), both `ON DELETE
+  CASCADE` beside the state, with SQL-edge bounds (4 MiB store, 64 KiB
+  entry, 4096 rows; a full ledger errors rather than evicting evidence);
+  `delete_session` cleans them; v12 databases migrate empty-table-clean.
+  Bridge blobs stay opaque to persistence — the codec lives in the bridge.
+- `qxfx0 bridge-maintain [--json]` (CLI): runs the decay/prune half per
+  session that carries a store (topic from `dialogue.last_topic`, known
+  atoms from the runtime graph; queue empty — candidate fetching is U5,
+  the live queue is daemon-side). Idempotent; a drained-to-nothing store
+  clears its row so a drained session is indistinguishable from a
+  never-touched one.
+- The U4 gate (`qxfx0-pipeline/tests/bridge_sleeps.rs`): manifest scan —
+  only `qxfx0-cli` (runtime) and dev/test edges may name the bridge; and
+  corpus equality — the twelve soak prompts run twice with a live,
+  populated bridge store kept open, byte-identical on responses,
+  families, guard verdicts and parity state, `SystemState` JSON still
+  free of bridge fields. Gate at HEAD: fmt/clippy clean (default +
+  `llm-candidates`), 947/947 workspace tests, six V2 gates green,
+  doctor OK (16 checks incl. `Learning bridge`), census OK, coverage
+  floor holds.
+
+Remaining U4: none — the between-turn worker is reachable
+(`bridge-maintain` + the pure cycle), candidate source wiring and
+promotion are U5 proper. The serve-daemon queue host is an operator
+wiring decision for when U5 needs it.
 
 ### U5 — «Промоушен»
 Gates (informativeness threshold, versioned policy, draft overlay →

@@ -10,6 +10,14 @@ use thiserror::Error;
 mod db;
 
 const MAX_THESIS_STATE_JSON_BYTES: usize = 4 * 1024 * 1024;
+// The learning bridge stores (ADR-0043 U4) are bounded at the SQL edge too:
+// the runtime-edge cap already limits a healthy store, but a blob bound
+// keeps a corrupt or adversarial worker from growing a session row without
+// limit. The quarantine is per-row sized and row-counted; a full ledger is
+// a hard error (fail-closed) rather than silent eviction.
+const MAX_BRIDGE_EDGES_JSON_BYTES: usize = 4 * 1024 * 1024;
+const MAX_BRIDGE_QUARANTINE_ENTRY_BYTES: usize = 64 * 1024;
+const MAX_BRIDGE_QUARANTINE_ROWS: i64 = 4_096;
 
 fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
     let mut violations = Vec::new();
@@ -709,10 +717,136 @@ impl Persistence {
             params![session_id],
         )?;
         tx.execute(
+            "DELETE FROM session_bridge_edges WHERE session_id = ?1",
+            params![session_id],
+        )?;
+        tx.execute(
+            "DELETE FROM session_bridge_quarantine WHERE session_id = ?1",
+            params![session_id],
+        )?;
+        tx.execute(
             "DELETE FROM runtime_sessions WHERE id = ?1",
             params![session_id],
         )?;
         tx.commit()?;
+        Ok(())
+    }
+
+    /// Read the serialized runtime-bridge edge store for a session. The
+    /// blob is opaque here (schema v13): the bridge crate owns its typed
+    /// shape. `None` means the bridge never touched this session (pre-v13
+    /// databases and untouched sessions both carry no row).
+    pub fn load_bridge_edges(&self, session_id: &str) -> Result<Option<String>, PersistenceError> {
+        let edges_json: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT edges_json FROM session_bridge_edges WHERE session_id = ?1",
+                params![session_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        Ok(edges_json)
+    }
+
+    /// Replace the serialized runtime-bridge edge store for a session
+    /// (whole-store write, the worker's atomic boundary). Writing `None`
+    /// clears the row so a drained-to-nothing store is indistinguishable
+    /// from a never-touched session.
+    pub fn save_bridge_edges(
+        &self,
+        session_id: &str,
+        edges_json: Option<&str>,
+    ) -> Result<(), PersistenceError> {
+        let tx = self.conn.unchecked_transaction()?;
+        match edges_json {
+            Some(json) => {
+                if json.len() > MAX_BRIDGE_EDGES_JSON_BYTES {
+                    return Err(PersistenceError::InvalidState(format!(
+                        "bridge edges_json exceeds {MAX_BRIDGE_EDGES_JSON_BYTES} bytes"
+                    )));
+                }
+                tx.execute(
+                    "INSERT INTO session_bridge_edges (session_id, edges_json)
+                     VALUES (?1, ?2)
+                     ON CONFLICT(session_id) DO UPDATE SET edges_json=excluded.edges_json",
+                    params![session_id, json],
+                )?;
+            }
+            None => {
+                tx.execute(
+                    "DELETE FROM session_bridge_edges WHERE session_id = ?1",
+                    params![session_id],
+                )?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Append one serialized quarantine entry for a session at the next
+    /// monotonic `seq` (the ledger is append-ordered so the U5 review queue
+    /// has a stable cursor). Returns the assigned `seq`.
+    pub fn enqueue_bridge_quarantine(
+        &self,
+        session_id: &str,
+        entry_json: &str,
+    ) -> Result<i64, PersistenceError> {
+        if entry_json.len() > MAX_BRIDGE_QUARANTINE_ENTRY_BYTES {
+            return Err(PersistenceError::InvalidState(format!(
+                "bridge quarantine entry exceeds {MAX_BRIDGE_QUARANTINE_ENTRY_BYTES} bytes"
+            )));
+        }
+        let tx = self.conn.unchecked_transaction()?;
+        let next_seq: i64 = tx.query_row(
+            "SELECT COALESCE(MAX(seq), 0) + 1 FROM session_bridge_quarantine WHERE session_id = ?1",
+            params![session_id],
+            |row| row.get(0),
+        )?;
+        let count: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM session_bridge_quarantine WHERE session_id = ?1",
+            params![session_id],
+            |row| row.get(0),
+        )?;
+        if count >= MAX_BRIDGE_QUARANTINE_ROWS {
+            return Err(PersistenceError::InvalidState(format!(
+                "bridge quarantine is full at {MAX_BRIDGE_QUARANTINE_ROWS} rows"
+            )));
+        }
+        tx.execute(
+            "INSERT INTO session_bridge_quarantine (session_id, seq, entry_json) VALUES (?1, ?2, ?3)",
+            params![session_id, next_seq, entry_json],
+        )?;
+        tx.commit()?;
+        Ok(next_seq)
+    }
+
+    /// Load every quarantine entry for a session in `(seq)` order, as
+    /// `(seq, entry_json)` pairs. The U5 operator review queue reads this
+    /// and nothing else; the turn path never does.
+    pub fn load_bridge_quarantine(
+        &self,
+        session_id: &str,
+    ) -> Result<Vec<(i64, String)>, PersistenceError> {
+        let mut statement = self.conn.prepare_cached(
+            "SELECT seq, entry_json FROM session_bridge_quarantine WHERE session_id = ?1 ORDER BY seq ASC",
+        )?;
+        let rows = statement.query_map(params![session_id], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })?;
+        let mut entries = Vec::new();
+        for row in rows {
+            entries.push(row?);
+        }
+        Ok(entries)
+    }
+
+    /// Clear every quarantine entry for a session (called after the U5
+    /// review pass has released or dismissed them).
+    pub fn clear_bridge_quarantine(&self, session_id: &str) -> Result<(), PersistenceError> {
+        self.conn.execute(
+            "DELETE FROM session_bridge_quarantine WHERE session_id = ?1",
+            params![session_id],
+        )?;
         Ok(())
     }
 
@@ -1509,7 +1643,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 12);
+        assert_eq!(db.schema_version().unwrap(), 13);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -1608,7 +1742,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 12);
+            assert_eq!(db.schema_version().unwrap(), 13);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db
@@ -1711,6 +1845,160 @@ mod tests {
                 .governance_log
                 .count_by_type(&GovernanceEventType::GuardBlocked),
             1
+        );
+    }
+
+    // ---- learning bridge stores (ADR-0043 U4) ----
+
+    fn bridge_session(db: &Persistence, id: &str) {
+        let state = SystemState {
+            session_id: id.into(),
+            ..SystemState::default()
+        };
+        db.save_state(id, &state).unwrap();
+    }
+
+    #[test]
+    fn bridge_edges_round_trip_and_absence_is_none() {
+        let db = Persistence::open_memory().unwrap();
+        bridge_session(&db, "bridge-a");
+        assert_eq!(db.load_bridge_edges("bridge-a").unwrap(), None);
+        db.save_bridge_edges("bridge-a", Some(r#"[["свобода","выбор",0.8]]"#))
+            .unwrap();
+        assert_eq!(
+            db.load_bridge_edges("bridge-a").unwrap().as_deref(),
+            Some(r#"[["свобода","выбор",0.8]]"#)
+        );
+        // Writing None clears the row: drained-to-nothing == never touched.
+        db.save_bridge_edges("bridge-a", None).unwrap();
+        assert_eq!(db.load_bridge_edges("bridge-a").unwrap(), None);
+    }
+
+    #[test]
+    fn bridge_edges_reject_oversized_blobs() {
+        let db = Persistence::open_memory().unwrap();
+        bridge_session(&db, "bridge-b");
+        let oversized = "x".repeat(MAX_BRIDGE_EDGES_JSON_BYTES + 1);
+        assert!(matches!(
+            db.save_bridge_edges("bridge-b", Some(&oversized)),
+            Err(PersistenceError::InvalidState(_))
+        ));
+        assert_eq!(db.load_bridge_edges("bridge-b").unwrap(), None);
+    }
+
+    #[test]
+    fn bridge_quarantine_is_append_ordered_monotonic_and_clearable() {
+        let db = Persistence::open_memory().unwrap();
+        bridge_session(&db, "bridge-q");
+        assert!(db.load_bridge_quarantine("bridge-q").unwrap().is_empty());
+        let first = db
+            .enqueue_bridge_quarantine("bridge-q", r#"{"n":1}"#)
+            .unwrap();
+        let second = db
+            .enqueue_bridge_quarantine("bridge-q", r#"{"n":2}"#)
+            .unwrap();
+        assert_eq!((first, second), (1, 2));
+        let entries = db.load_bridge_quarantine("bridge-q").unwrap();
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].0, 1);
+        assert_eq!(entries[1].0, 2);
+        db.clear_bridge_quarantine("bridge-q").unwrap();
+        assert!(db.load_bridge_quarantine("bridge-q").unwrap().is_empty());
+        // After a clear, the next seq restarts at 1 — the ledger is empty.
+        assert_eq!(db.enqueue_bridge_quarantine("bridge-q", "{}").unwrap(), 1);
+    }
+
+    #[test]
+    fn bridge_quarantine_rejects_oversized_entries() {
+        let db = Persistence::open_memory().unwrap();
+        bridge_session(&db, "bridge-e");
+        let oversized = "x".repeat(MAX_BRIDGE_QUARANTINE_ENTRY_BYTES + 1);
+        assert!(matches!(
+            db.enqueue_bridge_quarantine("bridge-e", &oversized),
+            Err(PersistenceError::InvalidState(_))
+        ));
+    }
+
+    #[test]
+    fn delete_session_removes_bridge_rows() {
+        let db = Persistence::open_memory().unwrap();
+        bridge_session(&db, "bridge-d");
+        db.save_bridge_edges("bridge-d", Some("[]")).unwrap();
+        db.enqueue_bridge_quarantine("bridge-d", "{}").unwrap();
+        assert!(db.load_bridge_edges("bridge-d").unwrap().is_some());
+        db.delete_session("bridge-d").unwrap();
+        assert_eq!(db.load_bridge_edges("bridge-d").unwrap(), None);
+        assert!(db.load_bridge_quarantine("bridge-d").unwrap().is_empty());
+    }
+
+    #[test]
+    fn bridge_quarantine_enforces_the_row_cap() {
+        let db = Persistence::open_memory().unwrap();
+        bridge_session(&db, "bridge-cap");
+        for _ in 0..MAX_BRIDGE_QUARANTINE_ROWS {
+            db.enqueue_bridge_quarantine("bridge-cap", "{}").unwrap();
+        }
+        assert!(matches!(
+            db.enqueue_bridge_quarantine("bridge-cap", "{}"),
+            Err(PersistenceError::InvalidState(_))
+        ));
+        assert_eq!(
+            db.load_bridge_quarantine("bridge-cap").unwrap().len() as i64,
+            MAX_BRIDGE_QUARANTINE_ROWS
+        );
+    }
+
+    #[test]
+    fn v12_to_v13_creates_bridge_tables_without_touching_state() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE runtime_sessions (id TEXT PRIMARY KEY, state_json TEXT NOT NULL,
+               last_active TEXT NOT NULL, turn_count INTEGER NOT NULL DEFAULT 0);
+             CREATE TABLE session_graphs (session_id TEXT PRIMARY KEY, atoms_json TEXT NOT NULL,
+               edges_json TEXT NOT NULL);
+             CREATE TABLE session_semantic (session_id TEXT PRIMARY KEY, field_json TEXT NOT NULL,
+               essence_json TEXT NOT NULL, adjunction_json TEXT NOT NULL,
+               commitments_json TEXT, stance_provenance_json TEXT, perspective_json TEXT,
+               thesis_state_json TEXT, essence_v2_json TEXT, blanket_v2_json TEXT);
+             PRAGMA user_version = 12;",
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO runtime_sessions (id, state_json, last_active, turn_count) VALUES ('v12', '{\"session_id\":\"v12\",\"dialogue\":{\"turn_count\":0,\"history\":[],\"journal\":[],\"last_topic\":null,\"last_family\":null,\"conversation_state\":null},\"semantic\":{\"field\":{\"resonance\":0.5,\"atmosphere\":{\"valence\":0.0,\"arousal\":0.4},\"confidence\":0.5,\"consolidation\":0.5,\"counterfactual\":0.5},\"runtime_graph\":{\"atoms\":{},\"edges\":[]},\"pack_set_fingerprint\":\"\",\"semantic_commitments\":null,\"essence\":{\"witnesses\":[],\"angst\":0.0,\"commitment\":null,\"reset_events\":[],\"trajectory_committed\":false,\"consecutive_low_conatus\":[]},\"adjunction\":{\"holistic_value\":0.5,\"formal_value\":0.5,\"reconciled_value\":0.5,\"holistic_dominant\":false},\"perspective\":{\"opinions\":[],\"episodes\":[]},\"stance_provenance\":{\"events\":[]}},\"last_turn_decision\":null,\"governance_log\":{\"events\":[]}}', 'now', 0)",
+            [],
+        )
+        .unwrap();
+        db::migrations::apply_migrations(&mut conn).unwrap();
+        assert_eq!(
+            conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            13
+        );
+        // New tables exist and are empty.
+        let bridge_edges: i64 = conn
+            .query_row("SELECT count(*) FROM session_bridge_edges", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        let quarantine: i64 = conn
+            .query_row("SELECT count(*) FROM session_bridge_quarantine", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!((bridge_edges, quarantine), (0, 0));
+        // Existing session state untouched.
+        let after: String = conn
+            .query_row(
+                "SELECT state_json FROM runtime_sessions WHERE id='v12'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(after.starts_with("{\"session_id\":\"v12\""));
+        assert_eq!(
+            conn.query_row("PRAGMA quick_check", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "ok"
         );
     }
 }

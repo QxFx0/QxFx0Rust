@@ -801,6 +801,107 @@ impl DoctorReport {
     }
 }
 
+/// One session's between-turn bridge maintenance result (ADR-0043 U4): the
+/// decay/retire/prune pass the runtime-edge store survived. Retained edges
+/// are those the ladder kept after unused-confidence decay and the
+/// per-session cap; retired edges are the difference. Sessions with no
+/// stored bridge row never appear here — the bridge stayed asleep for them.
+#[derive(Debug, Clone, Serialize)]
+pub struct BridgeSessionMaintenance {
+    pub session_id: String,
+    pub edges_before: usize,
+    pub edges_after: usize,
+    pub runtime_edges_before: usize,
+    pub runtime_edges_after: usize,
+    pub quarantined: usize,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct BridgeMaintenanceReport {
+    pub sessions: Vec<BridgeSessionMaintenance>,
+    pub sessions_touched: usize,
+    pub total_edges_before: usize,
+    pub total_edges_after: usize,
+    pub total_runtime_edges_after: usize,
+}
+
+/// Run the between-turn bridge maintenance pass over every session that
+/// carries a stored runtime-edge store (ADR-0043 U4). This is the decay /
+/// retire / prune half of the worker cycle — the queue is intentionally
+/// empty here: candidate corroboration is enqueued by the long-lived serve
+/// worker between turns, while this CLI maintenance command is the
+/// scheduler-driven lifecycle that fades edges nothing has re-corroborated
+/// and bounds the store. The turn path is never involved; the bridge sleeps
+/// for every session whose store is absent. Idempotent for a session whose
+/// topic touches every edge (nothing to decay).
+pub fn run_bridge_maintenance(db_path: &str) -> anyhow::Result<BridgeMaintenanceReport> {
+    let db = qxfx0_persistence::Persistence::open(db_path)?;
+    let config = qxfx0_bridge::DecayConfig::default();
+    let mut report = BridgeMaintenanceReport::default();
+    for session_id in db.list_sessions()? {
+        let Some(edges_json) = db.load_bridge_edges(&session_id)? else {
+            continue; // the bridge never touched this session: it sleeps.
+        };
+        let store = qxfx0_bridge::decode_store(&edges_json).map_err(|error| {
+            anyhow::anyhow!("session {session_id}: corrupt bridge store: {error}")
+        })?;
+        let runtime_edges_before = qxfx0_bridge::runtime_edge_count(&store);
+        let edges_before = store.len();
+        // Decay needs the session's current topic (topic-touching edges are
+        // spared) and turn ordinal for the trace; admission is unused for an
+        // empty queue but the graph atoms are threaded so a future caller
+        // that enqueues candidates here stays correct.
+        let (turn, topic, known_atoms) = match db.load_state(&session_id)? {
+            Some(state) => {
+                let mut atoms: std::collections::BTreeSet<qxfx0_types::atom::AtomId> =
+                    state.semantic.runtime_graph.atoms.keys().cloned().collect();
+                if let Some(topic) = state.dialogue.last_topic.clone() {
+                    atoms.insert(qxfx0_types::atom::AtomId::new(topic));
+                }
+                (
+                    state.dialogue.turn_count as u64,
+                    state.dialogue.last_topic.clone().unwrap_or_default(),
+                    atoms,
+                )
+            }
+            // A stored edge row with no state row: decay against an empty
+            // graph so only the cap/retire rules can act (fail toward
+            // retention of topic-untouched evidence, never fabrication).
+            None => (0, String::new(), std::collections::BTreeSet::new()),
+        };
+        let queue = qxfx0_bridge::BoundedCorroborationQueue::default();
+        let (decayed, worker_report, _quarantined) =
+            qxfx0_bridge::process_turn_boundary(store, queue, turn, &topic, &known_atoms, &config);
+        let new_json = qxfx0_bridge::encode_store(&decayed).map_err(|error| {
+            anyhow::anyhow!("session {session_id}: bridge store encode: {error}")
+        })?;
+        // An emptied-to-nothing store clears the row so a drained session is
+        // indistinguishable from a never-touched one.
+        db.save_bridge_edges(
+            &session_id,
+            if decayed.is_empty() {
+                None
+            } else {
+                Some(&new_json)
+            },
+        )?;
+        let maintenance = BridgeSessionMaintenance {
+            session_id,
+            edges_before,
+            edges_after: decayed.len(),
+            runtime_edges_before,
+            runtime_edges_after: worker_report.runtime_edges_after,
+            quarantined: worker_report.quarantined.len(),
+        };
+        report.total_edges_before += maintenance.edges_before;
+        report.total_edges_after += maintenance.edges_after;
+        report.total_runtime_edges_after += maintenance.runtime_edges_after;
+        report.sessions_touched += 1;
+        report.sessions.push(maintenance);
+    }
+    Ok(report)
+}
+
 /// Execute production health checks without mutating session state. Opening
 /// the database may apply the normal idempotent schema migration.
 pub fn run_doctor(db_path: &str) -> DoctorReport {
@@ -1960,6 +2061,91 @@ mod tests {
         assert!(metrics.response_probe_healthy);
         assert!(metrics.threshold_violations(u64::MAX, u64::MAX).is_empty());
         assert!(metrics.to_prometheus().contains("qxfx0_database_bytes"));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(format!("{}-wal", path.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", path.display()));
+    }
+
+    #[test]
+    fn test_bridge_maintenance_spares_topic_touching_edges() {
+        use qxfx0_bridge::{encode_store, BridgeEdge, RuntimeEdgeStore};
+        use qxfx0_types::atom::AtomId;
+        use qxfx0_types::RelationType;
+
+        let path =
+            std::env::temp_dir().join(format!("qxfx0-bridge-maintain-{}.db", std::process::id()));
+        let db_path = path.to_string_lossy().to_string();
+        let session_id = format!("bridge-maintain-{}", std::process::id());
+
+        let db = qxfx0_persistence::Persistence::open(&db_path).unwrap();
+        let mut state = SystemState {
+            session_id: session_id.clone(),
+            ..SystemState::default()
+        };
+        state.dialogue.turn_count = 3;
+        state.dialogue.last_topic = Some("свобода".into());
+        db.save_state(&session_id, &state).unwrap();
+
+        // Two edges. `свобода -> выбор` touches the session topic and is
+        // spared; the `разум -> мысль` edge is off-topic and decays from
+        // 0.31 (×0.95 = 0.2945 < 0.3) into retirement.
+        let mut store = RuntimeEdgeStore::new();
+        let on_topic = BridgeEdge::new(
+            AtomId::new("свобода"),
+            AtomId::new("выбор"),
+            RelationType::RelRelatedTo,
+            "свобода",
+            0.31,
+        );
+        let off_topic = BridgeEdge::new(
+            AtomId::new("разум"),
+            AtomId::new("мысль"),
+            RelationType::RelRelatedTo,
+            "разум",
+            0.31,
+        );
+        store.insert((on_topic.from.clone(), on_topic.to.clone()), on_topic);
+        store.insert((off_topic.from.clone(), off_topic.to.clone()), off_topic);
+        db.save_bridge_edges(&session_id, Some(&encode_store(&store).unwrap()))
+            .unwrap();
+
+        // A second session carries no bridge store: the maintenance pass
+        // must skip it entirely (the bridge sleeps).
+        let sleeper = format!("bridge-sleeper-{}", std::process::id());
+        let mut sleeper_state = SystemState {
+            session_id: sleeper.clone(),
+            ..SystemState::default()
+        };
+        sleeper_state.dialogue.turn_count = 1;
+        db.save_state(&sleeper, &sleeper_state).unwrap();
+        assert!(db.load_bridge_edges(&sleeper).unwrap().is_none());
+
+        let report = run_bridge_maintenance(&db_path).unwrap();
+        assert_eq!(report.sessions_touched, 1, "only the seeded session ran");
+        assert_eq!(report.sessions[0].session_id, session_id);
+        assert_eq!(report.sessions[0].edges_before, 2);
+        assert_eq!(
+            report.sessions[0].edges_after, 1,
+            "the off-topic edge retired"
+        );
+        assert_eq!(report.sessions[0].runtime_edges_after, 1);
+        assert_eq!(report.total_edges_before, 2);
+        assert_eq!(report.total_edges_after, 1);
+
+        // The decayed store persisted: the surviving edge is exactly the
+        // on-topic pair, and the sleeper still carries no row.
+        let remaining = db.load_bridge_edges(&session_id).unwrap().unwrap();
+        let decoded: RuntimeEdgeStore = qxfx0_bridge::decode_store(&remaining).unwrap();
+        assert!(decoded.contains_key(&(AtomId::new("свобода"), AtomId::new("выбор"))));
+        assert!(!decoded.contains_key(&(AtomId::new("разум"), AtomId::new("мысль"))));
+        assert!(db.load_bridge_edges(&sleeper).unwrap().is_none());
+
+        // A second run is idempotent: the surviving edge touches the topic
+        // and has no decay to apply.
+        let second = run_bridge_maintenance(&db_path).unwrap();
+        assert_eq!(second.sessions[0].edges_before, 1);
+        assert_eq!(second.sessions[0].edges_after, 1);
+
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(format!("{}-wal", path.display()));
         let _ = std::fs::remove_file(format!("{}-shm", path.display()));

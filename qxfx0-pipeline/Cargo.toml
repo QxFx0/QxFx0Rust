@@ -23,4 +23,5 @@ thiserror.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+qxfx0-bridge = { path = "../qxfx0-bridge", version = "0.1.1" }
 qxfx0-persistence = { path = "../qxfx0-persistence", version = "0.1.1" }
