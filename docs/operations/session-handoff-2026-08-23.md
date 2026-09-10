@@ -44,7 +44,9 @@ session executes).
 
 Gate at HEAD: **867/867 workspace tests**, fmt clean, clippy
 `--workspace --all-targets -D warnings` clean, all six V2 gates green,
-doctor OK, census `--check` green. Workspace is now 17 crates
+doctor OK, census `--check` green. Workspace is now 18 crates
+(+`qxfx0-gates`, +`qxfx0-codex`, +`qxfx0-serve`, +`qxfx0-self-v2`,
+ +`qxfx0-bridge` in U4; −`qxfx0-governance`)
 (+`qxfx0-gates`, +`qxfx0-codex`, +`qxfx0-serve`, +`qxfx0-self-v2`;
 −`qxfx0-governance`).
 
@@ -223,6 +225,48 @@ shadow mirrors its suppression semantics exactly).
 runtime edge store with reinforce/decay/retire (Haskell
 `RuntimeLLMFeedback` is the spec), corroboration queue, quarantine tables
 in SQLite. Gate: zero visible behavior change.
+
+**Status 2026-09-10 (U4.1 landed)**: `qxfx0-bridge` exists as the
+workspace's 18th crate — the trust boundary's pure core, nothing wired
+into the turn path.
+- `runtime_edges` is the exact `RuntimeLLMFeedback` port: positive
+  corroboration `+0.05` and co-occurrence `+1`, negative `−0.10` to a
+  floor of 0.0, conflict retires, promotion flips the source tag at
+  `confidence ≥ 0.75 ∧ co_occurrence ≥ 3` (Haskell
+  `ProvenanceDialogueFeedback` ≙ our `BridgeEdgeSource::Promoted`);
+  turn-boundary decay `×0.95` skips topic-touching edges, retires under
+  0.3, and the runtime-bridge tier prunes to 500 by (confidence desc,
+  key asc) so the map stays deterministic. The store is
+  `BTreeMap<(AtomId, AtomId), BridgeEdge>` — surface-free, never
+  renders.
+- `corroboration` is a bounded FIFO that a between-turn worker drains
+  into the store (insertion order, back-pressure reported via
+  `push -> bool`, first positive sighting creates the edge, negative
+  and conflict never fabricate one). Default queue capacity 1024.
+- `candidates` is the source seam — `CandidateSource` trait, `Noop`
+  (default) and `Scripted` (offline determinism) implementations,
+  `CandidateError` as fail-closed hard stops. `HttpCandidateClient`
+  exists only under the `llm-candidates` cargo feature and even there
+  fails closed as `Transport`: adding a review-gated HTTP crate is
+  its own supply-chain decision, deliberately deferred past landing
+  the algebra.
+- Doctor: `validate_bridge_invariants` rides the new `Learning bridge`
+  check; the check also asserts the default build carries no network
+  surface via a CLI forwarding feature (`llm-candidates` pulls in
+  bridge's — enabling it honestly flips the doctor to fail on network
+  capability). `checks.len()` lock moved 15 → 16. Census is unaffected
+  (bridge has no content-bearing counts).
+- 16 unit tests: full ladder (positive / negative / conflict /
+  promotion / decay-skip / retire / prune tie-break), queue semantics
+  (back-pressure, first-sighting, no fabrication, promote-through-
+  drain), offline source determinism, invariant lock.
+
+Remaining U4: the between-turn worker (drain + fold + boundary decay
+cadence — the shape already exists; wiring it to a scheduler is an
+operator-runtime decision), the SQLite quarantine tables, and the
+corpus-equality gate once anything touches the graph (the ADR law).
+Once U5 opens the promotion door, the bridge edge store's own schema
+versioning joins the migration chain.
 
 ### U5 — «Промоушен»
 Gates (informativeness threshold, versioned policy, draft overlay →

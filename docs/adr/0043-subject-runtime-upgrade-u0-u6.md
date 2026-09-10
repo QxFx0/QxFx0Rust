@@ -4,7 +4,9 @@ Status: accepted — U0 complete, U1 complete (serve daemon), U2 complete
 (crate + pipeline wiring + hysteresis landed; ADR-0044 verdict recorded) —
 U3 complete in shadow (salience + blanket + canonical reconcile/doubt-loop
 landed 2026-09-09, all replay-visible, V1 still routes; the dispatch flip
-is a separate release gated on the shadow trace corpus) — see
+is a separate release gated on the shadow trace corpus) — U4 in flight
+(U4.1 landed 2026-09-10: `qxfx0-bridge` pure algebra + candidate seam,
+no pipeline wiring, network behind a default-off feature) — see
 `docs/operations/session-handoff-2026-08-23.md` for the running state
 
 ## Frame
@@ -95,6 +97,22 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   the spec): associative evidence only, never rendered. Bounded queue,
   between-turn worker, quarantine tables in SQLite. Gate: zero visible
   behavior change (corpus-equality asserts in tests).
+  Landed so far (U4.1, 2026-09-10): the crate exists as the trust
+  boundary's pure core — `runtime_edges` is the exact `RuntimeLLMFeedback`
+  port (reinforce +0.05/−0.10, conflict retires, promote at
+  confidence ≥ 0.75 ∧ co-occurrence ≥ 3, multiplicative decay 0.95 with a
+  0.3 retire floor and a 500-edge cap, tie-broken by key), `corroboration`
+  the bounded FIFO that a between-turn worker drains (back-pressure
+  reported, negative/conflict evidence never fabricates an edge), and
+  `candidates` the source seam — a total offline `Noop`/`Scripted` source
+  with `HttpCandidateClient` present only under the `llm-candidates`
+  feature, which still fails closed (no transport is linked; wiring a
+  review-gated HTTP dependency is its own supply-chain decision). Nothing
+  is wired into the pipeline yet; `validate_bridge_invariants` rides the
+  doctor `Learning bridge` check, which also asserts the default build
+  carries no network surface. Remaining U4: the between-turn worker, the
+  SQLite quarantine tables, and the corpus-equality gate once anything
+  touches the graph.
 - **U5 «Промоушен»** — gates per the Haskell design: informativeness with
   a semantic-gain threshold, versioned gate policy, draft overlay →
   activate → human release → rollback. CLI: `promotion list/approve/

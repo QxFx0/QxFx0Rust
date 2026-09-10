@@ -23,6 +23,7 @@ qxfx0-gates = { path = "../qxfx0-gates", version = "0.1.1" }
 qxfx0-codex = { path = "../qxfx0-codex", version = "0.1.1" }
 qxfx0-serve = { path = "../qxfx0-serve", version = "0.1.1" }
 qxfx0-self-v2 = { path = "../qxfx0-self-v2", version = "0.1.1" }
+qxfx0-bridge = { path = "../qxfx0-bridge", version = "0.1.1" }
 qxfx0-guard = { path = "../qxfx0-guard", version = "0.1.1" }
 qxfx0-render = { path = "../qxfx0-render", version = "0.1.1" }
 qxfx0-pipeline = { path = "../qxfx0-pipeline", version = "0.1.1" }
@@ -39,3 +40,11 @@ ctrlc = "3.4"
 [dev-dependencies]
 ed25519-dalek.workspace = true
 rusqlite.workspace = true
+
+[features]
+default = []
+# Forwarding feature: enabling it pulls in qxfx0-bridge's llm-candidates
+# (transport present but still fail-closed) so `doctor` truthfully reports
+# a build that has any network-capable code linked. The default build stays
+# pure (no network surface at all).
+llm-candidates = ["qxfx0-bridge/llm-candidates"]

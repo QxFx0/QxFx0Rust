@@ -53,6 +53,10 @@ qxfx0-types        shared deterministic data model, state invariants and
                    the append-only governance event log
 
 qxfx0-code         independent typed Rust code registry and orchestrator
+qxfx0-bridge       the learning bridge (ADR-0043 U4): a between-turn
+                   corroboration store (reinforce/decay/retire/promote),
+                   outside the turn path and with no network in the default
+                   build — nothing is wired into the pipeline yet
 ```
 
 Persistent maps use ordered containers. Semantic-network caches are derived in memory, are invalidated when the graph changes and are deliberately excluded from persisted JSON.

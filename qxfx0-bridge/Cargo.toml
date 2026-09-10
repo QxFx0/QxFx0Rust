@@ -1,0 +1,21 @@
+[package]
+name = "qxfx0-bridge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+qxfx0-types = { path = "../qxfx0-types", version = "0.1.1" }
+serde.workspace = true
+
+[features]
+default = []
+# The only sanctioned network surface of the bridge. Off by default and in
+# every CI build: the default crate carries no HTTP client and no API key
+# handling, so "no network on the turn path" (ADR-0043 law 1) is an
+# architectural fact rather than a runtime convention. Enabling it is an
+# explicit operator decision for between-turn candidate fetching only; the
+# turn pipeline never links against a feature-enabled build.
+llm-candidates = []

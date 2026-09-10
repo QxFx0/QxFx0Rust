@@ -1114,6 +1114,22 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
+    // Learning bridge invariants (ADR-0043 U4): the between-turn algebra
+    // must be sound before any promotion door (U5) can open, and the
+    // default build must carry no network surface — privacy as an
+    // architectural fact.
+    let bridge_violations = qxfx0_bridge::validate_bridge_invariants();
+    let bridge_network_free = !cfg!(feature = "llm-candidates");
+    report.checks.push(DoctorCheck {
+        name: "Learning bridge",
+        passed: bridge_violations.is_empty() && bridge_network_free,
+        details: if bridge_violations.is_empty() {
+            "corroboration ladder bounded; promotion thresholds in range; decay/retire total; no network in the default build".into()
+        } else {
+            bridge_violations.join("; ")
+        },
+    });
+
     report
 }
 
@@ -1912,11 +1928,15 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 15);
+        assert_eq!(report.checks.len(), 16);
         assert!(report
             .checks
             .iter()
             .any(|check| check.name == "Performance diagnostics" && check.passed));
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.name == "Learning bridge" && check.passed));
         let content_assets = report
             .checks
             .iter()

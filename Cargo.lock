@@ -543,6 +543,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "qxfx0-bridge"
+version = "0.1.1"
+dependencies = [
+ "qxfx0-types",
+ "serde",
+]
+
+[[package]]
 name = "qxfx0-cli"
 version = "0.1.1"
 dependencies = [
@@ -550,6 +558,7 @@ dependencies = [
  "clap",
  "ctrlc",
  "ed25519-dalek",
+ "qxfx0-bridge",
  "qxfx0-code",
  "qxfx0-codex",
  "qxfx0-commitment",
