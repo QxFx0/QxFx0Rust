@@ -7,7 +7,10 @@ landed 2026-09-09, all replay-visible, V1 still routes; the dispatch flip
 is a separate release gated on the shadow trace corpus) — U4 complete
 (U4.1 + U4.2 landed 2026-09-10: `qxfx0-bridge` algebra + worker +
 quarantine + schema v13 + `bridge-maintain`, zero visible behavior change
-gated by corpus equality; candidate fetching/promotion is U5) — see
+gated by corpus equality) — U5 in flight (U5.1 landed 2026-09-10: pure
+promotion boundary + v14 store + CLI `promotion` + released-overlay
+corpus-equality gate; Haskell-corpus bridge and policy revalidation
+across versions remain) — see
 `docs/operations/session-handoff-2026-08-23.md` for the running state
 
 ## Frame
@@ -134,6 +137,35 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   counterpoint, clause grammar, bijective morphology). `import_haskell_
   corpus.py` quarantine becomes an input; Haskell promotion output becomes
   admission input.
+  Landed so far (U5.1, 2026-09-10): the pure boundary in
+  `qxfx0-bridge::promotion` ports the Haskell `QxFx0.Learning.Promotion`
+  core — a versioned + SHA-checksummed `GatePolicy`, the exact
+  `evaluateCandidateInformativeness` decision (not-tautological,
+  not-topic-paraphrase, novel-against-the-curated-baseline,
+  semantic-gain ≥ 0.75 via Jaccard of stop-word-filtered >3-char atoms,
+  constraint-relation novelty), and the immutable lifecycle machine
+  (`create_draft` → `activate` → `release` → `rollback`), with a
+  content-addressed `overlay-<checksum>` version that pins its parent. The
+  CLI `promotion list/draft/approve/release/rollback` drives it: `draft`
+  enumerates candidates from the bridge's Promoted tier (deduplicated by
+  canonical triple, so a retry over unchanged evidence is the same
+  candidate set and the same overlay version), against the argued-corpus
+  baseline (the same surfaces an editor passes). Schema **v14** stores the
+  overlay journal (`promotion_overlays`, status CHECK-constrained, CAS
+  transitions that refuse a lost update and reject a mid-lifecycle
+  checksum move) and a one-row `promotion_active` singleton that may only
+  point at a Released version. A released overlay is a reviewable artifact
+  for editorial admission into the embedded pack — the fingerprint
+  mechanism of law 1 — *not* a live graph edit: the turn path never reads
+  either v14 table, and the U5 corpus-equality gate
+  (`a_released_active_overlay_leaves_the_corpus_byte_identical`) runs the
+  soak prompts against a live Released+active overlay and demands
+  byte-identical responses/routing/guard/state, plus `SystemState` JSON
+  free of promotion fields. `validate_promotion_invariants` rides the
+  doctor `Promotion boundary` check (checks 16 → 17). Remaining U5: the
+  Haskell corpus-bridge (importer quarantine as candidate input) and
+  informativeness gate-policy revalidation across versions (the policy
+  version already pins every draft, so a revalidation is auditable).
 - **U6 «Свидетельства»** — «Кодекс» grows from the practitioner's diary
   into a dual journal: the subject's positions tracked symmetrically with
   the practitioner's (contradictions, stability, refusals, memory shaping

@@ -8,7 +8,7 @@ The system is self-contained: it does not call an LLM or an external knowledge s
 
 The CLI is the supported production surface. It includes:
 
-- atomic SQLite persistence and automatic compatibility migration to schema v13;
+- atomic SQLite persistence and automatic compatibility migration to schema v14;
 - seven-stage turn processing with guard rollback and governance events;
 - 141 recognized topics, of which 141 have audited declarative content with
   291 typed claims;
@@ -56,7 +56,9 @@ qxfx0-code         independent typed Rust code registry and orchestrator
 qxfx0-bridge       the learning bridge (ADR-0043 U4): a between-turn
                    corroboration store (reinforce/decay/retire/promote),
                    outside the turn path and with no network in the default
-                   build — nothing is wired into the pipeline yet
+                   build; the promotion boundary (U5) drives the
+                   draft → activate → release lifecycle over it — never on
+                   the turn path
 ```
 
 Persistent maps use ordered containers. Semantic-network caches are derived in memory, are invalidated when the graph changes and are deliberately excluded from persisted JSON.
@@ -198,7 +200,7 @@ qxfx0 verify-diary diary-signed.md --passphrase "моя фраза"
 
 `doctor` is an executable health gate, not an informational banner. It checks:
 
-- SQLite `quick_check`, foreign keys, schema v13 and every stored session;
+- SQLite `quick_check`, foreign keys, schema v14 and every stored session;
 - seed-graph identities, endpoints, indexes and covered topics;
 - concept, fact and active knowledge-pack manifests, hashes and conflicts;
 - FactId-grounded Perspective capacity and curated counterpoint links;
@@ -212,7 +214,7 @@ It exits non-zero if any check fails:
 
 ```text
 QxFx0 Rust v0.1.1 health check:
-  [OK] SQLite: schema v13, quick_check/foreign keys/session states valid
+  [OK] SQLite: schema v14, quick_check/foreign keys/session states valid
   [OK] Performance diagnostics: opt-in qxfx0.turn-diagnostics.v1 records stage timing, SQLite write-lock/commit timing, and host metadata outside session state
   [OK] Seed graph: 207 atoms, 346 relations, 141 covered topics
   [OK] Content plan assets: recognition_topics_total=141, content_predicates_total=291, argued_topics_admitted=141, argued_predicates_admitted=141, profile_enabled=audited_v1
@@ -275,7 +277,7 @@ target/release/qxfx0 renderer-audit --opening-words 3 --json
 
 ## SQLite migration, backup and recovery
 
-The database is upgraded automatically on open. Migrations are idempotent and transactional (current version: v13). It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
+The database is upgraded automatically on open. Migrations are idempotent and transactional (current version: v14). It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
 
 Back up before upgrading a valuable database. The built-in command opens the
 source read-only, uses SQLite's online backup API, verifies the partial copy,
@@ -474,7 +476,7 @@ MIT
 
 ### Thesis projection rollout and schema v10
 
-SQLite schema v13 additively reserves nullable `session_semantic.thesis_state_json`; v9 rows are not rewritten and NULL loads as an empty bounded projection. `ThesisProjectionRollout` is explicit and default-off: `Disabled` preserves the production path, while `Shadow` validates catalog-bound receipts without state mutation. There is deliberately no pipeline or CLI write mode: thesis lifecycle persistence requires a separate policy, retention/export/delete design, and evidence window. User or generated text never creates thesis authority.
+SQLite schema v10 additively reserves nullable `session_semantic.thesis_state_json`; v9 rows are not rewritten and NULL loads as an empty bounded projection. `ThesisProjectionRollout` is explicit and default-off: `Disabled` preserves the production path, while `Shadow` validates catalog-bound receipts without state mutation. There is deliberately no pipeline or CLI write mode: thesis lifecycle persistence requires a separate policy, retention/export/delete design, and evidence window. User or generated text never creates thesis authority.
 
 ### Subject-core shadow and schema v11/v12
 
@@ -496,3 +498,26 @@ reinforce/decay/retire ladder and its quarantine ledger write only through
 quarantine`, so nothing the bridge stores can render or route. The tables
 have no row on sessions the bridge never touched, so pre-v13 databases open
 unchanged.
+
+### Promotion boundary and schema v14
+
+Schema v14 adds two global tables beside the session state:
+`promotion_overlays` (a content-addressed lifecycle row per version: status
+Draft / Activated / Released with a CHECK constraint, a snapshot id, an
+optional parent version for rollback, a SHA-256 checksum, and an opaque
+overlay JSON) and a one-row `promotion_active` singleton whose pointer may
+only point at a *Released* version. The CLI `promotion list/draft/approve/
+release/rollback` drives the lifecycle; `draft` enumerates candidates from
+the bridge's Promoted tier across every session, deduplicated by canonical
+triple (subject, snake-cased `RelationType` slug, object) so a retry is
+idempotent, and gates them with the Haskell-faithful informativeness test —
+not-tautological, not-topic-paraphrase, novel-against the argued-corpus
+baseline, semantic gain ≥ 0.75 (Jaccard of >3-char stop-word-filtered atoms)
+— against a versioned, SHA-checksummed `GatePolicy`. `release` is permanent:
+a Released row's content is frozen (CAS guards against concurrent rewrite
+and the checksum pin rejects mid-lifecycle edits) and rollback only moves
+the singleton pointer to the overlay's parent. The turn path never reads
+either table; a byte-for-byte proof is locked in the U5 corpus-equality test
+(`bridge_sleeps.rs`). A released overlay is a reviewable artifact for the
+operator's editorial admission into the embedded pack — the fingerprint
+mechanism of ADR-0043 law 1 — never a live graph mutation.

@@ -902,6 +902,293 @@ pub fn run_bridge_maintenance(db_path: &str) -> anyhow::Result<BridgeMaintenance
     Ok(report)
 }
 
+/// The current Unix seconds, never sampled on the turn path — only by CLI
+/// commands that stamp a lifecycle row at explicit operator request.
+pub fn now_unix_seconds() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+fn promotion_status_name(status: qxfx0_bridge::OverlayStatus) -> &'static str {
+    match status {
+        qxfx0_bridge::OverlayStatus::Draft => "Draft",
+        qxfx0_bridge::OverlayStatus::Activated => "Activated",
+        qxfx0_bridge::OverlayStatus::Released => "Released",
+    }
+}
+
+/// Render a bridge triple as a canonical Russian surface. The candidate
+/// keeps only the words involved — inflected rendering is the editorial
+/// admission step, not the boundary's.
+fn render_bridge_triple(
+    subject: &qxfx0_types::atom::AtomId,
+    relation: qxfx0_types::RelationType,
+    object: &qxfx0_types::atom::AtomId,
+) -> String {
+    format!(
+        "{} {} {}",
+        subject.as_str(),
+        relation.verb_ru(),
+        object.as_str()
+    )
+}
+
+/// The CLI promotion surface (ADR-0043 U5): the thin layer that enumerates
+/// candidates from every session's Promoted bridge tier, gates them against
+/// the curated argued-corpus baseline (the same informativeness bar an
+/// editor passes), and drives the pure lifecycle machine in
+/// `qxfx0_bridge::promotion` through the v14 store. Release is permanent:
+/// a Released overlay's row and content address are frozen, and only the
+/// active pointer moves on rollback.
+pub struct PromotionSurface;
+
+impl PromotionSurface {
+    /// The gate policy this build pins, versioned and checksummed so a
+    /// re-draft under an older policy stays auditable.
+    pub fn policy() -> qxfx0_bridge::GatePolicy {
+        qxfx0_bridge::builtin_gate_policy()
+    }
+
+    /// A snapshot identifier derived from the promoted content itself, never
+    /// the clock: the same evidence scans to the same id, a changed set to a
+    /// new one. This pins candidate identity without leaking time into a
+    /// deterministic store.
+    fn snapshot_id(db: &qxfx0_persistence::Persistence) -> anyhow::Result<String> {
+        use qxfx0_bridge::{BridgeEdgeSource, RuntimeEdgeStore};
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        for session_id in db.list_sessions()? {
+            let Some(json) = db.load_bridge_edges(&session_id)? else {
+                continue;
+            };
+            let store: RuntimeEdgeStore = qxfx0_bridge::decode_store(&json)
+                .map_err(|error| anyhow::anyhow!("session {session_id}: bridge store: {error}"))?;
+            for edge in store.values() {
+                if edge.source != BridgeEdgeSource::Promoted {
+                    continue;
+                }
+                hasher.update(session_id.as_bytes());
+                hasher.update([1]);
+                hasher.update(edge.from.as_str().as_bytes());
+                hasher.update([1]);
+                hasher.update(edge.to.as_str().as_bytes());
+                hasher.update([1]);
+                hasher.update(qxfx0_bridge::promotion::canonical_slug(edge.rel_type).as_bytes());
+                hasher.update([0]);
+            }
+        }
+        Ok(format!("snapshot-{:x}", hasher.finalize()))
+    }
+
+    /// Enumerate candidate triples from the Promoted tier across every
+    /// session, deduplicated by canonical triple (the snapshot id is part of
+    /// the candidate identity, so a retry over unchanged evidence is the
+    /// same candidate set — idempotent drafts). The caller passes the
+    /// snapshot id so candidate identity and the overlay's own id are always
+    /// computed from the same scan.
+    pub fn enumerate_candidates(
+        db: &qxfx0_persistence::Persistence,
+        snapshot_id: &str,
+    ) -> anyhow::Result<Vec<qxfx0_bridge::PromotionCandidate>> {
+        use qxfx0_bridge::{BridgeEdgeSource, PromotionCandidate, RuntimeEdgeStore};
+        let mut seen: std::collections::BTreeMap<(String, String, String), PromotionCandidate> =
+            std::collections::BTreeMap::new();
+        for session_id in db.list_sessions()? {
+            let Some(json) = db.load_bridge_edges(&session_id)? else {
+                continue;
+            };
+            let store: RuntimeEdgeStore = qxfx0_bridge::decode_store(&json)
+                .map_err(|error| anyhow::anyhow!("session {session_id}: bridge store: {error}"))?;
+            for edge in store.values() {
+                if edge.source != BridgeEdgeSource::Promoted {
+                    continue;
+                }
+                let key = (
+                    edge.from.as_str().to_string(),
+                    qxfx0_bridge::promotion::canonical_slug(edge.rel_type),
+                    edge.to.as_str().to_string(),
+                );
+                seen.entry(key).or_insert_with(|| PromotionCandidate {
+                    snapshot_id: snapshot_id.to_string(),
+                    topic: edge.topic.clone(),
+                    subject: edge.from.clone(),
+                    relation: edge.rel_type,
+                    object: edge.to.clone(),
+                    rendered_ru: render_bridge_triple(&edge.from, edge.rel_type, &edge.to),
+                    confidence: edge.confidence,
+                    support: edge.co_occurrence,
+                });
+            }
+        }
+        Ok(seen.into_values().collect())
+    }
+
+    /// The topic's curated baseline from the argued corpus — the thesis,
+    /// counterpoint and consequence surfaces the system already renders.
+    /// An empty baseline means the topic has no audited content yet, so
+    /// novelty is judged against nothing (the Haskell empty-corpus case).
+    fn baseline_for_topic(topic: &str) -> Vec<String> {
+        match qxfx0_semantic::argued_topic_registry() {
+            Ok(registry) => registry
+                .get(topic)
+                .map(|argued| {
+                    let mut surfaces = vec![
+                        argued.thesis().surface().to_string(),
+                        argued.counterpoint().surface().to_string(),
+                    ];
+                    if let Some(consequence) = argued.consequence() {
+                        surfaces.push(consequence.surface().to_string());
+                    }
+                    surfaces
+                })
+                .unwrap_or_default(),
+            Err(_) => Vec::new(),
+        }
+    }
+
+    /// Draft a new overlay from the currently-promoted evidence. Idempotent:
+    /// the same evidence yields the same content-addressed version and the
+    /// store insert is a no-op. Returns the overlay (its `predicates` may be
+    /// empty) plus the exclusion trace, so an all-refused review still shows
+    /// the operator why nothing was admitted.
+    pub fn draft(
+        db: &qxfx0_persistence::Persistence,
+        now: i64,
+    ) -> anyhow::Result<(
+        qxfx0_bridge::Overlay,
+        Vec<(
+            qxfx0_bridge::PromotionCandidate,
+            qxfx0_bridge::ExclusionReason,
+        )>,
+    )> {
+        let snapshot_id = Self::snapshot_id(db)?;
+        let candidates = Self::enumerate_candidates(db, &snapshot_id)?;
+        let (overlay, exclusions) = qxfx0_bridge::create_draft(
+            &snapshot_id,
+            &candidates,
+            &Self::policy(),
+            &Self::baseline_for_topic,
+            now,
+        );
+        overlay
+            .verify_integrity()
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        if !overlay.predicates.is_empty() {
+            let json = serde_json::to_string(&overlay)?;
+            db.save_promotion_overlay(
+                &overlay.version,
+                promotion_status_name(overlay.status),
+                &overlay.snapshot_id,
+                overlay.parent_version.as_deref(),
+                &overlay.checksum,
+                &json,
+                overlay.created_at,
+            )?;
+        }
+        Ok((overlay, exclusions))
+    }
+
+    /// Read a stored overlay and re-verify its content address on the way in.
+    fn load_overlay(
+        db: &qxfx0_persistence::Persistence,
+        version: &str,
+    ) -> anyhow::Result<qxfx0_bridge::Overlay> {
+        let Some((stored_status, json)) = db.load_promotion_overlay(version)? else {
+            return Err(anyhow::anyhow!("no promotion overlay {version}"));
+        };
+        let overlay: qxfx0_bridge::Overlay = serde_json::from_str(&json)?;
+        overlay
+            .verify_integrity()
+            .map_err(|error| anyhow::anyhow!("promotion overlay {version}: {error}"))?;
+        if promotion_status_name(overlay.status) != stored_status {
+            return Err(anyhow::anyhow!(
+                "promotion overlay {version} status mismatch (store {stored_status:?}, blob {:?})",
+                overlay.status
+            ));
+        }
+        Ok(overlay)
+    }
+
+    /// Advance a Draft to Activated via the store's pinned-CAS transition.
+    pub fn approve(
+        db: &qxfx0_persistence::Persistence,
+        version: &str,
+        now: i64,
+    ) -> anyhow::Result<qxfx0_bridge::Overlay> {
+        let current = Self::load_overlay(db, version)?;
+        let current_json = serde_json::to_string(&current)?;
+        let activated = current
+            .activate(now)
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        let json = serde_json::to_string(&activated)?;
+        db.replace_promotion_overlay_if_matches(
+            &activated.version,
+            &current_json,
+            promotion_status_name(activated.status),
+            &json,
+            &activated.checksum,
+        )?;
+        Ok(activated)
+    }
+
+    /// Release an Activated overlay (the human decision; permanent) and
+    /// point the active singleton at it. The previously-active version is
+    /// recorded as this overlay's parent — the rollback target.
+    pub fn release(
+        db: &qxfx0_persistence::Persistence,
+        version: &str,
+        now: i64,
+    ) -> anyhow::Result<qxfx0_bridge::Overlay> {
+        let current = Self::load_overlay(db, version)?;
+        let current_json = serde_json::to_string(&current)?;
+        let released = current
+            .release(now)
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        let released = qxfx0_bridge::Overlay {
+            parent_version: db.load_active_promotion_overlay()?,
+            ..released
+        };
+        let json = serde_json::to_string(&released)?;
+        db.replace_promotion_overlay_if_matches(
+            &released.version,
+            &current_json,
+            promotion_status_name(released.status),
+            &json,
+            &released.checksum,
+        )?;
+        db.set_active_promotion_overlay(Some(version), now)?;
+        Ok(released)
+    }
+
+    /// Retire the active overlay: move the pointer to its parent (the
+    /// previous Released version, or none at the root). Released rows are
+    /// never edited — only the singleton moves.
+    pub fn rollback(
+        db: &qxfx0_persistence::Persistence,
+        now: i64,
+    ) -> anyhow::Result<Option<String>> {
+        let Some(active_version) = db.load_active_promotion_overlay()? else {
+            return Ok(None);
+        };
+        let active = Self::load_overlay(db, &active_version)?;
+        let target = qxfx0_bridge::rollback(&active).map_err(|error| anyhow::anyhow!("{error}"))?;
+        db.set_active_promotion_overlay(target.as_deref(), now)?;
+        Ok(target)
+    }
+
+    /// The active overlay version, if any.
+    pub fn active(db: &qxfx0_persistence::Persistence) -> anyhow::Result<Option<String>> {
+        Ok(db.load_active_promotion_overlay()?)
+    }
+
+    /// The overlay journal (newest creation first) for `promotion list`.
+    pub fn list(db: &qxfx0_persistence::Persistence) -> anyhow::Result<Vec<(String, String, i64)>> {
+        Ok(db.list_promotion_overlays()?)
+    }
+}
+
 /// Execute production health checks without mutating session state. Opening
 /// the database may apply the normal idempotent schema migration.
 pub fn run_doctor(db_path: &str) -> DoctorReport {
@@ -1228,6 +1515,21 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
             "corroboration ladder bounded; promotion thresholds in range; decay/retire total; no network in the default build".into()
         } else {
             bridge_violations.join("; ")
+        },
+    });
+
+    // Promotion boundary invariants (ADR-0043 U5): the gate policy, the
+    // informativeness floor and the lifecycle transition table (release is
+    // permanent, rollback retires only the pointer) must all be coherent
+    // before the human-release door means anything.
+    let promotion_violations = qxfx0_bridge::promotion::validate_promotion_invariants();
+    report.checks.push(DoctorCheck {
+        name: "Promotion boundary",
+        passed: promotion_violations.is_empty(),
+        details: if promotion_violations.is_empty() {
+            "gate policy versioned+checksummed; semantic-gain floor in range; lifecycle transitions and release immutability enforceable".into()
+        } else {
+            promotion_violations.join("; ")
         },
     });
 
@@ -2029,7 +2331,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 16);
+        assert_eq!(report.checks.len(), 17);
         assert!(report
             .checks
             .iter()
@@ -2038,6 +2340,10 @@ mod tests {
             .checks
             .iter()
             .any(|check| check.name == "Learning bridge" && check.passed));
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.name == "Promotion boundary" && check.passed));
         let content_assets = report
             .checks
             .iter()
@@ -2145,6 +2451,87 @@ mod tests {
         let second = run_bridge_maintenance(&db_path).unwrap();
         assert_eq!(second.sessions[0].edges_before, 1);
         assert_eq!(second.sessions[0].edges_after, 1);
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(format!("{}-wal", path.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", path.display()));
+    }
+
+    #[test]
+    fn test_promotion_lifecycle_draft_approve_release_rollback() {
+        use qxfx0_bridge::{BridgeEdge, BridgeEdgeSource, RuntimeEdgeStore};
+        use qxfx0_types::atom::AtomId;
+        use qxfx0_types::RelationType;
+
+        let path = std::env::temp_dir().join(format!("qxfx0-promotion-{}.db", std::process::id()));
+        let db_path = path.to_string_lossy().to_string();
+        let session_id = format!("promo-{}", std::process::id());
+        let db = qxfx0_persistence::Persistence::open(&db_path).unwrap();
+        let mut state = SystemState {
+            session_id: session_id.clone(),
+            ..SystemState::default()
+        };
+        state.dialogue.turn_count = 5;
+        db.save_state(&session_id, &state).unwrap();
+
+        // Seed one Promoted bridge edge. The topic is not in the argued
+        // corpus, so the curated baseline is empty and the candidate is
+        // novel by construction (the gate has a deterministic pass).
+        let edge = BridgeEdge {
+            from: AtomId::new("свобода"),
+            to: AtomId::new("предприимчивость"),
+            rel_type: RelationType::RelRequires,
+            topic: "свобода-тест".into(),
+            confidence: 0.9,
+            co_occurrence: 5,
+            weight: 0.9,
+            source: BridgeEdgeSource::Promoted,
+        };
+        let mut store = RuntimeEdgeStore::new();
+        store.insert((edge.from.clone(), edge.to.clone()), edge);
+        db.save_bridge_edges(
+            &session_id,
+            Some(&qxfx0_bridge::encode_store(&store).unwrap()),
+        )
+        .unwrap();
+
+        // Draft: a fresh overlay with exactly one admitted predicate.
+        let (overlay, exclusions) = PromotionSurface::draft(&db, 100).unwrap();
+        assert!(exclusions.is_empty(), "{exclusions:?}");
+        assert_eq!(overlay.predicates.len(), 1);
+        assert!(overlay.version.starts_with("overlay-"));
+        assert_eq!(PromotionSurface::active(&db).unwrap(), None);
+
+        // A Draft cannot release before activation.
+        assert!(PromotionSurface::release(&db, &overlay.version, 101).is_err());
+
+        // Draft -> approve -> release.
+        let activated = PromotionSurface::approve(&db, &overlay.version, 102).unwrap();
+        assert_eq!(activated.status, qxfx0_bridge::OverlayStatus::Activated);
+        let released = PromotionSurface::release(&db, &overlay.version, 103).unwrap();
+        assert_eq!(released.status, qxfx0_bridge::OverlayStatus::Released);
+        assert_eq!(
+            PromotionSurface::active(&db).unwrap().as_deref(),
+            Some(overlay.version.as_str())
+        );
+
+        // Release is permanent: a second release of the same version is
+        // refused, and a second draft over unchanged evidence is a no-op
+        // (content-addressed, no new row).
+        assert!(PromotionSurface::release(&db, &overlay.version, 104).is_err());
+        let (redraft, _) = PromotionSurface::draft(&db, 105).unwrap();
+        assert_eq!(redraft.version, overlay.version);
+
+        // Rollback retires the pointer (parent is none at the root) without
+        // editing the released row.
+        let target = PromotionSurface::rollback(&db, 106).unwrap();
+        assert_eq!(target, None);
+        assert_eq!(PromotionSurface::active(&db).unwrap(), None);
+        // The released overlay remains in the journal, immutable.
+        let journal = PromotionSurface::list(&db).unwrap();
+        assert!(journal
+            .iter()
+            .any(|(version, status, _)| version == &overlay.version && status == "Released"));
 
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(format!("{}-wal", path.display()));

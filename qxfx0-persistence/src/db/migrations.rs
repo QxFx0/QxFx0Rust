@@ -16,7 +16,11 @@ use rusqlite::{Connection, Result};
 /// runtime-edge store and a per-event quarantine ledger. They live beside —
 /// never inside — the session state, so the bridge can only ever be read and
 /// written by its own maintenance path, never on the turn path.
-pub const CURRENT_SCHEMA_VERSION: i64 = 13;
+/// Version 14 adds the global promotion boundary (ADR-0043 U5): the overlay
+/// journal and a one-row active pointer. Promotion state is deliberately
+/// global (a released overlay is a semantic-authority fact, not a session
+/// fact) and equally beside the session: the turn path never reads it.
+pub const CURRENT_SCHEMA_VERSION: i64 = 14;
 
 /// Error type for schema compatibility failures.
 #[derive(Debug)]
@@ -91,6 +95,22 @@ CREATE TABLE IF NOT EXISTS session_bridge_quarantine (
     entry_json TEXT NOT NULL,
     PRIMARY KEY (session_id, seq),
     FOREIGN KEY (session_id) REFERENCES runtime_sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS promotion_overlays (
+    version TEXT PRIMARY KEY,
+    status TEXT NOT NULL CHECK (status IN ('Draft', 'Activated', 'Released')),
+    snapshot_id TEXT NOT NULL,
+    parent_version TEXT,
+    checksum TEXT NOT NULL,
+    overlay_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS promotion_active (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    overlay_version TEXT,
+    updated_at INTEGER NOT NULL
 );
 
 "#;

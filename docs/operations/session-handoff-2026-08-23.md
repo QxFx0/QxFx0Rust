@@ -312,6 +312,59 @@ the replay envelope, and the corpus bridge: promoted candidates must pass
 the same admission bar as editors; `import_haskell_corpus.py` quarantine
 becomes an input.
 
+**Status 2026-09-10 (U5.1 landed)**: the promotion boundary is the bridge's
+own pure module (`qxfx0-bridge::promotion`), gated and human-released, and
+*by design a released overlay never mutates the graph or a session's pack
+fingerprint on the turn path*. The operator admits a released, checksummed
+artifact into the embedded pack through the editorial bar — the ADR-0043
+law-1 fingerprint mechanism — exactly how a content wave or the Haskell
+importer's quarantine becomes input.
+
+- `promotion` (pure, in the bridge): versioned+SHA-checksummed
+  `GatePolicy`; `evaluate_candidate_informativeness` is the exact
+  Haskell port — normalizeAtom, stop-word-filtered >3-char Jaccard vs the
+  curated topic surfaces, semantic-gain ≥ 0.75, the constraint-relation
+  novelty disjunct, and the tautology/topic-paraphrase refusals; the
+  immutable lifecycle `create_draft → Overlay::activate → Overlay::release`
+  with `rollback` moving only the active pointer. `verify_integrity`
+  re-checks the content address; a Released overlay refuses re-release and
+  re-activation (release is permanent, enforced by the transition table).
+- persistence schema **v14**: `promotion_overlays` (status CHECK
+  Draft/Activated/Released, snapshot id, optional parent, SHA checksum,
+  opaque `overlay_json`) + a singleton `promotion_active` that may only
+  point at a Released version. `save_promotion_overlay` inserts idempotently
+  by version and errors on a checksum conflict;
+  `replace_promotion_overlay_if_matches` is a pinned CAS that refuses a
+  lost update and a mid-lifecycle content-address change.
+- CLI `promotion list/draft/approve/release/rollback [--json]` (the
+  `PromotionSurface` helper in `qxfx0-cli`). `draft` enumerates the
+  Promoted tier across every session, deduplicated by canonical triple
+  (snake-cased `RelationType` slug), with a content-derived snapshot id
+  (never the clock), so a retry yields the same candidate set and the same
+  overlay version; baseline = argued-corpus thesis/counterpoint/consequence.
+  `now_unix_seconds()` is sampled only by CLI commands, never on the turn
+  path. `validate_promotion_invariants` rides the new doctor `Promotion
+  boundary` check (checks 16 → 17).
+- gate: `a_released_active_overlay_leaves_the_corpus_byte_identical` (in
+  `bridge_sleeps.rs`) drives a real draft→approve→release lifecycle, points
+  the active singleton, runs the twelve soak prompts, and asserts
+  byte-identical responses/families/guard + `response_plan_v2_state_parity`
+  + `SystemState` JSON free of promotion/overlay fields. The bridge
+  link-closure scan still forbids a runtime edge to the bridge outside the
+  CLI. 14 promotion unit tests (bridge) + 5 store tests + a CLI lifecycle
+  unit test (draft→approve→release→idempotent re-draft→rollback, with the
+  Draft-cannot-release and Released-is-immutable refusals) + a CLI
+  integration test.
+
+Gate at HEAD: fmt/clippy clean (default + `llm-candidates`); workspace
+tests green; six V2 gates green; doctor OK (17 checks); census `--check`
+green; coverage ≥ floor. Remaining U5: the Haskell-corpus bridge
+(`import_haskell_corpus.py` quarantine → candidate input), gate-policy
+revalidation across versions (each draft already pins a policy version, so
+revalidation is auditable), and the informativeness evaluation-corpus
+precheck (Haskell `runPromotionEvaluation`) if an empirical gate is wanted
+before the first pack admission.
+
 ### U6 — «Свидетельства»
 Dual journal (subject positions symmetric with practitioner positions),
 verifiable export as the FELT measurement instrument (B2 rubrics get

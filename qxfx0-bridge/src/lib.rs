@@ -28,12 +28,19 @@
 
 pub mod candidates;
 pub mod corroboration;
+pub mod promotion;
 pub mod quarantine;
 pub mod runtime_edges;
 pub mod worker;
 
 pub use candidates::{CandidateError, CandidateSource};
 pub use corroboration::{BoundedCorroborationQueue, CorroborationEvent, DEFAULT_QUEUE_CAPACITY};
+pub use promotion::{
+    builtin_gate_policy, create_draft, evaluate_candidate_informativeness, normalize_atom,
+    render_overlay_artifact, rollback, validate_promotion_invariants, ExclusionReason, GatePolicy,
+    InformativenessResult, Overlay, OverlayStatus, PromotedPredicate, PromotionCandidate,
+    PromotionError, SEMANTIC_GAIN_THRESHOLD, STOP_WORDS,
+};
 pub use quarantine::{
     QuarantineLedger, QuarantineReason, QuarantinedEvent, DEFAULT_QUARANTINE_CAPACITY,
 };

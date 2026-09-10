@@ -56,6 +56,7 @@ fn soak_prompts() -> Vec<&'static str> {
 fn run_soak(
     session_id: &str,
     populate_bridge: bool,
+    release_overlay: bool,
 ) -> (
     Vec<String>,
     Vec<String>,
@@ -69,6 +70,72 @@ fn run_soak(
         ..SystemState::default()
     };
     db.save_state(session_id, &state).unwrap();
+    if release_overlay {
+        // Drive a real overlay through the store exactly as the CLI does:
+        // draft the promoted edge, activate, release, point the active
+        // singleton. The turn path reads only `state`, never these rows, so
+        // a byte-identical corpus is the executable proof.
+        let edge = qxfx0_bridge::BridgeEdge::new(
+            qxfx0_types::AtomId::new("свобода"),
+            qxfx0_types::AtomId::new("выбор"),
+            qxfx0_types::RelationType::RelRequires,
+            "свобода",
+            0.9,
+        );
+        let candidate = qxfx0_bridge::PromotionCandidate {
+            snapshot_id: "soak-gate".into(),
+            topic: "свобода".into(),
+            subject: edge.from.clone(),
+            relation: edge.rel_type,
+            object: edge.to.clone(),
+            rendered_ru: "свобода требует выбор".into(),
+            confidence: edge.confidence,
+            support: edge.co_occurrence,
+        };
+        let (draft, _) = qxfx0_bridge::create_draft(
+            "soak-gate",
+            std::slice::from_ref(&candidate),
+            &qxfx0_bridge::builtin_gate_policy(),
+            &|_topic: &str| Vec::new(),
+            1,
+        );
+        assert_eq!(draft.predicates.len(), 1);
+        let draft_json = serde_json::to_string(&draft).unwrap();
+        db.save_promotion_overlay(
+            &draft.version,
+            "Draft",
+            &draft.snapshot_id,
+            None,
+            &draft.checksum,
+            &draft_json,
+            draft.created_at,
+        )
+        .unwrap();
+        let activated = draft.activate(2).unwrap();
+        db.replace_promotion_overlay_if_matches(
+            &activated.version,
+            &draft_json,
+            "Activated",
+            &serde_json::to_string(&activated).unwrap(),
+            &activated.checksum,
+        )
+        .unwrap();
+        let released = activated.release(3).unwrap();
+        db.replace_promotion_overlay_if_matches(
+            &released.version,
+            &serde_json::to_string(&activated).unwrap(),
+            "Released",
+            &serde_json::to_string(&released).unwrap(),
+            &released.checksum,
+        )
+        .unwrap();
+        db.set_active_promotion_overlay(Some(&released.version), 3)
+            .unwrap();
+        assert_eq!(
+            db.load_active_promotion_overlay().unwrap().as_deref(),
+            Some(released.version.as_str())
+        );
+    }
     if populate_bridge {
         // A real worker-shaped store, encoded through the bridge codec so
         // this is exactly what the maintenance path would persist.
@@ -118,8 +185,8 @@ fn run_soak(
 
 #[test]
 fn a_live_untouched_bridge_store_leaves_the_corpus_byte_identical() {
-    let plain = run_soak("soak-equality", false);
-    let live = run_soak("soak-equality", true);
+    let plain = run_soak("soak-equality", false, false);
+    let live = run_soak("soak-equality", true, false);
     assert_eq!(
         plain.0, live.0,
         "a populated bridge store must not change a single response byte"
@@ -139,6 +206,43 @@ fn a_live_untouched_bridge_store_leaves_the_corpus_byte_identical() {
     );
     // The databases are still open (live rows) until here.
     assert!(live.4.load_bridge_edges("soak-equality").unwrap().is_some());
+}
+
+/// ADR-0043 U5: a *released and active* promotion overlay (the strongest
+/// case — the CLI lifecycle drove a row to Released and pointed the active
+/// singleton at it) must also leave the corpus byte-identical. The graph
+/// effect of a release is editorial admission into the embedded pack, never
+/// a turn-path read of the overlay store, so the boundary cannot perturb a
+/// turn even when an overlay is fully live.
+#[test]
+fn a_released_active_overlay_leaves_the_corpus_byte_identical() {
+    let plain = run_soak("boundary-equality", false, false);
+    let released = run_soak("boundary-equality", false, true);
+    assert_eq!(
+        plain.0, released.0,
+        "a released active overlay must not change a single response byte"
+    );
+    assert_eq!(plain.1, released.1, "routing must not change");
+    assert_eq!(plain.2, released.2, "guard verdicts must not change");
+    assert!(
+        qxfx0_pipeline::response_plan_v2_state_parity(&plain.3, &released.3),
+        "non-observational state must be parity-equal with a released overlay"
+    );
+    // The overlay really is Released and active when the run finished.
+    let active = released.4.load_active_promotion_overlay().unwrap();
+    assert!(active.is_some(), "the soak released an active overlay");
+    let (status, _) = released
+        .4
+        .load_promotion_overlay(active.as_deref().unwrap())
+        .unwrap()
+        .expect("the active overlay is stored");
+    assert_eq!(status, "Released");
+    // And again: SystemState never carries promotion fields.
+    let plain_json = serde_json::to_string(&plain.3).unwrap();
+    assert!(
+        !plain_json.contains("overlay") && !plain_json.contains("promotion"),
+        "SystemState must not gain promotion/overlay fields"
+    );
 }
 
 /// Parse the sections of a Cargo.toml and return whether `qxfx0-bridge`

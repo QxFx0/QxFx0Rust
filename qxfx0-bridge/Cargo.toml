@@ -10,6 +10,7 @@ license.workspace = true
 qxfx0-types = { path = "../qxfx0-types", version = "0.1.1" }
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 
 [features]
 default = []

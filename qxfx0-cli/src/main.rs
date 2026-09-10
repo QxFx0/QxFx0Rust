@@ -3,10 +3,10 @@ use qxfx0_cli::measurement::{run_renderer_diversity_audit, run_runtime_benchmark
 use qxfx0_cli::{
     append_turn_diagnostics, authority_report, create_anomaly_shadow_trace_sink,
     create_authority_trace_sink, create_cognitive_pilot_trace_sink, create_doubt_shadow_trace_sink,
-    create_response_plan_v2_shadow_trace_sink, load_or_create_state, run_bridge_maintenance,
-    run_doctor, run_operational_metrics, run_turn_with_renderer_and_stance_provenance,
-    run_turn_with_renderer_anomaly_shadow_trace, run_turn_with_renderer_cognitive_pilot,
-    run_turn_with_renderer_diagnostics,
+    create_response_plan_v2_shadow_trace_sink, load_or_create_state, now_unix_seconds,
+    run_bridge_maintenance, run_doctor, run_operational_metrics,
+    run_turn_with_renderer_and_stance_provenance, run_turn_with_renderer_anomaly_shadow_trace,
+    run_turn_with_renderer_cognitive_pilot, run_turn_with_renderer_diagnostics,
     run_turn_with_renderer_diagnostics_and_anomaly_shadow_trace,
     run_turn_with_renderer_diagnostics_and_cognitive_pilot,
     run_turn_with_renderer_diagnostics_and_doubt_shadow_trace,
@@ -14,6 +14,7 @@ use qxfx0_cli::{
     verify_authority_trace, write_anomaly_shadow_trace_jsonl, write_authority_trace_jsonl,
     write_cognitive_pilot_trace_jsonl, write_doubt_shadow_trace_jsonl,
     write_response_plan_v2_shadow_trace_jsonl, AuthorityReportScope, DiagnosedTurn,
+    PromotionSurface,
 };
 use qxfx0_pipeline::{
     process_turn_with_options, ClarificationMode, RendererAuthority, ResponsePlanV2Authority,
@@ -243,6 +244,52 @@ enum Commands {
     /// and prune stored runtime edges over every session the bridge touched.
     /// Never a turn-path command; sessions with no bridge store are skipped.
     BridgeMaintain {
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Promotion boundary (ADR-0043 U5): draft a gated overlay from the
+    /// bridge's promoted evidence, activate, human-release (permanent) and
+    /// roll back the active overlay. The released overlay is a reviewable,
+    /// fingerprinted artifact; its graph effect comes only from editorial
+    /// admission into the embedded pack, never from this command.
+    Promotion {
+        #[command(subcommand)]
+        action: PromotionAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum PromotionAction {
+    /// List the overlay journal and the active overlay
+    List {
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Draft an overlay from the currently-promoted bridge evidence (idempotent)
+    Draft {
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Activate a Draft overlay (Draft -> Activated)
+    Approve {
+        version: String,
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Release an Activated overlay (the human decision; permanent) and make
+    /// it active, recording the previous active as its parent
+    Release {
+        version: String,
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Retire the active overlay and move the pointer to its parent
+    Rollback {
         /// Emit a machine-readable JSON report
         #[arg(long)]
         json: bool,
@@ -1157,5 +1204,158 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        Commands::Promotion { action } => {
+            let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+            match action {
+                PromotionAction::List { json } => {
+                    let overlays = PromotionSurface::list(&db)?;
+                    let active = PromotionSurface::active(&db)?;
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "active": active,
+                                "overlays": overlays.iter().map(|(version, status, created_at)| {
+                                    serde_json::json!({
+                                        "version": version,
+                                        "status": status,
+                                        "created_at": created_at,
+                                    })
+                                }).collect::<Vec<_>>(),
+                            }))?
+                        );
+                    } else {
+                        println!("active: {}", active.as_deref().unwrap_or("(none)"));
+                        if overlays.is_empty() {
+                            println!("no overlays: the promotion boundary is empty");
+                        }
+                        for (version, status, created_at) in &overlays {
+                            let marker = if active.as_deref() == Some(version.as_str()) {
+                                "*"
+                            } else {
+                                " "
+                            };
+                            println!(
+                                "{marker} {:<74} {:9} created_at={created_at}",
+                                version, status
+                            );
+                        }
+                    }
+                }
+                PromotionAction::Draft { json } => {
+                    let (overlay, exclusions) = PromotionSurface::draft(&db, now_unix_seconds())?;
+                    let version = overlay.version;
+                    let admitted = overlay.predicates.len();
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "version": version,
+                                "predicates": admitted,
+                                "exclusions": exclusions.iter().map(|(candidate, reason)| {
+                                    serde_json::json!({
+                                        "topic": candidate.topic,
+                                        "subject": candidate.subject.as_str(),
+                                        "relation": qxfx0_bridge_canonical_slug(candidate.relation),
+                                        "object": candidate.object.as_str(),
+                                        "reason": format!("{reason:?}"),
+                                    })
+                                }).collect::<Vec<_>>(),
+                            }))?
+                        );
+                    } else if admitted == 0 {
+                        println!(
+                            "no overlay stored ({} candidate(s) refused by the gate)",
+                            exclusions.len()
+                        );
+                        for (candidate, reason) in &exclusions {
+                            println!(
+                                "  {} {} {} : {reason:?}",
+                                candidate.subject.as_str(),
+                                qxfx0_bridge_canonical_slug(candidate.relation),
+                                candidate.object.as_str()
+                            );
+                        }
+                    } else if exclusions.is_empty() {
+                        println!("drafted {version} ({admitted} predicate(s), no exclusions)");
+                    } else {
+                        println!(
+                            "drafted {version} ({admitted} predicate(s), {} excluded):",
+                            exclusions.len()
+                        );
+                        for (candidate, reason) in &exclusions {
+                            println!(
+                                "  {} {} {} : {reason:?}",
+                                candidate.subject.as_str(),
+                                qxfx0_bridge_canonical_slug(candidate.relation),
+                                candidate.object.as_str()
+                            );
+                        }
+                    }
+                }
+                PromotionAction::Approve { version, json } => {
+                    let overlay = PromotionSurface::approve(&db, &version, now_unix_seconds())?;
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "version": overlay.version,
+                                "status": format!("{:?}", overlay.status),
+                                "predicates": overlay.predicates.len(),
+                            }))?
+                        );
+                    } else {
+                        println!(
+                            "activated {} ({} predicates)",
+                            overlay.version,
+                            overlay.predicates.len()
+                        );
+                    }
+                }
+                PromotionAction::Release { version, json } => {
+                    let overlay = PromotionSurface::release(&db, &version, now_unix_seconds())?;
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({
+                                "version": overlay.version,
+                                "status": format!("{:?}", overlay.status),
+                                "parent": overlay.parent_version,
+                                "predicates": overlay.predicates.len(),
+                            }))?
+                        );
+                    } else {
+                        println!(
+                            "released {} as active (parent {})",
+                            overlay.version,
+                            overlay.parent_version.as_deref().unwrap_or("(none)")
+                        );
+                    }
+                }
+                PromotionAction::Rollback { json } => {
+                    let target = PromotionSurface::rollback(&db, now_unix_seconds())?;
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&serde_json::json!({ "active": target }))?
+                        );
+                    } else {
+                        match &target {
+                            Some(version) => println!("rolled back; active is now {version}"),
+                            None => println!("rolled back; no active overlay"),
+                        }
+                    }
+                }
+            }
+            Ok(())
+        }
     }
+}
+
+/// Canonicalize a relation for the CLI's human-readable output. Kept local
+/// so the surface does not re-export the bridge's slug fn as a CLI public
+/// item (it's a rendering detail here, the boundary's identity in the
+/// bridge).
+fn qxfx0_bridge_canonical_slug(relation: qxfx0_types::RelationType) -> String {
+    qxfx0_bridge::promotion::canonical_slug(relation)
 }

@@ -18,6 +18,10 @@ const MAX_THESIS_STATE_JSON_BYTES: usize = 4 * 1024 * 1024;
 const MAX_BRIDGE_EDGES_JSON_BYTES: usize = 4 * 1024 * 1024;
 const MAX_BRIDGE_QUARANTINE_ENTRY_BYTES: usize = 64 * 1024;
 const MAX_BRIDGE_QUARANTINE_ROWS: i64 = 4_096;
+// A promotion overlay is bounded at the SQL edge like every other persisted
+// structure: one overlay may not smuggle an unbounded predicate set past the
+// human review that makes it a semantic-authority fact.
+const MAX_PROMOTION_OVERLAY_JSON_BYTES: usize = 1024 * 1024;
 
 fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
     let mut violations = Vec::new();
@@ -850,6 +854,211 @@ impl Persistence {
         Ok(())
     }
 
+    /// Store a serialized promotion overlay (schema v14). The blob is opaque
+    /// here — the bridge owns the lifecycle machine and the checksum; the
+    /// `status` column mirrors the embedded state so the CHECK constraint
+    /// rejects an illegal declared status. An existing version is *never*
+    /// rewritten by this path: the version is content-addressed, so a second
+    /// draft of unchanged evidence is the same version (idempotent no-op,
+    /// `Ok(false)`), while lifecycle transitions go through
+    /// `replace_promotion_overlay_if_matches`. A passed checksum that
+    /// disagrees with the stored row means an inconsistent caller (a
+    /// version that does not address its own content) and fails closed.
+    #[allow(clippy::too_many_arguments)] // flat SQL row shape; the bridge owns the struct
+    pub fn save_promotion_overlay(
+        &self,
+        version: &str,
+        status: &str,
+        snapshot_id: &str,
+        parent_version: Option<&str>,
+        checksum: &str,
+        overlay_json: &str,
+        created_at: i64,
+    ) -> Result<bool, PersistenceError> {
+        if overlay_json.len() > MAX_PROMOTION_OVERLAY_JSON_BYTES {
+            return Err(PersistenceError::InvalidState(format!(
+                "promotion overlay_json exceeds {MAX_PROMOTION_OVERLAY_JSON_BYTES} bytes"
+            )));
+        }
+        let tx = self.conn.unchecked_transaction()?;
+        let existing: Option<(String, String)> = tx
+            .query_row(
+                "SELECT status, checksum FROM promotion_overlays WHERE version = ?1",
+                params![version],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()?;
+        match existing {
+            Some((_, stored_checksum)) => {
+                if stored_checksum != checksum {
+                    return Err(PersistenceError::InvalidState(format!(
+                        "promotion overlay {version} is stored under a different checksum (caller inconsistency)"
+                    )));
+                }
+                let _ = status;
+                tx.commit()?;
+                Ok(false)
+            }
+            None => {
+                tx.execute(
+                    "INSERT INTO promotion_overlays
+                        (version, status, snapshot_id, parent_version, checksum, overlay_json, created_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    params![version, status, snapshot_id, parent_version, checksum, overlay_json, created_at],
+                )?;
+                tx.commit()?;
+                Ok(true)
+            }
+        }
+    }
+
+    /// Compare-and-swap a stored overlay to its next lifecycle row (the
+    /// bridge's state machine validates the transition; this guard makes a
+    /// lost update impossible: a concurrent approve between load and replace
+    /// fails instead of silently overwriting). The content address is pinned:
+    /// `checksum` must equal the stored one — a status transition never
+    /// changes the predicate set it releases (a Released overlay is
+    /// immutable).
+    pub fn replace_promotion_overlay_if_matches(
+        &self,
+        version: &str,
+        expected_overlay_json: &str,
+        new_status: &str,
+        new_overlay_json: &str,
+        checksum: &str,
+    ) -> Result<(), PersistenceError> {
+        if new_overlay_json.len() > MAX_PROMOTION_OVERLAY_JSON_BYTES {
+            return Err(PersistenceError::InvalidState(format!(
+                "promotion overlay_json exceeds {MAX_PROMOTION_OVERLAY_JSON_BYTES} bytes"
+            )));
+        }
+        let tx = self.conn.unchecked_transaction()?;
+        let current: Option<(String, String)> = tx
+            .query_row(
+                "SELECT overlay_json, checksum FROM promotion_overlays WHERE version = ?1",
+                params![version],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()?;
+        let Some((stored_json, stored_checksum)) = current else {
+            return Err(PersistenceError::NotFound(format!(
+                "promotion overlay {version}"
+            )));
+        };
+        if stored_json != expected_overlay_json {
+            return Err(PersistenceError::InvalidState(format!(
+                "promotion overlay {version} changed concurrently (CAS mismatch)"
+            )));
+        }
+        if stored_checksum != checksum {
+            return Err(PersistenceError::InvalidState(format!(
+                "promotion overlay {version} content address changed mid-lifecycle (immutability violation)"
+            )));
+        }
+        tx.execute(
+            "UPDATE promotion_overlays SET status = ?2, overlay_json = ?3 WHERE version = ?1",
+            params![version, new_status, new_overlay_json],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Load a promotion overlay by version, as `(status, overlay_json)`.
+    pub fn load_promotion_overlay(
+        &self,
+        version: &str,
+    ) -> Result<Option<(String, String)>, PersistenceError> {
+        let row = self
+            .conn
+            .query_row(
+                "SELECT status, overlay_json FROM promotion_overlays WHERE version = ?1",
+                params![version],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()?;
+        Ok(row)
+    }
+
+    /// List every stored overlay version with its status, newest creation
+    /// first (`promotion list` shows the human the whole journal).
+    pub fn list_promotion_overlays(&self) -> Result<Vec<(String, String, i64)>, PersistenceError> {
+        let mut statement = self.conn.prepare_cached(
+            "SELECT version, status, created_at FROM promotion_overlays
+             ORDER BY created_at DESC, version ASC",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        })?;
+        let mut overlays = Vec::new();
+        for row in rows {
+            overlays.push(row?);
+        }
+        Ok(overlays)
+    }
+
+    /// The active overlay version (schema v14 singleton), if any.
+    pub fn load_active_promotion_overlay(&self) -> Result<Option<String>, PersistenceError> {
+        let version: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT overlay_version FROM promotion_active WHERE singleton = 1",
+                [],
+                |row| row.get(0),
+            )
+            .optional()?
+            .flatten();
+        Ok(version)
+    }
+
+    /// Move the active pointer to a stored overlay version (`release`
+    /// materializes the artifact and this makes it current; `rollback`
+    /// retires it). `overlay_version = None` clears the pointer at the root.
+    /// The target must exist and must be Released — pointing at a Draft would
+    /// promote unreviewed evidence into semantic authority.
+    pub fn set_active_promotion_overlay(
+        &self,
+        overlay_version: Option<&str>,
+        updated_at: i64,
+    ) -> Result<(), PersistenceError> {
+        let tx = self.conn.unchecked_transaction()?;
+        if let Some(version) = overlay_version {
+            let status: Option<String> = tx
+                .query_row(
+                    "SELECT status FROM promotion_overlays WHERE version = ?1",
+                    params![version],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            match status.as_deref() {
+                Some("Released") => {}
+                Some(other) => {
+                    return Err(PersistenceError::InvalidState(format!(
+                        "promotion overlay {version} has status {other:?}, not Released"
+                    )));
+                }
+                None => {
+                    return Err(PersistenceError::NotFound(format!(
+                        "promotion overlay {version}"
+                    )));
+                }
+            }
+        }
+        tx.execute(
+            "INSERT INTO promotion_active (singleton, overlay_version, updated_at)
+             VALUES (1, ?1, ?2)
+             ON CONFLICT(singleton) DO UPDATE SET
+                overlay_version=excluded.overlay_version,
+                updated_at=excluded.updated_at",
+            params![overlay_version, updated_at],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
     /// Get the current schema version.
     pub fn schema_version(&self) -> Result<i64, PersistenceError> {
         let version: i64 = self
@@ -1643,7 +1852,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 13);
+        assert_eq!(db.schema_version().unwrap(), 14);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -1742,7 +1951,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 13);
+            assert_eq!(db.schema_version().unwrap(), 14);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db
@@ -1949,7 +2158,7 @@ mod tests {
     }
 
     #[test]
-    fn v12_to_v13_creates_bridge_tables_without_touching_state() {
+    fn v12_to_current_creates_bridge_and_promotion_tables_without_touching_state() {
         let mut conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
             "CREATE TABLE runtime_sessions (id TEXT PRIMARY KEY, state_json TEXT NOT NULL,
@@ -1972,7 +2181,7 @@ mod tests {
         assert_eq!(
             conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))
                 .unwrap(),
-            13
+            db::migrations::CURRENT_SCHEMA_VERSION
         );
         // New tables exist and are empty.
         let bridge_edges: i64 = conn
@@ -1985,7 +2194,13 @@ mod tests {
                 r.get(0)
             })
             .unwrap();
-        assert_eq!((bridge_edges, quarantine), (0, 0));
+        let overlays: i64 = conn
+            .query_row("SELECT count(*) FROM promotion_overlays", [], |r| r.get(0))
+            .unwrap();
+        let active: i64 = conn
+            .query_row("SELECT count(*) FROM promotion_active", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!((bridge_edges, quarantine, overlays, active), (0, 0, 0, 0));
         // Existing session state untouched.
         let after: String = conn
             .query_row(
@@ -1999,6 +2214,110 @@ mod tests {
             conn.query_row("PRAGMA quick_check", [], |r| r.get::<_, String>(0))
                 .unwrap(),
             "ok"
+        );
+    }
+
+    #[test]
+    fn promotion_overlay_store_is_idempotent_and_cas_gated() {
+        let db = Persistence::open_memory().unwrap();
+        let version = "overlay-deadbeef";
+        let draft_json = r#"{"status":"Draft","predicates":[]}"#;
+        let activated_json = r#"{"status":"Activated","predicates":[]}"#;
+        let released_json = r#"{"status":"Released","predicates":[]}"#;
+
+        // First insert creates the row; an identical re-insert is a no-op.
+        assert!(db
+            .save_promotion_overlay(version, "Draft", "snap", None, "cs-1", draft_json, 100)
+            .unwrap());
+        assert!(!db
+            .save_promotion_overlay(version, "Draft", "snap", None, "cs-1", draft_json, 100)
+            .unwrap());
+        // A different content under the same version is a caller
+        // inconsistency (content address is violated), not an overwrite.
+        assert!(db
+            .save_promotion_overlay(version, "Draft", "snap", None, "cs-2", draft_json, 100)
+            .is_err());
+        assert_eq!(
+            db.load_promotion_overlay(version).unwrap(),
+            Some(("Draft".to_string(), draft_json.to_string()))
+        );
+
+        // CAS transition draft -> activated, pinned on the current blob.
+        db.replace_promotion_overlay_if_matches(
+            version,
+            draft_json,
+            "Activated",
+            activated_json,
+            "cs-1",
+        )
+        .unwrap();
+        // A stale expected blob loses the CAS and errors.
+        assert!(db
+            .replace_promotion_overlay_if_matches(
+                version,
+                draft_json,
+                "Released",
+                released_json,
+                "cs-1"
+            )
+            .is_err());
+        // A CAS that would change the content address fails closed.
+        assert!(db
+            .replace_promotion_overlay_if_matches(
+                version,
+                activated_json,
+                "Released",
+                released_json,
+                "cs-999"
+            )
+            .is_err());
+        db.replace_promotion_overlay_if_matches(
+            version,
+            activated_json,
+            "Released",
+            released_json,
+            "cs-1",
+        )
+        .unwrap();
+        assert_eq!(
+            db.load_promotion_overlay(version).unwrap().map(|row| row.0),
+            Some("Released".into())
+        );
+
+        // The active pointer refuses a Draft/Activated target and accepts a
+        // Released one; None clears it.
+        assert!(db
+            .set_active_promotion_overlay(Some("overlay-missing"), 200)
+            .is_err());
+        db.save_promotion_overlay(
+            "overlay-cafe",
+            "Draft",
+            "snap",
+            None,
+            "cs-2",
+            draft_json,
+            150,
+        )
+        .unwrap();
+        assert!(
+            db.set_active_promotion_overlay(Some("overlay-cafe"), 200)
+                .is_err(),
+            "a Draft is not authority"
+        );
+        db.set_active_promotion_overlay(Some(version), 200).unwrap();
+        assert_eq!(
+            db.load_active_promotion_overlay().unwrap().as_deref(),
+            Some(version)
+        );
+        db.set_active_promotion_overlay(None, 250).unwrap();
+        assert_eq!(db.load_active_promotion_overlay().unwrap(), None);
+
+        // List returns both overlays newest-creation first.
+        let listed = db.list_promotion_overlays().unwrap();
+        assert_eq!(listed.len(), 2);
+        assert_eq!(
+            listed[0].0, "overlay-cafe",
+            "created_at 150 > 100 sorts first"
         );
     }
 }
