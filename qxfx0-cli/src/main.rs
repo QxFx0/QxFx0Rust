@@ -359,6 +359,22 @@ enum PromotionAction {
         #[arg(long)]
         json: bool,
     },
+    /// Run the runtime A/B on an overlay and persist the trial row: two
+    /// snapshots of this database render every case topic once per arm
+    /// (candidate sessions carry the overlay as held positions). Legal
+    /// over any status; `approve` binds to the latest passing row of each
+    /// method for this exact content, so evaluate both legs first. The
+    /// operator database is never mutated by the trial.
+    EvaluateRuntime {
+        version: String,
+        /// Extra topics beyond the overlay's own predicates and the fixed
+        /// 12-topic evaluation set, comma-separated.
+        #[arg(long)]
+        topics: Option<String>,
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
     /// Revalidate an overlay under the current gate policy and baseline.
     /// Report-only: the stored row is never touched (release is permanent),
     /// the report is what the operator archives as the audit instrument.
@@ -1460,6 +1476,18 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Promotion { action } => {
+            // Like `export`: a runtime A/B never creates a database on a
+            // mistyped path — the trial snapshots a real operator
+            // database. Other promotion verbs keep their create-on-open
+            // behaviour; only the snapshot trial refuses.
+            if matches!(action, PromotionAction::EvaluateRuntime { .. })
+                && !std::path::Path::new(&cli.db).exists()
+            {
+                return Err(anyhow::anyhow!(
+                    "база данных не найдена: {} (evaluate-runtime не создаёт новую базу)",
+                    cli.db
+                ));
+            }
             let db = qxfx0_persistence::Persistence::open(&cli.db)?;
             match action {
                 PromotionAction::List { json } => {
@@ -1656,6 +1684,50 @@ fn main() -> anyhow::Result<()> {
                             trial.baseline_conflicts,
                             trial.candidate_refusals,
                             trial.baseline_refusals,
+                        );
+                    }
+                }
+                PromotionAction::EvaluateRuntime {
+                    version,
+                    topics,
+                    json,
+                } => {
+                    let extra: Vec<String> = topics
+                        .as_deref()
+                        .unwrap_or("")
+                        .split(',')
+                        .map(|topic| topic.trim().to_string())
+                        .filter(|topic| !topic.is_empty())
+                        .collect();
+                    let trial = PromotionSurface::evaluate_runtime(
+                        &db,
+                        &cli.db,
+                        &version,
+                        &extra,
+                        now_unix_seconds(),
+                    )?;
+                    if json {
+                        println!("{}", serde_json::to_string_pretty(&trial)?);
+                    } else if trial.passed {
+                        println!(
+                            "runtime A/B {} passed (regression {}/{}, overlay diverged {}, guard {})",
+                            trial.evaluation_id,
+                            trial.regression_identical,
+                            trial.regression_cases,
+                            trial.overlay_diverged,
+                            if trial.blocked_equal { "stable" } else { "DIVERGED" },
+                        );
+                    } else {
+                        println!(
+                            "runtime A/B {} FAILED (regression {}/{} identical, guard {})",
+                            trial.evaluation_id,
+                            trial.regression_identical,
+                            trial.regression_cases,
+                            if trial.blocked_equal {
+                                "stable"
+                            } else {
+                                "DIVERGED"
+                            },
                         );
                     }
                 }

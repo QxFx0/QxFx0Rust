@@ -1193,6 +1193,30 @@ impl Persistence {
         Ok(row)
     }
 
+    /// Method-scoped variant of [`Self::latest_passing_evaluation`]: the
+    /// newest passing row of one evaluation method (structural precheck vs
+    /// runtime A/B). `approve` binds to one row per method, so a passing
+    /// structural trial can never stand in for the runtime leg or back.
+    pub fn latest_passing_evaluation_for_method(
+        &self,
+        overlay_version: &str,
+        overlay_checksum: &str,
+        corpus_version: &str,
+    ) -> Result<Option<(String, i64)>, PersistenceError> {
+        let row = self
+            .conn
+            .query_row(
+                "SELECT evaluation_id, completed_at FROM promotion_evaluations
+                 WHERE overlay_version = ?1 AND overlay_checksum = ?2
+                   AND corpus_version = ?3 AND automated_passed = 1
+                 ORDER BY completed_at DESC, evaluation_id DESC LIMIT 1",
+                params![overlay_version, overlay_checksum, corpus_version],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+            )
+            .optional()?;
+        Ok(row)
+    }
+
     /// Get the current schema version.
     pub fn schema_version(&self) -> Result<i64, PersistenceError> {
         let version: i64 = self

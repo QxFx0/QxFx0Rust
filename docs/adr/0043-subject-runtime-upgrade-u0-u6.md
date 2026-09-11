@@ -10,8 +10,8 @@ quarantine + schema v13 + `bridge-maintain`, zero visible behavior change
 gated by corpus equality) — U5 in flight (U5.1 + U5.2 landed 2026-09-10/11: pure
 promotion boundary + v14/v15 store + CLI `promotion` with import source,
 admission bar, revalidation, structural corpus precheck and an
-evaluation-bound `approve`; the runtime-AB leg and the Haskell-corpus
-promotion-output feed remain) — see
+evaluation-bound `approve`; the Haskell-corpus
+promotion-output feed remains) — see
 `docs/operations/session-handoff-2026-08-23.md` for the running state
 
 ## Frame
@@ -179,7 +179,15 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   boundary's `prior_runtime_evaluation_id` precondition, operationalized.
   Remaining U5: the runtime-AB leg of the corpus evaluation (a separate
   method row for when an overlay can actually render) and the
-  Haskell-corpus promotion output feeding the editorial bar.
+  Haskell-corpus promotion output feeding the editorial bar. Landed
+  2026-09-11 as U5.3: `promotion-runtime-ab-01` renders every case topic
+  once per arm — pristine snapshot vs snapshot carrying the overlay as
+  held positions (the as-if-admitted operationalization; the operator DB
+  is never mutated) — over the overlay's topics plus the fixed 12-topic
+  set minus the overlay's as the regression baseline. Pass = regression
+  byte-identical AND guard-stable; overlay-topic divergence is recorded
+  signal, never gating. `approve` binds to the latest passing row of
+  EACH method for the exact checksum.
 - **U6 «Свидетельства»** — «Кодекс» grows from the practitioner's diary
   into a dual journal: the subject's positions tracked symmetrically with
   the practitioner's (contradictions, stability, refusals, memory shaping

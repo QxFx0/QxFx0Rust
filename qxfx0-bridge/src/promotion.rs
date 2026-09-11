@@ -755,6 +755,120 @@ pub fn run_corpus_precheck(
     }
 }
 
+/// One rendered A/B case: the same prompt in a pristine snapshot
+/// session (baseline) and in a snapshot session carrying the overlay's
+/// predicates as held positions (candidate). Equality is byte-exact —
+/// the harness runs both arms deterministically, so any drift is the
+/// overlay's doing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RuntimeAbCase {
+    pub prompt: String,
+    pub topic: String,
+    /// True for fixed regression topics (must render identically);
+    /// false for the overlay's own topics (divergence informational).
+    pub regression: bool,
+    pub baseline_response: String,
+    pub candidate_response: String,
+    pub responses_equal: bool,
+    pub baseline_blocked: bool,
+    pub candidate_blocked: bool,
+}
+
+/// A runtime A/B trial over one overlay: rendered-response equality
+/// between the overlay-free and overlay-carrying snapshots (the Haskell
+/// `promotion-runtime` analog, operationalized for a renderer that never
+/// reads promotion tables — the candidate arm carries the overlay as
+/// held positions, exactly what editorial admission would produce).
+/// `completed_at` is caller-supplied (never sampled).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RuntimeAbTrial {
+    pub evaluation_id: String,
+    pub overlay_version: String,
+    pub overlay_checksum: String,
+    pub corpus_version: String,
+    pub completed_at: i64,
+    pub cases: Vec<RuntimeAbCase>,
+    pub regression_cases: usize,
+    pub regression_identical: usize,
+    pub overlay_cases: usize,
+    pub overlay_diverged: usize,
+    pub blocked_equal: bool,
+    pub overlay_usage_cases: usize,
+    pub passed: bool,
+}
+
+/// The runtime-A/B method tag: this trial measures rendered responses,
+/// not coverage shape (the Haskell `promotion-runtime` analog). A
+/// separate method with its own version, exactly as the structural tag.
+pub const RUNTIME_AB_METHOD: &str = "promotion-runtime-ab-01";
+
+/// Run the runtime A/B verdict over caller-supplied render pairs. Pure:
+/// the caller owns snapshots, injection and rendering — the bridge only
+/// scores. Pass = every regression topic renders byte-identically AND
+/// guard behaviour matches across arms (the switch — here, the overlay
+/// as held positions — touches nothing about the guard). Overlay-topic
+/// divergence is expected signal (held positions get quoted), recorded
+/// but never gating. A trial with no regression baseline refuses: with
+/// nothing to compare against, "identical" would be vacuous.
+pub fn run_runtime_ab_trial(
+    overlay_version: &str,
+    overlay_checksum: &str,
+    cases: Vec<RuntimeAbCase>,
+    overlay_usage_cases: usize,
+    completed_at: i64,
+) -> RuntimeAbTrial {
+    let regression_cases = cases.iter().filter(|case| case.regression).count();
+    let regression_identical = cases
+        .iter()
+        .filter(|case| case.regression && case.responses_equal)
+        .count();
+    let overlay_cases = cases.len() - regression_cases;
+    let overlay_diverged = cases
+        .iter()
+        .filter(|case| !case.regression && !case.responses_equal)
+        .count();
+    let blocked_equal = cases
+        .iter()
+        .all(|case| case.baseline_blocked == case.candidate_blocked);
+    let passed = regression_cases >= 1 && regression_identical == regression_cases && blocked_equal;
+    let mut digest = Sha256::new();
+    digest.update(overlay_version.as_bytes());
+    digest.update([0x1f]);
+    digest.update(RUNTIME_AB_METHOD.as_bytes());
+    digest.update([0x1f]);
+    digest.update(completed_at.to_be_bytes());
+    digest.update([0x1f]);
+    digest.update(overlay_checksum.as_bytes());
+    for case in &cases {
+        digest.update([0x1f]);
+        digest.update(case.prompt.as_bytes());
+        digest.update([0x1f]);
+        digest.update(case.baseline_response.as_bytes());
+        digest.update([0x1f]);
+        digest.update(case.candidate_response.as_bytes());
+    }
+    let evaluation_id = digest
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    RuntimeAbTrial {
+        evaluation_id,
+        overlay_version: overlay_version.to_string(),
+        overlay_checksum: overlay_checksum.to_string(),
+        corpus_version: RUNTIME_AB_METHOD.into(),
+        completed_at,
+        cases,
+        regression_cases,
+        regression_identical,
+        overlay_cases,
+        overlay_diverged,
+        blocked_equal,
+        overlay_usage_cases,
+        passed,
+    }
+}
+
 impl Overlay {
     /// Verify the self-binding checksum survives a store round-trip (a tamper
     /// or corruption check on load).
@@ -1292,6 +1406,109 @@ mod tests {
         assert!(overlay.predicates.is_empty());
         assert_eq!(exclusions.len(), 1);
         assert_eq!(exclusions[0].1, ExclusionReason::NoCounterpoint);
+    }
+
+    fn ab_case(
+        prompt: &str,
+        topic: &str,
+        regression: bool,
+        baseline: &str,
+        candidate: &str,
+    ) -> RuntimeAbCase {
+        RuntimeAbCase {
+            prompt: prompt.to_string(),
+            topic: topic.to_string(),
+            regression,
+            baseline_response: baseline.to_string(),
+            candidate_response: candidate.to_string(),
+            responses_equal: baseline == candidate,
+            baseline_blocked: false,
+            candidate_blocked: false,
+        }
+    }
+
+    #[test]
+    fn runtime_ab_passes_on_identical_regression_with_overlay_signal() {
+        let trial = run_runtime_ab_trial(
+            "overlay-1",
+            "checksum",
+            vec![
+                ab_case("Что такое свобода?", "свобода", true, "ответ", "ответ"),
+                ab_case("Что такое память?", "память", true, "ответ", "ответ"),
+                ab_case("Что такое воля?", "воля", false, "база", "база + позиция"),
+            ],
+            2,
+            7,
+        );
+        assert!(trial.passed);
+        assert_eq!(trial.regression_cases, 2);
+        assert_eq!(trial.regression_identical, 2);
+        assert_eq!(trial.overlay_cases, 1);
+        assert_eq!(trial.overlay_diverged, 1);
+        assert!(trial.blocked_equal);
+        assert_eq!(trial.corpus_version, RUNTIME_AB_METHOD);
+        assert_eq!(trial.evaluation_id.len(), 64);
+    }
+
+    #[test]
+    fn runtime_ab_fails_on_regression_drift_or_guard_mismatch() {
+        let drifted = run_runtime_ab_trial(
+            "overlay-1",
+            "checksum",
+            vec![
+                ab_case(
+                    "Что такое свобода?",
+                    "свобода",
+                    true,
+                    "ответ",
+                    "другой ответ",
+                ),
+                ab_case("Что такое воля?", "воля", false, "база", "база"),
+            ],
+            1,
+            7,
+        );
+        assert!(!drifted.passed);
+        assert_eq!(drifted.regression_identical, 0);
+
+        let mut guarded = ab_case("Что такое свобода?", "свобода", true, "ответ", "ответ");
+        guarded.candidate_blocked = true;
+        guarded.candidate_response = "QxFx0: ответ отклонён системой безопасности.".into();
+        guarded.responses_equal = false;
+        let mismatch = run_runtime_ab_trial("overlay-1", "checksum", vec![guarded], 0, 7);
+        assert!(!mismatch.passed);
+        assert!(!mismatch.blocked_equal);
+    }
+
+    #[test]
+    fn runtime_ab_refuses_a_trial_with_no_regression_baseline() {
+        let vacuous = run_runtime_ab_trial(
+            "overlay-1",
+            "checksum",
+            vec![ab_case("Что такое воля?", "воля", false, "база", "база")],
+            1,
+            7,
+        );
+        assert!(!vacuous.passed, "vacuous identity must not pass");
+    }
+
+    #[test]
+    fn runtime_ab_id_binds_the_measured_outputs() {
+        let pairs = || {
+            vec![
+                ab_case("Что такое свобода?", "свобода", true, "ответ", "ответ"),
+                ab_case("Что такое воля?", "воля", false, "база", "база + позиция"),
+            ]
+        };
+        let first = run_runtime_ab_trial("overlay-1", "checksum", pairs(), 1, 7);
+        let second = run_runtime_ab_trial("overlay-1", "checksum", pairs(), 1, 7);
+        assert_eq!(first.evaluation_id, second.evaluation_id);
+        let mut altered = pairs();
+        altered[1].candidate_response = "другая позиция".into();
+        altered[1].responses_equal = false;
+        let third = run_runtime_ab_trial("overlay-1", "checksum", altered, 1, 7);
+        assert_ne!(first.evaluation_id, third.evaluation_id);
+        assert!(third.passed, "overlay-only divergence never gates");
     }
 
     #[test]

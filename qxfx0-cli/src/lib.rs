@@ -1243,14 +1243,33 @@ impl PromotionSurface {
         now: i64,
     ) -> anyhow::Result<qxfx0_bridge::Overlay> {
         let current = Self::load_overlay(db, version)?;
-        let bound = db.latest_passing_evaluation(&current.version, &current.checksum)?;
-        let Some((evaluation_id, _)) = bound else {
+        // Both empirical legs bind to this exact content: the structural
+        // precheck (coverage shape) and the runtime A/B (rendered
+        // responses). A passing row of one method never stands in for the
+        // other — the checksum pin keeps a re-draft from inheriting either
+        // verdict.
+        let structural = db.latest_passing_evaluation_for_method(
+            &current.version,
+            &current.checksum,
+            qxfx0_bridge::CORPUS_METHOD_STRUCTURAL,
+        )?;
+        if structural.is_none() {
             return Err(anyhow::anyhow!(
-                "no passing corpus evaluation is bound to overlay {version} \
+                "no passing structural evaluation is bound to overlay {version} \
                  (run `promotion evaluate {version}` first)"
             ));
-        };
-        let _ = evaluation_id;
+        }
+        let runtime = db.latest_passing_evaluation_for_method(
+            &current.version,
+            &current.checksum,
+            qxfx0_bridge::RUNTIME_AB_METHOD,
+        )?;
+        if runtime.is_none() {
+            return Err(anyhow::anyhow!(
+                "no passing runtime A/B is bound to overlay {version} \
+                 (run `promotion evaluate-runtime {version}` first)"
+            ));
+        }
         let current_json = serde_json::to_string(&current)?;
         let activated = current
             .activate(now)
@@ -1304,6 +1323,183 @@ impl PromotionSurface {
             now,
         );
         let details = serde_json::to_string(&trial.topics)?;
+        db.save_promotion_evaluation(qxfx0_persistence::PromotionEvaluationRow {
+            evaluation_id: &trial.evaluation_id,
+            overlay_version: &trial.overlay_version,
+            corpus_version: &trial.corpus_version,
+            completed_at: trial.completed_at,
+            overlay_checksum: &trial.overlay_checksum,
+            automated_passed: trial.passed,
+            overlay_usage_cases: trial.overlay_usage_cases as i64,
+            details_json: &details,
+        })?;
+        Ok(trial)
+    }
+
+    /// Run the runtime A/B of one overlay and persist the trial row: the
+    /// operator database is snapshotted twice into a temp directory (never
+    /// mutated by the trial), the candidate copy carries the overlay's
+    /// predicates as held positions in every scratch session (exactly what
+    /// editorial admission would produce), and each case topic renders
+    /// once per arm. Topics are the overlay's own predicate topics plus
+    /// the fixed 12-topic set (plus `--topics` extras); the fixed topics
+    /// minus the overlay's are the regression baseline. Idempotent by
+    /// content-addressed evaluation id. `db_path` is the operator
+    /// database file both roles address (control handle `db`, snapshot
+    /// source `db_path`).
+    pub fn evaluate_runtime(
+        db: &qxfx0_persistence::Persistence,
+        db_path: &str,
+        version: &str,
+        extra_topics: &[String],
+        now: i64,
+    ) -> anyhow::Result<qxfx0_bridge::RuntimeAbTrial> {
+        use qxfx0_types::system_state::{
+            CommitmentId, CommitmentOrigin, FactualClaimPayload, SemanticCommitmentStore,
+        };
+
+        struct TempDirGuard(std::path::PathBuf);
+        impl Drop for TempDirGuard {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        static NEXT_RTAB_DIR: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let sequence = NEXT_RTAB_DIR.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir =
+            std::env::temp_dir().join(format!("qxfx0-rtab-{}-{sequence}", std::process::id()));
+        let _guard = TempDirGuard(dir.clone());
+        std::fs::create_dir_all(&dir)
+            .map_err(|error| anyhow::anyhow!("snapshot directory failed: {error}"))?;
+        let baseline_path = dir.join("baseline.db");
+        let candidate_path = dir.join("candidate.db");
+        qxfx0_persistence::Persistence::backup_database(
+            db_path,
+            baseline_path.to_str().ok_or_else(|| {
+                anyhow::anyhow!("snapshot path is not utf-8: {}", baseline_path.display())
+            })?,
+        )
+        .map_err(|error| anyhow::anyhow!("baseline snapshot failed: {error}"))?;
+        qxfx0_persistence::Persistence::backup_database(
+            db_path,
+            candidate_path.to_str().ok_or_else(|| {
+                anyhow::anyhow!("snapshot path is not utf-8: {}", candidate_path.display())
+            })?,
+        )
+        .map_err(|error| anyhow::anyhow!("candidate snapshot failed: {error}"))?;
+
+        let overlay = Self::load_overlay(db, version)?;
+        let overlay_topics: std::collections::BTreeSet<String> = overlay
+            .predicates
+            .iter()
+            .map(|predicate| predicate.topic.clone())
+            .collect();
+        let mut topics = overlay_topics.clone();
+        topics.extend(
+            qxfx0_bridge::EVALUATION_TOPIC_SET
+                .iter()
+                .map(|topic| topic.to_string()),
+        );
+        for extra in extra_topics {
+            let normalized = extra.trim().to_lowercase();
+            if !normalized.is_empty() {
+                topics.insert(normalized);
+            }
+        }
+        let regression: std::collections::BTreeSet<String> = topics
+            .iter()
+            .filter(|topic| !overlay_topics.contains(*topic))
+            .cloned()
+            .collect();
+
+        // Candidate injection: every scratch session carries the whole
+        // overlay as held positions, so the regression arm measures
+        // confinement (same positions present, unrelated prompt) while
+        // the overlay arm measures the quoted signal. The commitment
+        // turn predates the trial turns (0 < 1): the position reads as
+        // held from an earlier turn, exactly what editorial admission
+        // would have produced.
+        let candidate_db =
+            qxfx0_persistence::Persistence::open(candidate_path.to_str().ok_or_else(|| {
+                anyhow::anyhow!("snapshot path is not utf-8: {}", candidate_path.display())
+            })?)
+            .map_err(|error| anyhow::anyhow!("candidate snapshot unreadable: {error}"))?;
+        let topic_list: Vec<String> = topics.iter().cloned().collect();
+        for (index, _) in topic_list.iter().enumerate() {
+            let session_id = format!("rtab-candidate-{index}");
+            let mut store = SemanticCommitmentStore::default();
+            for (id, predicate) in overlay.predicates.iter().enumerate() {
+                store.active.insert(
+                    CommitmentId(id),
+                    (
+                        FactualClaimPayload {
+                            statement: predicate.rendered_ru.clone(),
+                            confidence: predicate.confidence,
+                            origin: CommitmentOrigin::OriginManual,
+                            turn_seq: 1,
+                            deps: Vec::new(),
+                            topic: predicate.topic.clone(),
+                        },
+                        0,
+                    ),
+                );
+            }
+            store.next_id = overlay.predicates.len();
+            let mut state = SystemState {
+                session_id: session_id.clone(),
+                ..SystemState::default()
+            };
+            state.semantic.semantic_commitments = Some(store);
+            candidate_db
+                .save_state(&session_id, &state)
+                .map_err(|error| anyhow::anyhow!("candidate session setup failed: {error}"))?;
+        }
+
+        let baseline_db =
+            qxfx0_persistence::Persistence::open(baseline_path.to_str().ok_or_else(|| {
+                anyhow::anyhow!("snapshot path is not utf-8: {}", baseline_path.display())
+            })?)
+            .map_err(|error| anyhow::anyhow!("baseline snapshot unreadable: {error}"))?;
+        let day = (now.max(0) / 86_400) as u64;
+        let mut cases = Vec::with_capacity(topic_list.len());
+        for (index, topic) in topic_list.iter().enumerate() {
+            let prompt = format!("Что такое {topic}?");
+            let baseline_response = qxfx0_codex::journal::run_journal_turn(
+                &baseline_db,
+                &format!("rtab-baseline-{index}"),
+                &prompt,
+                day,
+                RendererAuthority::AuditedPlan,
+            )
+            .map_err(|error| anyhow::anyhow!("baseline turn failed on {topic}: {error}"))?;
+            let candidate_response = qxfx0_codex::journal::run_journal_turn(
+                &candidate_db,
+                &format!("rtab-candidate-{index}"),
+                &prompt,
+                day,
+                RendererAuthority::AuditedPlan,
+            )
+            .map_err(|error| anyhow::anyhow!("candidate turn failed on {topic}: {error}"))?;
+            let recovery = qxfx0_codex::felt::RECOVERY_RESPONSE;
+            cases.push(qxfx0_bridge::RuntimeAbCase {
+                prompt,
+                topic: topic.clone(),
+                regression: regression.contains(topic),
+                responses_equal: baseline_response == candidate_response,
+                baseline_blocked: baseline_response.trim() == recovery,
+                candidate_blocked: candidate_response.trim() == recovery,
+                baseline_response,
+                candidate_response,
+            });
+        }
+        let trial = qxfx0_bridge::run_runtime_ab_trial(
+            &overlay.version,
+            &overlay.checksum,
+            cases,
+            overlay.predicates.len(),
+            now,
+        );
+        let details = serde_json::to_string(&trial.cases)?;
         db.save_promotion_evaluation(qxfx0_persistence::PromotionEvaluationRow {
             evaluation_id: &trial.evaluation_id,
             overlay_version: &trial.overlay_version,
@@ -2782,13 +2978,33 @@ mod tests {
             "activation without a prior precheck must fail"
         );
 
-        // Draft -> evaluate -> approve -> release.
+        // Draft -> evaluate (both legs) -> approve -> release.
         let trial = PromotionSurface::evaluate(&db, &overlay.version, &[], 102).unwrap();
         assert!(
             trial.passed,
             "the admitted triple must survive its own precheck"
         );
-        let activated = PromotionSurface::approve(&db, &overlay.version, 103).unwrap();
+        // approve binds to both methods: structural alone must not open
+        // the activation door.
+        assert!(
+            PromotionSurface::approve(&db, &overlay.version, 103).is_err(),
+            "structural-only evaluation must not satisfy approve"
+        );
+        let ab =
+            PromotionSurface::evaluate_runtime(&db, &db_path, &overlay.version, &[], 103).unwrap();
+        assert!(
+            ab.passed,
+            "one admitted triple must not drift the regression corpus: {ab:?}"
+        );
+        assert_eq!(ab.corpus_version, qxfx0_bridge::RUNTIME_AB_METHOD);
+        assert!(ab.regression_cases >= 1);
+        assert_eq!(ab.regression_identical, ab.regression_cases);
+        assert!(ab.blocked_equal);
+        assert!(
+            ab.overlay_diverged >= 1,
+            "the held overlay position must surface on its own topic: {ab:?}"
+        );
+        let activated = PromotionSurface::approve(&db, &overlay.version, 104).unwrap();
         assert_eq!(activated.status, qxfx0_bridge::OverlayStatus::Activated);
         let released = PromotionSurface::release(&db, &overlay.version, 104).unwrap();
         assert_eq!(released.status, qxfx0_bridge::OverlayStatus::Released);

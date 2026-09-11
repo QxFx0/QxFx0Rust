@@ -374,9 +374,24 @@ a content-addressed trial row to the new v15 `promotion_evaluations`,
 and `promotion approve` binds to the latest trial that passed for this
 exact content (checksum-pinned; a re-draft cannot inherit an old verdict).
 `promotion revalidate` reports policy/baseline drift without touching a
-row. Remaining U5: the *runtime* AB leg of the corpus evaluation (a
-separate method row for when an overlay can actually render); the
-machine for it already exists in the row shape.
+row. Remaining U5: the Haskell-corpus promotion output feeding the
+editorial bar (the runtime-AB leg landed as U5.3 below).
+
+**U5.3 LANDED 2026-09-11** (full gate green): the runtime-A/B leg —
+`promotion-runtime-ab-01` as the second evaluation method. `promotion
+evaluate-runtime` snapshots the operator DB twice into temp (never
+mutated), carries the overlay as held positions (turn-0 commitments) in
+every candidate scratch session, and renders each case topic once per
+arm (`Что такое {topic}?`, audited-plan, day derived from
+`completed_at`): overlay topics plus the fixed 12-set, regression =
+fixed minus overlay's. Pass = regression byte-identical AND
+guard-stable across arms; overlay-topic divergence recorded, never
+gating. Trial rows persist in `promotion_evaluations` (content-
+addressed id binds the measured outputs); `approve` now binds to the
+latest passing row of EACH method for the exact checksum. Empirical
+proof the mechanism is real: the lifecycle test's admitted свобода
+triple quotes on its own topic while all 11 regression topics render
+identically. Remaining U5: only the Haskell-corpus feed.
 
 ### U6 — «Свидетельства»
 Dual journal (subject positions symmetric with practitioner positions),
@@ -459,8 +474,7 @@ tuning floor is complete: Conatus, Essence, Salience bit-faithful;
 Deliberation rule skeleton pinned with known boundaries. Next: the v2
 tuning itself (hysteresis per ADR-0044), then the probe re-run.
 
-### V2 tuning (ADR-0044 hysteresis, landed 2026-09-11)
-`qxfx0-self-v2::advance_essence` policy + topic threading in pipeline:
+### V2 tuning (ADR-0044 hysteresis, landed 2026-09-11)`qxfx0-self-v2::advance_essence` policy + topic threading in pipeline:
 violation decay (admissible same-topic turn decays, not zeroes),
 per-topic commitments (counter moves only on the commitment's topic;
 pre-tuning `None` stays universal), lifetime budget (default 3, crossings
