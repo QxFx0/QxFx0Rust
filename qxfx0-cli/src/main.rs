@@ -243,6 +243,32 @@ enum Commands {
         #[arg(long)]
         passphrase: Option<String>,
     },
+    /// Flip proposal (ADR-0043 U6.2): draft the machine-checkable evidence
+    /// pack that earns a v2-authority flip *proposal* — five rubrics over
+    /// FELT exports plus a live B2 verdict-procedure re-run. The draft
+    /// never flips anything: the migration itself is a human-reviewed
+    /// code change.
+    FlipDraft {
+        /// FELT evidence files (one or more `felt-export` outputs)
+        #[arg(long, required = true, num_args = 1..)]
+        felt: Vec<PathBuf>,
+        /// Prompt TSV for the B2 re-run (first column, `#` comments skipped)
+        #[arg(long, value_name = "PATH")]
+        prompts: PathBuf,
+        /// Passphrase of the FELT exports' HMAC signatures, when signed
+        #[arg(long)]
+        passphrase: Option<String>,
+        /// Write the proposal JSON to a new file; existing files are never overwritten
+        #[arg(long, value_name = "PATH")]
+        out: PathBuf,
+    },
+    /// Flip proposal (ADR-0043 U6.2): verify a drafted proposal by
+    /// recomputing the five rubrics over the embedded evidence (no files,
+    /// no database, no B2 re-run)
+    FlipVerify {
+        /// Path to the drafted proposal file
+        path: PathBuf,
+    },
     /// Show version
     Version,
     /// Code orchestration — find functions by natural language description
@@ -1229,6 +1255,100 @@ fn main() -> anyhow::Result<()> {
             } else {
                 Err(anyhow::anyhow!(
                     "свидетельства НЕ прошли проверку: {}",
+                    verification
+                        .failure
+                        .unwrap_or_else(|| "неизвестная причина".into())
+                ))
+            }
+        }
+        Commands::FlipDraft {
+            felt,
+            prompts,
+            passphrase,
+            out,
+        } => {
+            let mut markdowns = Vec::with_capacity(felt.len());
+            for path in &felt {
+                markdowns.push(std::fs::read_to_string(path).map_err(|error| {
+                    anyhow::anyhow!("не удалось прочитать {}: {error}", path.display())
+                })?);
+            }
+            let tsv = std::fs::read_to_string(&prompts).map_err(|error| {
+                anyhow::anyhow!("не удалось прочитать {}: {error}", prompts.display())
+            })?;
+            let prompt_list = qxfx0_pipeline::b2_report::parse_b2_prompts(&tsv);
+            if prompt_list.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "в {} нет ни одного промпта: нужны строки с текстом",
+                    prompts.display()
+                ));
+            }
+            let refs: Vec<&str> = markdowns.iter().map(String::as_str).collect();
+            let proposal = qxfx0_cli::codex::flip::draft_flip_proposal(
+                &refs,
+                &prompt_list,
+                passphrase.as_deref(),
+            )
+            .map_err(|error| anyhow::anyhow!("черновик не собран: {error}"))?;
+            let json = qxfx0_cli::codex::flip::render_flip_proposal(&proposal);
+            // Proposals are never silently overwritten.
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&out)
+                .map_err(|error| {
+                    anyhow::anyhow!(
+                        "не удалось создать {}: {error} (существующие файлы не перезаписываются)",
+                        out.display()
+                    )
+                })?;
+            use std::io::Write;
+            file.write_all(json.as_bytes())?;
+            println!(
+                "Черновик записан: {} — сессий {}, рубрики: {}",
+                out.display(),
+                proposal.sessions.len(),
+                proposal
+                    .rubrics
+                    .iter()
+                    .map(|outcome| format!(
+                        "{} {}",
+                        outcome.rubric,
+                        if outcome.passed { "✓" } else { "✗" }
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+            println!(
+                "Готовность: {}",
+                if proposal.ready {
+                    "предложение к flip готово — дальше человеческое ревью"
+                } else {
+                    "не готово — см. детали рубрик"
+                }
+            );
+            println!("Проверка: qxfx0 flip-verify {}", out.display());
+            Ok(())
+        }
+        Commands::FlipVerify { path } => {
+            let json = std::fs::read_to_string(&path).map_err(|error| {
+                anyhow::anyhow!("не удалось прочитать {}: {error}", path.display())
+            })?;
+            let verification = qxfx0_cli::codex::flip::verify_flip_proposal(&json);
+            if verification.verified() {
+                println!(
+                    "Предложение подтверждено: сессий {}, готовность: {}",
+                    verification.sessions,
+                    if verification.ready {
+                        "готово к человеческому ревью"
+                    } else {
+                        "не готово"
+                    }
+                );
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!(
+                    "предложение НЕ прошло проверку: {}",
                     verification
                         .failure
                         .unwrap_or_else(|| "неизвестная причина".into())

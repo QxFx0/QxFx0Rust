@@ -3,6 +3,7 @@
 //! 7 stages: Prepare → Route → PlanShadow → Render → Finalize → Guard → Persist.
 //! No async, no Tokio, no external middleware — pure synchronous call chain.
 
+pub mod b2_report;
 #[cfg(test)]
 mod conjugate_pipeline;
 pub mod conversation_fsm;

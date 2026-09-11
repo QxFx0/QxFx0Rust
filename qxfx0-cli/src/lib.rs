@@ -1765,6 +1765,21 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
+    // Flip readiness invariants (ADR-0043 U6.2): the proposal thresholds
+    // (plural sustained sessions, violation bound one below the B2
+    // hysteresis window) must stay coherent, or a drifted constant could
+    // put an unearned flip proposal on the table.
+    let flip_violations = qxfx0_codex::flip::validate_flip_invariants();
+    report.checks.push(DoctorCheck {
+        name: "Flip readiness",
+        passed: flip_violations.is_empty(),
+        details: if flip_violations.is_empty() {
+            "five rubrics intact; plural sustained sessions; violation bound one below the hysteresis window".into()
+        } else {
+            flip_violations.join("; ")
+        },
+    });
+
     report
 }
 
@@ -2563,7 +2578,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 18);
+        assert_eq!(report.checks.len(), 19);
         assert!(report
             .checks
             .iter()
@@ -2580,6 +2595,10 @@ mod tests {
             .checks
             .iter()
             .any(|check| check.name == "Felt evidence" && check.passed));
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.name == "Flip readiness" && check.passed));
         let content_assets = report
             .checks
             .iter()

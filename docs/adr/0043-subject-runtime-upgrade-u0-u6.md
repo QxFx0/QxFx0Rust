@@ -201,10 +201,27 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   re-evaluates the same pure core with no database (diary stays the replay
   truth, FELT the gate truth, `session_digest` cross-checks the two);
   `felt-export` never refuses a thin session — testifying «not proven» is
-  the tool's job. `validate_felt_invariants` rides the doctor `Felt
-  evidence` check (checks 17 → 18). Remaining U6: U6.2 flip criteria —
-  what sustained FELT verdict over how many sessions earns a flip
-  proposal, and the B2 rubric bindings.
+  the tool's job.   `validate_felt_invariants` rides the doctor `Felt evidence` check
+  (checks 17 → 18). Landed 2026-09-11 as U6.2 on top: the flip criteria
+  and the B2 rubric bindings. The B2 verdict procedure
+  (`b2_ablation_probe`: corpus legs in fresh sessions plus the 8×8
+  challenged свобода long leg, both arms) is now a deterministic library
+  function (`qxfx0-pipeline::b2_report::run_b2_report`, corpus pinned by
+  SHA-256, means rounded to 4dp) with the probe example as a thin
+  printer — the human re-run and the machine proposal can never diverge.
+  `qxfx0-codex::flip` drafts the machine-checkable flip proposal: five
+  rubrics over verified FELT exports (≥5 distinct sustained sessions
+  with ≥10 turns each; pass counts recorded, not gating) plus a live B2
+  re-run (enabled arm commits ≥1, violation max-run below the hysteresis
+  window — derived as one below the v2 default, coupling locked by a
+  pipeline test — ablated control suppresses without violating, guard
+  blocks match across arms). `flip-draft`/`flip-verify` are the artifact
+  pair (verify recomputes with no files, no DB, no re-run);
+  `validate_flip_invariants` rides the doctor `Flip readiness` check
+  (checks 18 → 19). The draft never flips anything: the migration itself
+  stays a human-reviewed code change, and human release is permanent.
+  U6 is now complete; the flip awaits a real sustained practice plus a
+  v2 tuning that the probe blesses.
 
 ## Anti-goals
 

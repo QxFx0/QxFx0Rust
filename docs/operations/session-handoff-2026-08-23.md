@@ -399,6 +399,18 @@ never refuses a thin session («not proven» is the testimony).
 `validate_felt_invariants` rides doctor `Felt evidence` (17 → 18 checks).
 Remaining: U6.2 flip criteria + B2 rubric bindings.
 
+**U6.2 LANDED 2026-09-11** (full gate green, doctor 19/19): the B2
+verdict procedure is a deterministic library (`b2_report::run_b2_report`
+in pipeline; probe example now a thin printer with byte-identical
+output), and `qxfx0-codex::flip` drafts the machine-checkable flip
+proposal — five rubrics (felt-sustained ≥5 distinct ≥10-turn sessions;
+b2-enabled-commits; b2-violations-bounded below the hysteresis window;
+b2-ablation-control; b2-guard-stable) over verified FELT exports plus a
+live B2 re-run. CLI `flip-draft`/`flip-verify`; doctor `Flip readiness`
+(18 → 19). The draft never flips: migration stays a human-reviewed
+change. U6 complete; the flip awaits sustained practice + a blessed v2
+tuning.
+
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).

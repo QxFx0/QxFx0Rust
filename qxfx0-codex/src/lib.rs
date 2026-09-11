@@ -14,6 +14,7 @@
 
 pub mod dual_journal;
 pub mod felt;
+pub mod flip;
 pub mod journal;
 
 use qxfx0_pipeline::RendererAuthority;
