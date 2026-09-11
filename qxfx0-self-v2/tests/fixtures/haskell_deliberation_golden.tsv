@@ -1,0 +1,28 @@
+# Deliberation golden cases — Haskell reference output (cross-twin conformance,
+# ADR-0043 U6 follow-up; fourth parity target: QxFx0.Self.Deliberation reconcile).
+#
+# Provenance (read-only against the Haskell tree; nothing was written there):
+#   repo:   ~/my-haskell-project/QxFx0 @ 7cbc0ba (src/QxFx0/Self/* clean)
+#   script: /tmp/gen_deliberation_parity.hs (8 cases over the shared family×recovery
+#           subset: style/tone pinned equal, recovery None/Gate only, courtesy None)
+#   build:  cabal exec -- ghc -isrc -outputdir /tmp/hs-parity-delib \
+#             /tmp/gen_deliberation_parity.hs -o /tmp/gen_deliberation_parity
+#   run:    LD_LIBRARY_PATH=<gf .libpgf>:<gf-core .libs> /tmp/gen_deliberation_parity
+# DOCUMENTED DIVERGENCES (port reduced the vocabulary; tuning decides, parity records):
+#   - divergence divisor: count/4 (Haskell, 4 axes) vs count/2 (Rust, 2 axes);
+#     the value is compared only when divcmp=1 (identical plans, 0.0 both)
+#   - agreement classes DivergeOnStyle/DivergeOnTone unreachable in Rust (no style/
+#     tone axes); recovery ladder 10 rungs vs 3 buckets (picks agree on None/Gate)
+#   - ConatusOverride reconciled plan: Haskell keeps the formal plan, Rust builds
+#     CMRepair fresh (gate-driver cases compare rule/agreement/divergence only)
+#
+# Columns: case hfam hconf hrec ffam fconf frec bias conf driver <TAB>
+#   rule agree div fam conf rec divcmp
+case1 reflect 0.5 none reflect 0.7 none 0.5 0.5 resonance	RuleAgreement	Agree	0.0	CMReflect	0.7	Nothing	1
+case2 reflect 0.5 none define 0.7 none 0.5 0.5 resonance	RuleFormalAdvantage	DivergeOnFamily	0.25	CMDefine	0.7	Nothing	0
+case3 reflect 0.5 none define 0.7 none 0.9 0.6 resonance	RuleHolisticAdvantage	DivergeOnFamily	0.25	CMReflect	0.5	Nothing	0
+case4 define 0.5 none define 0.7 gate 0.5 0.5 resonance	RuleTiedFallback	DivergeOnRecovery	0.25	CMDefine	0.7	Just RecoveryConatusGate	0
+case5 reflect 0.5 none reflect 0.7 none 0.0 1.0 gate	RuleConatusOverride	Agree	0.0	CMReflect	1.0	Just RecoveryConatusGate	0
+case6 reflect 0.5 none define 0.7 none 0.9 0.9 resonance	RuleSalienceLead	DivergeOnFamily	0.25	CMReflect	0.5	Nothing	0
+case7 reflect 0.5 none define 0.7 none 0.1 0.9 resonance	RuleSalienceLead	DivergeOnFamily	0.25	CMDefine	0.7	Nothing	0
+case8 define 0.5 gate define 0.7 gate 0.5 0.5 resonance	RuleAgreement	Agree	0.0	CMDefine	0.7	Just RecoveryConatusGate	1

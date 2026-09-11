@@ -443,6 +443,22 @@ calibration and `adaptSalienceWeights` stay out of scope (Phase-7
 territory). Remaining parity: Deliberation — then the tuning floor is
 complete.
 
+Fourth target landed 2026-09-11: Deliberation golden cases —
+`qxfx0-self-v2/tests/fixtures/haskell_deliberation_golden.tsv` holds 8
+real Haskell rows over the shared family×recovery subset (style/tone
+pinned equal, recovery None/Gate, courtesy None): all five rule paths
+(Agreement, Holistic/ FormalAdvantage, SalienceLead both sides,
+TiedFallback, ConatusOverride) with agreement, reconciled
+family/confidence/recovery all matching. The port's vocabulary
+reduction is now recorded truth, not suspicion: divergence divisor
+count/4 vs count/2 (values compared only at 0.0), Style/Tone agreement
+classes unreachable in Rust, recovery ladder 10 rungs vs 3 buckets
+(picks agree on None/Gate), ConatusOverride reconciled plan
+structurally diverged (rule/agreement compare, plan doesn't). The
+tuning floor is complete: Conatus, Essence, Salience bit-faithful;
+Deliberation rule skeleton pinned with known boundaries. Next: the v2
+tuning itself (hysteresis per ADR-0044), then the probe re-run.
+
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).
