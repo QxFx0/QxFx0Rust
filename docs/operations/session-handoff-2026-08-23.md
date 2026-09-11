@@ -433,6 +433,16 @@ documented in the fixture: witness hashes are per-twin encodings
 twins) and `validatePlan` needs family/tone/style mapping (later
 target). Remaining parity: Salience, then Deliberation.
 
+Third target landed 2026-09-11: Salience golden cases —
+`qxfx0-self-v2/tests/fixtures/haskell_salience_golden.tsv` holds 14 real
+Haskell rows (`computeSelfVerdict` under builtin weights: gate fire and
+boundary, all-zero, dominance, magnitude ties, both extremes, content
+signal, dead band both sides, saturation), replayed natively at 1e-12
+(bias, confidence, driver tag, dispatch verdict + margin). Weight
+calibration and `adaptSalienceWeights` stay out of scope (Phase-7
+territory). Remaining parity: Deliberation — then the tuning floor is
+complete.
+
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).

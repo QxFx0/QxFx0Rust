@@ -1,0 +1,31 @@
+# Salience golden cases — Haskell reference output (cross-twin conformance,
+# ADR-0043 U6 follow-up; third parity target: QxFx0.Self.Salience controller).
+#
+# Provenance (read-only against the Haskell tree; nothing was written there):
+#   repo:   ~/my-haskell-project/QxFx0 @ 7cbc0ba (src/QxFx0/Self/* clean)
+#   script: /tmp/gen_salience_parity.hs (14 cases: gate fire/boundary, zero,
+#           dominance, ties, extremes, content signal, dead band both sides,
+#           saturation; builtin weights only — calibration is Phase-7 territory)
+#   build:  cabal exec -- ghc -isrc -outputdir /tmp/hs-parity-salience \
+#             /tmp/gen_salience_parity.hs -o /tmp/gen_salience_parity
+#   run:    LD_LIBRARY_PATH=<gf .libpgf>:<gf-core .libs> /tmp/gen_salience_parity
+# NOT pinned: weight calibration (Phase 7), adaptSalienceWeights (bounded
+# mechanics with no empirical signal yet — later target).
+#
+# Columns: case conatus res aro val conf cfl cf content <TAB>
+#   bias confidence driver verdict_tag verdict_margin
+# (Haskell Show spellings, exact).
+case1 -2.5 0.5 0.5 0.0 0.5 0.5 0.5 0.0	0.0	1.0	DrivenByConatusGate	PreferFormal	1.0
+case2 0.0 0.5 0.5 0.0 0.5 0.5 0.5 0.0	0.6224593312018546	0.5	DrivenByResonance	PreferHolistic	0.6224593312018546
+case3 1.0e-3 0.5 0.5 0.0 0.5 0.5 0.5 0.0	0.6224593312018546	0.5	DrivenByResonance	PreferHolistic	0.6224593312018546
+case4 5.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0	0.5	1.0	DrivenByDefault	Tied	0.0
+case5 5.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0	0.7310585786300049	1.0	DrivenByResonance	PreferHolistic	0.7310585786300049
+case6 5.0 1.0 2.0 0.0 0.0 0.0 0.0 0.0	0.8807970779778823	0.8	DrivenByResonance	PreferHolistic	0.8807970779778823
+case7 5.0 0.5 1.0 0.0 0.0 0.0 0.0 0.0	0.7310585786300049	0.8	DrivenByResonance	PreferHolistic	0.7310585786300049
+case8 5.0 1.0 1.0 0.0 0.0 0.0 1.0 0.0	0.9046505351008906	0.75	DrivenByResonance	PreferHolistic	0.9046505351008906
+case9 5.0 0.0 0.0 0.0 1.0 1.0 0.0 0.0	0.22270013882530884	0.8666666666666667	DrivenByConsolidation	PreferFormal	0.7772998611746912
+case10 5.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0	0.6456563062257954	1.0	DrivenByContentSaliency	PreferHolistic	0.6456563062257954
+case11 5.0 -1.0 0.0 0.0 0.0 0.0 0.0 0.0	0.2689414213699951	1.0	DrivenByResonance	PreferFormal	0.7310585786300049
+case12 5.0 0.0 0.0 0.0 0.0 0.0 0.0 8.0e-2	0.5119976965307179	1.0	DrivenByContentSaliency	Tied	0.0
+case13 5.0 0.0 0.0 0.0 0.0 0.0 0.0 0.5	0.574442516811659	1.0	DrivenByContentSaliency	PreferHolistic	0.574442516811659
+case14 5.0 100.0 100.0 0.0 0.0 0.0 100.0 0.0	1.0	0.75	DrivenByResonance	PreferHolistic	1.0
