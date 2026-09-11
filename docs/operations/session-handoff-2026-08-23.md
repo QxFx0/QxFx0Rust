@@ -411,6 +411,16 @@ live B2 re-run. CLI `flip-draft`/`flip-verify`; doctor `Flip readiness`
 change. U6 complete; the flip awaits sustained practice + a blessed v2
 tuning.
 
+### Cross-twin parity (post-U6, pre-tuning)
+First target landed 2026-09-11: Conatus golden parity —
+`qxfx0-self-v2/tests/fixtures/haskell_conatus_golden.tsv` holds 12 real
+Haskell vectors (`QxFx0.Self.Conatus` @ `~/my-haskell-project/QxFx0`
+7cbc0ba, generator in `/tmp`, tree untouched), pinned by
+`conatus_haskell_parity.rs` at 1e-12 relative. The port is bit-faithful;
+v2 tuning now has a floor it cannot silently redefine. Next targets, in
+order: Essence advance/commitment/violation dynamics, then Salience,
+then Deliberation.
+
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).
