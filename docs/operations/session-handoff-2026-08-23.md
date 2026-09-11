@@ -421,6 +421,18 @@ v2 tuning now has a floor it cannot silently redefine. Next targets, in
 order: Essence advance/commitment/violation dynamics, then Salience,
 then Deliberation.
 
+Second target landed 2026-09-11: Essence golden trajectories —
+`qxfx0-self-v2/tests/fixtures/haskell_essence_golden.tsv` holds 31 real
+Haskell rows over two scripted scenarios (A: angst accrual → 0.75-fire,
+override-hold, decay, sub-floor hold, band edges, erosion-window miss;
+B: full 8-window conatus erosion fire, window-break recovery), replayed
+natively step-for-step (`witness` → angst/floor/count/stored bands →
+`shouldCommit` → `extractMode`) at 1e-12. Two honest boundaries
+documented in the fixture: witness hashes are per-twin encodings
+(aeson-generic `ew-` names vs serde snake_case, never compared across
+twins) and `validatePlan` needs family/tone/style mapping (later
+target). Remaining parity: Salience, then Deliberation.
+
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).
