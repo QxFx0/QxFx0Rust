@@ -350,8 +350,8 @@ mod tests {
                 &mut trajectory,
             );
         }
-        let first = commit(10, CommitmentTrigger::ConatusErosion, &trajectory);
-        let second = commit(11, CommitmentTrigger::AngstThreshold, &trajectory);
+        let first = commit(10, CommitmentTrigger::ConatusErosion, None, &trajectory);
+        let second = commit(11, CommitmentTrigger::AngstThreshold, None, &trajectory);
         // Same witnesses → same hash regardless of trigger/turn.
         assert_eq!(first.witness_hash, second.witness_hash);
         assert!(first.witness_hash.starts_with("sha256:"));
@@ -359,7 +359,7 @@ mod tests {
         // Any tampering changes the hash.
         let mut tampered = trajectory.clone();
         tampered.witnesses[0].divergence += 0.5;
-        let third = commit(10, CommitmentTrigger::ConatusErosion, &tampered);
+        let third = commit(10, CommitmentTrigger::ConatusErosion, None, &tampered);
         assert_ne!(first.witness_hash, third.witness_hash);
     }
 
@@ -408,7 +408,7 @@ mod tests {
                 &mut trajectory,
             );
         }
-        let commitment = commit(5, CommitmentTrigger::AngstThreshold, &trajectory);
+        let commitment = commit(5, CommitmentTrigger::AngstThreshold, None, &trajectory);
         let committed = Essence::Committed(trajectory, commitment);
         let (reset, event) = collapse_essence_at(6, committed);
         assert_eq!(event.turn, 6);
@@ -429,6 +429,7 @@ mod tests {
             trigger: CommitmentTrigger::ConatusErosion,
             committed_at: 9,
             witness_hash: "sha256:test".into(),
+            topic: None,
         };
         assert_eq!(
             validate_plan(&commitment, CanonicalMoveFamily::CMRepair),
@@ -462,6 +463,7 @@ mod tests {
                     field: &field_mid(),
                     trace: &accrue,
                     proposed_family: CanonicalMoveFamily::CMReflect,
+                    topic: None,
                 },
                 &mut essence,
             );
@@ -491,6 +493,7 @@ mod tests {
                     field: &field_mid(),
                     trace: &accrue,
                     proposed_family: CanonicalMoveFamily::CMReflect,
+                    topic: None,
                 },
                 &mut enabled,
             );
@@ -521,6 +524,7 @@ mod tests {
                     // violation.
                     proposed_family: CanonicalMoveFamily::CMReflect,
                     trace: &accrue,
+                    topic: None,
                 },
                 &mut essence,
             );
@@ -542,6 +546,7 @@ mod tests {
                 field: &field_mid(),
                 trace: &accrue,
                 proposed_family: CanonicalMoveFamily::CMDistinguish,
+                topic: None,
             },
             &mut essence,
         );
@@ -572,6 +577,7 @@ mod tests {
                     field: &field_mid(),
                     trace: &accrue,
                     proposed_family: CanonicalMoveFamily::CMReflect,
+                    topic: None,
                 },
                 &mut essence,
             );
@@ -603,6 +609,7 @@ mod tests {
                 // CMDistinguish is inadmissible for the dialogical mode
                 // the accrue trajectory extracts.
                 proposed_family: CanonicalMoveFamily::CMDistinguish,
+                topic: None,
             },
             essence,
         )
@@ -638,7 +645,7 @@ mod tests {
     }
 
     #[test]
-    fn admissible_turn_resets_the_violation_counter() {
+    fn admissible_turn_decays_the_violation_counter() {
         let modulation = EssenceModulation::default();
         let window = modulation.violation_release_window;
         let mut essence = commit_dialogical(&modulation);
@@ -652,8 +659,10 @@ mod tests {
                 .violation
                 .is_some());
         }
-        // One admissible turn resets the counter: a further window-1
-        // violations must not release.
+        // ADR-0044 tuning: one admissible turn decays the counter by
+        // `violation_decay_step` instead of zeroing it (7 → 6 with
+        // defaults), so a mostly-violating trajectory still drifts toward
+        // release instead of starting over.
         advance_essence(
             &modulation,
             EssenceAblation::Enabled,
@@ -663,18 +672,210 @@ mod tests {
                 field: &field_mid(),
                 trace: &accrue,
                 proposed_family: CanonicalMoveFamily::CMReflect,
+                topic: None,
             },
             &mut essence,
         );
+        let first = violating_summary(&modulation, &mut essence, 200);
+        assert!(first.violation.is_some());
+        assert!(
+            !first.released_commitment,
+            "decayed counter (7) must not release yet"
+        );
+        let second = violating_summary(&modulation, &mut essence, 201);
+        assert!(second.violation.is_some());
+        assert!(
+            second.released_commitment,
+            "decayed counter must reach the window one violation sooner"
+        );
+        assert!(matches!(essence, Essence::Uncommitted(_)));
+    }
+
+    #[test]
+    fn violations_count_only_on_the_commitment_topic() {
+        fn scoped_advance(
+            modulation: &EssenceModulation,
+            essence: &mut Essence,
+            turn: usize,
+            family: CanonicalMoveFamily,
+            topic: Option<&str>,
+        ) -> EssenceAdvanceTrace {
+            advance_essence(
+                modulation,
+                EssenceAblation::Enabled,
+                EssenceTurnInput {
+                    turn_ordinal: turn,
+                    conatus: eroded_conatus(),
+                    field: &field_mid(),
+                    trace: &trace(
+                        ReconcileRule::RuleHolisticAdvantage,
+                        Agreement::PartialAgreement,
+                        0.8,
+                    ),
+                    proposed_family: family,
+                    topic,
+                },
+                essence,
+            )
+        }
+        let modulation = EssenceModulation::default();
+        let window = modulation.violation_release_window;
+        // Commit on "память": CMReflect is admissible for the Dialogical
+        // mode a holistic-advantage trajectory extracts.
+        let mut essence = empty_essence();
+        for turn in 0..16 {
+            scoped_advance(
+                &modulation,
+                &mut essence,
+                turn,
+                CanonicalMoveFamily::CMReflect,
+                Some("память"),
+            );
+        }
+        let Essence::Committed(_, commitment) = &essence else {
+            panic!("expected a commitment after 16 accruing turns");
+        };
+        assert_eq!(commitment.topic.as_deref(), Some("память"));
+        // Seven violations on another topic are recorded but never
+        // counted: the counter must not move.
         for turn in 0..window - 1 {
-            let summary = violating_summary(&modulation, &mut essence, 200 + turn);
-            assert!(summary.violation.is_some());
+            let summary = scoped_advance(
+                &modulation,
+                &mut essence,
+                100 + turn,
+                CanonicalMoveFamily::CMDistinguish,
+                Some("внимание"),
+            );
+            assert!(
+                summary.violation.is_some(),
+                "cross-topic violation recorded"
+            );
             assert!(
                 !summary.released_commitment,
-                "reset counter must not reach the window"
+                "cross-topic violations must never release"
             );
         }
         assert!(matches!(essence, Essence::Committed(_, _)));
+        // Same-topic violations count from zero: a full window releases.
+        for turn in 0..window {
+            let summary = scoped_advance(
+                &modulation,
+                &mut essence,
+                200 + turn,
+                CanonicalMoveFamily::CMDistinguish,
+                Some("память"),
+            );
+            assert!(summary.violation.is_some());
+            assert_eq!(
+                summary.released_commitment,
+                turn == window - 1,
+                "release exactly on the window's last same-topic violation"
+            );
+        }
+        assert!(matches!(essence, Essence::Uncommitted(_)));
+    }
+
+    #[test]
+    fn unscoped_commitment_counts_every_topic() {
+        // Pre-tuning commitments (topic None) stay universal: a scoped
+        // turn still moves the counter. Old snapshots behave as before.
+        let modulation = EssenceModulation::default();
+        let window = modulation.violation_release_window;
+        let mut essence = commit_dialogical(&modulation);
+        for turn in 0..window {
+            let summary = advance_essence(
+                &modulation,
+                EssenceAblation::Enabled,
+                EssenceTurnInput {
+                    turn_ordinal: turn,
+                    conatus: eroded_conatus(),
+                    field: &field_mid(),
+                    trace: &trace(
+                        ReconcileRule::RuleHolisticAdvantage,
+                        Agreement::PartialAgreement,
+                        0.8,
+                    ),
+                    proposed_family: CanonicalMoveFamily::CMDistinguish,
+                    topic: Some("любая тема"),
+                },
+                &mut essence,
+            );
+            assert!(summary.violation.is_some());
+            assert_eq!(summary.released_commitment, turn == window - 1);
+        }
+        assert!(matches!(essence, Essence::Uncommitted(_)));
+    }
+
+    #[test]
+    fn commitment_budget_suppresses_recommit_after_churn() {
+        let modulation = EssenceModulation {
+            max_lifetime_commits: 1,
+            ..EssenceModulation::default()
+        };
+        let accrue = trace(
+            ReconcileRule::RuleHolisticAdvantage,
+            Agreement::PartialAgreement,
+            0.8,
+        );
+        // Spend the single-commit budget, then release it through a full
+        // window of violations.
+        let mut essence = empty_essence();
+        for turn in 0..16 {
+            advance_essence(
+                &modulation,
+                EssenceAblation::Enabled,
+                EssenceTurnInput {
+                    turn_ordinal: turn,
+                    conatus: eroded_conatus(),
+                    field: &field_mid(),
+                    trace: &accrue,
+                    proposed_family: CanonicalMoveFamily::CMReflect,
+                    topic: None,
+                },
+                &mut essence,
+            );
+        }
+        assert!(matches!(essence, Essence::Committed(_, _)));
+        for turn in 0..modulation.violation_release_window {
+            advance_essence(
+                &modulation,
+                EssenceAblation::Enabled,
+                EssenceTurnInput {
+                    turn_ordinal: 100 + turn,
+                    conatus: eroded_conatus(),
+                    field: &field_mid(),
+                    trace: &accrue,
+                    proposed_family: CanonicalMoveFamily::CMDistinguish,
+                    topic: None,
+                },
+                &mut essence,
+            );
+        }
+        assert!(matches!(essence, Essence::Uncommitted(_)));
+        // Re-accrue past the threshold: the crossing is recorded but the
+        // commit is suppressed — the budget is spent.
+        let mut suppressed = false;
+        for turn in 0..16 {
+            let summary = advance_essence(
+                &modulation,
+                EssenceAblation::Enabled,
+                EssenceTurnInput {
+                    turn_ordinal: 200 + turn,
+                    conatus: eroded_conatus(),
+                    field: &field_mid(),
+                    trace: &accrue,
+                    proposed_family: CanonicalMoveFamily::CMReflect,
+                    topic: None,
+                },
+                &mut essence,
+            );
+            assert!(
+                matches!(essence, Essence::Uncommitted(_)),
+                "spent budget must never recommit"
+            );
+            suppressed = suppressed || summary.budget_suppressed;
+        }
+        assert!(suppressed, "the re-crossing must testify to suppression");
     }
 
     #[test]
@@ -698,6 +899,7 @@ mod tests {
                 field: &field_mid(),
                 trace: &trace(ReconcileRule::RuleAgreement, Agreement::FullAgreement, 0.0),
                 proposed_family: CanonicalMoveFamily::CMDistinguish,
+                topic: None,
             },
             &mut essence,
         );

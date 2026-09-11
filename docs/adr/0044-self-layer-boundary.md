@@ -29,7 +29,6 @@ single turns) and over a 64-turn challenged свобода session:
 - long-enabled: v1 commits, v2 commits once, then 25 violations;
 - long-ablated: v1 commits, 43 suppressions, 0 violations;
 - visible behaviour identical in both arms (already gated).
-
 Reading (corrected after measuring runs, not just totals): the 25
 violations are intermittent (max run 4/8) — disagreement inside a held
 position, which a commitment should survive. The hysteresis backstop
@@ -43,6 +42,51 @@ commit — the control records exactly that.
 Marginal value of v2 today = violation-sensitivity + replay-visible
 trajectory, not better commitment. No merge until a product decision
 needs v2 as turn authority.
+
+## Tuning (landed 2026-09-11, `qxfx0-self-v2` only + topic threading)
+
+The hysteresis item of the Decision is implemented, all three legs:
+
+- **violation decay**: an admissible turn on the commitment's topic
+  decays the counter by `violation_decay_step` (default 1) instead of
+  zeroing it — a mostly-violating trajectory drifts toward release
+  instead of starting over;
+- **per-topic commitment**: `EssenceCommitment.topic` (threaded from the
+  turn subject by the pipeline); the counter moves only on turns scoped
+  to the commitment's topic. Cross-topic violations are recorded, never
+  counted. Pre-tuning commitments (`topic: None`) stay universal, so old
+  snapshots behave as before;
+- **commitment budget**: `max_lifetime_commits` (default 3) caps commits
+  per trajectory; further crossings are recorded (`trigger`) but
+  suppressed (`budget_suppressed` in the trace).
+
+All three are unit-locked (decay cadence, cross-topic neutrality,
+unscoped compatibility, budget suppression testimony). Parity fixtures
+(Conatus/Essence/Salience/Deliberation) stay green: the tuning lives in
+`advance_essence` policy, the pinned laws (`witness`, `should_commit`,
+`extract_mode`, `field_signature`, controller, reconcile skeleton) are
+untouched. New modulation fields ride `doctor` via
+`validate_invariants`.
+
+## Verdict re-run (2026-09-11, release probe, post-tuning)
+
+- corpus, both arms: 141 turns, angst 0.05, zero
+  commitments/violations/suppressions — identical to 09-08. Single-turn
+  dynamics untouched, as designed.
+- long-enabled: v1 committed, v2 committed once, 25 violations,
+  max_run 4, releases 0 — identical to 09-08.
+- long-ablated: 43 suppressions, 0 violations — identical to 09-08.
+
+Reading: the tuning is invisible at trace level on this script (the
+challenged prompts vary in subject, so per-topic scoping keeps the
+counter low; the release threshold is reached in neither version).
+That is preservation, not absence of effect — the new mechanics fire
+on sustained same-topic counter-evidence and lifetime churn, regimes
+the script never enters and the units cover directly. Non-degenerate
+dynamics confirmed: commits once, disagrees intermittently inside the
+held position, control suppresses, guard identical across arms.
+Unification still not decided: no product need for v2 as turn
+authority yet.
 
 ## Decision (proposed)
 

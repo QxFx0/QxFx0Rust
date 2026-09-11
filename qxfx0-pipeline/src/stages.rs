@@ -679,6 +679,9 @@ pub fn finalize_stage(
             field: &state.semantic.field,
             trace: rendered.routed().prepared().deliberation_trace(),
             proposed_family: rendered.routed().family(),
+            // ADR-0044 tuning: scope the violation counter to the turn's
+            // topic. The borrow lives in this `let`: the input borrows it.
+            topic: Some(subject.as_str()),
         },
         &mut essence_v2,
     );

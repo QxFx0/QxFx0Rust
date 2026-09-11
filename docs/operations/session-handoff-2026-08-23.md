@@ -459,6 +459,19 @@ tuning floor is complete: Conatus, Essence, Salience bit-faithful;
 Deliberation rule skeleton pinned with known boundaries. Next: the v2
 tuning itself (hysteresis per ADR-0044), then the probe re-run.
 
+### V2 tuning (ADR-0044 hysteresis, landed 2026-09-11)
+`qxfx0-self-v2::advance_essence` policy + topic threading in pipeline:
+violation decay (admissible same-topic turn decays, not zeroes),
+per-topic commitments (counter moves only on the commitment's topic;
+pre-tuning `None` stays universal), lifetime budget (default 3, crossings
+recorded but suppressed past it). Unit-locked (decay cadence,
+cross-topic neutrality, unscoped compat, budget testimony); parity
+green; probe re-run identical numbers (non-degenerate dynamics
+preserved). Recorded in ADR-0044 (tuning + re-run sections).
+Unification still open — no product need for v2 authority yet.
+Remaining: sustained practice for `felt-sustained`, blob policy,
+U5 runtime-AB leg.
+
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).

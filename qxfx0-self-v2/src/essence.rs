@@ -149,11 +149,18 @@ pub struct EssenceTrajectory {
     pub conatus_floor: f64,
     pub capacity: usize,
     /// Consecutive plan-family violations against the live commitment.
-    /// Reset by any admissible turn; reaching `violation_release_window`
-    /// releases a stale commitment (hysteresis). Added post-U2; old
-    /// snapshots load it as zero via the serde default.
+    /// Decayed (not zeroed) by an admissible turn on the commitment's
+    /// topic; reaching `violation_release_window` releases a stale
+    /// commitment (hysteresis). Added post-U2; old snapshots load it as
+    /// zero via the serde default.
     #[serde(default)]
     pub consecutive_violations: u32,
+    /// Commits ever fixed on this trajectory. Bounded by
+    /// `max_lifetime_commits`: a trajectory that churns through its whole
+    /// budget stops recommitting (hysteresis against commit-churn).
+    /// Added with the ADR-0044 tuning; old snapshots load zero.
+    #[serde(default)]
+    pub lifetime_commits: u32,
 }
 
 /// Tunables. Defaults follow the Haskell calibrated set (Phase 10 §4):
@@ -179,6 +186,16 @@ pub struct EssenceModulation {
     /// positive; 8 matches the conatus window scale.
     #[serde(default = "default_violation_release_window")]
     pub violation_release_window: usize,
+    /// ADR-0044 tuning: an admissible turn on the commitment's topic
+    /// decays (not zeroes) the violation counter by this step. Must be
+    /// positive — zero would freeze the counter and silently disable the
+    /// release backstop.
+    pub violation_decay_step: u32,
+    /// ADR-0044 tuning: the trajectory fixes at most this many lifetime
+    /// commitments; further threshold crossings are recorded but
+    /// suppressed (hysteresis against commit-churn). Must be positive —
+    /// zero would forbid the first commitment.
+    pub max_lifetime_commits: u32,
 }
 
 fn default_violation_release_window() -> usize {
@@ -202,6 +219,8 @@ pub fn phase9_essence_modulation() -> EssenceModulation {
         valence_low_edge: -0.33,
         valence_high_edge: 0.33,
         violation_release_window: default_violation_release_window(),
+        violation_decay_step: 1,
+        max_lifetime_commits: 3,
     }
 }
 
@@ -220,6 +239,12 @@ pub struct EssenceCommitment {
     pub trigger: CommitmentTrigger,
     pub committed_at: usize,
     pub witness_hash: String,
+    /// ADR-0044 tuning: the topic the commitment was fixed on. The
+    /// violation counter moves only on turns scoped to this topic
+    /// (`None` = pre-tuning commitment, universal scope). Old snapshots
+    /// load `None`.
+    #[serde(default)]
+    pub topic: Option<String>,
 }
 
 /// The Σ-type: a trajectory is either uncommitted or committed (the
@@ -286,6 +311,7 @@ pub fn empty_trajectory() -> EssenceTrajectory {
         conatus_floor: 1.0,
         capacity: EssenceModulation::default().trajectory_capacity,
         consecutive_violations: 0,
+        lifetime_commits: 0,
     }
 }
 
@@ -421,6 +447,7 @@ pub fn extract_mode(trajectory: &EssenceTrajectory) -> EssenceMode {
 pub fn commit(
     turn_ordinal: usize,
     trigger: CommitmentTrigger,
+    topic: Option<String>,
     trajectory: &EssenceTrajectory,
 ) -> EssenceCommitment {
     EssenceCommitment {
@@ -428,6 +455,7 @@ pub fn commit(
         trigger,
         committed_at: turn_ordinal,
         witness_hash: hash_witnesses(&trajectory.witnesses),
+        topic,
     }
 }
 
@@ -535,6 +563,11 @@ pub struct EssenceAdvanceTrace {
     /// turn (hysteresis). The violation itself is still recorded above.
     #[serde(default)]
     pub released_commitment: bool,
+    /// ADR-0044 tuning: true when a threshold crossing was recorded but
+    /// the commit suppressed — the trajectory already spent its lifetime
+    /// commitment budget. Old snapshots load `false`.
+    #[serde(default)]
+    pub budget_suppressed: bool,
     /// ADR-0043 U3 shadow: the canonical V2 salience controller verdict over
     /// the turn's Field × Conatus (content saliency 0.0 until spectral
     /// clustering lands). Trace evidence only — it never feeds routing, the
@@ -569,6 +602,10 @@ pub struct EssenceTurnInput<'a> {
     pub field: &'a Field,
     pub trace: &'a DeliberationTrace,
     pub proposed_family: CanonicalMoveFamily,
+    /// The turn's topic, when the caller routes one. Scopes the violation
+    /// counter to the commitment's topic (ADR-0044 tuning); `None` leaves
+    /// the turn universal.
+    pub topic: Option<&'a str>,
 }
 
 /// The single integration point: witness this turn, then (unless ablated)
@@ -586,6 +623,7 @@ pub fn advance_essence(
         field,
         trace,
         proposed_family,
+        topic,
     } = input;
     // Take the trajectory out to end the borrow on `essence`; the state
     // is repacked at the end.
@@ -620,10 +658,26 @@ pub fn advance_essence(
         None => match should_commit(modulation, &trajectory) {
             Some(trigger) => match ablation {
                 EssenceAblation::Enabled => {
-                    let fixed = commit(turn_ordinal, trigger, &trajectory);
-                    summary.trigger = Some(trigger);
-                    summary.committed = Some(fixed.clone());
-                    Some(fixed)
+                    // ADR-0044 tuning: the lifetime budget caps commit
+                    // churn. A spent budget records the crossing (trigger)
+                    // but fixes nothing — the trace testifies to it via
+                    // `budget_suppressed`.
+                    if trajectory.lifetime_commits >= modulation.max_lifetime_commits {
+                        summary.trigger = Some(trigger);
+                        summary.budget_suppressed = true;
+                        None
+                    } else {
+                        let fixed = commit(
+                            turn_ordinal,
+                            trigger,
+                            topic.map(str::to_string),
+                            &trajectory,
+                        );
+                        summary.trigger = Some(trigger);
+                        summary.committed = Some(fixed.clone());
+                        trajectory.lifetime_commits = trajectory.lifetime_commits.saturating_add(1);
+                        Some(fixed)
+                    }
                 }
                 EssenceAblation::CommitDisabled => {
                     summary.trigger = Some(trigger);
@@ -636,22 +690,39 @@ pub fn advance_essence(
     };
 
     if let Some(fixed) = &commitment {
+        // ADR-0044 tuning: the counter moves only on turns scoped to the
+        // commitment's topic. An unscoped commitment (pre-tuning) or an
+        // unscoped turn counts as same-topic; a cross-topic turn leaves
+        // the counter untouched — a different conversation is neither
+        // evidence for nor against this position.
+        let same_topic =
+            fixed.topic.is_none() || topic.is_none() || fixed.topic.as_deref() == topic;
         if let Err(violation) = validate_plan(fixed, proposed_family) {
             summary.violation = Some(violation);
-            // Hysteresis: sustained counter-evidence releases a stale
-            // commitment instead of violating forever. The release halves
-            // angst (deadband below the commitment threshold, so no
-            // immediate recommit) and keeps the witnesses; the violation
-            // that triggered it stays visible in the trace.
-            trajectory.consecutive_violations = trajectory.consecutive_violations.saturating_add(1);
-            if trajectory.consecutive_violations >= modulation.violation_release_window as u32 {
-                trajectory.consecutive_violations = 0;
-                trajectory.angst_level *= 0.5;
-                summary.released_commitment = true;
-                commitment = None;
+            // Cross-topic violations are recorded but never counted — a
+            // different conversation is not evidence against this position.
+            if same_topic {
+                // Hysteresis: sustained counter-evidence releases a stale
+                // commitment instead of violating forever. The release halves
+                // angst (deadband below the commitment threshold, so no
+                // immediate recommit) and keeps the witnesses; the violation
+                // that triggered it stays visible in the trace.
+                trajectory.consecutive_violations =
+                    trajectory.consecutive_violations.saturating_add(1);
+                if trajectory.consecutive_violations >= modulation.violation_release_window as u32 {
+                    trajectory.consecutive_violations = 0;
+                    trajectory.angst_level *= 0.5;
+                    summary.released_commitment = true;
+                    commitment = None;
+                }
             }
-        } else {
-            trajectory.consecutive_violations = 0;
+        } else if same_topic {
+            // ADR-0044 tuning: decay, not reset — a mostly-violating
+            // trajectory with an occasional admissible turn still drifts
+            // toward release instead of starting over.
+            trajectory.consecutive_violations = trajectory
+                .consecutive_violations
+                .saturating_sub(modulation.violation_decay_step);
         }
     }
 
@@ -688,6 +759,12 @@ pub fn validate_invariants() -> Vec<String> {
     }
     if modulation.violation_release_window == 0 {
         violations.push("essence-v2 default violation_release_window must be positive".into());
+    }
+    if modulation.violation_decay_step == 0 {
+        violations.push("essence-v2 default violation_decay_step must be positive".into());
+    }
+    if modulation.max_lifetime_commits == 0 {
+        violations.push("essence-v2 default max_lifetime_commits must be positive".into());
     }
     if modulation.band_low_edge >= modulation.band_high_edge {
         violations.push("essence-v2 default band edges are not ordered".into());
