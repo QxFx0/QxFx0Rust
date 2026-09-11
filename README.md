@@ -8,7 +8,7 @@ The system is self-contained: it does not call an LLM or an external knowledge s
 
 The CLI is the supported production surface. It includes:
 
-- atomic SQLite persistence and automatic compatibility migration to schema v14;
+- atomic SQLite persistence and automatic compatibility migration to schema v15;
 - seven-stage turn processing with guard rollback and governance events;
 - 141 recognized topics, of which 141 have audited declarative content with
   291 typed claims;
@@ -200,7 +200,7 @@ qxfx0 verify-diary diary-signed.md --passphrase "моя фраза"
 
 `doctor` is an executable health gate, not an informational banner. It checks:
 
-- SQLite `quick_check`, foreign keys, schema v14 and every stored session;
+- SQLite `quick_check`, foreign keys, schema v15 and every stored session;
 - seed-graph identities, endpoints, indexes and covered topics;
 - concept, fact and active knowledge-pack manifests, hashes and conflicts;
 - FactId-grounded Perspective capacity and curated counterpoint links;
@@ -214,7 +214,7 @@ It exits non-zero if any check fails:
 
 ```text
 QxFx0 Rust v0.1.1 health check:
-  [OK] SQLite: schema v14, quick_check/foreign keys/session states valid
+  [OK] SQLite: schema v15, quick_check/foreign keys/session states valid
   [OK] Performance diagnostics: opt-in qxfx0.turn-diagnostics.v1 records stage timing, SQLite write-lock/commit timing, and host metadata outside session state
   [OK] Seed graph: 207 atoms, 346 relations, 141 covered topics
   [OK] Content plan assets: recognition_topics_total=141, content_predicates_total=291, argued_topics_admitted=141, argued_predicates_admitted=141, profile_enabled=audited_v1
@@ -277,7 +277,7 @@ target/release/qxfx0 renderer-audit --opening-words 3 --json
 
 ## SQLite migration, backup and recovery
 
-The database is upgraded automatically on open. Migrations are idempotent and transactional (current version: v14). It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
+The database is upgraded automatically on open. Migrations are idempotent and transactional (current version: v15). It supports the historical `runtime_sessions` layout and deliberately leaves the legacy `schema_version` table untouched. File databases use WAL, foreign keys, a five-second busy timeout and `synchronous=NORMAL`.
 
 Back up before upgrading a valuable database. The built-in command opens the
 source read-only, uses SQLite's online backup API, verifies the partial copy,
@@ -506,8 +506,10 @@ Schema v14 adds two global tables beside the session state:
 Draft / Activated / Released with a CHECK constraint, a snapshot id, an
 optional parent version for rollback, a SHA-256 checksum, and an opaque
 overlay JSON) and a one-row `promotion_active` singleton whose pointer may
-only point at a *Released* version. The CLI `promotion list/draft/approve/
-release/rollback` drives the lifecycle; `draft` enumerates candidates from
+only point at a *Released* version. The CLI drives the lifecycle:
+`promotion list/draft/approve/release/rollback` plus `evaluate`
+(persisted corpus-precheck trial), `revalidate` (drift audit), and
+`draft --quarantine` (offline importer feed); `draft` enumerates candidates from
 the bridge's Promoted tier across every session, deduplicated by canonical
 triple (subject, snake-cased `RelationType` slug, object) so a retry is
 idempotent, and gates them with the Haskell-faithful informativeness test —
@@ -521,3 +523,17 @@ either table; a byte-for-byte proof is locked in the U5 corpus-equality test
 (`bridge_sleeps.rs`). A released overlay is a reviewable artifact for the
 operator's editorial admission into the embedded pack — the fingerprint
 mechanism of ADR-0043 law 1 — never a live graph mutation.
+
+Schema v15 adds a third promotion table, `promotion_evaluations`, persisted
+corpus-precheck trials keyed by content-addressed evaluation id (version +
+corpus method + checksum + completed time). The CLI adds
+`promotion evaluate <version> [--topics …]` (structural no-regression
+precheck over the overlay's topics plus the fixed 12-topic set; persisted
+only if it passes its own invariants), `promotion revalidate <version>`
+(report-only drift audit under the current policy and baseline, no row
+touched), and `promotion draft --quarantine <file>` (a screened offline
+importer quarantine mixes into the same snapshot digest as the runtime
+evidence; unresolvable rows are per-line refusals, never silent).
+`promotion approve` binds to the latest trial that passed for the exact
+stored checksum — activation without a prior precheck fails closed, the
+Haskell boundary's prior-evaluation precondition made operational.

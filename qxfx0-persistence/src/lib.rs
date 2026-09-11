@@ -22,6 +22,35 @@ const MAX_BRIDGE_QUARANTINE_ROWS: i64 = 4_096;
 // structure: one overlay may not smuggle an unbounded predicate set past the
 // human review that makes it a semantic-authority fact.
 const MAX_PROMOTION_OVERLAY_JSON_BYTES: usize = 1024 * 1024;
+// Evaluation rows are bounded the same way (the per-topic table is small,
+// but an unbounded `details` blob is a retention hazard either way) and the
+// ledger as a whole has a row cap with a fail-closed refusal.
+const MAX_PROMOTION_EVALUATION_JSON_BYTES: usize = 256 * 1024;
+const MAX_PROMOTION_EVALUATIONS: i64 = 4_096;
+
+/// One corpus-precheck trial row for the store API. The bridge owns the
+/// trial's typed shape; the API only moves bytes and enforces the bounds.
+pub struct PromotionEvaluationRow<'a> {
+    pub evaluation_id: &'a str,
+    pub overlay_version: &'a str,
+    pub corpus_version: &'a str,
+    pub completed_at: i64,
+    pub overlay_checksum: &'a str,
+    pub automated_passed: bool,
+    pub overlay_usage_cases: i64,
+    pub details_json: &'a str,
+}
+
+/// One journal row back from the ledger, newest completion first.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PromotionEvaluationSummary {
+    pub evaluation_id: String,
+    pub corpus_version: String,
+    pub completed_at: i64,
+    pub overlay_checksum: String,
+    pub automated_passed: bool,
+    pub overlay_usage_cases: i64,
+}
 
 fn perspective_authority_violations(state: &SystemState) -> Vec<String> {
     let mut violations = Vec::new();
@@ -1059,6 +1088,111 @@ impl Persistence {
         Ok(())
     }
 
+    /// Store one corpus-precheck trial row (schema v15). Idempotent by
+    /// `evaluation_id` (the id pins version + corpus + checksum + time, so a
+    /// re-run of the same trial is the same id and a no-op). The ledger is
+    /// bounded with a fail-closed refusal, since an unreviewed evaluation
+    /// would otherwise let an operator burn disk to hide a failing verdict.
+    pub fn save_promotion_evaluation(
+        &self,
+        row: PromotionEvaluationRow<'_>,
+    ) -> Result<bool, PersistenceError> {
+        if row.details_json.len() > MAX_PROMOTION_EVALUATION_JSON_BYTES {
+            return Err(PersistenceError::InvalidState(format!(
+                "promotion evaluation details exceed {MAX_PROMOTION_EVALUATION_JSON_BYTES} bytes"
+            )));
+        }
+        let tx = self.conn.unchecked_transaction()?;
+        let existing: Option<i64> = tx
+            .query_row(
+                "SELECT completed_at FROM promotion_evaluations WHERE evaluation_id = ?1",
+                params![row.evaluation_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if existing.is_some() {
+            tx.commit()?;
+            return Ok(false);
+        }
+        let count: i64 = tx.query_row("SELECT COUNT(*) FROM promotion_evaluations", [], |row| {
+            row.get(0)
+        })?;
+        if count >= MAX_PROMOTION_EVALUATIONS {
+            return Err(PersistenceError::InvalidState(format!(
+                "promotion evaluations ledger is full at {MAX_PROMOTION_EVALUATIONS} rows"
+            )));
+        }
+        tx.execute(
+            "INSERT INTO promotion_evaluations
+                (evaluation_id, overlay_version, corpus_version, completed_at,
+                 overlay_checksum, automated_passed, overlay_usage_cases, details)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                row.evaluation_id,
+                row.overlay_version,
+                row.corpus_version,
+                row.completed_at,
+                row.overlay_checksum,
+                i64::from(row.automated_passed),
+                row.overlay_usage_cases,
+                row.details_json,
+            ],
+        )?;
+        tx.commit()?;
+        Ok(true)
+    }
+
+    /// All trial rows for one overlay version, newest completion first.
+    pub fn evaluations_for_overlay(
+        &self,
+        overlay_version: &str,
+    ) -> Result<Vec<PromotionEvaluationSummary>, PersistenceError> {
+        let mut statement = self.conn.prepare_cached(
+            "SELECT evaluation_id, corpus_version, completed_at, overlay_checksum,
+                    automated_passed, overlay_usage_cases
+             FROM promotion_evaluations WHERE overlay_version = ?1
+             ORDER BY completed_at DESC, evaluation_id DESC",
+        )?;
+        let rows = statement.query_map(params![overlay_version], |row| {
+            Ok(PromotionEvaluationSummary {
+                evaluation_id: row.get::<_, String>(0)?,
+                corpus_version: row.get::<_, String>(1)?,
+                completed_at: row.get::<_, i64>(2)?,
+                overlay_checksum: row.get::<_, String>(3)?,
+                automated_passed: row.get::<_, i64>(4)? != 0,
+                overlay_usage_cases: row.get::<_, i64>(5)?,
+            })
+        })?;
+        let mut evaluations = Vec::new();
+        for row in rows {
+            evaluations.push(row?);
+        }
+        Ok(evaluations)
+    }
+
+    /// The newest evaluation that passed *for this exact content* (version
+    /// plus pinned checksum — a re-draft of the same version would be a new
+    /// checksum and must not inherit an old verdict). This is what `approve`
+    /// binds to: absence means the operator has not produced the empirical
+    /// precondition the Haskell boundary requires.
+    pub fn latest_passing_evaluation(
+        &self,
+        overlay_version: &str,
+        overlay_checksum: &str,
+    ) -> Result<Option<(String, i64)>, PersistenceError> {
+        let row = self
+            .conn
+            .query_row(
+                "SELECT evaluation_id, completed_at FROM promotion_evaluations
+                 WHERE overlay_version = ?1 AND overlay_checksum = ?2 AND automated_passed = 1
+                 ORDER BY completed_at DESC, evaluation_id DESC LIMIT 1",
+                params![overlay_version, overlay_checksum],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+            )
+            .optional()?;
+        Ok(row)
+    }
+
     /// Get the current schema version.
     pub fn schema_version(&self) -> Result<i64, PersistenceError> {
         let version: i64 = self
@@ -1852,7 +1986,7 @@ mod tests {
         db::migrations::apply_migrations(&mut conn).unwrap();
         let db = Persistence { conn };
 
-        assert_eq!(db.schema_version().unwrap(), 14);
+        assert_eq!(db.schema_version().unwrap(), 15);
         let loaded = db.load_state("legacy").unwrap().unwrap();
         assert_eq!(loaded.session_id, "legacy");
         assert_eq!(loaded.dialogue.turn_count, 2);
@@ -1951,7 +2085,7 @@ mod tests {
 
         {
             let db = Persistence::open(path.to_str().unwrap()).unwrap();
-            assert_eq!(db.schema_version().unwrap(), 14);
+            assert_eq!(db.schema_version().unwrap(), 15);
             let loaded = db.load_state("file-legacy").unwrap().unwrap();
             assert_eq!(loaded.dialogue.turn_count, 4);
             let legacy_versions: i64 = db
@@ -2318,6 +2452,127 @@ mod tests {
         assert_eq!(
             listed[0].0, "overlay-cafe",
             "created_at 150 > 100 sorts first"
+        );
+    }
+
+    #[test]
+    fn promotion_evaluations_are_idempotent_checksum_pinned_and_newest_first() {
+        let db = Persistence::open_memory().unwrap();
+        // Idempotent by evaluation id: the same trial twice is one row.
+        assert!(db
+            .save_promotion_evaluation(PromotionEvaluationRow {
+                evaluation_id: "eval-1",
+                overlay_version: "overlay-x",
+                corpus_version: "promotion-structural-01",
+                completed_at: 10,
+                overlay_checksum: "cs-x",
+                automated_passed: true,
+                overlay_usage_cases: 2,
+                details_json: "{}",
+            })
+            .unwrap());
+        assert!(!db
+            .save_promotion_evaluation(PromotionEvaluationRow {
+                evaluation_id: "eval-1",
+                overlay_version: "overlay-x",
+                corpus_version: "promotion-structural-01",
+                completed_at: 10,
+                overlay_checksum: "cs-x",
+                automated_passed: true,
+                overlay_usage_cases: 2,
+                details_json: "{}",
+            })
+            .unwrap());
+        assert!(db
+            .save_promotion_evaluation(PromotionEvaluationRow {
+                evaluation_id: "eval-2",
+                overlay_version: "overlay-x",
+                corpus_version: "promotion-structural-01",
+                completed_at: 20,
+                overlay_checksum: "cs-x",
+                automated_passed: false,
+                overlay_usage_cases: 2,
+                details_json: "{}",
+            })
+            .unwrap());
+        // A re-draft of the same version is a NEW checksum: the old passing
+        // verdict must not be inherited by content it never examined.
+        assert!(db
+            .save_promotion_evaluation(PromotionEvaluationRow {
+                evaluation_id: "eval-3",
+                overlay_version: "overlay-x",
+                corpus_version: "promotion-structural-01",
+                completed_at: 30,
+                overlay_checksum: "cs-y",
+                automated_passed: true,
+                overlay_usage_cases: 2,
+                details_json: "{}",
+            })
+            .unwrap());
+        let listed = db.evaluations_for_overlay("overlay-x").unwrap();
+        // Newest completion first, three rows total.
+        assert_eq!(
+            listed
+                .iter()
+                .map(|row| row.evaluation_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["eval-3", "eval-2", "eval-1"]
+        );
+        // The latest passing evaluation for cs-x is eval-1 (eval-2 failed,
+        // eval-3 belongs to a different checksum).
+        assert_eq!(
+            db.latest_passing_evaluation("overlay-x", "cs-x").unwrap(),
+            Some(("eval-1".to_string(), 10))
+        );
+        assert_eq!(
+            db.latest_passing_evaluation("overlay-x", "cs-y").unwrap(),
+            Some(("eval-3".to_string(), 30))
+        );
+        assert_eq!(
+            db.latest_passing_evaluation("overlay-x", "cs-zzz").unwrap(),
+            None
+        );
+        // CHECK constraint rejects a passed value outside {0, 1} at the SQL
+        // edge (the API only ever writes 0/1 via the bool).
+        assert!(db
+            .conn
+            .execute(
+                "INSERT INTO promotion_evaluations
+                    (evaluation_id, overlay_version, corpus_version, completed_at,
+                     overlay_checksum, automated_passed, overlay_usage_cases, details)
+                 VALUES ('eval-bad', 'overlay-x', 'm', 40, 'cs-x', 7, 0, '{}')",
+                [],
+            )
+            .is_err());
+    }
+
+    #[test]
+    fn promotion_evaluation_details_and_rows_are_bounded() {
+        let db = Persistence::open_memory().unwrap();
+        let oversized = "x".repeat(MAX_PROMOTION_EVALUATION_JSON_BYTES + 1);
+        assert!(matches!(
+            db.save_promotion_evaluation(PromotionEvaluationRow {
+                evaluation_id: "eval-big",
+                overlay_version: "v",
+                corpus_version: "m",
+                completed_at: 1,
+                overlay_checksum: "cs",
+                automated_passed: true,
+                overlay_usage_cases: 0,
+                details_json: &oversized,
+            }),
+            Err(PersistenceError::InvalidState(_))
+        ));
+        // Idempotent no-op on an empty details column stays absent, not NULL:
+        // unknown evaluation ids simply have no rows.
+        assert!(db
+            .evaluations_for_overlay("overlay-missing")
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            db.latest_passing_evaluation("overlay-missing", "cs")
+                .unwrap(),
+            None
         );
     }
 }

@@ -272,8 +272,13 @@ enum PromotionAction {
         /// Emit a machine-readable JSON report
         #[arg(long)]
         json: bool,
+        /// Mix an import-quarantine JSONL file into the evidence: resolved
+        /// rows become candidates sharing the snapshot digest, unresolvable
+        /// rows surface as refusals. The file bytes enter the snapshot, so
+        /// the same evidence set re-drafts to the same version.
+        #[arg(long, value_name = "PATH")]
+        quarantine: Option<std::path::PathBuf>,
     },
-    /// Activate a Draft overlay (Draft -> Activated)
     Approve {
         version: String,
         /// Emit a machine-readable JSON report
@@ -290,6 +295,28 @@ enum PromotionAction {
     },
     /// Retire the active overlay and move the pointer to its parent
     Rollback {
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Run the structural corpus precheck on an overlay and persist the
+    /// trial row. Legal over any status; `approve` binds to the latest
+    /// row that passed for this exact content, so evaluate first.
+    Evaluate {
+        version: String,
+        /// Extra topics beyond the overlay's own predicates and the fixed
+        /// 12-topic evaluation set, comma-separated.
+        #[arg(long)]
+        topics: Option<String>,
+        /// Emit a machine-readable JSON report
+        #[arg(long)]
+        json: bool,
+    },
+    /// Revalidate an overlay under the current gate policy and baseline.
+    /// Report-only: the stored row is never touched (release is permanent),
+    /// the report is what the operator archives as the audit instrument.
+    Revalidate {
+        version: String,
         /// Emit a machine-readable JSON report
         #[arg(long)]
         json: bool,
@@ -1242,48 +1269,67 @@ fn main() -> anyhow::Result<()> {
                         }
                     }
                 }
-                PromotionAction::Draft { json } => {
-                    let (overlay, exclusions) = PromotionSurface::draft(&db, now_unix_seconds())?;
-                    let version = overlay.version;
-                    let admitted = overlay.predicates.len();
+                PromotionAction::Draft { json, quarantine } => {
+                    let import_bytes;
+                    let import_slice = match &quarantine {
+                        Some(path) => {
+                            import_bytes = std::fs::read(path).map_err(|error| {
+                                anyhow::anyhow!("import quarantine {}: {error}", path.display())
+                            })?;
+                            Some(import_bytes.as_slice())
+                        }
+                        None => None,
+                    };
+                    let report = PromotionSurface::draft_with_imports(
+                        &db,
+                        now_unix_seconds(),
+                        import_slice,
+                    )?;
+                    let version = report.overlay.version;
+                    let admitted = report.overlay.predicates.len();
+                    let exclusion_json =
+                        |candidate: &qxfx0_bridge::PromotionCandidate,
+                         reason: &qxfx0_bridge::ExclusionReason| {
+                            serde_json::json!({
+                                "topic": candidate.topic,
+                                "subject": candidate.subject.as_str(),
+                                "relation": qxfx0_bridge_canonical_slug(candidate.relation),
+                                "object": candidate.object.as_str(),
+                                "reason": format!("{reason:?}"),
+                            })
+                        };
                     if json {
                         println!(
                             "{}",
                             serde_json::to_string_pretty(&serde_json::json!({
                                 "version": version,
                                 "predicates": admitted,
-                                "exclusions": exclusions.iter().map(|(candidate, reason)| {
-                                    serde_json::json!({
-                                        "topic": candidate.topic,
-                                        "subject": candidate.subject.as_str(),
-                                        "relation": qxfx0_bridge_canonical_slug(candidate.relation),
-                                        "object": candidate.object.as_str(),
-                                        "reason": format!("{reason:?}"),
-                                    })
+                                "imported": report.imported,
+                                "exclusions": report.exclusions.iter().map(|(candidate, reason)| exclusion_json(candidate, reason)).collect::<Vec<_>>(),
+                                "import_refusals": report.import_refusals.iter().map(|(description, reason)| {
+                                    serde_json::json!({ "description": description, "reason": format!("{reason:?}") })
                                 }).collect::<Vec<_>>(),
                             }))?
                         );
-                    } else if admitted == 0 {
-                        println!(
-                            "no overlay stored ({} candidate(s) refused by the gate)",
-                            exclusions.len()
-                        );
-                        for (candidate, reason) in &exclusions {
+                    } else {
+                        for (description, reason) in &report.import_refusals {
+                            println!("  import refused ({description}) : {reason:?}");
+                        }
+                        if admitted == 0 {
                             println!(
-                                "  {} {} {} : {reason:?}",
-                                candidate.subject.as_str(),
-                                qxfx0_bridge_canonical_slug(candidate.relation),
-                                candidate.object.as_str()
+                                "no overlay stored ({} candidate(s) refused by the gate)",
+                                report.exclusions.len()
+                            );
+                        } else if report.exclusions.is_empty() && report.import_refusals.is_empty()
+                        {
+                            println!("drafted {version} ({admitted} predicate(s), no exclusions)");
+                        } else {
+                            println!(
+                                "drafted {version} ({admitted} predicate(s), {} excluded):",
+                                report.exclusions.len()
                             );
                         }
-                    } else if exclusions.is_empty() {
-                        println!("drafted {version} ({admitted} predicate(s), no exclusions)");
-                    } else {
-                        println!(
-                            "drafted {version} ({admitted} predicate(s), {} excluded):",
-                            exclusions.len()
-                        );
-                        for (candidate, reason) in &exclusions {
+                        for (candidate, reason) in &report.exclusions {
                             println!(
                                 "  {} {} {} : {reason:?}",
                                 candidate.subject.as_str(),
@@ -1343,6 +1389,78 @@ fn main() -> anyhow::Result<()> {
                         match &target {
                             Some(version) => println!("rolled back; active is now {version}"),
                             None => println!("rolled back; no active overlay"),
+                        }
+                    }
+                }
+                PromotionAction::Evaluate {
+                    version,
+                    topics,
+                    json,
+                } => {
+                    let extra: Vec<String> = topics
+                        .as_deref()
+                        .unwrap_or("")
+                        .split(',')
+                        .map(|topic| topic.trim().to_string())
+                        .filter(|topic| !topic.is_empty())
+                        .collect();
+                    let trial =
+                        PromotionSurface::evaluate(&db, &version, &extra, now_unix_seconds())?;
+                    if json {
+                        println!("{}", serde_json::to_string_pretty(&trial)?);
+                    } else if trial.passed {
+                        println!(
+                            "evaluation {} passed (contentful {} >= {}, conflicts {}, refusals {} <= {})",
+                            trial.evaluation_id,
+                            trial.candidate_contentful,
+                            trial.baseline_contentful,
+                            trial.candidate_conflicts,
+                            trial.candidate_refusals,
+                            trial.baseline_refusals,
+                        );
+                    } else {
+                        println!(
+                            "evaluation {} FAILED (contentful {} vs {}, conflicts {} vs {}, refusals {} vs {})",
+                            trial.evaluation_id,
+                            trial.candidate_contentful,
+                            trial.baseline_contentful,
+                            trial.candidate_conflicts,
+                            trial.baseline_conflicts,
+                            trial.candidate_refusals,
+                            trial.baseline_refusals,
+                        );
+                    }
+                }
+                PromotionAction::Revalidate { version, json } => {
+                    let report = PromotionSurface::revalidate(&db, &version)?;
+                    if json {
+                        println!("{}", serde_json::to_string_pretty(&report)?);
+                    } else if report.excluded_now == 0 {
+                        println!(
+                            "revalidation of {} under {}: still admitted ({}/{}){}",
+                            report.version,
+                            report.policy_now,
+                            report.still_admitted,
+                            report.still_admitted,
+                            if report.policy_changed {
+                                " (policy changed since pinning)"
+                            } else {
+                                ""
+                            },
+                        );
+                    } else {
+                        println!(
+                            "revalidation of {} under {}: {}/{} drifted out (policy changed: {})",
+                            report.version,
+                            report.policy_now,
+                            report.excluded_now,
+                            report.still_admitted + report.excluded_now,
+                            report.policy_changed,
+                        );
+                        for predicate in &report.predicates {
+                            if !predicate.still_passes {
+                                println!("  {} : {:?}", predicate.candidate_id, predicate.reason);
+                            }
                         }
                     }
                 }

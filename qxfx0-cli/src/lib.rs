@@ -944,6 +944,19 @@ fn render_bridge_triple(
 /// active pointer moves on rollback.
 pub struct PromotionSurface;
 
+/// The outcome of one draft: the materialized overlay, the runtime
+/// exclusions, and the import-quarantine refusals (empty without an
+/// import file), so one report shows the operator every refusal.
+pub struct DraftReport {
+    pub overlay: qxfx0_bridge::Overlay,
+    pub exclusions: Vec<(
+        qxfx0_bridge::PromotionCandidate,
+        qxfx0_bridge::ExclusionReason,
+    )>,
+    pub import_refusals: Vec<(String, qxfx0_bridge::ExclusionReason)>,
+    pub imported: usize,
+}
+
 impl PromotionSurface {
     /// The gate policy this build pins, versioned and checksummed so a
     /// re-draft under an older policy stays auditable.
@@ -1048,6 +1061,75 @@ impl PromotionSurface {
         }
     }
 
+    /// The union of every session's runtime-graph atoms known to this
+    /// database — the seed-atom bar's universe (no minting). Deterministic:
+    /// a BTreeSet in atom order.
+    fn known_atoms(
+        db: &qxfx0_persistence::Persistence,
+    ) -> anyhow::Result<std::collections::BTreeSet<qxfx0_types::AtomId>> {
+        let mut known = std::collections::BTreeSet::new();
+        for session_id in db.list_sessions()? {
+            if let Some(state) = db.load_state(&session_id)? {
+                known.extend(state.semantic.runtime_graph.atoms.keys().cloned());
+            }
+        }
+        Ok(known)
+    }
+
+    /// The topic admission oracle: a topic clears the counterpoint bar iff
+    /// the argued registry carries a curated counterpoint surface for it.
+    fn topic_admission_for(topic: &str) -> qxfx0_bridge::TopicAdmissionFacts {
+        let has_counterpoint = qxfx0_semantic::argued_topic_registry()
+            .ok()
+            .and_then(|registry| registry.get(topic))
+            .is_some_and(|argued| !argued.counterpoint().surface().trim().is_empty());
+        qxfx0_bridge::TopicAdmissionFacts { has_counterpoint }
+    }
+
+    /// The `relates_to` oracle for the corpus precheck: a canonical triple
+    /// collides with curated authority iff the seed graph — the static,
+    /// embedded authority — already carries that exact
+    /// (subject, relation, object). Deterministic: the seed graph never
+    /// moves inside a process.
+    fn curated_triple_set() -> std::collections::BTreeSet<(String, String, String)> {
+        qxfx0_semantic::seed_graph()
+            .edges
+            .iter()
+            .map(|relation| {
+                (
+                    relation.from.as_str().to_string(),
+                    qxfx0_bridge::promotion::canonical_slug(relation.rel_type),
+                    relation.to.as_str().to_string(),
+                )
+            })
+            .collect()
+    }
+
+    /// Snapshot id blended over the runtime Promoted tier *and* an optional
+    /// import-quarantine file's verbatim bytes: mixed evidence re-drafts to
+    /// the same version, either input changing moves it.
+    fn snapshot_id_mixed(
+        db: &qxfx0_persistence::Persistence,
+        import_bytes: Option<&[u8]>,
+    ) -> anyhow::Result<String> {
+        let runtime = Self::snapshot_id(db)?;
+        if import_bytes.is_none() {
+            return Ok(runtime);
+        }
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(
+            runtime
+                .strip_prefix("snapshot-")
+                .unwrap_or(&runtime)
+                .as_bytes(),
+        );
+        hasher.update([2]);
+        hasher.update(import_bytes.expect("checked"));
+        hasher.update([2]);
+        Ok(format!("snapshot-import-{:x}", hasher.finalize()))
+    }
+
     /// Draft a new overlay from the currently-promoted evidence. Idempotent:
     /// the same evidence yields the same content-addressed version and the
     /// store insert is a no-op. Returns the overlay (its `predicates` may be
@@ -1063,13 +1145,47 @@ impl PromotionSurface {
             qxfx0_bridge::ExclusionReason,
         )>,
     )> {
-        let snapshot_id = Self::snapshot_id(db)?;
-        let candidates = Self::enumerate_candidates(db, &snapshot_id)?;
-        let (overlay, exclusions) = qxfx0_bridge::create_draft(
+        Self::draft_with_imports(db, now, None).map(|report| (report.overlay, report.exclusions))
+    }
+
+    /// Draft with an optional import-quarantine byte stream mixed into the
+    /// evidence: runtime Promoted triples and resolved import predicates
+    /// share one snapshot digest, one admission ladder, one overlay.
+    /// Returns a [`DraftReport`].
+    pub fn draft_with_imports(
+        db: &qxfx0_persistence::Persistence,
+        now: i64,
+        import_bytes: Option<&[u8]>,
+    ) -> anyhow::Result<DraftReport> {
+        let snapshot_id = Self::snapshot_id_mixed(db, import_bytes)?;
+        let mut candidates = Self::enumerate_candidates(db, &snapshot_id)?;
+        let mut import_refusals: Vec<(String, qxfx0_bridge::ExclusionReason)> = Vec::new();
+        let mut imported = 0usize;
+        if let Some(bytes) = import_bytes {
+            let text = std::str::from_utf8(bytes)
+                .map_err(|error| anyhow::anyhow!("import quarantine is not UTF-8: {error}"))?;
+            let (records, malformed) = qxfx0_bridge::parse_quarantine_jsonl(text);
+            for refusal in malformed {
+                import_refusals.push((
+                    format!("line {}", refusal.line),
+                    qxfx0_bridge::ExclusionReason::UnknownEndpoint,
+                ));
+            }
+            let known = Self::known_atoms(db)?;
+            let (mut resolved, refused) =
+                qxfx0_bridge::candidates_from_import(&records, &snapshot_id, &known);
+            imported = resolved.len();
+            import_refusals.extend(refused);
+            candidates.append(&mut resolved);
+        }
+        let known = Self::known_atoms(db)?;
+        let (overlay, exclusions) = qxfx0_bridge::create_draft_with_admission(
             &snapshot_id,
             &candidates,
             &Self::policy(),
             &Self::baseline_for_topic,
+            &Self::topic_admission_for,
+            &known,
             now,
         );
         overlay
@@ -1087,7 +1203,12 @@ impl PromotionSurface {
                 overlay.created_at,
             )?;
         }
-        Ok((overlay, exclusions))
+        Ok(DraftReport {
+            overlay,
+            exclusions,
+            import_refusals,
+            imported,
+        })
     }
 
     /// Read a stored overlay and re-verify its content address on the way in.
@@ -1112,12 +1233,24 @@ impl PromotionSurface {
     }
 
     /// Advance a Draft to Activated via the store's pinned-CAS transition.
+    /// `approve` requires the latest passing corpus-precheck trial bound to
+    /// this exact version *and* checksum: an evaluation made against
+    /// different content (a re-draft the operator has not re-examined) must
+    /// not authorize activation. Run `promotion evaluate <version>` first.
     pub fn approve(
         db: &qxfx0_persistence::Persistence,
         version: &str,
         now: i64,
     ) -> anyhow::Result<qxfx0_bridge::Overlay> {
         let current = Self::load_overlay(db, version)?;
+        let bound = db.latest_passing_evaluation(&current.version, &current.checksum)?;
+        let Some((evaluation_id, _)) = bound else {
+            return Err(anyhow::anyhow!(
+                "no passing corpus evaluation is bound to overlay {version} \
+                 (run `promotion evaluate {version}` first)"
+            ));
+        };
+        let _ = evaluation_id;
         let current_json = serde_json::to_string(&current)?;
         let activated = current
             .activate(now)
@@ -1131,6 +1264,90 @@ impl PromotionSurface {
             &activated.checksum,
         )?;
         Ok(activated)
+    }
+
+    /// Run the structural corpus precheck over one overlay and persist the
+    /// trial row: topics are the overlay's own predicate topics plus the
+    /// fixed 12-topic evaluation set (plus any `--topics` extras), all
+    /// normalized and deduplicated so the trial is deterministic. Baseline
+    /// surfaces come from the argued registry; the duplicate-with-authority
+    /// probe reads the embedded seed graph. Idempotent by content-addressed
+    /// evaluation id: re-running the same trial is a store no-op.
+    pub fn evaluate(
+        db: &qxfx0_persistence::Persistence,
+        version: &str,
+        extra_topics: &[String],
+        now: i64,
+    ) -> anyhow::Result<qxfx0_bridge::CorpusTrial> {
+        let overlay = Self::load_overlay(db, version)?;
+        let mut topics: std::collections::BTreeSet<String> = overlay
+            .predicates
+            .iter()
+            .map(|predicate| predicate.topic.clone())
+            .collect();
+        topics.extend(
+            qxfx0_bridge::EVALUATION_TOPIC_SET
+                .iter()
+                .map(|topic| topic.to_string()),
+        );
+        for extra in extra_topics {
+            let normalized = extra.trim().to_lowercase();
+            if !normalized.is_empty() {
+                topics.insert(normalized);
+            }
+        }
+        let trial = qxfx0_bridge::run_corpus_precheck(
+            &overlay,
+            &topics,
+            &Self::baseline_for_topic,
+            &Self::relates_to_seed_graph,
+            now,
+        );
+        let details = serde_json::to_string(&trial.topics)?;
+        db.save_promotion_evaluation(qxfx0_persistence::PromotionEvaluationRow {
+            evaluation_id: &trial.evaluation_id,
+            overlay_version: &trial.overlay_version,
+            corpus_version: &trial.corpus_version,
+            completed_at: trial.completed_at,
+            overlay_checksum: &trial.overlay_checksum,
+            automated_passed: trial.passed,
+            overlay_usage_cases: trial.overlay_usage_cases as i64,
+            details_json: &details,
+        })?;
+        Ok(trial)
+    }
+
+    /// Revalidate an overlay under the current gate policy and baseline.
+    /// Report-only: the stored row is never touched (release is permanent),
+    /// the report is the audit instrument the operator archives.
+    pub fn revalidate(
+        db: &qxfx0_persistence::Persistence,
+        version: &str,
+    ) -> anyhow::Result<qxfx0_bridge::Revalidation> {
+        let overlay = Self::load_overlay(db, version)?;
+        Ok(qxfx0_bridge::revalidate(
+            &overlay,
+            &Self::policy(),
+            &Self::baseline_for_topic,
+        ))
+    }
+
+    /// The `relates_to` oracle for the corpus precheck: a canonical triple
+    /// collides with curated authority iff the embedded seed graph already
+    /// carries that exact (subject, relation, object). The seed graph is
+    /// process-global and static, so the oracle is deterministic.
+    fn relates_to_seed_graph(
+        topic: &str,
+        subject: &str,
+        relation: qxfx0_types::RelationType,
+        object: &str,
+    ) -> bool {
+        let _ = topic;
+        Self::curated_triple_set().contains(&(
+            subject.to_string(),
+            qxfx0_bridge::promotion::canonical_slug(relation),
+            object.to_string(),
+        ))
     }
 
     /// Release an Activated overlay (the human decision; permanent) and
@@ -2460,7 +2677,7 @@ mod tests {
     #[test]
     fn test_promotion_lifecycle_draft_approve_release_rollback() {
         use qxfx0_bridge::{BridgeEdge, BridgeEdgeSource, RuntimeEdgeStore};
-        use qxfx0_types::atom::AtomId;
+        use qxfx0_types::atom::{Atom, AtomCategory, AtomId};
         use qxfx0_types::RelationType;
 
         let path = std::env::temp_dir().join(format!("qxfx0-promotion-{}.db", std::process::id()));
@@ -2472,16 +2689,32 @@ mod tests {
             ..SystemState::default()
         };
         state.dialogue.turn_count = 5;
+        // The admission bar needs real grounded atoms: seed them into the
+        // runtime graph (the same bar the draft will check them against).
+        for (atom, category) in [
+            ("свобода", AtomCategory::CatTopic),
+            ("предприимчивость", AtomCategory::CatConcept),
+        ] {
+            state.semantic.runtime_graph.atoms.insert(
+                AtomId::new(atom),
+                Atom {
+                    id: AtomId::new(atom),
+                    display: atom.into(),
+                    category,
+                },
+            );
+        }
         db.save_state(&session_id, &state).unwrap();
 
-        // Seed one Promoted bridge edge. The topic is not in the argued
-        // corpus, so the curated baseline is empty and the candidate is
-        // novel by construction (the gate has a deterministic pass).
+        // Seed one Promoted bridge edge on the curated topic "свобода":
+        // counterpoint exists in the registry, both endpoints are known,
+        // and the object is novel against the baseline (so the gate has a
+        // deterministic pass).
         let edge = BridgeEdge {
             from: AtomId::new("свобода"),
             to: AtomId::new("предприимчивость"),
             rel_type: RelationType::RelRequires,
-            topic: "свобода-тест".into(),
+            topic: "свобода".into(),
             confidence: 0.9,
             co_occurrence: 5,
             weight: 0.9,
@@ -2505,10 +2738,21 @@ mod tests {
         // A Draft cannot release before activation.
         assert!(PromotionSurface::release(&db, &overlay.version, 101).is_err());
 
-        // Draft -> approve -> release.
-        let activated = PromotionSurface::approve(&db, &overlay.version, 102).unwrap();
+        // approve requires a passing evaluation bound to this exact content.
+        assert!(
+            PromotionSurface::approve(&db, &overlay.version, 102).is_err(),
+            "activation without a prior precheck must fail"
+        );
+
+        // Draft -> evaluate -> approve -> release.
+        let trial = PromotionSurface::evaluate(&db, &overlay.version, &[], 102).unwrap();
+        assert!(
+            trial.passed,
+            "the admitted triple must survive its own precheck"
+        );
+        let activated = PromotionSurface::approve(&db, &overlay.version, 103).unwrap();
         assert_eq!(activated.status, qxfx0_bridge::OverlayStatus::Activated);
-        let released = PromotionSurface::release(&db, &overlay.version, 103).unwrap();
+        let released = PromotionSurface::release(&db, &overlay.version, 104).unwrap();
         assert_eq!(released.status, qxfx0_bridge::OverlayStatus::Released);
         assert_eq!(
             PromotionSurface::active(&db).unwrap().as_deref(),
@@ -2518,13 +2762,13 @@ mod tests {
         // Release is permanent: a second release of the same version is
         // refused, and a second draft over unchanged evidence is a no-op
         // (content-addressed, no new row).
-        assert!(PromotionSurface::release(&db, &overlay.version, 104).is_err());
-        let (redraft, _) = PromotionSurface::draft(&db, 105).unwrap();
+        assert!(PromotionSurface::release(&db, &overlay.version, 105).is_err());
+        let (redraft, _) = PromotionSurface::draft(&db, 106).unwrap();
         assert_eq!(redraft.version, overlay.version);
 
         // Rollback retires the pointer (parent is none at the root) without
         // editing the released row.
-        let target = PromotionSurface::rollback(&db, 106).unwrap();
+        let target = PromotionSurface::rollback(&db, 107).unwrap();
         assert_eq!(target, None);
         assert_eq!(PromotionSurface::active(&db).unwrap(), None);
         // The released overlay remains in the journal, immutable.
@@ -2532,6 +2776,74 @@ mod tests {
         assert!(journal
             .iter()
             .any(|(version, status, _)| version == &overlay.version && status == "Released"));
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(format!("{}-wal", path.display()));
+        let _ = std::fs::remove_file(format!("{}-shm", path.display()));
+    }
+
+    #[test]
+    fn test_promotion_draft_with_imports_mixes_evidence_idempotently() {
+        use qxfx0_types::atom::{Atom, AtomCategory, AtomId};
+
+        let path =
+            std::env::temp_dir().join(format!("qxfx0-promotion-import-{}.db", std::process::id()));
+        let db_path = path.to_string_lossy().to_string();
+        let session_id = format!("promo-import-{}", std::process::id());
+        let db = qxfx0_persistence::Persistence::open(&db_path).unwrap();
+        let mut state = SystemState {
+            session_id: session_id.clone(),
+            ..SystemState::default()
+        };
+        state.dialogue.turn_count = 2;
+        // The session graph grounds "свобода" and "выбор": both the runtime
+        // edge (below) and the import row resolve against the same atoms.
+        for (atom, category) in [
+            ("свобода", AtomCategory::CatTopic),
+            ("выбор", AtomCategory::CatConcept),
+        ] {
+            state.semantic.runtime_graph.atoms.insert(
+                AtomId::new(atom),
+                Atom {
+                    id: AtomId::new(atom),
+                    display: atom.into(),
+                    category,
+                },
+            );
+        }
+        db.save_state(&session_id, &state).unwrap();
+
+        let line_resolvable = r#"{"topic":"свобода","graph_atom_id":"свобода","predicates":[{"en":"freedom requires choice","kind":"rel","ru":"свобода требует выбор"}],"reasons":[]}"#;
+        let fixture = format!("{line_resolvable}\nnot json at all\n");
+        let report = PromotionSurface::draft_with_imports(&db, 200, Some(fixture.as_bytes()))
+            .expect("mixed draft must not fail on one malformed line");
+        assert_eq!(report.imported, 1, "the rel row must resolve");
+        assert_eq!(
+            report.import_refusals.len(),
+            1,
+            "the malformed line is refused"
+        );
+        assert_eq!(
+            report.overlay.predicates.len(),
+            1,
+            "imported novel triple must clear an empty-topic baseline: {:?}",
+            report.exclusions
+        );
+        assert!(report.overlay.version.starts_with("overlay-"));
+
+        // Idempotent: the same bytes re-draft to the same version, with no
+        // duplicate row and no duplicate predicate.
+        let retry =
+            PromotionSurface::draft_with_imports(&db, 201, Some(fixture.as_bytes())).unwrap();
+        assert_eq!(retry.overlay.version, report.overlay.version);
+        let listed = PromotionSurface::list(&db).unwrap();
+        assert_eq!(
+            listed
+                .iter()
+                .filter(|(version, _, _)| version == &report.overlay.version)
+                .count(),
+            1
+        );
 
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(format!("{}-wal", path.display()));

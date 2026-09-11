@@ -36,10 +36,13 @@ pub mod worker;
 pub use candidates::{CandidateError, CandidateSource};
 pub use corroboration::{BoundedCorroborationQueue, CorroborationEvent, DEFAULT_QUEUE_CAPACITY};
 pub use promotion::{
-    builtin_gate_policy, create_draft, evaluate_candidate_informativeness, normalize_atom,
-    render_overlay_artifact, rollback, validate_promotion_invariants, ExclusionReason, GatePolicy,
-    InformativenessResult, Overlay, OverlayStatus, PromotedPredicate, PromotionCandidate,
-    PromotionError, SEMANTIC_GAIN_THRESHOLD, STOP_WORDS,
+    builtin_gate_policy, canonical_slug, create_draft, create_draft_with_admission,
+    evaluate_candidate_informativeness, normalize_atom, render_overlay_artifact, revalidate,
+    rollback, run_corpus_precheck, surface_atom_set, validate_promotion_invariants, CorpusTrial,
+    ExclusionReason, GatePolicy, InformativenessResult, Overlay, OverlayStatus, PromotedPredicate,
+    PromotionCandidate, PromotionError, RevalidatedPredicate, Revalidation, TopicAdmissionFacts,
+    TrialTopic, CORPUS_METHOD_STRUCTURAL, EVALUATION_TOPIC_SET, SEMANTIC_GAIN_THRESHOLD,
+    STOP_WORDS,
 };
 pub use quarantine::{
     QuarantineLedger, QuarantineReason, QuarantinedEvent, DEFAULT_QUARANTINE_CAPACITY,
@@ -52,3 +55,8 @@ pub use runtime_edges::{
     RUNTIME_PROMOTION_CO_OCCURRENCE,
 };
 pub use worker::{admission_reason, process_turn_boundary, WorkerReport};
+
+pub mod import_quarantine;
+pub use import_quarantine::{
+    candidates_from_import, parse_quarantine_jsonl, ImportPredicate, ImportRecord, ImportRefusal,
+};

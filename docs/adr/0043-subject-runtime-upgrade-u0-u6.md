@@ -7,10 +7,11 @@ landed 2026-09-09, all replay-visible, V1 still routes; the dispatch flip
 is a separate release gated on the shadow trace corpus) — U4 complete
 (U4.1 + U4.2 landed 2026-09-10: `qxfx0-bridge` algebra + worker +
 quarantine + schema v13 + `bridge-maintain`, zero visible behavior change
-gated by corpus equality) — U5 in flight (U5.1 landed 2026-09-10: pure
-promotion boundary + v14 store + CLI `promotion` + released-overlay
-corpus-equality gate; Haskell-corpus bridge and policy revalidation
-across versions remain) — see
+gated by corpus equality) — U5 in flight (U5.1 + U5.2 landed 2026-09-10/11: pure
+promotion boundary + v14/v15 store + CLI `promotion` with import source,
+admission bar, revalidation, structural corpus precheck and an
+evaluation-bound `approve`; the runtime-AB leg and the Haskell-corpus
+promotion-output feed remain) — see
 `docs/operations/session-handoff-2026-08-23.md` for the running state
 
 ## Frame
@@ -162,10 +163,23 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   soak prompts against a live Released+active overlay and demands
   byte-identical responses/routing/guard/state, plus `SystemState` JSON
   free of promotion fields. `validate_promotion_invariants` rides the
-  doctor `Promotion boundary` check (checks 16 → 17). Remaining U5: the
-  Haskell corpus-bridge (importer quarantine as candidate input) and
-  informativeness gate-policy revalidation across versions (the policy
-  version already pins every draft, so a revalidation is auditable).
+  doctor `Promotion boundary` check (checks 16 → 17). Landed 2026-09-11
+  as U5.2 on top: (1) the import-quarantine candidate source (offline
+  quarantine JSONL parses into canonical triples resolved against the
+  installation's session-graph atoms, mixed into the same snapshot
+  digest; unresolvable rows are per-line refusals, never silent);
+  (2) admission-bar enforcement at draft (seed atoms from the union of
+  session graphs, counterpoint presence from the argued registry) via
+  `create_draft_with_admission`; (3) `revalidate` as report-only
+  policy/baseline drift detection; (4) the structural corpus precheck
+  (content/coverage no-regression over the fixed 12-topic set plus the
+  overlay's own topics, persisted as content-addressed v15
+  `promotion_evaluations` rows), and `approve` binding to the latest
+  passing evaluation pinned to the overlay's exact checksum — the Haskell
+  boundary's `prior_runtime_evaluation_id` precondition, operationalized.
+  Remaining U5: the runtime-AB leg of the corpus evaluation (a separate
+  method row for when an overlay can actually render) and the
+  Haskell-corpus promotion output feeding the editorial bar.
 - **U6 «Свидетельства»** — «Кодекс» grows from the practitioner's diary
   into a dual journal: the subject's positions tracked symmetrically with
   the practitioner's (contradictions, stability, refusals, memory shaping

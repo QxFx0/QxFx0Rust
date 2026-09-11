@@ -12,7 +12,7 @@ qxfx0 --db /var/lib/qxfx0/qxfx0.db backup /var/backups/qxfx0/manual.db
 to a private partial file, runs `PRAGMA quick_check`, and atomically renames the
 verified result. Existing destinations are never overwritten.
 
-<!-- qxfx0-current-schema-version: 14 -->
+<!-- qxfx0-current-schema-version: 15 -->
 ## SQLite writer model
 
 Deploy exactly one QxFx0 writer process per database. A process may serve many

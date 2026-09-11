@@ -358,12 +358,25 @@ importer's quarantine becomes input.
 
 Gate at HEAD: fmt/clippy clean (default + `llm-candidates`); workspace
 tests green; six V2 gates green; doctor OK (17 checks); census `--check`
-green; coverage ≥ floor. Remaining U5: the Haskell-corpus bridge
-(`import_haskell_corpus.py` quarantine → candidate input), gate-policy
-revalidation across versions (each draft already pins a policy version, so
-revalidation is auditable), and the informativeness evaluation-corpus
-precheck (Haskell `runPromotionEvaluation`) if an empirical gate is wanted
-before the first pack admission.
+green; coverage ≥ floor.
+
+**Status 2026-09-11 (U5.2 landed)**: the three remaining promotions
+landed as one coherent increment. (1) The import feed:
+`promotion draft --quarantine PATH` mixes an offline quarantine JSONL
+into the same snapshot digest, admits resolvable rows through the
+ordinary ladder, and surfaces per-line refusals — a corrupt byte stream
+fails closed before touching the store. (2) Admission is enforced at
+draft via `create_draft_with_admission` (seed-atom bar against the
+union of session graphs, counterpoint bar against the argued registry).
+(3) Empirical pre-activation: `promotion evaluate` runs the structural
+corpus precheck (overlay predicate topics ∪ fixed 12-topic set), persists
+a content-addressed trial row to the new v15 `promotion_evaluations`,
+and `promotion approve` binds to the latest trial that passed for this
+exact content (checksum-pinned; a re-draft cannot inherit an old verdict).
+`promotion revalidate` reports policy/baseline drift without touching a
+row. Remaining U5: the *runtime* AB leg of the corpus evaluation (a
+separate method row for when an overlay can actually render); the
+machine for it already exists in the row shape.
 
 ### U6 — «Свидетельства»
 Dual journal (subject positions symmetric with practitioner positions),
