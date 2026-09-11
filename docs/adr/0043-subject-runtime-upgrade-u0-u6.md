@@ -185,7 +185,26 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   the practitioner's (contradictions, stability, refusals, memory shaping
   positions). The verifiable diary export becomes the measurement
   instrument for the FELT evidence line (B2 rubrics get reproducible
-  artifacts).
+  artifacts). Landed 2026-09-11 as U6.1 inside `qxfx0-codex` (no new
+  crate, no schema change, no turn-path touch): `dual_journal` zips each
+  turn 1..=turn_count with the subject's persisted position (V1 witness
+  attributes, commitment coverage, reset flags; V2-shadow presence as a
+  session flag; pre-journal gaps flagged, never filled; per-turn family
+  honestly absent — a routing-time projection, not a persisted position),
+  and `felt` evaluates the six mechanical M6 gates ported from
+  `QxFx0.Core.M6FeltGate` (governed-evidence, non-fallback-dialogue,
+  definition-of-subject ≥2 contentful turns, distinction-of-positions ≥2
+  topics, repair-of-contradiction with live retention, commitment-of-memory
+  ≥10 turns with full id accounting; empty session fails all six).
+  `felt-export`/`felt-verify` are the artifact pair: the manifest embeds
+  the dual journal plus exactly the facts the gates read, so verification
+  re-evaluates the same pure core with no database (diary stays the replay
+  truth, FELT the gate truth, `session_digest` cross-checks the two);
+  `felt-export` never refuses a thin session — testifying «not proven» is
+  the tool's job. `validate_felt_invariants` rides the doctor `Felt
+  evidence` check (checks 17 → 18). Remaining U6: U6.2 flip criteria —
+  what sustained FELT verdict over how many sessions earns a flip
+  proposal, and the B2 rubric bindings.
 
 ## Anti-goals
 

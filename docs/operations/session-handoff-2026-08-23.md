@@ -383,6 +383,22 @@ Dual journal (subject positions symmetric with practitioner positions),
 verifiable export as the FELT measurement instrument (B2 rubrics get
 reproducible artifacts).
 
+**U6.1 LANDED 2026-09-11** (997 tests green, `cargo build --locked
+--workspace --release` + fmt + clippy + full tests + doctor 18/18): no new
+crate, no schema change, no turn-path touch. `qxfx0-codex::dual_journal`
+zips turns 1..=turn_count with the subject's persisted position (V1
+witness driver/rule/agreement/divergence/conatus, commitment coverage,
+reset flags; V2-shadow presence as a session flag; pre-journal gaps
+flagged, never filled; per-turn family honestly absent). `qxfx0-codex::felt`
+is the six mechanical M6 gates (10-turn floor, 2-turn definition, 2-topic
+distinction, contradiction-with-retention, full id accounting; empty fails
+all six) plus the `felt-export`/`felt-verify` artifact pair — the manifest
+embeds the dual evidence, verify re-evaluates the same pure core with no
+DB, `session_digest` cross-checks against the diary export. `felt-export`
+never refuses a thin session («not proven» is the testimony).
+`validate_felt_invariants` rides doctor `Felt evidence` (17 → 18 checks).
+Remaining: U6.2 flip criteria + B2 rubric bindings.
+
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).

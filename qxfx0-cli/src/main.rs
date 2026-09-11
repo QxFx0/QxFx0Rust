@@ -222,6 +222,27 @@ enum Commands {
         #[arg(long)]
         passphrase: Option<String>,
     },
+    /// FELT (ADR-0043 U6): export the session as dual-journal evidence —
+    /// human Markdown with an embedded gate-verifiable manifest. Unlike
+    /// `export`, this never refuses a thin session: testifying «not
+    /// proven» is the measurement tool's job.
+    FeltExport {
+        /// Write the evidence to a new file; existing files are never overwritten
+        #[arg(long, value_name = "PATH")]
+        out: PathBuf,
+        /// Sign the manifest with HMAC-SHA256 over this passphrase
+        #[arg(long)]
+        passphrase: Option<String>,
+    },
+    /// FELT (ADR-0043 U6): verify a dual-journal evidence export by
+    /// re-evaluating the six gates over the embedded records (no database)
+    FeltVerify {
+        /// Path to the exported evidence file
+        path: PathBuf,
+        /// Passphrase of the export's HMAC signature, when it carries one
+        #[arg(long)]
+        passphrase: Option<String>,
+    },
     /// Show version
     Version,
     /// Code orchestration — find functions by natural language description
@@ -1121,6 +1142,93 @@ fn main() -> anyhow::Result<()> {
             } else {
                 Err(anyhow::anyhow!(
                     "дневник НЕ прошёл проверку: {}",
+                    verification
+                        .failure
+                        .unwrap_or_else(|| "неизвестная причина".into())
+                ))
+            }
+        }
+        Commands::FeltExport { out, passphrase } => {
+            // Like `export`: evidence never creates a database on a mistyped
+            // path — it must come from a real session. Unlike `export`, a
+            // thin session is not refused: the verdict records «not proven».
+            if !std::path::Path::new(&cli.db).exists() {
+                return Err(anyhow::anyhow!(
+                    "база данных не найдена: {} (felt-export не создаёт новую базу)",
+                    cli.db
+                ));
+            }
+            let db = qxfx0_persistence::Persistence::open(&cli.db)?;
+            let state = match db.load_state(&cli.session_id)? {
+                Some(state) => state,
+                None => {
+                    return Err(anyhow::anyhow!(
+                        "сессия «{}» не найдена в {}",
+                        cli.session_id,
+                        cli.db
+                    ))
+                }
+            };
+            let mut export = qxfx0_cli::codex::felt::build_felt_export(&state, renderer_authority);
+            let signed = passphrase.is_some();
+            if let Some(passphrase) = passphrase {
+                qxfx0_cli::codex::felt::append_felt_signature(
+                    &mut export.markdown,
+                    &export.manifest_json,
+                    &passphrase,
+                );
+            }
+            // Journal artifacts are never silently overwritten.
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&out)
+                .map_err(|error| {
+                    anyhow::anyhow!(
+                        "не удалось создать {}: {error} (существующие файлы не перезаписываются)",
+                        out.display()
+                    )
+                })?;
+            use std::io::Write;
+            file.write_all(export.markdown.as_bytes())?;
+            println!("Свидетельства записаны: {}", out.display());
+            println!(
+                "Проверка: qxfx0 felt-verify {}{}",
+                out.display(),
+                if signed {
+                    " --passphrase <фраза>"
+                } else {
+                    ""
+                }
+            );
+            Ok(())
+        }
+        Commands::FeltVerify { path, passphrase } => {
+            let markdown = std::fs::read_to_string(&path).map_err(|error| {
+                anyhow::anyhow!("не удалось прочитать {}: {error}", path.display())
+            })?;
+            let verification =
+                qxfx0_cli::codex::felt::verify_felt_export(&markdown, passphrase.as_deref());
+            if verification.verified() {
+                println!(
+                    "Свидетельства подтверждены: сессия «{}», ходов {}, гейты {}, подпись {}",
+                    verification.session_id,
+                    verification.turns,
+                    if verification.gates_passed {
+                        "пройдены"
+                    } else {
+                        "не пройдены"
+                    },
+                    if verification.signature_checked {
+                        "проверена"
+                    } else {
+                        "отсутствует"
+                    }
+                );
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!(
+                    "свидетельства НЕ прошли проверку: {}",
                     verification
                         .failure
                         .unwrap_or_else(|| "неизвестная причина".into())

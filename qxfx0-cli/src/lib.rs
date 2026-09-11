@@ -1750,6 +1750,21 @@ pub fn run_doctor(db_path: &str) -> DoctorReport {
         },
     });
 
+    // FELT evidence invariants (ADR-0043 U6): the six-gate thresholds are
+    // the law — a future edit that lowers the ten-turn floor or empties
+    // the recovery literal must fail loudly here instead of silently
+    // passing thinner sessions.
+    let felt_violations = qxfx0_codex::felt::validate_felt_invariants();
+    report.checks.push(DoctorCheck {
+        name: "Felt evidence",
+        passed: felt_violations.is_empty(),
+        details: if felt_violations.is_empty() {
+            "six gates intact; ten-turn floor, two-turn definition, two-topic distinction; recovery literal non-empty".into()
+        } else {
+            felt_violations.join("; ")
+        },
+    });
+
     report
 }
 
@@ -2548,7 +2563,7 @@ mod tests {
                 .filter(|check| !check.passed)
                 .collect::<Vec<_>>()
         );
-        assert_eq!(report.checks.len(), 17);
+        assert_eq!(report.checks.len(), 18);
         assert!(report
             .checks
             .iter()
@@ -2561,6 +2576,10 @@ mod tests {
             .checks
             .iter()
             .any(|check| check.name == "Promotion boundary" && check.passed));
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.name == "Felt evidence" && check.passed));
         let content_assets = report
             .checks
             .iter()

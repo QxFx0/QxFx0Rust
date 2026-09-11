@@ -21,7 +21,8 @@ The CLI is the supported production surface. It includes:
   realization-parity and zero-downgrade gates;
 - the «Кодекс» practice loop: deterministic topic revisits, prior-position
   callbacks, explicit contradiction events, practice-day reporting and a
-  replay-verifiable diary export (`export` / `verify-diary`);
+  replay-verifiable diary export (`export` / `verify-diary`) and the FELT
+  dual-journal evidence export (`felt-export` / `felt-verify`);
 - bounded FactId-grounded positions and replay-stable semantic episodes;
 - a manifest-validated active knowledge pack with a replay-visible SHA-256 fingerprint;
 - 127 Russian surface templates and six-case morphology;
@@ -180,6 +181,17 @@ qxfx0 verify-diary diary-signed.md --passphrase "моя фраза"
 файлы по опечатке в пути. Экспорт никогда не перезаписывает существующий
 файл. Содержимое отчёта — чистая функция состояния: два отчёта по одному
 состоянию совпадают байт-в-байт, включая SHA-256-отпечаток активного пака.
+
+FELT-свидетельства (`felt-export` / `felt-verify`, ADR-0043 U6) — вторая
+пара артефактов Кодекса: двойной журнал пишет ходы практика рядом с
+позициями субъекта (свидетельства эссенции, покрытие позицией, сбросы), а
+шесть механических гейтов выносят вердикт — доказан субъект или нет (пол
+десять ходов, два содержательных хода, две различные темы, противоречие с
+живым остатком, полный учёт позиций; пустая сессия проваливает все шесть).
+Проверка пересчитывает гейты по встроенным записям без базы данных;
+тонкой сессии в экспорте не отказывают — «не доказан» и есть показание.
+Acceptance-тест `cli_felt` проверяет: чистая и подписанная выгрузки
+верифицируются, перевёрнутый вердикт и неверная фраза отклоняются.
 
 Политика возврата темы — детерминированная функция `(UTC-день, состояние)`:
 сначала возвращаются темы, которым исполнилось минимум семь дней, затем ещё

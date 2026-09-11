@@ -12,6 +12,8 @@
 //! только локальную сессию. Содержимое отчёста — чистая функция состояния,
 //! поэтому два отчёта по одному состоянию байт-в-байт совпадают.
 
+pub mod dual_journal;
+pub mod felt;
 pub mod journal;
 
 use qxfx0_pipeline::RendererAuthority;
@@ -805,6 +807,52 @@ pub fn renderer_authority_from_label(label: &str) -> Option<RendererAuthority> {
         "v2_canary" => Some(RendererAuthority::V2Canary),
         _ => None,
     }
+}
+
+/// Stable digest of the final session state, shared with the FELT export
+/// (same witness basis: observational shadow state excluded).
+pub(crate) fn felt_session_digest(state: &SystemState) -> String {
+    session_digest(state)
+}
+
+/// HMAC-SHA256 hex over the FELT manifest bytes (same construction as the
+/// diary signature).
+pub(crate) fn felt_hmac_hex(key: &[u8], message: &[u8]) -> String {
+    hmac_sha256_hex(key, message)
+}
+
+/// Length-independent hex-digest comparison for FELT signatures.
+pub(crate) fn felt_digests_equal(left: &str, right: &str) -> bool {
+    hex_digests_equal(left, right)
+}
+
+/// The blocks extracted from an exported FELT evidence file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExtractedFelt {
+    pub manifest_json: String,
+    pub signature: Option<String>,
+}
+
+/// Extract the manifest (and optional signature) from a FELT export.
+/// Fails closed on anything malformed.
+pub(crate) fn extract_felt_blocks(markdown: &str) -> Result<ExtractedFelt, String> {
+    let manifest_json = fenced_block(markdown, "felt-manifest")
+        .ok_or_else(|| "блок ```felt-manifest не найден".to_string())?
+        .to_string();
+    if manifest_json.trim().is_empty() {
+        return Err("блок манифеста пуст".into());
+    }
+    let signature = fenced_block(markdown, "felt-signature").map(|block| {
+        block
+            .strip_prefix("hmac-sha256:")
+            .unwrap_or(block)
+            .trim()
+            .to_string()
+    });
+    Ok(ExtractedFelt {
+        manifest_json,
+        signature,
+    })
 }
 
 fn session_digest(state: &SystemState) -> String {
