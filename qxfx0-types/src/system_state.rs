@@ -61,6 +61,16 @@ pub struct JournalRecord {
     /// Hex SHA-256 of the stable state digest after this turn — the replay
     /// witness.
     pub state_digest: String,
+    /// Subject-core authority the turn rendered under (`v1_authority` /
+    /// `v2_authority`, ADR-0044 migration). Pre-migration records load
+    /// the V1 law; replay must use the recorded one.
+    #[serde(default = "default_subject_authority")]
+    pub subject_authority: String,
+}
+
+/// Authority label for journal records predating the migration switch.
+pub fn default_subject_authority() -> String {
+    "v1_authority".to_string()
 }
 
 impl Default for DialogueState {

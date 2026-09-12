@@ -21,8 +21,8 @@ use qxfx0_self::{
 };
 use qxfx0_self_v2::{
     advance_essence, check_blanket_transition, check_initial_blanket, compute_conatus_energy,
-    empty_essence, BlanketRecord, EssenceAblation, EssenceAdvanceTrace, EssenceTurnInput,
-    SelfBlanketSnapshot,
+    compute_salience, empty_essence, BlanketRecord, EssenceAblation, EssenceAdvanceTrace,
+    EssenceTurnInput, SalienceWeightsV2, SelfBlanketSnapshot,
 };
 use qxfx0_semantic::{
     cached_semantic_network, derive_atoms, network::activate as network_activate,
@@ -43,13 +43,43 @@ pub const MAX_RUNTIME_ATOMS: usize = 10_000;
 pub const MAX_RUNTIME_EDGES: usize = 20_000;
 
 /// Stage 1: Prepare — Self Layer: Conatus, Salience, Deliberation.
+///
+/// ADR-0044 migration M1: `authority` selects the Conatus/Salience
+/// source. `V1Authority` computes exactly as before; `V2Authority`
+/// reads the canonical energy scalar (blanket snapshot) and bias —
+/// same `f64` plumbing downstream (thresholds, divergences,
+/// deliberation input), different source. Deliberation, witness and
+/// commitment stay V1 under both authorities.
 pub fn prepare_stage(
     state: &mut SystemState,
     input: TurnInputContext,
+    authority: crate::SubjectAuthority,
 ) -> Result<PreparedTurnContext, String> {
     let field = state.semantic.field.clone();
-    let conatus_energy = Conatus::compute(&field);
-    let salience = Salience::compute(&field);
+    let (conatus_energy, salience) = match authority {
+        crate::SubjectAuthority::V1Authority => {
+            (Conatus::compute(&field), Salience::compute(&field))
+        }
+        crate::SubjectAuthority::V2Authority => {
+            let energy = compute_conatus_energy(
+                SelfBlanketSnapshot {
+                    morphology_total_size: qxfx0_morphology::get_runtime().stats().total_lexemes
+                        as u64,
+                    identity_claims_count: state
+                        .semantic
+                        .semantic_commitments
+                        .as_ref()
+                        .map(|store| store.active.len() as u64)
+                        .unwrap_or(0),
+                    turn_count: (state.dialogue.turn_count + 1) as u64,
+                },
+                &[],
+            );
+            let bias =
+                compute_salience(SalienceWeightsV2::default(), energy, &field, 0.0).holistic_bias;
+            (energy.scalar, bias)
+        }
+    };
     let holistic_prop = field.resonance * 0.6 + field.counterfactual * 0.4;
     let formal_prop = field.confidence * 0.7 + field.consolidation * 0.3;
     let holistic_dominant = salience > 0.5;
@@ -1123,6 +1153,73 @@ mod tests {
     use super::*;
 
     #[test]
+    fn subject_authority_defaults_to_v1_with_stable_labels() {
+        assert_eq!(
+            crate::turn_api::TurnOptions::default().subject_authority,
+            crate::SubjectAuthority::V1Authority
+        );
+        assert_eq!(
+            crate::turn_types::subject_authority_label(crate::SubjectAuthority::V2Authority),
+            "v2_authority"
+        );
+        assert_eq!(
+            crate::turn_types::subject_authority_from_label("v1_authority"),
+            Some(crate::SubjectAuthority::V1Authority)
+        );
+        assert_eq!(
+            crate::turn_types::subject_authority_from_label("v2_authority"),
+            Some(crate::SubjectAuthority::V2Authority)
+        );
+        assert!(crate::turn_types::subject_authority_from_label("v3").is_none());
+    }
+
+    fn prepared_with(authority: crate::SubjectAuthority) -> PreparedTurnContext {
+        let mut state = SystemState {
+            session_id: "m1-authority".into(),
+            ..SystemState::default()
+        };
+        let raw_text = "что такое свобода?".to_string();
+        let input = TurnInputContext::new(
+            state.session_id.clone(),
+            raw_text.clone(),
+            PropositionParser::parse(&raw_text),
+            false,
+        );
+        prepare_stage(&mut state, input, authority).unwrap()
+    }
+
+    #[test]
+    fn v2_prepare_reads_the_canonical_source() {
+        let v1 = prepared_with(crate::SubjectAuthority::V1Authority);
+        let v2 = prepared_with(crate::SubjectAuthority::V2Authority);
+        // The canonical energy is a log-scale scalar over real blanket
+        // substance (morphology runtime is loaded in tests), far above
+        // the working layer's field-local value; the bias is a [0,1]
+        // squash by construction.
+        assert!(
+            v2.conatus_energy() > 5.0,
+            "v2 energy: {}",
+            v2.conatus_energy()
+        );
+        assert!((0.0..=1.0).contains(&v2.salience()));
+        assert_ne!(
+            v1.conatus_energy(),
+            v2.conatus_energy(),
+            "the flip must have an effect, or there is nothing to migrate"
+        );
+    }
+
+    #[test]
+    fn v2_prepare_is_deterministic() {
+        let first = prepared_with(crate::SubjectAuthority::V2Authority);
+        let second = prepared_with(crate::SubjectAuthority::V2Authority);
+        assert_eq!(first.conatus_energy(), second.conatus_energy());
+        assert_eq!(first.salience(), second.salience());
+        assert_eq!(first.holistic_dominant(), second.holistic_dominant());
+        assert_eq!(first.deliberation_family(), second.deliberation_family());
+    }
+
+    #[test]
     fn every_proposition_mode_has_a_typed_move_family() {
         let cases = [
             (PropositionMode::Define, CanonicalMoveFamily::CMDefine),
@@ -1156,7 +1253,8 @@ mod tests {
             PropositionParser::parse(&raw_text),
             false,
         );
-        let prepared = prepare_stage(&mut state, input).unwrap();
+        let prepared =
+            prepare_stage(&mut state, input, crate::SubjectAuthority::V1Authority).unwrap();
         let routed = route_stage(&mut state, prepared, false).unwrap();
         let planned = plan_shadow_stage(&mut state, routed).unwrap();
         let rendered = render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();
@@ -1224,7 +1322,8 @@ mod tests {
                 PropositionParser::parse("что такое флюгегехаймен?"),
                 false,
             );
-            let prepared = prepare_stage(&mut state, input).unwrap();
+            let prepared =
+                prepare_stage(&mut state, input, crate::SubjectAuthority::V1Authority).unwrap();
             let routed = route_stage(&mut state, prepared, false).unwrap();
             let planned = plan_shadow_stage(&mut state, routed).unwrap();
             let rendered =

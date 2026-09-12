@@ -9,7 +9,8 @@ pub mod measurement;
 pub use qxfx0_codex as codex;
 pub use qxfx0_codex::journal::{
     fresh_state, load_or_create_state, run_journal_turn, run_journal_turn_with_essence_ablation,
-    save_journal_state, stamp_practice_today, today_epoch_day,
+    run_journal_turn_with_subject_authority, save_journal_state, stamp_practice_today,
+    today_epoch_day,
 };
 /// Extracted to the `qxfx0-gates` crate (ADR-0043 U0.6); re-exported under
 /// the historical module path so `main.rs`, tests and external callers are
@@ -24,7 +25,7 @@ use qxfx0_pipeline::{
     process_turn_with_options_and_trace, process_turn_with_options_timing_and_trace,
     process_turn_with_renderer_and_stance_provenance, AnomalyShadowMode, ClarificationMode,
     DoubtShadowMode, EssenceAblation, PipelineStageTimings, RendererAuthority,
-    SameTopicSuppressionMode, TurnInput, TurnOptions,
+    SameTopicSuppressionMode, SubjectAuthority, TurnInput, TurnOptions,
 };
 use qxfx0_semantic::{argued_topic_registry, seed_graph};
 use qxfx0_types::system_state::SystemState;
@@ -2130,6 +2131,7 @@ pub fn run_turn_with_renderer_doubt_shadow_trace(
     text: &str,
     renderer_authority: RendererAuthority,
     essence_v2_ablation: EssenceAblation,
+    subject_authority: SubjectAuthority,
 ) -> anyhow::Result<DoubtShadowTracedTurn> {
     let mut state = load_or_create_state(db, session_id)?;
     let input = TurnInput {
@@ -2142,7 +2144,8 @@ pub fn run_turn_with_renderer_doubt_shadow_trace(
         TurnOptions::new()
             .with_renderer(renderer_authority)
             .with_doubt_shadow(DoubtShadowMode::TraceOnly)
-            .with_essence_v2_ablation(essence_v2_ablation),
+            .with_essence_v2_ablation(essence_v2_ablation)
+            .with_subject_authority(subject_authority),
     );
     save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
@@ -2254,6 +2257,7 @@ pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
     text: &str,
     renderer_authority: RendererAuthority,
     essence_v2_ablation: EssenceAblation,
+    subject_authority: SubjectAuthority,
 ) -> anyhow::Result<(
     DiagnosedTurn,
     qxfx0_pipeline::execution_trace::PipelineTrace,
@@ -2272,7 +2276,8 @@ pub fn run_turn_with_renderer_diagnostics_and_doubt_shadow_trace(
         TurnOptions::new()
             .with_renderer(renderer_authority)
             .with_doubt_shadow(DoubtShadowMode::TraceOnly)
-            .with_essence_v2_ablation(essence_v2_ablation),
+            .with_essence_v2_ablation(essence_v2_ablation)
+            .with_subject_authority(subject_authority),
     );
     stamp_practice_today(&mut state);
     let db_save = db.save_state_with_timings(session_id, &state)?;
@@ -2765,6 +2770,7 @@ mod tests {
             text,
             RendererAuthority::LegacyShadow,
             EssenceAblation::Enabled,
+            SubjectAuthority::V1Authority,
         )
         .expect("trace-only turn");
         assert_eq!(traced.response, standard);

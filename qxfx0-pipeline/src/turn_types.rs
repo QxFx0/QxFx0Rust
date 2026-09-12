@@ -59,6 +59,37 @@ pub enum RendererAuthority {
     V2Canary,
 }
 
+/// Explicit authority switch for the v2 subject core (ADR-0044
+/// migration). `V1Authority` is the law and the default: the working
+/// layer computes Conatus/Salience exactly as before. `V2Authority`
+/// reads the canonical energy scalar and bias instead — same `f64`
+/// plumbing downstream, different source. Never persisted, never a
+/// runtime default; the flip (M4) changes the default explicitly.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub enum SubjectAuthority {
+    #[default]
+    V1Authority,
+    V2Authority,
+}
+
+/// Stable label for journal records and manifests (pre-migration
+/// artifacts carry `v1_authority`).
+pub fn subject_authority_label(authority: SubjectAuthority) -> &'static str {
+    match authority {
+        SubjectAuthority::V1Authority => "v1_authority",
+        SubjectAuthority::V2Authority => "v2_authority",
+    }
+}
+
+/// Parse a recorded authority label. `None` fails the replay closed.
+pub fn subject_authority_from_label(label: &str) -> Option<SubjectAuthority> {
+    match label {
+        "v1_authority" => Some(SubjectAuthority::V1Authority),
+        "v2_authority" => Some(SubjectAuthority::V2Authority),
+        _ => None,
+    }
+}
+
 /// Explicit authority switch for the V2 canary. This is separate from the V2
 /// observation mode so measuring V2 can never accidentally change output.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]

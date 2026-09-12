@@ -438,7 +438,7 @@ mod tests {
             proposition,
             detect_challenge("что такое свобода?"),
         );
-        let prepared = prepare_stage(state, input).unwrap();
+        let prepared = prepare_stage(state, input, crate::SubjectAuthority::V1Authority).unwrap();
         let routed = route_stage(state, prepared, false).unwrap();
         let plan = build_shadow_plan(&routed).unwrap();
         let planned = crate::turn_context::PlannedTurnContext::new(routed, plan);
@@ -501,7 +501,8 @@ mod tests {
             ),
             false,
         );
-        let prepared = prepare_stage(&mut state, input).unwrap();
+        let prepared =
+            prepare_stage(&mut state, input, crate::SubjectAuthority::V1Authority).unwrap();
         let routed = route_stage(&mut state, prepared, false).unwrap();
         let planned = plan_shadow_stage(&mut state, routed).unwrap();
         let rendered = render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();

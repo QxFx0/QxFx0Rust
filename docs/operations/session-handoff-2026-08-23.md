@@ -502,7 +502,9 @@ tuning floor is complete: Conatus, Essence, Salience bit-faithful;
 Deliberation rule skeleton pinned with known boundaries. Next: the v2
 tuning itself (hysteresis per ADR-0044), then the probe re-run.
 
-### V2 tuning (ADR-0044 hysteresis, landed 2026-09-11)`qxfx0-self-v2::advance_essence` policy + topic threading in pipeline:
+### V2 tuning (ADR-0044 hysteresis, landed 2026-09-11)
+
+`qxfx0-self-v2::advance_essence` policy + topic threading in pipeline:
 violation decay (admissible same-topic turn decays, not zeroes),
 per-topic commitments (counter moves only on the commitment's topic;
 pre-tuning `None` stays universal), lifetime budget (default 3, crossings
@@ -510,9 +512,17 @@ recorded but suppressed past it). Unit-locked (decay cadence,
 cross-topic neutrality, unscoped compat, budget testimony); parity
 green; probe re-run identical numbers (non-degenerate dynamics
 preserved). Recorded in ADR-0044 (tuning + re-run sections).
-Unification still open — no product need for v2 authority yet.
-Remaining: sustained practice for `felt-sustained`, blob policy,
-U5 runtime-AB leg.
+
+### Migration M1 (ADR-0044, landed 2026-09-11)
+
+Flip proposal reviewed: МИГРИРУЕМ. `TurnOptions.subject_authority`
+(`V1Authority` default, `--subject-authority-v2` opt-in); Prepare
+reads the V2 energy scalar + bias under V2, `f64` plumbing unchanged
+downstream; journal records carry the per-turn authority label and
+diary replay honors it per entry (pre-migration defaults V1, unknown
+fails closed). Zero drift under the default. Next: M2 Deliberation
+(blocked on the recorded vocabulary gap), M3 witness+commitment,
+M4 default flip with re-baselining + soak.
 
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per

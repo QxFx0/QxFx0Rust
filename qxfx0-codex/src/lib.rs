@@ -771,6 +771,11 @@ pub struct DiaryManifestEntry {
     pub input: String,
     pub response: String,
     pub state_digest: String,
+    /// Subject authority the turn rendered under — replay uses this per
+    /// entry, so mixed-authority sessions verify. Pre-migration exports
+    /// load `v1_authority`.
+    #[serde(default = "qxfx0_types::system_state::default_subject_authority")]
+    pub subject_authority: String,
 }
 
 /// The canonical, replay-verifiable form of one session's diary.
@@ -896,6 +901,7 @@ pub fn build_diary_manifest(state: &SystemState, renderer: RendererAuthority) ->
                 input: record.input.clone(),
                 response: record.response.clone(),
                 state_digest: record.state_digest.clone(),
+                subject_authority: record.subject_authority.clone(),
             })
             .collect(),
         session_digest: session_digest(state),
@@ -1203,12 +1209,27 @@ pub fn verify_diary(markdown: &str, passphrase: Option<&str>) -> DiaryVerificati
 
     let mut state = None;
     for entry in &manifest.entries {
-        let response = match crate::journal::run_journal_turn(
+        let entry_authority =
+            qxfx0_pipeline::subject_authority_from_label(&entry.subject_authority);
+        let Some(entry_authority) = entry_authority else {
+            return verification_failed(
+                &manifest.session_id,
+                manifest.entries.len(),
+                signature_checked,
+                format!(
+                    "ход {}: неизвестный авторитет субъекта: {}",
+                    entry.turn, entry.subject_authority
+                ),
+            );
+        };
+        let response = match crate::journal::run_journal_turn_with_subject_authority(
             &db,
             &manifest.session_id,
             &entry.input,
             entry.day,
             authority,
+            qxfx0_pipeline::EssenceAblation::Enabled,
+            entry_authority,
         ) {
             Ok(response) => response,
             Err(error) => {
@@ -1290,6 +1311,56 @@ pub fn verify_diary(markdown: &str, passphrase: Option<&str>) -> DiaryVerificati
 mod tests {
     use super::*;
     use qxfx0_types::system_state::*;
+
+    #[test]
+    fn mixed_authority_diary_verifies_per_entry() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("memory db");
+        crate::journal::run_journal_turn(
+            &db,
+            "mixed",
+            "что такое свобода?",
+            20_000,
+            RendererAuthority::AuditedPlan,
+        )
+        .expect("v1 turn");
+        crate::journal::run_journal_turn_with_subject_authority(
+            &db,
+            "mixed",
+            "что такое память?",
+            20_000,
+            RendererAuthority::AuditedPlan,
+            qxfx0_pipeline::EssenceAblation::Enabled,
+            qxfx0_pipeline::SubjectAuthority::V2Authority,
+        )
+        .expect("v2 turn");
+        let state = db.load_state("mixed").expect("load").expect("session");
+        assert_eq!(
+            state.dialogue.journal[0].subject_authority, "v1_authority",
+            "default turns record the V1 law"
+        );
+        assert_eq!(
+            state.dialogue.journal[1].subject_authority, "v2_authority",
+            "flagged turns record their authority"
+        );
+        let export = build_diary_export(&state, RendererAuthority::AuditedPlan);
+        let verification = verify_diary(&export.markdown, None);
+        assert!(
+            verification.verified(),
+            "mixed-authority diary must replay per entry: {:?}",
+            verification.failure
+        );
+        // Pre-migration exports (no authority labels) verify as V1.
+        let legacy = export
+            .markdown
+            .replace("    \"subject_authority\": \"v1_authority\",\n", "");
+        assert!(
+            verify_diary(&legacy, None).verified(),
+            "unlabeled entries must default to the V1 law"
+        );
+        // Unknown labels fail closed, never replayed as V1.
+        let evil = export.markdown.replacen("v2_authority", "v9_authority", 1);
+        assert!(!verify_diary(&evil, None).verified());
+    }
 
     #[test]
     fn daily_topic_is_deterministic_and_cycles_the_whole_corpus() {

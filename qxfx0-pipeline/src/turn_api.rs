@@ -6,7 +6,7 @@
 use crate::turn_types::{
     AnomalyShadowMode, ClarificationMode, DoubtShadowMode, PipelineStageTimings, RendererAuthority,
     ResponsePlanV2Authority, ResponsePlanV2Mode, SameTopicSuppressionMode,
-    SignedStanceDecisionOutcome, StanceProvenanceMode, TurnInput, TurnOutput,
+    SignedStanceDecisionOutcome, StanceProvenanceMode, SubjectAuthority, TurnInput, TurnOutput,
 };
 use crate::{execution_trace, fact_grounded, EssenceAblation};
 use crate::{finish_pipeline_trace, new_pipeline_trace, process_turn_internal};
@@ -35,6 +35,11 @@ pub struct TurnOptions {
     /// test/CLI switches for the ablated control group — never persisted,
     /// never a runtime default.
     pub essence_v2_ablation: EssenceAblation,
+    /// Subject-core authority (ADR-0044 migration M1). `V1Authority` is
+    /// the law and the default; `V2Authority` reads the canonical
+    /// Conatus/Salience source — never persisted, never a runtime
+    /// default until the M4 flip.
+    pub subject_authority: SubjectAuthority,
 }
 
 impl TurnOptions {
@@ -98,6 +103,11 @@ impl TurnOptions {
     /// contract; production paths never call this.
     pub fn with_essence_v2_ablation(mut self, ablation: EssenceAblation) -> Self {
         self.essence_v2_ablation = ablation;
+        self
+    }
+
+    pub fn with_subject_authority(mut self, authority: SubjectAuthority) -> Self {
+        self.subject_authority = authority;
         self
     }
 }

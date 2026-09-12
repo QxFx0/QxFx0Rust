@@ -68,6 +68,17 @@ enum EssenceV2AblationArg {
     CommitDisabled,
 }
 
+/// Map `--subject-authority-v2` to the pipeline authority switch
+/// (ADR-0044 M1). One conversion site so every turn path reads the
+/// flag identically.
+fn subject_authority_of(v2: bool) -> qxfx0_pipeline::SubjectAuthority {
+    if v2 {
+        qxfx0_pipeline::SubjectAuthority::V2Authority
+    } else {
+        qxfx0_pipeline::SubjectAuthority::V1Authority
+    }
+}
+
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)] // clap owns the one-shot command payload
 enum Commands {
@@ -117,6 +128,12 @@ enum Commands {
         /// law (`enabled`).
         #[arg(long, value_enum, default_value_t = EssenceV2AblationArg::Enabled)]
         essence_v2_ablation: EssenceV2AblationArg,
+        /// ADR-0044 migration M1: read the Conatus/Salience source from
+        /// the canonical v2 core instead of the working layer. Opt-in
+        /// measurement surface for the flip soak comparison; the default
+        /// is the law (V1).
+        #[arg(long)]
+        subject_authority_v2: bool,
         #[arg(long, requires = "cognitive_pilot_trace_jsonl")]
         enable_clarification: bool,
         #[arg(long, requires_all = ["cognitive_pilot_trace_jsonl", "enable_clarification"])]
@@ -453,6 +470,7 @@ fn main() -> anyhow::Result<()> {
             enable_clarification,
             enable_same_topic_suppression,
             essence_v2_ablation,
+            subject_authority_v2,
         } => {
             debug!("Executing Turn command for session: {}", cli.session_id);
             let essence_v2_ablation = match essence_v2_ablation {
@@ -627,6 +645,7 @@ fn main() -> anyhow::Result<()> {
                             &text,
                             renderer_authority,
                             essence_v2_ablation,
+                            subject_authority_of(subject_authority_v2),
                         )?;
                     write_doubt_shadow_trace_jsonl(sink, &trace)?;
                     finish_diagnostics(
@@ -657,6 +676,7 @@ fn main() -> anyhow::Result<()> {
                         &text,
                         renderer_authority,
                         essence_v2_ablation,
+                        subject_authority_of(subject_authority_v2),
                     )?;
                     write_doubt_shadow_trace_jsonl(sink, &traced.trace)?;
                     traced.response
@@ -683,6 +703,16 @@ fn main() -> anyhow::Result<()> {
                             day,
                             renderer_authority,
                             essence_v2_ablation,
+                        )?
+                    } else if subject_authority_v2 {
+                        qxfx0_cli::run_journal_turn_with_subject_authority(
+                            &db,
+                            &cli.session_id,
+                            &text,
+                            day,
+                            renderer_authority,
+                            essence_v2_ablation,
+                            qxfx0_pipeline::SubjectAuthority::V2Authority,
                         )?
                     } else {
                         qxfx0_cli::run_journal_turn(

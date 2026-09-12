@@ -300,6 +300,7 @@ pub(crate) fn process_turn_internal(
         response_plan_v2,
         response_plan_v2_authority,
         essence_v2_ablation,
+        subject_authority,
     } = options;
     if input.session_id.trim().is_empty()
         || input.session_id.chars().count() > 128
@@ -373,7 +374,7 @@ pub(crate) fn process_turn_internal(
         "prepare",
         state,
         input_context,
-        stages::prepare_stage,
+        |state, input| stages::prepare_stage(state, input, subject_authority),
     ) {
         Ok(context) => context,
         Err(error) => {
@@ -704,6 +705,8 @@ pub(crate) fn process_turn_internal(
             input: routed.prepared().input().raw_text().to_owned(),
             response: response.clone(),
             state_digest: String::new(),
+            subject_authority: crate::turn_types::subject_authority_label(subject_authority)
+                .to_string(),
         });
 
     // Field adjustments — skip on blocked turns (rejected output should not

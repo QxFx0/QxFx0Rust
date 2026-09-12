@@ -357,6 +357,7 @@ mod tests {
                 input: format!("entry {turn}"),
                 response: format!("response {turn}"),
                 state_digest: "cd".repeat(32),
+                subject_authority: qxfx0_types::system_state::default_subject_authority(),
             })
             .collect();
         build_felt_export(&state, RendererAuthority::AuditedPlan).markdown

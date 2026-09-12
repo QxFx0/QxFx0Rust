@@ -10,7 +10,8 @@
 use super::epoch_day;
 use qxfx0_persistence::Persistence;
 use qxfx0_pipeline::{
-    process_turn_with_options, EssenceAblation, RendererAuthority, TurnInput, TurnOptions,
+    process_turn_with_options, EssenceAblation, RendererAuthority, SubjectAuthority, TurnInput,
+    TurnOptions,
 };
 use qxfx0_types::system_state::{SemanticState, SystemState};
 
@@ -146,6 +147,30 @@ pub fn run_journal_turn_with_essence_ablation(
     renderer_authority: RendererAuthority,
     essence_v2_ablation: EssenceAblation,
 ) -> anyhow::Result<String> {
+    run_journal_turn_with_subject_authority(
+        db,
+        session_id,
+        text,
+        epoch_day,
+        renderer_authority,
+        essence_v2_ablation,
+        SubjectAuthority::V1Authority,
+    )
+}
+
+/// The migration-armed journal turn (ADR-0044 M1): identical to
+/// [`run_journal_turn_with_essence_ablation`] plus the subject-core
+/// authority switch. The recorded journal entry carries the authority
+/// label, so replay (and diary verification) reproduces it per entry.
+pub fn run_journal_turn_with_subject_authority(
+    db: &Persistence,
+    session_id: &str,
+    text: &str,
+    epoch_day: u64,
+    renderer_authority: RendererAuthority,
+    essence_v2_ablation: EssenceAblation,
+    subject_authority: SubjectAuthority,
+) -> anyhow::Result<String> {
     let mut state = load_or_create_state(db, session_id)?;
     let input = TurnInput {
         raw_text: text.to_string(),
@@ -156,7 +181,8 @@ pub fn run_journal_turn_with_essence_ablation(
         &mut state,
         TurnOptions::new()
             .with_renderer(renderer_authority)
-            .with_essence_v2_ablation(essence_v2_ablation),
+            .with_essence_v2_ablation(essence_v2_ablation)
+            .with_subject_authority(subject_authority),
     );
     stamp_practice_day(&mut state, epoch_day);
     db.save_state(session_id, &state)?;

@@ -98,6 +98,30 @@ authority yet.
    the existing `TurnOptions.essence_v2_ablation` switch, retire v1
    modules one by one — never a flag-day rewrite.
 
+## Migration (approved 2026-09-11 — flip proposal `flip-1.json` reviewed)
+
+`TurnOptions.subject_authority` (`V1Authority` default, `V2Authority`
+opt-in via `--subject-authority-v2`) gates each retired module; the
+default never drifts without a re-baselining commit plus a soak
+re-run. Module order, by coupling (f64-compatible first):
+
+- **M1 — Conatus+Salience source** (landed 2026-09-11):
+  `TurnOptions.subject_authority` (`V1Authority` default, opt-in
+  `--subject-authority-v2`); Prepare reads the V2 energy scalar and
+  bias under V2, everything downstream keeps `f64` plumbing.
+  Journal records carry the per-turn authority label; diary replay
+  honors it per entry (pre-migration artifacts default to V1,
+  unknown labels fail closed). Zero drift under the default.
+- **M2 — Deliberation**: V1 `reconcile` → canonical ladder. Blocked
+  on the vocabulary gap recorded by the parity fixtures (4 axes vs 2,
+  divisor, recovery ladder): M2 either ports the missing axes or
+  documents the reduction as the flip semantics.
+- **M3 — witness+commitment**: V1 `EssenceState` → promoted V2
+  `advance_essence` (the shadow advance already runs); retires the V1
+  essence surface (reports, `essence_strength`).
+- **M4 — flip the default** to `V2Authority` with corpus
+  re-baselining and a full soak; v1 modules retire one by one after.
+
 ## Consequences
 
 - `essence_v2: Value` in persisted state stays opaque until the verdict;
