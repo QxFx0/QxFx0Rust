@@ -138,7 +138,8 @@ pub fn run_journal_turn(
 /// The B2 control-arm journal turn (ADR-0043 U2): identical to
 /// [`run_journal_turn`] except the V2 subject core suppresses commitment
 /// while still witnessing. Explicit experiment surface only — the production
-/// paths delegate with [`EssenceAblation::Enabled`].
+/// paths delegate with [`EssenceAblation::Enabled`]. The authority follows
+/// the default (M4 flip); pinned comparisons pass it explicitly.
 pub fn run_journal_turn_with_essence_ablation(
     db: &Persistence,
     session_id: &str,
@@ -154,7 +155,7 @@ pub fn run_journal_turn_with_essence_ablation(
         epoch_day,
         renderer_authority,
         essence_v2_ablation,
-        SubjectAuthority::V1Authority,
+        SubjectAuthority::default(),
     )
 }
 

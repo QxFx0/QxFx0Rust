@@ -1240,10 +1240,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn subject_authority_defaults_to_v1_with_stable_labels() {
+    fn subject_authority_defaults_to_v2_with_stable_labels() {
         assert_eq!(
             crate::turn_api::TurnOptions::default().subject_authority,
-            crate::SubjectAuthority::V1Authority
+            crate::SubjectAuthority::V2Authority
         );
         assert_eq!(
             crate::turn_types::subject_authority_label(crate::SubjectAuthority::V2Authority),

@@ -1465,20 +1465,26 @@ impl PromotionSurface {
         let mut cases = Vec::with_capacity(topic_list.len());
         for (index, topic) in topic_list.iter().enumerate() {
             let prompt = format!("Что такое {topic}?");
-            let baseline_response = qxfx0_codex::journal::run_journal_turn(
+            // M4: the measurement baseline stays V1 by law — pin it,
+            // never follow the flipped default.
+            let baseline_response = qxfx0_codex::journal::run_journal_turn_with_subject_authority(
                 &baseline_db,
                 &format!("rtab-baseline-{index}"),
                 &prompt,
                 day,
                 RendererAuthority::AuditedPlan,
+                qxfx0_pipeline::EssenceAblation::Enabled,
+                qxfx0_pipeline::SubjectAuthority::V1Authority,
             )
             .map_err(|error| anyhow::anyhow!("baseline turn failed on {topic}: {error}"))?;
-            let candidate_response = qxfx0_codex::journal::run_journal_turn(
+            let candidate_response = qxfx0_codex::journal::run_journal_turn_with_subject_authority(
                 &candidate_db,
                 &format!("rtab-candidate-{index}"),
                 &prompt,
                 day,
                 RendererAuthority::AuditedPlan,
+                qxfx0_pipeline::EssenceAblation::Enabled,
+                qxfx0_pipeline::SubjectAuthority::V1Authority,
             )
             .map_err(|error| anyhow::anyhow!("candidate turn failed on {topic}: {error}"))?;
             let recovery = qxfx0_codex::felt::RECOVERY_RESPONSE;
@@ -2071,12 +2077,19 @@ impl DialogueSession {
 
 /// Run a single turn through the pipeline (mirrors the `Turn` CLI branch).
 /// Persists before returning the response text — see H4 in the audit.
+/// Follows the default subject authority (M4 flip).
 pub fn run_turn(
     db: &qxfx0_persistence::Persistence,
     session_id: &str,
     text: &str,
 ) -> anyhow::Result<String> {
-    run_turn_with_renderer(db, session_id, text, RendererAuthority::LegacyShadow)
+    run_turn_with_renderer(
+        db,
+        session_id,
+        text,
+        RendererAuthority::LegacyShadow,
+        SubjectAuthority::default(),
+    )
 }
 
 pub fn run_turn_with_renderer(
@@ -2084,6 +2097,7 @@ pub fn run_turn_with_renderer(
     session_id: &str,
     text: &str,
     renderer_authority: RendererAuthority,
+    subject_authority: SubjectAuthority,
 ) -> anyhow::Result<String> {
     let mut state = load_or_create_state(db, session_id)?;
     let input = TurnInput {
@@ -2093,7 +2107,9 @@ pub fn run_turn_with_renderer(
     let output = process_turn_with_options(
         &input,
         &mut state,
-        TurnOptions::new().with_renderer(renderer_authority),
+        TurnOptions::new()
+            .with_renderer(renderer_authority)
+            .with_subject_authority(subject_authority),
     );
     save_journal_state(db, session_id, &mut state)?;
     Ok(output.response)
@@ -2161,6 +2177,7 @@ pub fn run_turn_with_renderer_anomaly_shadow_trace(
     session_id: &str,
     text: &str,
     renderer_authority: RendererAuthority,
+    subject_authority: SubjectAuthority,
 ) -> anyhow::Result<DoubtShadowTracedTurn> {
     let mut state = load_or_create_state(db, session_id)?;
     let input = TurnInput {
@@ -2172,7 +2189,8 @@ pub fn run_turn_with_renderer_anomaly_shadow_trace(
         &mut state,
         TurnOptions::new()
             .with_renderer(renderer_authority)
-            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly),
+            .with_anomaly_shadow(AnomalyShadowMode::TraceOnly)
+            .with_subject_authority(subject_authority),
     );
     save_journal_state(db, session_id, &mut state)?;
     Ok(DoubtShadowTracedTurn {
@@ -2588,6 +2606,7 @@ mod tests {
             "audited-plan-session",
             "что такое свобода?",
             RendererAuthority::AuditedPlan,
+            SubjectAuthority::V1Authority,
         )
         .expect("turn should succeed");
 
@@ -2762,6 +2781,7 @@ mod tests {
             session_id,
             text,
             RendererAuthority::LegacyShadow,
+            SubjectAuthority::V1Authority,
         )
         .expect("normal turn");
         let traced = run_turn_with_renderer_doubt_shadow_trace(

@@ -5,7 +5,7 @@ use qxfx0_cli::{
 };
 use qxfx0_pipeline::{
     process_turn_with_renderer_and_signed_stance_decision, RendererAuthority,
-    SignedStanceDecisionOutcome, TurnInput,
+    SignedStanceDecisionOutcome, SubjectAuthority, TurnInput,
 };
 use qxfx0_types::{
     calculate_stance_request_digest, Ed25519StanceDecisionVerifier, SignedStanceDecision,
@@ -92,6 +92,7 @@ fn signed_rejected_provenance_round_trips_into_external_temporal_shadow_evidence
         SESSION,
         RAW_TEXT,
         RendererAuthority::LegacyShadow,
+        SubjectAuthority::V1Authority,
     )
     .unwrap();
     let traced = run_turn_with_renderer_anomaly_shadow_trace(
@@ -99,6 +100,7 @@ fn signed_rejected_provenance_round_trips_into_external_temporal_shadow_evidence
         SESSION,
         RAW_TEXT,
         RendererAuthority::LegacyShadow,
+        SubjectAuthority::V1Authority,
     )
     .unwrap();
     let replay = run_turn_with_renderer_anomaly_shadow_trace(
@@ -106,6 +108,7 @@ fn signed_rejected_provenance_round_trips_into_external_temporal_shadow_evidence
         SESSION,
         RAW_TEXT,
         RendererAuthority::LegacyShadow,
+        SubjectAuthority::V1Authority,
     )
     .unwrap();
     assert_eq!(baseline, traced.response);

@@ -124,8 +124,13 @@ re-run. Module order, by coupling (f64-compatible first):
   evidence); collapse journals into the authority-agnostic
   `reset_events`; codex reports show the session's last recorded
   authority. B2 stays V1-authority by design (it IS the comparison).
-- **M4 — flip the default** to `V2Authority` with corpus
-  re-baselining and a full soak; v1 modules retire one by one after.
+- **M4 — default flip** (landed 2026-09-11): `SubjectAuthority`
+  defaults to V2. B2 arms and the runtime-AB harness pin V1
+  explicitly (comparison and measurement stay on the old law);
+  re-baselined: essence-practice angst, anomaly evidence crafting,
+  digest comparisons (same-authority arms), trajectory accumulation.
+  Every drift triaged as legitimate V2-sourced behavior, none
+  unexpected. Full gate green; soak re-run below.
 
 ## Consequences
 

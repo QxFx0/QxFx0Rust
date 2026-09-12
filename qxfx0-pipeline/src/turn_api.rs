@@ -35,10 +35,10 @@ pub struct TurnOptions {
     /// test/CLI switches for the ablated control group — never persisted,
     /// never a runtime default.
     pub essence_v2_ablation: EssenceAblation,
-    /// Subject-core authority (ADR-0044 migration M1). `V1Authority` is
-    /// the law and the default; `V2Authority` reads the canonical
-    /// Conatus/Salience source — never persisted, never a runtime
-    /// default until the M4 flip.
+    /// Subject-core authority (ADR-0044 migration, flipped in M4).
+    /// `V2Authority` is the law and the default; `V1Authority` is set
+    /// only by explicit switches for pinned comparisons — never
+    /// persisted, never a second default.
     pub subject_authority: SubjectAuthority,
 }
 

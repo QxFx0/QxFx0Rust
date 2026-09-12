@@ -11,7 +11,7 @@ fn v2_options() -> TurnOptions {
 }
 
 fn v1_options() -> TurnOptions {
-    TurnOptions::new()
+    TurnOptions::new().with_subject_authority(SubjectAuthority::V1Authority)
 }
 
 fn turn(state: &mut SystemState, text: &str, options: TurnOptions) {

@@ -100,7 +100,11 @@ fn corpus_digest(prompts: &[String]) -> String {
 }
 
 fn run_corpus_arm(prompts: &[String], arm: &str, ablation: EssenceAblation) -> B2ArmCorpus {
-    let options = TurnOptions::new().with_essence_v2_ablation(ablation);
+    // M4: the B2 experiment compares against the V1 authority by
+    // design — pin it, never follow the flipped default.
+    let options = TurnOptions::new()
+        .with_essence_v2_ablation(ablation)
+        .with_subject_authority(crate::SubjectAuthority::V1Authority);
     let mut summary = B2ArmCorpus {
         prompts: prompts.len(),
         blocked: 0,
@@ -146,7 +150,11 @@ fn run_corpus_arm(prompts: &[String], arm: &str, ablation: EssenceAblation) -> B
 }
 
 fn run_long_arm(arm: &str, ablation: EssenceAblation) -> B2ArmLong {
-    let options = TurnOptions::new().with_essence_v2_ablation(ablation);
+    // M4: the B2 experiment compares against the V1 authority by
+    // design — pin it, never follow the flipped default.
+    let options = TurnOptions::new()
+        .with_essence_v2_ablation(ablation)
+        .with_subject_authority(crate::SubjectAuthority::V1Authority);
     let session_id = format!("b2-long-{arm}");
     let mut state = SystemState {
         session_id: session_id.clone(),

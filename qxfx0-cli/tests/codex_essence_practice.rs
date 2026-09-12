@@ -6,7 +6,13 @@
 
 use qxfx0_cli::codex::{build_diary_export, build_reflection_report, render_report_console};
 use qxfx0_cli::run_journal_turn;
-use qxfx0_pipeline::RendererAuthority;
+use qxfx0_pipeline::{RendererAuthority, SubjectAuthority};
+
+/// M4 flip: the retired V1 essence no longer moves — the live V2 layer
+/// carries the angst. Same intent, live numbers.
+fn live_angst(state: &qxfx0_types::system_state::SystemState) -> f64 {
+    qxfx0_pipeline::essence_view::essence_view(state, SubjectAuthority::V2Authority).angst
+}
 
 fn state(db: &qxfx0_persistence::Persistence) -> qxfx0_types::system_state::SystemState {
     db.load_state("essence-practice")
@@ -27,7 +33,7 @@ fn a_caught_contradiction_raises_the_practice_angst_and_stays_verifiable() {
         RendererAuthority::AuditedPlan,
     )
     .expect("turn 1 completes");
-    let before = state(&db).semantic.essence.angst;
+    let before = live_angst(&state(&db));
 
     run_journal_turn(
         &db,
@@ -44,9 +50,9 @@ fn a_caught_contradiction_raises_the_practice_angst_and_stays_verifiable() {
         "the contradiction is caught first"
     );
     assert!(
-        after.semantic.essence.angst >= before + 0.05,
+        live_angst(&after) >= before + 0.05,
         "the contradiction feeds the essence angst: before={before}, after={}",
-        after.semantic.essence.angst
+        live_angst(&after)
     );
 
     // Once enough tension accumulates, the report names it. Alternate

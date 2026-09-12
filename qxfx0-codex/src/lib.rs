@@ -1369,12 +1369,14 @@ mod tests {
     #[test]
     fn mixed_authority_diary_verifies_per_entry() {
         let db = qxfx0_persistence::Persistence::open_memory().expect("memory db");
-        crate::journal::run_journal_turn(
+        crate::journal::run_journal_turn_with_subject_authority(
             &db,
             "mixed",
             "что такое свобода?",
             20_000,
             RendererAuthority::AuditedPlan,
+            qxfx0_pipeline::EssenceAblation::Enabled,
+            qxfx0_pipeline::SubjectAuthority::V1Authority,
         )
         .expect("v1 turn");
         crate::journal::run_journal_turn_with_subject_authority(

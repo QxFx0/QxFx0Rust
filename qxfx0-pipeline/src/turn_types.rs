@@ -60,15 +60,14 @@ pub enum RendererAuthority {
 }
 
 /// Explicit authority switch for the v2 subject core (ADR-0044
-/// migration). `V1Authority` is the law and the default: the working
-/// layer computes Conatus/Salience exactly as before. `V2Authority`
-/// reads the canonical energy scalar and bias instead — same `f64`
-/// plumbing downstream, different source. Never persisted, never a
-/// runtime default; the flip (M4) changes the default explicitly.
+/// migration). `V2Authority` is the law since the M4 flip: the
+/// canonical energy scalar, bias and ladder drive Prepare/Finalize.
+/// `V1Authority` remains for pinned comparisons (B2 experiment,
+/// measurement baselines, pre-flip replay). Never persisted.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 pub enum SubjectAuthority {
-    #[default]
     V1Authority,
+    #[default]
     V2Authority,
 }
 

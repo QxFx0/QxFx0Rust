@@ -534,6 +534,16 @@ convention. Witness/commitment stay V1; the mapping retires with them
 in M3. Unit-locked (full rule×agreement mapping, override shape,
 ladder-derived prepare output). Next: M3, then M4.
 
+### Migration M4 (ADR-0044, landed 2026-09-11)
+
+Default flipped to V2. B2 and the runtime-AB harness pin V1
+explicitly; re-baselined to the live layer: essence-practice angst,
+anomaly crafting + replay, same-authority digest comparisons,
+trajectory accumulation, V1-default test. Every drift triaged as
+legitimate V2-sourced behavior or pin-needed comparison, zero
+unexpected. V1 modules retire one by one from here; the flip soak
+re-runs below.
+
 ### Migration M3 (ADR-0044, landed 2026-09-11)
 
 The V2 advance is the authority under V2: V1 witness/commit writes

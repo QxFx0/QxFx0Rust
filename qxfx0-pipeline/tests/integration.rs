@@ -274,8 +274,15 @@ fn test_essence_trajectory_accumulates() {
         process_turn_with_options(&input, &mut state, TurnOptions::new());
     }
 
-    assert!(state.semantic.essence.trajectory_committed);
-    assert!(!state.semantic.essence.witnesses.is_empty());
+    assert_eq!(
+        qxfx0_pipeline::essence_view::essence_view(
+            &state,
+            qxfx0_pipeline::SubjectAuthority::V2Authority
+        )
+        .witness_count,
+        3,
+        "M4 flip: the live V2 trajectory accumulates every turn"
+    );
 }
 
 #[test]
@@ -1298,7 +1305,14 @@ fn anomaly_shadow_trace_is_observational_deterministic_and_bounded() {
         raw_text: "что такое я?".into(),
     };
     let mut disabled_state = test_state(&input.session_id);
-    disabled_state.semantic.essence.angst = 0.95;
+    // M4 flip: the anomaly evidence reads the live V2 layer — craft the
+    // high angst there (the retired V1 layer no longer moves).
+    let qxfx0_self_v2::Essence::Uncommitted(mut trajectory) = qxfx0_self_v2::empty_essence() else {
+        panic!("empty carrier starts uncommitted");
+    };
+    trajectory.angst_level = 0.95;
+    disabled_state.semantic.essence_v2 =
+        Some(serde_json::to_value(qxfx0_self_v2::Essence::Uncommitted(trajectory)).unwrap());
     let mut enabled_state = disabled_state.clone();
 
     let (disabled_output, disabled_trace) = process_turn_with_options_and_trace(
@@ -1396,7 +1410,14 @@ fn anomaly_shadow_trace_is_observational_deterministic_and_bounded() {
     );
 
     let mut replay_state = test_state(&input.session_id);
-    replay_state.semantic.essence.angst = 0.95;
+    // M4 flip: replay crafts the live V2 angst, like the recorded run.
+    let qxfx0_self_v2::Essence::Uncommitted(mut replay_trajectory) = qxfx0_self_v2::empty_essence()
+    else {
+        panic!("empty carrier starts uncommitted");
+    };
+    replay_trajectory.angst_level = 0.95;
+    replay_state.semantic.essence_v2 =
+        Some(serde_json::to_value(qxfx0_self_v2::Essence::Uncommitted(replay_trajectory)).unwrap());
     let (_, replay_trace) = process_turn_with_options_and_trace(
         &input,
         &mut replay_state,

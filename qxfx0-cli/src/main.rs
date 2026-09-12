@@ -69,13 +69,14 @@ enum EssenceV2AblationArg {
 }
 
 /// Map `--subject-authority-v2` to the pipeline authority switch
-/// (ADR-0044 M1). One conversion site so every turn path reads the
-/// flag identically.
+/// (ADR-0044 M1). Since the M4 flip the default IS V2, an absent flag
+/// follows the default and the flag only forces explicitly — every turn
+/// path reads the flag through this one conversion site.
 fn subject_authority_of(v2: bool) -> qxfx0_pipeline::SubjectAuthority {
     if v2 {
         qxfx0_pipeline::SubjectAuthority::V2Authority
     } else {
-        qxfx0_pipeline::SubjectAuthority::V1Authority
+        qxfx0_pipeline::SubjectAuthority::default()
     }
 }
 
@@ -613,6 +614,7 @@ fn main() -> anyhow::Result<()> {
                         &cli.session_id,
                         &text,
                         renderer_authority,
+                        subject_authority_of(subject_authority_v2),
                     )?;
                     write_anomaly_shadow_trace_jsonl(&mut sink, &traced.trace)?;
                     traced.response
