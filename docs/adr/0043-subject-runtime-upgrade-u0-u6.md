@@ -177,6 +177,14 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   `promotion_evaluations` rows), and `approve` binding to the latest
   passing evaluation pinned to the overlay's exact checksum — the Haskell
   boundary's `prior_runtime_evaluation_id` precondition, operationalized.
+  The loop closes back toward the Haskell corpus as U5.4: a Released
+  overlay exports its predicates as versioned machine JSON
+  (`promotion-export-pack-01`: topic/subject/relation/object surfaces,
+  confidence/support/gain, both bound evaluation ids, policy pin,
+  overlay checksum) for the human editor to merge into the pack sources
+  — the export refuses anything but Released, and automation stops
+  there: graph effect still comes only from editorial admission, pack
+  gates validate the merged result.
   Remaining U5: the runtime-AB leg of the corpus evaluation (a separate
   method row for when an overlay can actually render) and the
   Haskell-corpus promotion output feeding the editorial bar. Landed

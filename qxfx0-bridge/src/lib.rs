@@ -37,13 +37,14 @@ pub use candidates::{CandidateError, CandidateSource};
 pub use corroboration::{BoundedCorroborationQueue, CorroborationEvent, DEFAULT_QUEUE_CAPACITY};
 pub use promotion::{
     builtin_gate_policy, canonical_slug, create_draft, create_draft_with_admission,
-    evaluate_candidate_informativeness, normalize_atom, render_overlay_artifact, revalidate,
-    rollback, run_corpus_precheck, run_runtime_ab_trial, surface_atom_set,
-    validate_promotion_invariants, CorpusTrial, ExclusionReason, GatePolicy, InformativenessResult,
-    Overlay, OverlayStatus, PromotedPredicate, PromotionCandidate, PromotionError,
-    RevalidatedPredicate, Revalidation, RuntimeAbCase, RuntimeAbTrial, TopicAdmissionFacts,
-    TrialTopic, CORPUS_METHOD_STRUCTURAL, EVALUATION_TOPIC_SET, RUNTIME_AB_METHOD,
-    SEMANTIC_GAIN_THRESHOLD, STOP_WORDS,
+    evaluate_candidate_informativeness, normalize_atom, render_overlay_artifact,
+    render_pack_export, revalidate, rollback, run_corpus_precheck, run_runtime_ab_trial,
+    surface_atom_set, validate_promotion_invariants, CorpusTrial, ExclusionReason, GatePolicy,
+    InformativenessResult, Overlay, OverlayStatus, PackExport, PackExportPredicate,
+    PromotedPredicate, PromotionCandidate, PromotionError, RevalidatedPredicate, Revalidation,
+    RuntimeAbCase, RuntimeAbTrial, TopicAdmissionFacts, TrialTopic, CORPUS_METHOD_STRUCTURAL,
+    EVALUATION_TOPIC_SET, PACK_EXPORT_SCHEMA, RUNTIME_AB_METHOD, SEMANTIC_GAIN_THRESHOLD,
+    STOP_WORDS,
 };
 pub use quarantine::{
     QuarantineLedger, QuarantineReason, QuarantinedEvent, DEFAULT_QUARANTINE_CAPACITY,

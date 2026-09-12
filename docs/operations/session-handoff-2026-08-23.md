@@ -393,6 +393,18 @@ proof the mechanism is real: the lifecycle test's admitted свобода
 triple quotes on its own topic while all 11 regression topics render
 identically. Remaining U5: only the Haskell-corpus feed.
 
+**U5.4 LANDED 2026-09-11** (full gate green): the editorial feed closes
+the loop back toward the Haskell corpus — `promotion export-pack`
+writes a Released overlay's predicates as versioned machine JSON
+(`promotion-export-pack-01`: surfaces, confidence/support/gain, both
+bound evaluation ids, policy pin, overlay checksum) for the human merge
+into the pack sources. Refuses anything but Released; never creates a
+DB on a mistyped path; never overwrites. Automation stops at the file:
+graph effect still comes only from editorial admission, pack gates
+validate the merged result. U5 complete: draft → admission →
+revalidate → structural precheck → runtime A/B → bound approve →
+permanent release → editorial feed.
+
 ### U6 — «Свидетельства»
 Dual journal (subject positions symmetric with practitioner positions),
 verifiable export as the FELT measurement instrument (B2 rubrics get

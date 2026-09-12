@@ -23,6 +23,7 @@ fn promotion_commands_report_the_empty_boundary() {
         "rollback",
         "evaluate",
         "evaluate-runtime",
+        "export-pack",
         "revalidate",
     ] {
         assert!(help.contains(verb), "promotion --help must list {verb}");

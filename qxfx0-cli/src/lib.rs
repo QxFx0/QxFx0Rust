@@ -1513,9 +1513,48 @@ impl PromotionSurface {
         Ok(trial)
     }
 
+    /// Export a Released overlay's predicates as versioned machine JSON
+    /// for the human editor to merge into the pack sources (the U5.4
+    /// feed). Refuses anything but Released and binds the same two
+    /// evaluation rows `approve` required — the export carries the full
+    /// provenance chain, never a bare predicate list. Automation stops
+    /// at this file.
+    pub fn export_pack(
+        db: &qxfx0_persistence::Persistence,
+        version: &str,
+    ) -> anyhow::Result<qxfx0_bridge::PackExport> {
+        let current = Self::load_overlay(db, version)?;
+        let structural = db
+            .latest_passing_evaluation_for_method(
+                &current.version,
+                &current.checksum,
+                qxfx0_bridge::CORPUS_METHOD_STRUCTURAL,
+            )?
+            .map(|(id, _)| id)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "overlay {version} has no bound structural evaluation: release implies both legs"
+                )
+            })?;
+        let runtime = db
+            .latest_passing_evaluation_for_method(
+                &current.version,
+                &current.checksum,
+                qxfx0_bridge::RUNTIME_AB_METHOD,
+            )?
+            .map(|(id, _)| id)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "overlay {version} has no bound runtime A/B: release implies both legs"
+                )
+            })?;
+        qxfx0_bridge::render_pack_export(&current, &structural, &runtime)
+            .map_err(|error| anyhow::anyhow!("{error}"))
+    }
+
     /// Revalidate an overlay under the current gate policy and baseline.
     /// Report-only: the stored row is never touched (release is permanent),
-    /// the report is the audit instrument the operator archives.
+    /// the report is what the operator archives as the audit instrument.
     pub fn revalidate(
         db: &qxfx0_persistence::Persistence,
         version: &str,
@@ -3006,6 +3045,12 @@ mod tests {
         );
         let activated = PromotionSurface::approve(&db, &overlay.version, 104).unwrap();
         assert_eq!(activated.status, qxfx0_bridge::OverlayStatus::Activated);
+        // The feed refuses anything but Released: an Activated overlay
+        // must not flow toward the pack.
+        assert!(
+            PromotionSurface::export_pack(&db, &overlay.version).is_err(),
+            "activated overlay must not export"
+        );
         let released = PromotionSurface::release(&db, &overlay.version, 104).unwrap();
         assert_eq!(released.status, qxfx0_bridge::OverlayStatus::Released);
         assert_eq!(
@@ -3030,6 +3075,22 @@ mod tests {
         assert!(journal
             .iter()
             .any(|(version, status, _)| version == &overlay.version && status == "Released"));
+
+        // The editorial feed: Released exports with the full provenance
+        // chain bound at approve time.
+        let feed = PromotionSurface::export_pack(&db, &overlay.version).unwrap();
+        assert_eq!(feed.schema, qxfx0_bridge::PACK_EXPORT_SCHEMA);
+        assert_eq!(feed.overlay_version, overlay.version);
+        assert_eq!(feed.overlay_checksum, overlay.checksum);
+        assert_eq!(feed.structural_evaluation, trial.evaluation_id);
+        assert_eq!(feed.runtime_evaluation, ab.evaluation_id);
+        assert_eq!(feed.predicates.len(), 1);
+        assert_eq!(feed.predicates[0].topic, overlay.predicates[0].topic);
+        // Round-trip: the feed parses back to itself (the editor's merge
+        // starts from exactly these bytes).
+        let roundtrip: qxfx0_bridge::PackExport =
+            serde_json::from_str(&serde_json::to_string(&feed).unwrap()).unwrap();
+        assert_eq!(roundtrip, feed);
 
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(format!("{}-wal", path.display()));

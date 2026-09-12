@@ -338,6 +338,9 @@ pub enum PromotionError {
     },
     /// A draft with no admitted predicates releases nothing.
     EmptyOverlay,
+    /// Pack export was asked of an overlay that was never released: only
+    /// the human decision may flow toward the pack.
+    NotReleased,
     /// A predicate failed its checksum/identity binding on load (corrupt).
     ChecksumMismatch,
 }
@@ -355,6 +358,9 @@ impl std::fmt::Display for PromotionError {
             ),
             Self::EmptyOverlay => {
                 write!(formatter, "a draft with no predicates cannot advance")
+            }
+            Self::NotReleased => {
+                write!(formatter, "only a Released overlay may feed the pack")
             }
             Self::ChecksumMismatch => {
                 write!(formatter, "overlay checksum does not match its predicates")
@@ -867,6 +873,78 @@ pub fn run_runtime_ab_trial(
         overlay_usage_cases,
         passed,
     }
+}
+
+/// One predicate in the pack-export feed: the machine surface a human
+/// editor merges into the pack sources (topic, endpoints, relation slug,
+/// Russian surface, weight evidence). Provenance rides alongside, never
+/// inside, the editorial decision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PackExportPredicate {
+    pub topic: String,
+    pub subject: String,
+    pub relation: String,
+    pub object: String,
+    pub rendered_ru: String,
+    pub confidence: f64,
+    pub support: usize,
+    pub semantic_gain: f64,
+}
+
+/// The editorial feed: a Released overlay's predicates plus the full
+/// provenance chain (both bound evaluation ids, policy pin, overlay
+/// checksum) for the human merge into the pack sources. Automation
+/// stops at this file: graph effect comes only from editorial
+/// admission, pack gates validate the merged result.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PackExport {
+    pub schema: String,
+    pub overlay_version: String,
+    pub overlay_checksum: String,
+    pub structural_evaluation: String,
+    pub runtime_evaluation: String,
+    pub policy_version: String,
+    pub policy_checksum: String,
+    pub predicates: Vec<PackExportPredicate>,
+}
+
+/// Schema tag of the pack-export feed.
+pub const PACK_EXPORT_SCHEMA: &str = "promotion-export-pack-01";
+
+/// Render the editorial feed for a Released overlay. Refuses anything
+/// but Released: only the human decision (release is permanent) may
+/// flow toward the pack. Pure and deterministic.
+pub fn render_pack_export(
+    overlay: &Overlay,
+    structural_evaluation: &str,
+    runtime_evaluation: &str,
+) -> Result<PackExport, PromotionError> {
+    if !matches!(overlay.status, OverlayStatus::Released) {
+        return Err(PromotionError::NotReleased);
+    }
+    Ok(PackExport {
+        schema: PACK_EXPORT_SCHEMA.to_string(),
+        overlay_version: overlay.version.clone(),
+        overlay_checksum: overlay.checksum.clone(),
+        structural_evaluation: structural_evaluation.to_string(),
+        runtime_evaluation: runtime_evaluation.to_string(),
+        policy_version: overlay.policy_version.clone(),
+        policy_checksum: overlay.policy_checksum.clone(),
+        predicates: overlay
+            .predicates
+            .iter()
+            .map(|predicate| PackExportPredicate {
+                topic: predicate.topic.clone(),
+                subject: predicate.subject.as_str().to_string(),
+                relation: canonical_slug(predicate.relation).to_string(),
+                object: predicate.object.as_str().to_string(),
+                rendered_ru: predicate.rendered_ru.clone(),
+                confidence: predicate.confidence,
+                support: predicate.support,
+                semantic_gain: predicate.semantic_gain,
+            })
+            .collect(),
+    })
 }
 
 impl Overlay {
@@ -1490,6 +1568,45 @@ mod tests {
             7,
         );
         assert!(!vacuous.passed, "vacuous identity must not pass");
+    }
+
+    #[test]
+    fn pack_export_refuses_anything_but_released() {
+        let admitted = admitted_candidate();
+        let (mut overlay, _) = create_draft_with_admission(
+            "snap-pack",
+            std::slice::from_ref(&admitted),
+            &builtin_gate_policy(),
+            &never_baseline,
+            &counterpointed,
+            &known_atoms(),
+            1,
+        );
+        assert!(!overlay.predicates.is_empty());
+        assert!(render_pack_export(&overlay, "struct-1", "rtab-1").is_err());
+        overlay.status = OverlayStatus::Activated;
+        assert!(render_pack_export(&overlay, "struct-1", "rtab-1").is_err());
+        overlay.status = OverlayStatus::Released;
+        let export = render_pack_export(&overlay, "struct-1", "rtab-1").expect("released exports");
+        assert_eq!(export.schema, PACK_EXPORT_SCHEMA);
+        assert_eq!(export.overlay_version, overlay.version);
+        assert_eq!(export.overlay_checksum, overlay.checksum);
+        assert_eq!(export.structural_evaluation, "struct-1");
+        assert_eq!(export.runtime_evaluation, "rtab-1");
+        assert_eq!(export.policy_version, overlay.policy_version);
+        assert_eq!(export.predicates.len(), overlay.predicates.len());
+        let predicate = &export.predicates[0];
+        let source = &overlay.predicates[0];
+        assert_eq!(predicate.topic, source.topic);
+        assert_eq!(predicate.subject, source.subject.as_str());
+        assert_eq!(predicate.object, source.object.as_str());
+        assert_eq!(predicate.rendered_ru, source.rendered_ru);
+        // Deterministic: the same overlay exports byte-identically.
+        let again = render_pack_export(&overlay, "struct-1", "rtab-1").expect("released exports");
+        assert_eq!(
+            serde_json::to_string(&export).unwrap(),
+            serde_json::to_string(&again).unwrap()
+        );
     }
 
     #[test]

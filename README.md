@@ -557,3 +557,11 @@ evidence; unresolvable rows are per-line refusals, never silent).
 `promotion approve` binds to the latest trial that passed for the exact
 stored checksum — activation without a prior precheck fails closed, the
 Haskell boundary's prior-evaluation precondition made operational.
+`promotion evaluate-runtime <version>` renders every case topic once
+per arm (pristine snapshot vs snapshot carrying the overlay as held
+positions; the operator database is never mutated): pass means the
+fixed-set regression renders byte-identically with a stable guard.
+`promotion export-pack <version> --out <file>` closes the loop toward
+the pack sources with a Released overlay's predicates as versioned
+machine JSON (provenance chain included); anything but Released is
+refused, and the merge itself stays human.

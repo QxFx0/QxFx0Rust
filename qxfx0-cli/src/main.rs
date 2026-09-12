@@ -384,6 +384,15 @@ enum PromotionAction {
         #[arg(long)]
         json: bool,
     },
+    /// Export a Released overlay's predicates as versioned machine JSON
+    /// for the human merge into the pack sources (the U5.4 editorial
+    /// feed). Refuses anything but Released; automation stops at the file.
+    ExportPack {
+        version: String,
+        /// Write the feed to a new file; existing files are never overwritten
+        #[arg(long, value_name = "PATH")]
+        out: PathBuf,
+    },
 }
 
 fn finish_diagnostics(
@@ -1476,15 +1485,17 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Commands::Promotion { action } => {
-            // Like `export`: a runtime A/B never creates a database on a
-            // mistyped path — the trial snapshots a real operator
-            // database. Other promotion verbs keep their create-on-open
-            // behaviour; only the snapshot trial refuses.
-            if matches!(action, PromotionAction::EvaluateRuntime { .. })
-                && !std::path::Path::new(&cli.db).exists()
+            // Like `export`: a runtime A/B or pack export never creates a
+            // database on a mistyped path — the trial snapshots, and the
+            // feed reads, a real operator database. Other promotion verbs
+            // keep their create-on-open behaviour; only these two refuse.
+            if matches!(
+                action,
+                PromotionAction::EvaluateRuntime { .. } | PromotionAction::ExportPack { .. }
+            ) && !std::path::Path::new(&cli.db).exists()
             {
                 return Err(anyhow::anyhow!(
-                    "база данных не найдена: {} (evaluate-runtime не создаёт новую базу)",
+                    "база данных не найдена: {} (команда не создаёт новую базу)",
                     cli.db
                 ));
             }
@@ -1730,6 +1741,31 @@ fn main() -> anyhow::Result<()> {
                             },
                         );
                     }
+                }
+                PromotionAction::ExportPack { version, out } => {
+                    let export = PromotionSurface::export_pack(&db, &version)?;
+                    let json = serde_json::to_string_pretty(&export)?;
+                    // Feed artifacts are never silently overwritten.
+                    let mut file = std::fs::OpenOptions::new()
+                        .write(true)
+                        .create_new(true)
+                        .open(&out)
+                        .map_err(|error| {
+                            anyhow::anyhow!(
+                                "не удалось создать {}: {error} (существующие файлы не перезаписываются)",
+                                out.display()
+                            )
+                        })?;
+                    use std::io::Write;
+                    file.write_all(json.as_bytes())?;
+                    println!(
+                        "Пак-фид записан: {} (предикатов {}, проверки {}/{})",
+                        out.display(),
+                        export.predicates.len(),
+                        export.structural_evaluation,
+                        export.runtime_evaluation
+                    );
+                    println!("Дальше — человеческое ревью и merge в pack-источники.");
                 }
                 PromotionAction::Revalidate { version, json } => {
                     let report = PromotionSurface::revalidate(&db, &version)?;
