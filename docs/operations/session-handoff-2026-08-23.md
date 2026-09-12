@@ -544,6 +544,12 @@ legitimate V2-sourced behavior or pin-needed comparison, zero
 unexpected. V1 modules retire one by one from here; the flip soak
 re-runs below.
 
+Flip soak (M4): 30-turn smoke green on the flipped binary
+(`turn_failures=0`, `slow_turns=0`); full 1000-turn soak launched
+2026-09-12 ~21:00 UTC (`QXFX0_DIAGNOSTIC_DIR=/tmp/opencode/flip-soak-1000`,
+log `/tmp/opencode/flip-soak-1000.log`) — converges ~14:00 UTC next
+day; close the gate on its `pilot.status` before declaring M4 done.
+
 ### Migration M3 (ADR-0044, landed 2026-09-11)
 
 The V2 advance is the authority under V2: V1 witness/commit writes
