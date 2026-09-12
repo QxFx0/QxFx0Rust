@@ -112,10 +112,11 @@ re-run. Module order, by coupling (f64-compatible first):
   Journal records carry the per-turn authority label; diary replay
   honors it per entry (pre-migration artifacts default to V1,
   unknown labels fail closed). Zero drift under the default.
-- **M2 — Deliberation**: V1 `reconcile` → canonical ladder. Blocked
-  on the vocabulary gap recorded by the parity fixtures (4 axes vs 2,
-  divisor, recovery ladder): M2 either ports the missing axes or
-  documents the reduction as the flip semantics.
+- **M2 — Deliberation** (landed 2026-09-11): Prepare runs the
+  canonical ladder under V2 and maps the result onto the working-layer
+  shape (`v2_result_to_v1_deliberation`: rules 1:1, agreement
+  Agree-only, divergence passthrough, V1 driver convention). Witness
+  and commitment stay V1; the mapping retires with them in M3.
 - **M3 — witness+commitment**: V1 `EssenceState` → promoted V2
   `advance_essence` (the shadow advance already runs); retires the V1
   essence surface (reports, `essence_strength`).

@@ -327,6 +327,66 @@ pub const DOUBT_CLARIFICATION_THRESHOLD: f64 = 0.75;
 /// suppresses re-asking exactly like V1's episodic policy: a confirmed
 /// system decision on this topic in the immediate history means the
 /// doubt loop retains instead of clarifying. Pure and total.
+///
+/// Map one canonical reconciliation onto the V1 working-layer shape
+/// (ADR-0044 migration M2). The ladder's rule tags are 1:1 with V1's;
+/// agreement collapses to the V1 three-way (`Agree` only on full
+/// agreement — there is no V1 partial signal in the canonical tally);
+/// divergence passes through (0/0.5/1.0 over the two carried axes, vs
+/// V1's 0.0/0.5 — the V1 witness angst law keys on the same 0 and
+/// ≥0.5 boundaries, so the dynamics direction is preserved);
+/// the trace driver follows V1's own convention (only the override
+/// carries the gate, everything else reads as field-driven).
+/// Removed when the witness migrates to V2-native (M3).
+pub fn v2_result_to_v1_deliberation(
+    result: &DeliberationV2,
+    driver: crate::salience::V2SalienceDriver,
+    holistic_dominant: bool,
+) -> qxfx0_self::deliberation::Deliberation {
+    use qxfx0_self::deliberation::{
+        Agreement as AgreementV1, Deliberation as DeliberationV1,
+        DeliberationTrace as DeliberationTraceV1, Plan as PlanV1, ReconcileRule as ReconcileRuleV1,
+        SalienceDriver as SalienceDriverV1,
+    };
+    let rule = match result.rule {
+        ReconcileRuleV2::ConatusOverride => ReconcileRuleV1::RuleConatusOverride,
+        ReconcileRuleV2::Agreement => ReconcileRuleV1::RuleAgreement,
+        ReconcileRuleV2::SalienceLead => ReconcileRuleV1::RuleSalienceLead,
+        ReconcileRuleV2::HolisticAdvantage => ReconcileRuleV1::RuleHolisticAdvantage,
+        ReconcileRuleV2::FormalAdvantage => ReconcileRuleV1::RuleFormalAdvantage,
+        ReconcileRuleV2::TiedFallback => ReconcileRuleV1::RuleTiedFallback,
+    };
+    let agreement = match result.agreement {
+        AgreementV2::Agree => AgreementV1::FullAgreement,
+        AgreementV2::DivergeOnFamily
+        | AgreementV2::DivergeOnRecovery
+        | AgreementV2::DivergeMultiple => AgreementV1::NoAgreement,
+    };
+    let override_fired = matches!(result.rule, ReconcileRuleV2::ConatusOverride);
+    DeliberationV1 {
+        plan: PlanV1 {
+            family: result.plan.family,
+            holistic_dominant: if override_fired {
+                false
+            } else {
+                holistic_dominant
+            },
+            recovery_cause: result.plan.recovery_cause.clone(),
+            confidence: result.plan.confidence,
+        },
+        trace: DeliberationTraceV1 {
+            salience_driver: match driver {
+                crate::salience::V2SalienceDriver::ConatusGate => {
+                    SalienceDriverV1::DrivenByConatusGate
+                }
+                _ => SalienceDriverV1::DrivenByField,
+            },
+            rule,
+            agreement,
+            divergence: result.divergence,
+        },
+    }
+}
 pub fn deliberate_shadow(
     verdict: &SalienceVerdictV2,
     field: &Field,
@@ -675,5 +735,128 @@ mod tests {
     #[test]
     fn invariants_hold_on_the_builtins() {
         assert!(validate_deliberation_invariants().is_empty());
+    }
+
+    #[test]
+    fn v1_mapping_covers_every_rule_and_agreement() {
+        use qxfx0_self::deliberation::{Agreement, ReconcileRule};
+        let map_rule = |rule: ReconcileRuleV2| {
+            v2_result_to_v1_deliberation(
+                &DeliberationV2 {
+                    plan: PlanV2 {
+                        family: CanonicalMoveFamily::CMReflect,
+                        recovery_cause: None,
+                        confidence: 0.5,
+                    },
+                    rule,
+                    agreement: AgreementV2::Agree,
+                    divergence: 0.0,
+                },
+                V2SalienceDriver::Resonance,
+                true,
+            )
+            .trace
+            .rule
+        };
+        assert_eq!(
+            map_rule(ReconcileRuleV2::ConatusOverride),
+            ReconcileRule::RuleConatusOverride
+        );
+        assert_eq!(
+            map_rule(ReconcileRuleV2::Agreement),
+            ReconcileRule::RuleAgreement
+        );
+        assert_eq!(
+            map_rule(ReconcileRuleV2::SalienceLead),
+            ReconcileRule::RuleSalienceLead
+        );
+        assert_eq!(
+            map_rule(ReconcileRuleV2::HolisticAdvantage),
+            ReconcileRule::RuleHolisticAdvantage
+        );
+        assert_eq!(
+            map_rule(ReconcileRuleV2::FormalAdvantage),
+            ReconcileRule::RuleFormalAdvantage
+        );
+        assert_eq!(
+            map_rule(ReconcileRuleV2::TiedFallback),
+            ReconcileRule::RuleTiedFallback
+        );
+
+        let map_agreement = |agreement: AgreementV2| {
+            v2_result_to_v1_deliberation(
+                &DeliberationV2 {
+                    plan: PlanV2 {
+                        family: CanonicalMoveFamily::CMDefine,
+                        recovery_cause: None,
+                        confidence: 0.5,
+                    },
+                    rule: ReconcileRuleV2::TiedFallback,
+                    agreement,
+                    divergence: 0.5,
+                },
+                V2SalienceDriver::Atmosphere,
+                false,
+            )
+            .trace
+            .agreement
+        };
+        assert_eq!(map_agreement(AgreementV2::Agree), Agreement::FullAgreement);
+        assert_eq!(
+            map_agreement(AgreementV2::DivergeOnFamily),
+            Agreement::NoAgreement
+        );
+        assert_eq!(
+            map_agreement(AgreementV2::DivergeOnRecovery),
+            Agreement::NoAgreement
+        );
+        assert_eq!(
+            map_agreement(AgreementV2::DivergeMultiple),
+            Agreement::NoAgreement
+        );
+    }
+
+    #[test]
+    fn v1_mapping_keeps_override_shape_and_divergence() {
+        use qxfx0_self::deliberation::SalienceDriver;
+        let mapped = v2_result_to_v1_deliberation(
+            &DeliberationV2 {
+                plan: PlanV2 {
+                    family: CanonicalMoveFamily::CMRepair,
+                    recovery_cause: Some("conatus_gate_fired".into()),
+                    confidence: 1.0,
+                },
+                rule: ReconcileRuleV2::ConatusOverride,
+                agreement: AgreementV2::Agree,
+                divergence: 0.0,
+            },
+            V2SalienceDriver::ConatusGate,
+            true,
+        );
+        assert!(!mapped.plan.holistic_dominant, "override forces formal");
+        assert_eq!(
+            mapped.trace.salience_driver,
+            SalienceDriver::DrivenByConatusGate
+        );
+        assert_eq!(mapped.trace.divergence, 0.0);
+
+        let mapped = v2_result_to_v1_deliberation(
+            &DeliberationV2 {
+                plan: PlanV2 {
+                    family: CanonicalMoveFamily::CMDefine,
+                    recovery_cause: None,
+                    confidence: 0.7,
+                },
+                rule: ReconcileRuleV2::FormalAdvantage,
+                agreement: AgreementV2::DivergeOnFamily,
+                divergence: 0.5,
+            },
+            V2SalienceDriver::Resonance,
+            false,
+        );
+        assert_eq!(mapped.trace.salience_driver, SalienceDriver::DrivenByField);
+        assert_eq!(mapped.trace.divergence, 0.5, "divergence passes through");
+        assert_eq!(mapped.plan.family, CanonicalMoveFamily::CMDefine);
+        assert_eq!(mapped.plan.confidence, 0.7);
     }
 }

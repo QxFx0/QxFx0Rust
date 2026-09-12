@@ -521,8 +521,18 @@ reads the V2 energy scalar + bias under V2, `f64` plumbing unchanged
 downstream; journal records carry the per-turn authority label and
 diary replay honors it per entry (pre-migration defaults V1, unknown
 fails closed). Zero drift under the default. Next: M2 Deliberation
-(blocked on the recorded vocabulary gap), M3 witness+commitment,
+(ladder + documented mapping), M3 witness+commitment,
 M4 default flip with re-baselining + soak.
+
+### Migration M2 (ADR-0044, landed 2026-09-11)
+
+Prepare runs the canonical ladder under V2 (`proposal_pair_from_field`
++ `reconcile` over the canonical verdict) and maps the result onto the
+working-layer shape: rules 1:1, agreement Agree-only, divergence
+passthrough (V1 angst keys on the same boundaries), V1 driver
+convention. Witness/commitment stay V1; the mapping retires with them
+in M3. Unit-locked (full rule×agreement mapping, override shape,
+ladder-derived prepare output). Next: M3, then M4.
 
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per

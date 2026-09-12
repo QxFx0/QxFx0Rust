@@ -36,8 +36,8 @@ pub use blanket::{check_blanket_transition, check_initial_blanket, BlanketRecord
 pub use deliberation::{
     classify_agreement, compute_divergence, deliberate_shadow, plans_equal_mod_confidence,
     proposal_pair_from_field, reconcile, render_agreement_v2, render_reconcile_rule_v2,
-    validate_deliberation_invariants, AgreementV2, DeliberationModulationV2,
-    DeliberationShadowTrace, DeliberationV2, PlanV2, ReconcileRuleV2,
+    v2_result_to_v1_deliberation, validate_deliberation_invariants, AgreementV2,
+    DeliberationModulationV2, DeliberationShadowTrace, DeliberationV2, PlanV2, ReconcileRuleV2,
     BUILTIN_DELIBERATION_MODULATION, DOUBT_CLARIFICATION_THRESHOLD,
 };
 

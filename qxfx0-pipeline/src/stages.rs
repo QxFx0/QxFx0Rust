@@ -56,9 +56,44 @@ pub fn prepare_stage(
     authority: crate::SubjectAuthority,
 ) -> Result<PreparedTurnContext, String> {
     let field = state.semantic.field.clone();
-    let (conatus_energy, salience) = match authority {
+    // ADR-0044 migration M1+M2: the Conatus/Salience/Deliberation
+    // source follows one authority. V1 computes exactly as before;
+    // V2 reads the canonical energy scalar, bias and ladder —
+    // same `f64` plumbing downstream (thresholds, divergences,
+    // families, confidences), different source. Witness and
+    // commitment stay V1 under both authorities.
+    let (conatus_energy, salience, deliberation) = match authority {
         crate::SubjectAuthority::V1Authority => {
-            (Conatus::compute(&field), Salience::compute(&field))
+            let energy = Conatus::compute(&field);
+            let bias = Salience::compute(&field);
+            let holistic_dominant = bias > 0.5;
+            let modln = DeliberationModulation::default();
+            let holistic_plan = Plan {
+                family: if holistic_dominant {
+                    CanonicalMoveFamily::CMReflect
+                } else {
+                    CanonicalMoveFamily::CMGround
+                },
+                holistic_dominant: true,
+                recovery_cause: None,
+                confidence: (field.resonance * 0.6 + field.counterfactual * 0.4).clamp(0.0, 1.0),
+            };
+            let formal_plan = Plan {
+                family: CanonicalMoveFamily::CMDefine,
+                holistic_dominant: false,
+                recovery_cause: None,
+                confidence: (field.confidence * 0.7 + field.consolidation * 0.3).clamp(0.0, 1.0),
+            };
+            let reconciled = deliberation::reconcile(
+                &modln,
+                &holistic_plan,
+                &formal_plan,
+                &field,
+                energy,
+                bias,
+                holistic_dominant,
+            );
+            (energy, bias, reconciled)
         }
         crate::SubjectAuthority::V2Authority => {
             let energy = compute_conatus_energy(
@@ -75,46 +110,31 @@ pub fn prepare_stage(
                 },
                 &[],
             );
-            let bias =
-                compute_salience(SalienceWeightsV2::default(), energy, &field, 0.0).holistic_bias;
-            (energy.scalar, bias)
+            let verdict = compute_salience(SalienceWeightsV2::default(), energy, &field, 0.0);
+            let holistic_dominant = verdict.holistic_bias > 0.5;
+            let (holistic, formal) = qxfx0_self_v2::proposal_pair_from_field(&field);
+            let result = qxfx0_self_v2::reconcile(
+                &qxfx0_self_v2::DeliberationModulationV2::default(),
+                &verdict,
+                &holistic,
+                &formal,
+            );
+            let mapped = qxfx0_self_v2::v2_result_to_v1_deliberation(
+                &result,
+                verdict.driver,
+                holistic_dominant,
+            );
+            (energy.scalar, verdict.holistic_bias, mapped)
         }
     };
+    let holistic_dominant = salience > 0.5;
     let holistic_prop = field.resonance * 0.6 + field.counterfactual * 0.4;
     let formal_prop = field.confidence * 0.7 + field.consolidation * 0.3;
-    let holistic_dominant = salience > 0.5;
 
     let violations = SelfBlanket::check(&field, conatus_energy);
     if !violations.is_empty() {
         tracing::warn!("Self-blanket violations: {:?}", violations);
     }
-
-    let modln = DeliberationModulation::default();
-    let holistic_plan = Plan {
-        family: if holistic_dominant {
-            CanonicalMoveFamily::CMReflect
-        } else {
-            CanonicalMoveFamily::CMGround
-        },
-        holistic_dominant: true,
-        recovery_cause: None,
-        confidence: holistic_prop.clamp(0.0, 1.0),
-    };
-    let formal_plan = Plan {
-        family: CanonicalMoveFamily::CMDefine,
-        holistic_dominant: false,
-        recovery_cause: None,
-        confidence: formal_prop.clamp(0.0, 1.0),
-    };
-    let deliberation = deliberation::reconcile(
-        &modln,
-        &holistic_plan,
-        &formal_plan,
-        &field,
-        conatus_energy,
-        salience,
-        holistic_dominant,
-    );
 
     let essence_strength = if state.semantic.essence.trajectory_committed {
         state.semantic.essence.witnesses.len() as f64 / 10.0
@@ -1217,6 +1237,38 @@ mod tests {
         assert_eq!(first.salience(), second.salience());
         assert_eq!(first.holistic_dominant(), second.holistic_dominant());
         assert_eq!(first.deliberation_family(), second.deliberation_family());
+    }
+
+    #[test]
+    fn v2_prepare_runs_the_ladder_not_the_v1_switch() {
+        use qxfx0_self::deliberation::ReconcileRule;
+        let mut state = SystemState {
+            session_id: "m2-ladder".into(),
+            ..SystemState::default()
+        };
+        let raw_text = "что такое свобода?".to_string();
+        let input = TurnInputContext::new(
+            state.session_id.clone(),
+            raw_text.clone(),
+            PropositionParser::parse(&raw_text),
+            false,
+        );
+        let prepared =
+            prepare_stage(&mut state, input, crate::SubjectAuthority::V2Authority).unwrap();
+        // Default field (resonance 0.5, arousal 0.4, rest 0.5): the
+        // canonical verdict leans holistic at 0.52 confidence — below
+        // the 0.7 escalation floor — so the ladder takes
+        // HolisticAdvantage for the reflective proposal, with the
+        // mapped V1 rule tag. Deterministic ladder output, not the V1
+        // switch's confidence-gate path.
+        assert_eq!(
+            prepared.deliberation_rule(),
+            ReconcileRule::RuleHolisticAdvantage
+        );
+        assert_eq!(
+            prepared.deliberation_family(),
+            CanonicalMoveFamily::CMReflect
+        );
     }
 
     #[test]
