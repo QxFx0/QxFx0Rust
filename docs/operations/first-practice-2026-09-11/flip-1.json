@@ -1,0 +1,109 @@
+{
+  "schema": "qxfx0:flip-proposal:v1",
+  "sessions": [
+    {
+      "session_id": "practice-s1",
+      "turns": 12,
+      "verdict_passed": true,
+      "manifest_digest": "d4f5d509c08f4b65e6c85597f72bddd79023a8fd00cde3cf5e566b5ae7b0a051"
+    },
+    {
+      "session_id": "practice-s2",
+      "turns": 12,
+      "verdict_passed": true,
+      "manifest_digest": "f08191324f6f5d99f7f039043eb6016afeecd771dc395d72bc4b1291ddb31158"
+    },
+    {
+      "session_id": "practice-s3",
+      "turns": 12,
+      "verdict_passed": true,
+      "manifest_digest": "bc5e5c668d709cc856b823cc370dd522dbe656314c4f9adaf300584105a4140b"
+    },
+    {
+      "session_id": "practice-s4",
+      "turns": 12,
+      "verdict_passed": false,
+      "manifest_digest": "adc09441f56be70fb36708a7ab5d154c8c627b0faddbe2d4a401a9bd0a782f8a"
+    },
+    {
+      "session_id": "practice-s5",
+      "turns": 12,
+      "verdict_passed": true,
+      "manifest_digest": "2f26ec84b445d83797758f5147a5f26920cf46e58d1a576601a89a1810a252b6"
+    }
+  ],
+  "felt_passes": 4,
+  "b2": {
+    "schema": "qxfx0:b2-report:v1",
+    "corpus_digest": "1ba1c22e41b19cee9a707943f1b523898fa509b912f8c05c2610bdccc72e23dc",
+    "prompts": 141,
+    "enabled_corpus": {
+      "prompts": 141,
+      "blocked": 0,
+      "advances": 141,
+      "committed": 0,
+      "sessions_with_commit": 0,
+      "suppressed": 0,
+      "violations": 0,
+      "mean_angst": 0.05
+    },
+    "ablated_corpus": {
+      "prompts": 141,
+      "blocked": 0,
+      "advances": 141,
+      "committed": 0,
+      "sessions_with_commit": 0,
+      "suppressed": 0,
+      "violations": 0,
+      "mean_angst": 0.05
+    },
+    "enabled_long": {
+      "turns": 57,
+      "v1_committed": true,
+      "v2_committed": 1,
+      "suppressed": 0,
+      "violations": 25,
+      "max_run": 4,
+      "releases": 0,
+      "mean_angst": 0.8333
+    },
+    "ablated_long": {
+      "turns": 57,
+      "v1_committed": true,
+      "v2_committed": 0,
+      "suppressed": 43,
+      "violations": 0,
+      "max_run": 0,
+      "releases": 0,
+      "mean_angst": 0.8333
+    }
+  },
+  "rubrics": [
+    {
+      "rubric": "felt-sustained",
+      "passed": true,
+      "detail": "сессий: 5, различных: 5, все sustained (≥10 ходов): true"
+    },
+    {
+      "rubric": "b2-enabled-commits",
+      "passed": true,
+      "detail": "enabled-arm коммитов v2: 1"
+    },
+    {
+      "rubric": "b2-violations-bounded",
+      "passed": true,
+      "detail": "max_run 4, порог 7, релизов: 0"
+    },
+    {
+      "rubric": "b2-ablation-control",
+      "passed": true,
+      "detail": "ablated подавлений: 43, нарушений: 0"
+    },
+    {
+      "rubric": "b2-guard-stable",
+      "passed": true,
+      "detail": "блокировок enabled/ablated: 0/0"
+    }
+  ],
+  "ready": true
+}
