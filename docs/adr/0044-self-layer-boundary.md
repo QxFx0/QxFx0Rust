@@ -117,9 +117,13 @@ re-run. Module order, by coupling (f64-compatible first):
   shape (`v2_result_to_v1_deliberation`: rules 1:1, agreement
   Agree-only, divergence passthrough, V1 driver convention). Witness
   and commitment stay V1; the mapping retires with them in M3.
-- **M3 — witness+commitment**: V1 `EssenceState` → promoted V2
-  `advance_essence` (the shadow advance already runs); retires the V1
-  essence surface (reports, `essence_strength`).
+- **M3 — witness+commitment** (landed 2026-09-11): the V2 advance
+  is the authority under V2 (the V1 write block is skipped); all
+  readers route through `essence_view` (Prepare strength, render
+  style, tags, collapse trigger, contradiction bump, anomaly
+  evidence); collapse journals into the authority-agnostic
+  `reset_events`; codex reports show the session's last recorded
+  authority. B2 stays V1-authority by design (it IS the comparison).
 - **M4 — flip the default** to `V2Authority` with corpus
   re-baselining and a full soak; v1 modules retire one by one after.
 

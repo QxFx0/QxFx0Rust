@@ -7,6 +7,7 @@ pub mod b2_report;
 #[cfg(test)]
 mod conjugate_pipeline;
 pub mod conversation_fsm;
+pub mod essence_view;
 #[path = "tracing.rs"]
 pub mod execution_trace;
 pub mod fact_grounded;
@@ -23,6 +24,12 @@ pub use stages::{MAX_RUNTIME_ATOMS, MAX_RUNTIME_EDGES};
 /// Re-exported so downstream crates (CLI, codex journal, serve) select the
 /// B2 control arm without taking a direct dependency on `qxfx0-self-v2`.
 pub use qxfx0_self_v2::EssenceAblation;
+
+/// Re-exported so downstream crates (notably codex reports) read the
+/// live V2 trajectory without taking a direct dependency on
+/// `qxfx0-self-v2`. The opaque `essence_v2` value stays owned by the
+/// pipeline's typed decode below.
+pub use qxfx0_self_v2::Essence;
 
 pub use conversation_fsm::{
     fsm_state_discriminant, fsm_state_from_discriminant, initial_state, is_active,
@@ -345,7 +352,14 @@ pub(crate) fn process_turn_internal(
     }
     let is_challenge = detect_challenge(&input.raw_text);
     if let Some(trace) = trace.as_deref_mut() {
-        record_anomaly_shadow(trace, anomaly_shadow, state, &prop, is_challenge);
+        record_anomaly_shadow(
+            trace,
+            anomaly_shadow,
+            state,
+            &prop,
+            is_challenge,
+            subject_authority,
+        );
     }
     let clarification_decision = clarification_decision(clarification, suppression, state, &prop);
     if let Some(trace) = trace.as_deref_mut() {
@@ -444,7 +458,14 @@ pub(crate) fn process_turn_internal(
         "render",
         state,
         planned,
-        |state, planned| stages::render_stage(state, planned, effective_renderer_authority),
+        |state, planned| {
+            stages::render_stage(
+                state,
+                planned,
+                effective_renderer_authority,
+                subject_authority,
+            )
+        },
     ) {
         Ok(context) => context,
         Err(error) => {
@@ -492,6 +513,7 @@ pub(crate) fn process_turn_internal(
                 rendered,
                 essence_v2_ablation,
                 &mut essence_v2_advance,
+                subject_authority,
             )
         },
     ) {

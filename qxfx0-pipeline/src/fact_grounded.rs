@@ -442,7 +442,13 @@ mod tests {
         let routed = route_stage(state, prepared, false).unwrap();
         let plan = build_shadow_plan(&routed).unwrap();
         let planned = crate::turn_context::PlannedTurnContext::new(routed, plan);
-        render_stage(state, planned, RendererAuthority::AuditedPlan).unwrap()
+        render_stage(
+            state,
+            planned,
+            RendererAuthority::AuditedPlan,
+            crate::SubjectAuthority::V1Authority,
+        )
+        .unwrap()
     }
 
     #[test]
@@ -505,7 +511,13 @@ mod tests {
             prepare_stage(&mut state, input, crate::SubjectAuthority::V1Authority).unwrap();
         let routed = route_stage(&mut state, prepared, false).unwrap();
         let planned = plan_shadow_stage(&mut state, routed).unwrap();
-        let rendered = render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();
+        let rendered = render_stage(
+            &mut state,
+            planned,
+            RendererAuthority::LegacyShadow,
+            crate::SubjectAuthority::V1Authority,
+        )
+        .unwrap();
         assert!(RenderedPlanReceipt::from_rendered(&rendered, &state, packs)
             .unwrap()
             .is_none());

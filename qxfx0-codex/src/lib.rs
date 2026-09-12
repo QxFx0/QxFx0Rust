@@ -326,9 +326,25 @@ pub fn build_memory_card(card: ReflectionCard, state: &SystemState, day: u64) ->
         prior_positions,
         challenge,
         contradiction,
-        angst: state.semantic.essence.angst,
+        angst: essence_report_view(state).angst,
         practice_days: state.dialogue.practice_days.len(),
     }
+}
+
+/// Authority for post-hoc essence reads: the session's last recorded
+/// turn authority (V1 law for empty journals and pre-migration
+/// records). Reports show the layer that was live, never a blend.
+fn report_authority(state: &SystemState) -> qxfx0_pipeline::SubjectAuthority {
+    state
+        .dialogue
+        .journal
+        .last()
+        .and_then(|record| qxfx0_pipeline::subject_authority_from_label(&record.subject_authority))
+        .unwrap_or(qxfx0_pipeline::SubjectAuthority::V1Authority)
+}
+
+fn essence_report_view(state: &SystemState) -> qxfx0_pipeline::essence_view::EssenceView {
+    qxfx0_pipeline::essence_view::essence_view(state, report_authority(state))
 }
 
 /// Console rendering of the memory card. On a revisit with a recorded
@@ -549,6 +565,10 @@ pub fn build_reflection_report(state: &SystemState) -> ReflectionReport {
 
     use qxfx0_types::governance::GovernanceEventType as Event;
     let log = &state.governance_log;
+    // ADR-0044 M3: the essence numbers come from the live layer — the
+    // session's last recorded authority (V1 law when the journal is
+    // empty or pre-migration).
+    let view = essence_report_view(state);
     ReflectionReport {
         session_id: state.session_id.clone(),
         turns: state.dialogue.turn_count,
@@ -556,10 +576,10 @@ pub fn build_reflection_report(state: &SystemState) -> ReflectionReport {
         practice_days: state.dialogue.practice_days.len(),
         practice_streak: practice_streak(&state.dialogue.practice_days),
         pack_fingerprint: state.semantic.pack_set_fingerprint.clone(),
-        witnesses: state.semantic.essence.witnesses.len(),
-        witness_capacity: state.semantic.essence.capacity,
-        angst: state.semantic.essence.angst,
-        trajectory_committed: state.semantic.essence.trajectory_committed,
+        witnesses: view.witness_count,
+        witness_capacity: view.capacity,
+        angst: view.angst,
+        trajectory_committed: view.committed,
         last_topic: state.dialogue.last_topic.clone(),
         active_commitments: store.map(|store| store.active.len()).unwrap_or(0),
         quarantined_commitments: store.map(|store| store.quarantine.len()).unwrap_or(0),
@@ -1311,6 +1331,40 @@ pub fn verify_diary(markdown: &str, passphrase: Option<&str>) -> DiaryVerificati
 mod tests {
     use super::*;
     use qxfx0_types::system_state::*;
+
+    #[test]
+    fn v2_contradiction_feeds_v2_angst_and_the_report_shows_it() {
+        let db = qxfx0_persistence::Persistence::open_memory().expect("memory db opens");
+        let session = "m3-bump";
+        for text in [
+            "я думал о свободе: моя позиция — свобода требует границ",
+            "я думал о свободе: я ошибался раньше, это не так",
+        ] {
+            crate::journal::run_journal_turn_with_subject_authority(
+                &db,
+                session,
+                text,
+                20_000,
+                RendererAuthority::AuditedPlan,
+                qxfx0_pipeline::EssenceAblation::Enabled,
+                qxfx0_pipeline::SubjectAuthority::V2Authority,
+            )
+            .expect("v2 turn completes");
+        }
+        let state = db.load_state(session).expect("load").expect("session");
+        let v2_angst = qxfx0_pipeline::essence_view::essence_view(
+            &state,
+            qxfx0_pipeline::SubjectAuthority::V2Authority,
+        )
+        .angst;
+        assert!(v2_angst > 0.0, "the contradiction feeds the live layer");
+        assert_eq!(
+            state.semantic.essence.angst, 0.0,
+            "the retired layer stays untouched"
+        );
+        let report = build_reflection_report(&state);
+        assert_eq!(report.angst, v2_angst, "the report shows the live layer");
+    }
 
     #[test]
     fn mixed_authority_diary_verifies_per_entry() {

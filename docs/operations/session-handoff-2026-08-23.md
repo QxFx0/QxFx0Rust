@@ -534,6 +534,16 @@ convention. Witness/commitment stay V1; the mapping retires with them
 in M3. Unit-locked (full rule×agreement mapping, override shape,
 ladder-derived prepare output). Next: M3, then M4.
 
+### Migration M3 (ADR-0044, landed 2026-09-11)
+
+The V2 advance is the authority under V2: V1 witness/commit writes
+skipped, every reader (strength, style, tags, collapse, bump,
+anomaly, reports) routed through `essence_view`, collapse journaled
+into the authority-agnostic `reset_events`. B2 stays V1 by design.
+Unit-locked (V1 untouched under V2, collapse both paths, bump +
+report on the live layer). Next: M4 — default flip with
+re-baselining + soak.
+
 ### Deferred / operational
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).

@@ -136,10 +136,13 @@ pub fn prepare_stage(
         tracing::warn!("Self-blanket violations: {:?}", violations);
     }
 
-    let essence_strength = if state.semantic.essence.trajectory_committed {
-        state.semantic.essence.witnesses.len() as f64 / 10.0
-    } else {
-        0.0
+    let essence_strength = {
+        let view = crate::essence_view::essence_view(state, authority);
+        if view.committed {
+            view.witness_count as f64 / 10.0
+        } else {
+            0.0
+        }
     };
 
     state.semantic.adjunction = AdjunctionState {
@@ -271,6 +274,7 @@ pub fn render_stage(
     state: &mut SystemState,
     planned: PlannedTurnContext,
     renderer_authority: RendererAuthority,
+    subject_authority: crate::SubjectAuthority,
 ) -> Result<RenderedTurnContext, String> {
     let routed = planned.routed();
     let raw = routed.prepared().input().raw_text().to_owned();
@@ -400,10 +404,11 @@ pub fn render_stage(
 
     let sense_vectors = SenseDecomposer::decompose(&raw, graph);
 
-    // Build style from Self Layer state
+    // Build style from the live self layer (ADR-0044 M3).
     let holistic_dominant = routed.prepared().holistic_dominant();
-    let angst: f64 = state.semantic.essence.angst;
-    let essence_committed = state.semantic.essence.commitment.is_some();
+    let view = crate::essence_view::essence_view(state, subject_authority);
+    let angst: f64 = view.angst;
+    let essence_committed = view.committed;
     let style = style_from_state(
         conatus_energy,
         angst,
@@ -600,12 +605,18 @@ fn style_from_state(
 /// (`Enabled` is the law; `CommitDisabled` exists for the ablated control
 /// group only). `essence_v2_trace` receives the observational advance
 /// summary for the pipeline trace; it is deliberately outside the stage's
-/// typed context so replay digests never cover it.
+/// typed context so replay digests never cover it. `subject_authority`
+/// (ADR-0044 M3) selects which essence layer is live: under V2 the V1
+/// witness/commit block is skipped (the V2 advance below is the
+/// authority, not a shadow) and collapse/bump apply to the V2
+/// trajectory; the collapse journal (`semantic.essence.reset_events`)
+/// stays authority-agnostic.
 pub fn finalize_stage(
     state: &mut SystemState,
     rendered: RenderedTurnContext,
     essence_v2_ablation: EssenceAblation,
     essence_v2_trace: &mut Option<EssenceAdvanceTrace>,
+    subject_authority: crate::SubjectAuthority,
 ) -> Result<FinalizedTurnContext, String> {
     let edge_count_before = state.semantic.runtime_graph.edges.len();
     let response = rendered.response().to_owned();
@@ -638,26 +649,30 @@ pub fn finalize_stage(
     };
 
     let em = EssenceModulation::default();
-    let witness_input = qxfx0_self::WitnessInput {
-        mode: essence_mode,
-        statement: response.clone(),
-        salience_driver: driver.as_str(),
-        reconcile_rule,
-        agreement,
-        divergence,
-    };
-    witness_essence(
-        &em,
-        turn,
-        conatus_energy,
-        &mut state.semantic.essence,
-        &witness_input,
-    );
+    // ADR-0044 M3: the V1 witness/commitment write path runs only while
+    // V1 is the authority. Under V2 the advance below testifies instead.
+    if matches!(subject_authority, crate::SubjectAuthority::V1Authority) {
+        let witness_input = qxfx0_self::WitnessInput {
+            mode: essence_mode,
+            statement: response.clone(),
+            salience_driver: driver.as_str(),
+            reconcile_rule,
+            agreement,
+            divergence,
+        };
+        witness_essence(
+            &em,
+            turn,
+            conatus_energy,
+            &mut state.semantic.essence,
+            &witness_input,
+        );
 
-    if let Some(trigger) = should_commit_essence(&em, &state.semantic.essence) {
-        if state.semantic.essence.commitment.is_none() {
-            let commitment = commit_essence(turn, trigger, &state.semantic.essence);
-            state.semantic.essence.commitment = Some(commitment);
+        if let Some(trigger) = should_commit_essence(&em, &state.semantic.essence) {
+            if state.semantic.essence.commitment.is_none() {
+                let commitment = commit_essence(turn, trigger, &state.semantic.essence);
+                state.semantic.essence.commitment = Some(commitment);
+            }
         }
     }
 
@@ -774,7 +789,7 @@ pub fn finalize_stage(
         state.semantic.field.counterfactual,
         state.semantic.field.resonance,
         conatus_energy,
-        state.semantic.essence.angst,
+        crate::essence_view::essence_view(state, subject_authority).angst,
     );
     let derived = derive_atoms(&tags);
 
@@ -840,12 +855,32 @@ pub fn finalize_stage(
         }
     }
 
-    // Anomaly-3 collapse
+    // Anomaly-3 collapse (ADR-0044 M3): the trigger reads the live
+    // layer; the collapse applies to it. The collapse journal stays
+    // authority-agnostic (identical event shape on both layers).
     let self_ref_topics = ["я", "ты", "qxfx0", "система"];
-    if state.semantic.essence.angst > 0.9
-        && self_ref_topics.contains(&subject.to_lowercase().as_str())
-    {
-        collapse_essence(turn, &mut state.semantic.essence);
+    let live_angst = crate::essence_view::essence_view(state, subject_authority).angst;
+    if live_angst > 0.9 && self_ref_topics.contains(&subject.to_lowercase().as_str()) {
+        match subject_authority {
+            crate::SubjectAuthority::V1Authority => {
+                collapse_essence(turn, &mut state.semantic.essence);
+            }
+            crate::SubjectAuthority::V2Authority => {
+                let essence = crate::essence_view::decode_essence_v2(state)?;
+                let (collapsed, event) = qxfx0_self_v2::collapse_essence_at(turn, essence);
+                state.semantic.essence_v2 =
+                    Some(serde_json::to_value(&collapsed).map_err(|error| {
+                        format!("essence_v2 collapse failed to encode: {error}")
+                    })?);
+                state.semantic.essence.reset_events.push(
+                    qxfx0_types::system_state::EssenceResetEvent {
+                        turn: event.turn,
+                        previous_angst: event.previous_angst,
+                        previous_witness_count: event.previous_witness_count,
+                    },
+                );
+            }
+        }
     }
 
     // Graph growth for new topics. The edge bound is re-checked here: the
@@ -896,6 +931,9 @@ pub fn finalize_stage(
             .semantic
             .semantic_commitments
             .get_or_insert_with(SemanticCommitmentStore::default);
+        // ADR-0044 M3: snapshot the opaque V2 value before the store
+        // borrow below; the contradiction bump decodes the snapshot.
+        let v2_bump_snapshot = state.semantic.essence_v2.clone();
         // Engagement is read from the store BEFORE the commit so the new
         // position cannot match itself, and the contradiction signals come
         // from the full text the user wrote — the bare topic never carries
@@ -962,11 +1000,40 @@ pub fn finalize_stage(
                         // collided in their journal. It feeds the essence
                         // angst as a double divergent-witness accrual, so
                         // the belief protocol and the essence trajectory
-                        // move as one practice.
-                        state.semantic.essence.angst = (state.semantic.essence.angst
-                            + em.angst_accrual_rate
-                            + em.angst_accrual_rate)
-                            .min(1.0);
+                        // move as one practice. ADR-0044 M3: the live
+                        // layer moves.
+                        match subject_authority {
+                            crate::SubjectAuthority::V1Authority => {
+                                state.semantic.essence.angst = (state.semantic.essence.angst
+                                    + em.angst_accrual_rate
+                                    + em.angst_accrual_rate)
+                                    .min(1.0);
+                            }
+                            crate::SubjectAuthority::V2Authority => {
+                                let mut essence: qxfx0_self_v2::Essence = match v2_bump_snapshot {
+                                    None => qxfx0_self_v2::empty_essence(),
+                                    Some(value) => {
+                                        serde_json::from_value(value).map_err(|error| {
+                                            format!("essence_v2 bump failed to decode: {error}")
+                                        })?
+                                    }
+                                };
+                                let rate =
+                                    qxfx0_self_v2::EssenceModulation::default().angst_accrual_rate;
+                                let trajectory = match &mut essence {
+                                    qxfx0_self_v2::Essence::Uncommitted(trajectory)
+                                    | qxfx0_self_v2::Essence::Committed(trajectory, _) => {
+                                        trajectory
+                                    }
+                                };
+                                trajectory.angst_level =
+                                    (trajectory.angst_level + rate + rate).min(1.0);
+                                state.semantic.essence_v2 =
+                                    Some(serde_json::to_value(&essence).map_err(|error| {
+                                        format!("essence_v2 bump failed to encode: {error}")
+                                    })?);
+                            }
+                        }
                         let family = state
                             .last_turn_decision
                             .as_ref()
@@ -1309,10 +1376,22 @@ mod tests {
             prepare_stage(&mut state, input, crate::SubjectAuthority::V1Authority).unwrap();
         let routed = route_stage(&mut state, prepared, false).unwrap();
         let planned = plan_shadow_stage(&mut state, routed).unwrap();
-        let rendered = render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();
+        let rendered = render_stage(
+            &mut state,
+            planned,
+            RendererAuthority::LegacyShadow,
+            crate::SubjectAuthority::V1Authority,
+        )
+        .unwrap();
 
-        let finalized =
-            finalize_stage(&mut state, rendered, EssenceAblation::Enabled, &mut None).unwrap();
+        let finalized = finalize_stage(
+            &mut state,
+            rendered,
+            EssenceAblation::Enabled,
+            &mut None,
+            crate::SubjectAuthority::V1Authority,
+        )
+        .unwrap();
         let guarded = guard_stage(&mut state, finalized).unwrap();
 
         assert!(guarded.blocked(), "guard should block empty input");
@@ -1378,8 +1457,13 @@ mod tests {
                 prepare_stage(&mut state, input, crate::SubjectAuthority::V1Authority).unwrap();
             let routed = route_stage(&mut state, prepared, false).unwrap();
             let planned = plan_shadow_stage(&mut state, routed).unwrap();
-            let rendered =
-                render_stage(&mut state, planned, RendererAuthority::LegacyShadow).unwrap();
+            let rendered = render_stage(
+                &mut state,
+                planned,
+                RendererAuthority::LegacyShadow,
+                crate::SubjectAuthority::V1Authority,
+            )
+            .unwrap();
 
             // Fill the graph between two existing seed atoms so every
             // endpoint stays valid, leaving `remaining` edge slots.
@@ -1398,8 +1482,14 @@ mod tests {
             // so validation stays clean and finalize rebuilds on demand.
             state.semantic.cached_network = None;
 
-            let finalized =
-                finalize_stage(&mut state, rendered, EssenceAblation::Enabled, &mut None).unwrap();
+            let finalized = finalize_stage(
+                &mut state,
+                rendered,
+                EssenceAblation::Enabled,
+                &mut None,
+                crate::SubjectAuthority::V1Authority,
+            )
+            .unwrap();
             assert!(!finalized.rendered().response().is_empty());
             assert!(
                 state.semantic.runtime_graph.edges.len() <= MAX_RUNTIME_EDGES,

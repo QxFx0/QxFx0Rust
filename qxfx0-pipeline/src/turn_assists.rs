@@ -174,6 +174,7 @@ pub(crate) fn record_anomaly_shadow(
     state: &SystemState,
     proposition: &qxfx0_semantic::ParsedProposition,
     is_challenge: bool,
+    subject_authority: crate::SubjectAuthority,
 ) {
     let input_digest = execution_trace::calculate_stable_digest(&(state, proposition))
         .unwrap_or_else(|error| format!("digest-error:{error}"));
@@ -194,24 +195,20 @@ pub(crate) fn record_anomaly_shadow(
         let mut ledger =
             qxfx0_self::anomaly::AnomalyRecoveryLedger::new(ANOMALY_SHADOW_LEDGER_CAPACITY);
         let observed_turn = state.dialogue.turn_count.saturating_add(1);
+        // ADR-0044 M3: the anomaly evidence reads the live layer.
+        let view = crate::essence_view::essence_view(state, subject_authority);
         let self_reference = qxfx0_self::anomaly::AnomalyEvidence::SelfReference {
             turn: observed_turn,
             subject: proposition.subject.clone(),
-            angst: state.semantic.essence.angst,
-            witness_count: state.semantic.essence.witnesses.len(),
+            angst: view.angst,
+            witness_count: view.witness_count,
         };
         let anti_conatus = qxfx0_self::anomaly::AnomalyEvidence::AntiConatus {
             turn: observed_turn,
             stance_confidence: state.semantic.field.confidence,
             stance_consistent: !is_challenge,
-            angst: state.semantic.essence.angst,
-            conatus: state
-                .semantic
-                .essence
-                .witnesses
-                .last()
-                .map(|witness| witness.conatus_scalar)
-                .unwrap_or(f64::MAX),
+            angst: view.angst,
+            conatus: view.last_conatus,
         };
         let temporal = qxfx0_types::stance::StanceTopic::new(proposition.subject.clone())
             .ok()
