@@ -4,8 +4,14 @@
 //!
 //! Six gates, each a pure predicate over persisted evidence — no replay, no
 //! randomness, no network:
-//! 1. `governed-evidence` — the session validates and is pack-bound
-//!    (authority, not a bare default);
+//! 1. `governed-evidence` — the session validates and is non-vacuous
+//!    (at least one turn). Calibrated 2026-09-11 against real practice:
+//!    pack-binding (`pack_set_fingerprint`) was dropped from this gate
+//!    because the fact-grounded rollout is `Disabled` by default
+//!    (asserted in code), so no default production session is ever
+//!    pack-bound — requiring it made the gate unpassable law, not
+//!    measurement. The fingerprint stays embedded in the manifest as
+//!    cross-reference, not verdict;
 //! 2. `non-fallback-dialogue` — every journaled response is a real answer,
 //!    never empty and never the guard-recovery surface;
 //! 3. `definition-of-subject` — at least two contentful turns (a subject is
@@ -161,7 +167,7 @@ fn facts_from_state(state: &SystemState) -> FeltFacts {
         None => (false, 0, 0, Vec::new(), Vec::new(), Vec::new()),
     };
     FeltFacts {
-        governed_ok: state.validate().is_empty() && !state.semantic.pack_set_fingerprint.is_empty(),
+        governed_ok: state.validate().is_empty() && state.dialogue.turn_count >= 1,
         journaled_turns: journal
             .turns
             .iter()
@@ -641,6 +647,23 @@ mod tests {
         let verdict = evaluate_felt_gates(&state);
         assert!(!verdict.passed);
         assert_eq!(verdict.failed, FeltGate::all().to_vec());
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn governed_needs_validity_plus_a_turn_not_pack_binding() {
+        // Calibration lock (2026-09-11, real practice): the fact-grounded
+        // rollout is Disabled by default, so no default session is ever
+        // pack-bound. A valid multi-turn session without a fingerprint
+        // passes governed-evidence; an empty-but-valid session fails it.
+        let mut state = journaled_state(2, &[Some("память"), Some("внимание")]);
+        state.semantic.pack_set_fingerprint.clear();
+        let verdict = evaluate_felt_gates(&state);
+        assert!(!verdict.failed.contains(&FeltGate::GovernedEvidence));
+        let empty = SystemState::default();
+        assert!(evaluate_felt_gates(&empty)
+            .failed
+            .contains(&FeltGate::GovernedEvidence));
     }
 
     #[test]

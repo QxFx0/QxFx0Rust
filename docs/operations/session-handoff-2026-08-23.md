@@ -438,6 +438,22 @@ live B2 re-run. CLI `flip-draft`/`flip-verify`; doctor `Flip readiness`
 change. U6 complete; the flip awaits sustained practice + a blessed v2
 tuning.
 
+### First practice + calibration + ready proposal (2026-09-11)
+Five sustained CLI sessions (12 turns each, two topics, challenged
+positions) on a scratch DB, all `felt-export`ed and verified clean:
+4/5 proven, s4 honestly not-proven (no retained contradiction). The
+practice caught a real miscalibration: `governed-evidence` required
+pack-binding, but the fact-grounded rollout is `Disabled` by default
+(asserted in code) — no default session is ever pack-bound, so the
+gate was unpassable law. Recalibrated the same day: governed =
+validates + non-vacuous (≥1 turn); fingerprint stays embedded as
+cross-reference, not verdict; regression-locked by unit test.
+`flip-draft` over the 5 exports + full 141-prompt corpus: all five
+rubrics PASS (felt-sustained 5/5, commits 1, max_run 4 ≤ 7, control
+43/0, guard 0/0) — the first ready flip proposal, verified clean.
+The migration itself stays a human-reviewed change: the proposal is
+on the table, the decision is not taken.
+
 ### Cross-twin parity (post-U6, pre-tuning)
 First target landed 2026-09-11: Conatus golden parity —
 `qxfx0-self-v2/tests/fixtures/haskell_conatus_golden.tsv` holds 12 real
