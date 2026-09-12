@@ -9,3 +9,9 @@
 *.log
 .forge/
 .agent2048/
+
+# Derived morphology blobs (regenerable from tracked lexeme sources;
+# see qxfx0-morphology/build.rs and AGENTS.md). Never track: each content
+# wave would rewrite ~75MB of undiffable history.
+/data/runtime.bin
+/data/adjective_runtime.bin

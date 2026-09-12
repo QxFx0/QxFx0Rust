@@ -23,7 +23,15 @@
 - Regenerate the adjective blob after editing `data/adjective_lexemes.json`:
   `cargo run -p qxfx0-morphology --example prebuild_adjective_runtime`
   (validates the JSON digest, rebuilds the reverse index, writes
-  `data/adjective_runtime.bin`; commit the blob together with the JSON).
+  `data/adjective_runtime.bin`).
+- Blob-storage policy (decided 2026-09-11): the two `data/*.bin` are
+  derived artifacts, NOT tracked in git (`.gitignore`d; ~75MB of
+  undiffable history per content wave otherwise — 173MB banked already).
+  Tracked sources are the lexeme JSONs/TSVs (rewritten rarely).
+  Fresh clones must regen both blobs before building (CI does it in
+  `Regenerate derived morphology blobs`; `qxfx0-morphology/build.rs`
+  fails early with these commands if they are missing, `doctor`
+  enforces digest freshness at runtime).
 
 ## Cadence / latency gate
 - `scripts/diagnostic-soak-1000.sh` — per-turn `qxfx0 turn` cadence soak.

@@ -51,6 +51,14 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
+      - name: Regenerate derived morphology blobs
+        # data/*.bin are derived artifacts (not tracked in git; see
+        # qxfx0-morphology/build.rs): rebuild them from the tracked
+        # lexeme sources before anything compiles against them.
+        run: |
+          cargo run --locked -p qxfx0-morphology --example prebuild_morphology_runtime
+          cargo run --locked -p qxfx0-morphology --example prebuild_adjective_runtime
+
       - name: Run strict clippy
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
 

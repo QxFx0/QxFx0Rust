@@ -518,11 +518,16 @@ U5 runtime-AB leg.
 - **U1.5**: noun blob → columnar mmap (with the daemon, paid once per
   process; do it when CLI-mode cold start matters again).
 - **Soak closure edit** in the ops doc when v35 completes (see §3).
-- **Blob storage policy** (LFS or release artifacts) before promotion
-  starts multiplying content — decide before U5, not after.
-- **Cross-twin conformance**: shared golden corpus with the Haskell
-  reference (fixture parity tests first; `qxfx0-self-v2` is the natural
-  first parity target against `QxFx0.Self.Conatus/Essence`).
+- **Blob storage policy — DECIDED 2026-09-11**: evidence measured
+  (173MB of `*.bin` history banked over 10 content waves, ~75MB per
+  wave; bins byte-identical on regen, ~45s for both). Derived bins
+  untracked (`.gitignore`), sources stay tracked; `build.rs` guard
+  fails early with regen commands, CI regens before clippy, `doctor`
+  enforces digest freshness. No LFS, no release artifacts — the
+  cheapest option that satisfies offline fresh-clone builds.
+- **Cross-twin conformance — DONE 2026-09-11**: golden fixtures for
+  Conatus, Essence, Salience (bit-faithful) and Deliberation
+  (shared-subset + recorded divergences); v2 tuning landed on top.
 - `components/` services may re-target the canonical `qxfx0-serve` layer
   (their git-rev pins predate all of U0–U2).
 
