@@ -562,6 +562,19 @@ lemma with the topic or the full text stands. Next under
 the doctrine: input frame semantics (biggest gap), compositional
 inference, calibrated saliency weights.
 
+### Input frames v1 (landed 2026-09-11)
+
+Haskell `input_semantic_contract` analog, v1 scope: `raw_text →
+WordUnit[] → InputFrame → route_hint → route/family`, legacy
+detectors as fallback. Frame carries units (lemma + confidence,
+every token exactly one), clause/speech act, single-negation
+polarity, prepositional topic, focus, agent/target; hint fires only
+at ≥0.8 (greeting shape + second-person mental-verb questions —
+the latter is genuinely new signal: the cascade has no shape for
+`ты помнишь меня?`). Route consults the hint, everything else keeps
+the parser mode: zero drift outside pinned patterns. Next: focus
+and agent/target as response consumers, compositional inference.
+
 Flip soak (M4): 30-turn smoke green on the flipped binary
 (`turn_failures=0`, `slow_turns=0`); full 1000-turn soak launched
 2026-09-12 ~21:00 UTC (`QXFX0_DIAGNOSTIC_DIR=/tmp/opencode/flip-soak-1000`,

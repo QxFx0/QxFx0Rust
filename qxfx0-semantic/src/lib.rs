@@ -12,6 +12,7 @@ pub mod evidence_registry;
 pub mod fact_model;
 pub mod gate;
 pub mod inference;
+pub mod input_frame;
 pub mod knowledge_pack;
 pub mod network;
 pub mod pathfinder;

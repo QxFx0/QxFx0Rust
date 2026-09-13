@@ -234,7 +234,7 @@ pub fn route_stage(
     prepared: PreparedTurnContext,
     apply_clarification: bool,
 ) -> Result<RoutedTurnContext, String> {
-    let mode = prepared.input().mode();
+    let mode = prepared.input().routed_mode();
     let event = proposition_to_event(mode, prepared.has_enough());
 
     // Restore FSM state from discriminant (or use initial).
@@ -1397,6 +1397,48 @@ mod tests {
             1.0,
             "unknown territory is salient"
         );
+    }
+
+    #[test]
+    fn frame_hint_routes_mental_verb_questions_to_reflect() {
+        use qxfx0_types::CanonicalMoveFamily;
+        let mut state = SystemState {
+            session_id: "frame-route".into(),
+            ..SystemState::default()
+        };
+        // The legacy cascade has no `об`-shape here (would fall back
+        // past Reflect); the frame's mental-verb hint routes Reflect.
+        let raw_text = "ты помнишь меня?".to_string();
+        let input = TurnInputContext::new(
+            state.session_id.clone(),
+            raw_text.clone(),
+            PropositionParser::parse(&raw_text),
+            false,
+        );
+        assert_ne!(
+            input.mode(),
+            qxfx0_semantic::composer::PropositionMode::Reflect,
+            "precondition: legacy misses this shape"
+        );
+        let prepared =
+            prepare_stage(&mut state, input, crate::SubjectAuthority::V1Authority).unwrap();
+        let routed = route_stage(&mut state, prepared, false).unwrap();
+        assert_eq!(routed.family(), CanonicalMoveFamily::CMReflect);
+        // Deterministic: same input, same family.
+        let mut again = SystemState {
+            session_id: "frame-route".into(),
+            ..SystemState::default()
+        };
+        let input = TurnInputContext::new(
+            again.session_id.clone(),
+            raw_text.clone(),
+            PropositionParser::parse(&raw_text),
+            false,
+        );
+        let prepared =
+            prepare_stage(&mut again, input, crate::SubjectAuthority::V1Authority).unwrap();
+        let rerouted = route_stage(&mut again, prepared, false).unwrap();
+        assert_eq!(rerouted.family(), CanonicalMoveFamily::CMReflect);
     }
 
     #[test]

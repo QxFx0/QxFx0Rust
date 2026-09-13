@@ -19,6 +19,11 @@ pub struct TurnInputContext {
     raw_text: String,
     proposition: ParsedProposition,
     is_challenge: bool,
+    /// Input semantic frame (density doctrine, v1 scope): word units,
+    /// clause/speech act, polarity, focus, agent/target, advisory route
+    /// hint. Computed at construction; the legacy proposition detectors
+    /// stay the fallback wherever the frame emits no hint.
+    input_frame: qxfx0_semantic::input_frame::InputFrame,
 }
 impl TurnInputContext {
     pub(crate) fn new(
@@ -27,11 +32,13 @@ impl TurnInputContext {
         proposition: ParsedProposition,
         is_challenge: bool,
     ) -> Self {
+        let input_frame = qxfx0_semantic::input_frame::frame_input(&raw_text);
         Self {
             session_id,
             raw_text,
             proposition,
             is_challenge,
+            input_frame,
         }
     }
 
@@ -53,6 +60,19 @@ impl TurnInputContext {
 
     pub fn mode(&self) -> PropositionMode {
         self.proposition.mode
+    }
+
+    /// Routing mode: the frame's advisory hint wins where it fires
+    /// (high-confidence patterns only), otherwise the legacy detector
+    /// mode decides exactly as before.
+    pub fn routed_mode(&self) -> PropositionMode {
+        self.input_frame.route_hint.unwrap_or(self.proposition.mode)
+    }
+
+    /// The full input frame (polarity, focus, agent/target for future
+    /// consumers; routing reads only `routed_mode` today).
+    pub fn input_frame(&self) -> &qxfx0_semantic::input_frame::InputFrame {
+        &self.input_frame
     }
 
     pub fn is_challenge(&self) -> bool {
