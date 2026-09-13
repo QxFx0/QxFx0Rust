@@ -9,17 +9,12 @@ mod common;
 use common::{assert_success, run, TestDir};
 
 #[test]
-fn export_pack_is_listed_and_fail_closed() {
+fn export_pack_is_fail_closed() {
     let dir = TestDir::new("promotion-export-pack");
     let db = dir.join("promo.db");
 
-    let help = run(&db, &["promotion", "--help"]);
-    assert_success(&help);
-    assert!(
-        String::from_utf8_lossy(&help.stdout).contains("export-pack"),
-        "promotion --help must list export-pack"
-    );
-
+    // The verb list lives once in cli_promotion.rs; here only the
+    // fail-closed behavior (the load-bearing half).
     // Missing database: fail closed, never created.
     let missing = dir.join("absent.db");
     let out = dir.join("feed.json");

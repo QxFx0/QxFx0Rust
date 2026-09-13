@@ -10,17 +10,12 @@ mod common;
 use common::{assert_success, run, TestDir};
 
 #[test]
-fn evaluate_runtime_is_listed_and_fail_closed() {
+fn evaluate_runtime_is_fail_closed() {
     let dir = TestDir::new("promotion-runtime");
     let db = dir.join("promo.db");
 
-    let help = run(&db, &["promotion", "--help"]);
-    assert_success(&help);
-    assert!(
-        String::from_utf8_lossy(&help.stdout).contains("evaluate-runtime"),
-        "promotion --help must list evaluate-runtime"
-    );
-
+    // The verb list lives once in cli_promotion.rs; here only the
+    // fail-closed behavior (the load-bearing half).
     // Missing database: fail closed, never created.
     let missing = dir.join("absent.db");
     let output = run(&missing, &["promotion", "evaluate-runtime", "ghost"]);
