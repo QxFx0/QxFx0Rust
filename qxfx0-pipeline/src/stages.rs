@@ -900,6 +900,22 @@ pub fn finalize_stage(
         }
     }
 
+    // Compositional inference (density doctrine): close the live graph
+    // under transitivity/symmetry to fixpoint, bounded. Inferred edges
+    // reference live endpoints only (no orphans by construction),
+    // carry their derivation in `rationale` under `Inferred` source,
+    // and respect the same edge bound as the growth above. They enrich
+    // activation and paths; promotion admission never reads them as
+    // its own evidence (generated text must not self-promote).
+    for inferred in
+        qxfx0_semantic::inference::infer_graph_edges(&state.semantic.runtime_graph.edges)
+    {
+        if state.semantic.runtime_graph.edges.len() >= MAX_RUNTIME_EDGES {
+            break;
+        }
+        state.semantic.runtime_graph.add_relation(inferred);
+    }
+
     // Anomaly-3 collapse (ADR-0044 M3): the trigger reads the live
     // layer; the collapse applies to it. The collapse journal stays
     // authority-agnostic (identical event shape on both layers).

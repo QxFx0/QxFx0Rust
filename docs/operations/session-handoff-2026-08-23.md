@@ -574,7 +574,6 @@ the latter is genuinely new signal: the cascade has no shape for
 the parser mode: zero drift outside pinned patterns.
 
 ### Frame consumers (landed 2026-09-11)
-
 Units carry morphology POS; focus accepts open-class content only
 (verbs/adverbs/closed classes never emphasize; mental verbs name
 the act, not its object). First consumer: clarification names a
@@ -582,6 +581,19 @@ focus distinct from the routed subject, otherwise the historical
 wording stands byte-identically. Agent/target ride as tested API
 awaiting response consumers (same pattern as polarity). Next:
 compositional inference, calibrated saliency weights.
+
+### Compositional inference (landed 2026-09-11)
+
+Haskell `Logic/Inference` analog, bounded: transitivity over 10
+carried types (5 Haskell types have no Rust vocabulary — recorded,
+not silently dropped) and symmetry over 5, fixpoint ≤5 rounds,
+≤128 new edges per call, deterministic order, existing triples win,
+no self-loops. Derived edges carry `Inferred` source + `rationale`
+path and validate; they enrich activation/paths in finalize growth
+(under the same edge bound) but never promotion evidence
+(generated text must not self-promote). Unit-locked (chain,
+two-hop fixpoint, symmetry, determinism) + integration through a
+real turn. Next: calibrated saliency weights.
 
 Flip soak (M4): 30-turn smoke green on the flipped binary
 (`turn_failures=0`, `slow_turns=0`); full 1000-turn soak launched

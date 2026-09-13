@@ -51,6 +51,10 @@ pub use fact_model::{
 };
 pub use gate::GeneratedPredicateGate;
 pub use inference::derive_atoms;
+pub use inference::{
+    infer_graph_edges, INFERENCE_MAX_ITERATIONS, INFERENCE_MAX_NEW_EDGES, SYMMETRIC_TYPES,
+    TRANSITIVE_TYPES,
+};
 pub use knowledge_pack::{
     active_pack_asset_digests, active_pack_set, KnowledgePackError, KnowledgePackManifest,
     KnowledgePackSet, KnowledgePackSource, KnowledgePackSummary, OverlayLifecycleAction,

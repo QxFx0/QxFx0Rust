@@ -46,6 +46,12 @@ pub enum RelationSource {
     PromotedSubstrate,
     SubstrateExtractedRaw,
     LlmDiscovered,
+    /// Derived by graph inference (transitivity/symmetry) from live
+    /// edges. Enriches activation and paths; carries its derivation in
+    /// `rationale`. Never promotion-admissible on its own: inferred
+    /// content is generated text, and generated text must never
+    /// self-promote (ADR-0029).
+    Inferred,
 }
 
 /// Grammatical case for object inflection.

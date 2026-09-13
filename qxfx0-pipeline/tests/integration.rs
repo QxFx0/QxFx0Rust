@@ -2280,3 +2280,68 @@ fn oversized_input_is_rejected_before_stage_work() {
     assert!(state.validate().is_empty());
     assert!(state.governance_log.replay_check().is_empty());
 }
+
+#[test]
+fn graph_inference_closes_transitive_chains_through_real_turns() {
+    use qxfx0_types::atom::{Atom, AtomCategory, AtomId, ObjectCase, Relation, RelationSource};
+    use qxfx0_types::RelationType;
+    let mut state = test_state("inference-closure");
+    for name in ["isa_a", "isa_b", "isa_c"] {
+        state.semantic.runtime_graph.atoms.insert(
+            AtomId::new(name),
+            Atom {
+                id: AtomId::new(name),
+                display: name.to_string(),
+                category: AtomCategory::CatConcept,
+            },
+        );
+    }
+    for (from, to) in [("isa_a", "isa_b"), ("isa_b", "isa_c")] {
+        state.semantic.runtime_graph.add_relation(Relation {
+            from: AtomId::new(from),
+            to: AtomId::new(to),
+            rel_type: RelationType::RelIsA,
+            object_case: ObjectCase::CaseNominative,
+            object_text: to.to_string(),
+            verb_override: None,
+            ru_original: format!("{from} есть {to}"),
+            en_original: format!("{from} is {to}"),
+            source: RelationSource::SeedFromPredicate,
+            topic: "память".into(),
+            rationale: None,
+            counter: None,
+            synthesis: None,
+        });
+    }
+    let input = TurnInput {
+        session_id: state.session_id.clone(),
+        raw_text: "что такое память?".into(),
+    };
+    process_turn_with_options(&input, &mut state, TurnOptions::new());
+    let inferred: Vec<&Relation> = state
+        .semantic
+        .runtime_graph
+        .edges
+        .iter()
+        .filter(|edge| edge.source == RelationSource::Inferred)
+        .collect();
+    assert!(
+        inferred.iter().any(|edge| edge.from.as_str() == "isa_a"
+            && edge.to.as_str() == "isa_c"
+            && edge.rel_type == RelationType::RelIsA),
+        "transitive closure must appear after a real turn"
+    );
+    assert!(
+        inferred.iter().all(|edge| edge.validate().is_ok()),
+        "every inferred edge validates"
+    );
+    assert!(
+        inferred.iter().all(|edge| edge
+            .rationale
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Transitivity")),
+        "every inferred edge carries its derivation"
+    );
+    assert!(state.validate().is_empty());
+}
