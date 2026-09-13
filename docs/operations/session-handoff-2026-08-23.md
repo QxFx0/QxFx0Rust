@@ -544,6 +544,24 @@ legitimate V2-sourced behavior or pin-needed comparison, zero
 unexpected. V1 modules retire one by one from here; the flip soak
 re-runs below.
 
+### Density doctrine, first instruments (landed 2026-09-11)
+
+Strategic goal recorded: meaningful dialogue — understand, don't
+guess; fewer words, more meaning per word. First two instruments:
+`content_novelty` (top-down saliency: uncovered share of prompt
+content words; bare≈0, substantive mid, unknown=1.0 — measured, not
+assumed; spectral clustering explicitly deferred: no embedding graph
+exists to cluster over) feeding the V2 salience controller on the
+live path, and `concentrate` (arousal > 0.6 → densest sentence,
+smoothed density so one-word sentences can't win; audited path
+never concentrates). Haskell `decompressForReceiver` analog with
+one honest difference: density measured, not positional. The soak
+caught one real defect pre-commit: an overlap-blind concentrate
+tripped the guard's zero-topic block — the winner must now share a
+lemma with the topic or the full text stands. Next under
+the doctrine: input frame semantics (biggest gap), compositional
+inference, calibrated saliency weights.
+
 Flip soak (M4): 30-turn smoke green on the flipped binary
 (`turn_failures=0`, `slow_turns=0`); full 1000-turn soak launched
 2026-09-12 ~21:00 UTC (`QXFX0_DIAGNOSTIC_DIR=/tmp/opencode/flip-soak-1000`,

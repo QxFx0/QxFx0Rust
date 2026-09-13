@@ -4,6 +4,7 @@ pub mod challenge;
 pub mod composer;
 pub mod concept_resolver;
 pub mod conjugate;
+pub mod content_saliency;
 pub mod content_selector;
 pub mod corpus_import;
 pub mod discourse_composer;
@@ -35,6 +36,7 @@ pub use concept_resolver::{
     ConceptRecord, ConceptRegistryError, ConceptResolver, ResolutionOutcome,
 };
 pub use conjugate::ConjugateComposer;
+pub use content_saliency::{concentrate, content_novelty, CONCENTRATE_AROUSAL_GATE};
 pub use content_selector::ContentSelector;
 pub use corpus_import::{
     corpus_import_report, CorpusImportError, CorpusImportManifest, CorpusImportMetrics,

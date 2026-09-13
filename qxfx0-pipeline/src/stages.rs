@@ -42,6 +42,28 @@ use std::fmt;
 pub const MAX_RUNTIME_ATOMS: usize = 10_000;
 pub const MAX_RUNTIME_EDGES: usize = 20_000;
 
+/// Top-down novelty of a turn's text against its topic's admitted
+/// surfaces (density doctrine, first reviewable signal). Registry
+/// failure reads as 0.0 — no signal, never a spike on broken
+/// infrastructure; an unadmitted topic reads through to
+/// `content_novelty` (unknown territory is salient).
+fn topic_novelty(raw_text: &str, subject: &str) -> f64 {
+    let Ok(registry) = qxfx0_semantic::argued_topic_registry() else {
+        return 0.0;
+    };
+    let surfaces: Vec<&str> = registry
+        .get(subject)
+        .map(|topic| {
+            let mut surfaces = vec![topic.thesis().surface(), topic.counterpoint().surface()];
+            if let Some(consequence) = topic.consequence() {
+                surfaces.push(consequence.surface());
+            }
+            surfaces
+        })
+        .unwrap_or_default();
+    qxfx0_semantic::content_saliency::content_novelty(raw_text, &surfaces)
+}
+
 /// Stage 1: Prepare — Self Layer: Conatus, Salience, Deliberation.
 ///
 /// ADR-0044 migration M1: `authority` selects the Conatus/Salience
@@ -110,7 +132,14 @@ pub fn prepare_stage(
                 },
                 &[],
             );
-            let verdict = compute_salience(SalienceWeightsV2::default(), energy, &field, 0.0);
+            let verdict = compute_salience(
+                SalienceWeightsV2::default(),
+                energy,
+                &field,
+                // Density doctrine: the top-down novelty signal
+                // replaces the reserved 0.0 on the live path.
+                topic_novelty(input.raw_text(), input.subject()),
+            );
             let holistic_dominant = verdict.holistic_bias > 0.5;
             let (holistic, formal) = qxfx0_self_v2::proposal_pair_from_field(&field);
             let result = qxfx0_self_v2::reconcile(
@@ -477,6 +506,13 @@ pub fn render_stage(
         response =
             "Я не знаю этот смысл, но он вызывает определенный резонанс в моей системе.".into();
     }
+    // Density doctrine: past the arousal gate the legacy-composed
+    // response collapses to its densest sentence (Haskell
+    // `decompressForReceiver` analog; density measured, not positional,
+    // because legacy output leads with an intro). The audited path
+    // returned above and never concentrates.
+    response =
+        qxfx0_semantic::concentrate(&response, state.semantic.field.atmosphere.arousal, &subject);
 
     // Corpus-boundary honesty (141 recognized / 141 admitted): while the
     // boundary was open, legacy-graph responses for recognized-but-
@@ -1304,6 +1340,63 @@ mod tests {
         assert_eq!(first.salience(), second.salience());
         assert_eq!(first.holistic_dominant(), second.holistic_dominant());
         assert_eq!(first.deliberation_family(), second.deliberation_family());
+    }
+
+    #[test]
+    fn concentrate_collapses_legacy_output_past_the_gate() {
+        fn legacy_response(arousal: f64) -> String {
+            let mut state = SystemState {
+                session_id: "concentrate".into(),
+                ..SystemState::default()
+            };
+            let raw_text = "размышляю о времени и памяти".to_string();
+            let input = TurnInputContext::new(
+                state.session_id.clone(),
+                raw_text.clone(),
+                PropositionParser::parse(&raw_text),
+                false,
+            );
+            let prepared =
+                prepare_stage(&mut state, input, crate::SubjectAuthority::V1Authority).unwrap();
+            let routed = route_stage(&mut state, prepared, false).unwrap();
+            let planned = plan_shadow_stage(&mut state, routed).unwrap();
+            state.semantic.field.atmosphere.arousal = arousal;
+            render_stage(
+                &mut state,
+                planned,
+                RendererAuthority::LegacyShadow,
+                crate::SubjectAuthority::V1Authority,
+            )
+            .unwrap()
+            .response()
+            .to_string()
+        }
+        let calm = legacy_response(0.2);
+        assert!(
+            calm.matches(". ").count() >= 1,
+            "control must be multi-sentence: {calm}"
+        );
+        let pressed = legacy_response(0.9);
+        assert!(
+            !pressed[..pressed.len().saturating_sub(1)].contains(". "),
+            "past the gate the response is one sentence: {pressed}"
+        );
+    }
+
+    #[test]
+    fn topic_novelty_separates_bare_substantive_and_unknown() {
+        assert_eq!(
+            super::topic_novelty("что такое свобода?", "свобода"),
+            0.0,
+            "bare topic question says nothing new"
+        );
+        let mid = super::topic_novelty("свобода без ответственности это произвол", "свобода");
+        assert!(mid > 0.3, "substantive entry scores mid: {mid}");
+        assert_eq!(
+            super::topic_novelty("что такое ксеномодус?", "ксеномодус"),
+            1.0,
+            "unknown territory is salient"
+        );
     }
 
     #[test]
