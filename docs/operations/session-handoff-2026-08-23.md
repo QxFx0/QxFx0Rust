@@ -661,3 +661,14 @@ re-baselining + soak.
 - Serve protocol: README «Long-lived daemon (ADR-0043 U1)»
 - Haskell reference (readiness map): `~/my-haskell-project/QxFx0`
   (`AGENTS.md` fact-checks, `ROADMAP.md`, `src/QxFx0/Self/*`)
+
+### Skeptical audit (landed 2026-09-13, closed)
+
+Three probes (dead code/TODO/panics; test health; law/doc drift).
+Code debt: ~zero (no TODOs, no blanket allows, panics fail-closed
+only). Fixed in `da8ad12`: flag help default, reflect DB wording,
+ADR-0044 accepted, V1-law wording, Law-1 correction, essence_view
+exception, two-defaults comments, network scope, stale comments.
+Ritual verdict (`1b373df` + this note): help-dedup done; shadow
+tables, XorShift ×4, prose pins, trace keys, counts retained
+deliberately — determinism pins, not ritual. Audit closed.
