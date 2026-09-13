@@ -281,11 +281,11 @@ pub fn reconcile(
     )
 }
 
-/// The dispatched hemisphere of a verdict under the builtin weights —
+/// The dispatched hemisphere of a verdict under the calibrated weights —
 /// exposed because the doubt loop and route flip consume the dispatch,
 /// not the continuous bias.
 fn hemisphere_of(verdict: &SalienceVerdictV2) -> Hemisphere {
-    crate::salience::salience_hemisphere(crate::salience::SalienceWeightsV2::default(), *verdict)
+    crate::salience::salience_hemisphere(crate::salience::SalienceWeightsV2::calibrated(), *verdict)
 }
 
 /// The shadow surface the pipeline records: the reconciled verdict plus

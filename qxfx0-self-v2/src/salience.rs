@@ -125,6 +125,35 @@ impl Default for SalienceWeightsV2 {
     }
 }
 
+/// Calibrated weights (density doctrine): the Haskell corpus-tuning
+/// promotion (`resources/config/tuned_salience_weights.json` —
+/// best-non-regressing grid candidate over adaptation signals
+/// ±0.30/±0.15/0, evaluated on the corpus dataset). Deltas are
+/// uniformly +0.003 (a holistic nudge that improved net score without
+/// regressing), thresholds untouched. Adopted as the production source
+/// with provenance instead of re-running the grid: the formula is
+/// parity-pinned, only the coefficients travel. `Default` stays
+/// builtin (stable, parity-pinned); production call sites opt into
+/// `calibrated()` explicitly so the choice is reviewable per site.
+pub const CALIBRATED_SALIENCE_WEIGHTS: SalienceWeightsV2 = SalienceWeightsV2 {
+    resonance: 1.003,
+    atmosphere: 0.503,
+    consolidation: 0.753,
+    counterfactual: 0.753,
+    field_confidence: 0.503,
+    content_saliency: 0.603,
+    conatus_gate_threshold: 0.0,
+    verdict_threshold: 0.05,
+    sigmoid_temperature: 1.0,
+};
+
+impl SalienceWeightsV2 {
+    /// Production weights: the calibrated set above.
+    pub fn calibrated() -> Self {
+        CALIBRATED_SALIENCE_WEIGHTS
+    }
+}
+
 /// Per-driver signed contributions to the raw score. The sign matches the
 /// rule direction (positive pushes toward Holistic); confidence and driver
 /// attribution use absolute values.
@@ -322,6 +351,47 @@ pub fn validate_salience_invariants() -> Vec<String> {
     if weights.verdict_threshold >= 0.5 {
         violations
             .push("salience-v2 builtin verdict_threshold must be below the 0.5 band edge".into());
+    }
+    // Calibration discipline: the production set must stay a nudge,
+    // not a rewrite — every coefficient within 0.05 of its builtin,
+    // thresholds byte-identical. A retuning that moves further must
+    // update this bound explicitly, with evidence.
+    let calibrated = SalienceWeightsV2::calibrated();
+    for (name, tuned, base) in [
+        ("resonance", calibrated.resonance, weights.resonance),
+        ("atmosphere", calibrated.atmosphere, weights.atmosphere),
+        (
+            "consolidation",
+            calibrated.consolidation,
+            weights.consolidation,
+        ),
+        (
+            "counterfactual",
+            calibrated.counterfactual,
+            weights.counterfactual,
+        ),
+        (
+            "field_confidence",
+            calibrated.field_confidence,
+            weights.field_confidence,
+        ),
+        (
+            "content_saliency",
+            calibrated.content_saliency,
+            weights.content_saliency,
+        ),
+    ] {
+        if !tuned.is_finite() || (tuned - base).abs() > 0.05 {
+            violations.push(format!(
+                "salience-v2 calibrated weight {name} drifted past the 0.05 nudge bound: {tuned} vs builtin {base}"
+            ));
+        }
+    }
+    if calibrated.conatus_gate_threshold != weights.conatus_gate_threshold
+        || calibrated.verdict_threshold != weights.verdict_threshold
+        || calibrated.sigmoid_temperature != weights.sigmoid_temperature
+    {
+        violations.push("salience-v2 calibration must not move thresholds".into());
     }
     violations
 }
@@ -658,5 +728,15 @@ mod tests {
     #[test]
     fn invariants_hold_on_the_builtins() {
         assert!(validate_salience_invariants().is_empty());
+    }
+
+    #[test]
+    fn calibrated_is_a_nudge_with_identical_thresholds() {
+        let base = SalienceWeightsV2::default();
+        let tuned = SalienceWeightsV2::calibrated();
+        assert!((tuned.resonance - base.resonance - 0.003).abs() < 1e-12);
+        assert_eq!(tuned.verdict_threshold, base.verdict_threshold);
+        assert_eq!(tuned.conatus_gate_threshold, base.conatus_gate_threshold);
+        assert_eq!(tuned.sigmoid_temperature, base.sigmoid_temperature);
     }
 }

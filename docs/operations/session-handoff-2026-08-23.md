@@ -583,7 +583,6 @@ awaiting response consumers (same pattern as polarity). Next:
 compositional inference, calibrated saliency weights.
 
 ### Compositional inference (landed 2026-09-11)
-
 Haskell `Logic/Inference` analog, bounded: transitivity over 10
 carried types (5 Haskell types have no Rust vocabulary — recorded,
 not silently dropped) and symmetry over 5, fixpoint ≤5 rounds,
@@ -593,7 +592,19 @@ path and validate; they enrich activation/paths in finalize growth
 (under the same edge bound) but never promotion evidence
 (generated text must not self-promote). Unit-locked (chain,
 two-hop fixpoint, symmetry, determinism) + integration through a
-real turn. Next: calibrated saliency weights.
+real turn.
+
+### Calibrated saliency weights (landed 2026-09-11)
+
+Haskell corpus-tuning promotion adopted with provenance
+(best-non-regressing grid candidate, uniformly +0.003, thresholds
+untouched): `CALIBRATED_SALIENCE_WEIGHTS` + `calibrated()`, wired
+into the three production sites (Prepare live path, hemisphere
+dispatch, essence self-verdict). `Default` stays builtin
+(parity-pinned); doctor enforces the nudge bound (±0.05, thresholds
+identical). Re-baseline: zero drift — all 1062 green unchanged,
+consistent with the non-regressing provenance. An in-house grid
+search remains future work.
 
 Flip soak (M4): 30-turn smoke green on the flipped binary
 (`turn_failures=0`, `slow_turns=0`); full 1000-turn soak launched

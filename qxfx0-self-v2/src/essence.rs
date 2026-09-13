@@ -645,7 +645,7 @@ pub fn advance_essence(
         angst_level: trajectory.angst_level,
         conatus_scalar: conatus.scalar,
         self_verdict: Some(crate::salience::compute_self_verdict(
-            crate::salience::SalienceWeightsV2::default(),
+            crate::salience::SalienceWeightsV2::calibrated(),
             conatus,
             field,
             0.0,

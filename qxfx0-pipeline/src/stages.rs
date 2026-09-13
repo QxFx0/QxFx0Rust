@@ -133,7 +133,7 @@ pub fn prepare_stage(
                 &[],
             );
             let verdict = compute_salience(
-                SalienceWeightsV2::default(),
+                SalienceWeightsV2::calibrated(),
                 energy,
                 &field,
                 // Density doctrine: the top-down novelty signal
