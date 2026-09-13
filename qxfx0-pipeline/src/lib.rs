@@ -730,6 +730,9 @@ pub(crate) fn process_turn_internal(
             subject_authority: crate::turn_types::subject_authority_label(subject_authority)
                 .to_string(),
         });
+    // Bounded like history and governance: oldest turns drain out and
+    // become replay gaps downstream (flagged, never faked).
+    trim_journal_to_cap(&mut state.dialogue.journal);
 
     // Field adjustments — skip on blocked turns (rejected output should not
     // reinforce confidence or counterfactual).
@@ -783,9 +786,43 @@ pub(crate) fn process_turn_internal(
         conversation_state,
     }
 }
+/// Drain journaled turns past the session cap, oldest first.
+/// Old turns become replay gaps downstream (flagged, never faked) —
+/// the same honesty contract as pre-journal sessions.
+fn trim_journal_to_cap(journal: &mut Vec<qxfx0_types::system_state::JournalRecord>) {
+    let excess = journal
+        .len()
+        .saturating_sub(qxfx0_types::system_state::MAX_JOURNAL_TURNS);
+    if excess > 0 {
+        journal.drain(..excess);
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn journal_drain_keeps_newest_and_flags_gaps_by_absence() {
+        use qxfx0_types::system_state::{JournalRecord, MAX_JOURNAL_TURNS};
+        let mut journal: Vec<JournalRecord> = (1..=(MAX_JOURNAL_TURNS + 100))
+            .map(|turn| JournalRecord {
+                turn,
+                day: 0,
+                topic: None,
+                input: String::new(),
+                response: String::new(),
+                state_digest: String::new(),
+                subject_authority: qxfx0_types::system_state::default_subject_authority(),
+            })
+            .collect();
+        trim_journal_to_cap(&mut journal);
+        assert_eq!(journal.len(), MAX_JOURNAL_TURNS);
+        assert_eq!(journal.first().map(|record| record.turn), Some(101));
+        assert_eq!(
+            journal.last().map(|record| record.turn),
+            Some(MAX_JOURNAL_TURNS + 100)
+        );
+    }
 
     struct AcceptingSignatureVerifier;
 

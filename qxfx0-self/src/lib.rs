@@ -202,8 +202,11 @@ pub fn witness_essence(
         state.angst = (state.angst + em.angst_accrual_rate).min(1.0);
     }
 
-    // Update conatus floor
-    state.conatus_floor = state.conatus_floor.min(conatus_scalar);
+    // Update conatus floor. NaN never poisons it (see the V2 twin:
+    // a stuck NaN floor would silently disable the erosion trigger).
+    if conatus_scalar.is_finite() {
+        state.conatus_floor = state.conatus_floor.min(conatus_scalar);
+    }
 
     state.trajectory_committed = true;
 }
@@ -889,5 +892,26 @@ mod tests {
         let field = Field::default();
         let s = Salience::compute(&field);
         assert!((0.0..=1.0).contains(&s));
+    }
+
+    #[test]
+    fn test_nan_conatus_leaves_the_floor_intact() {
+        let em = EssenceModulation::default();
+        let mut state = EssenceState::default();
+        let input = WitnessInput {
+            mode: EssenceMode::Define,
+            statement: "nan probe".into(),
+            salience_driver: "test",
+            reconcile_rule: "RuleHolisticAdvantage",
+            agreement: "PartialAgreement",
+            divergence: 0.8,
+        };
+        witness_essence(&em, 1, f64::NAN, &mut state, &input);
+        assert_eq!(
+            state.conatus_floor,
+            f64::MAX,
+            "NaN must not poison the floor"
+        );
+        assert_eq!(state.witnesses.len(), 1, "the turn still witnesses");
     }
 }

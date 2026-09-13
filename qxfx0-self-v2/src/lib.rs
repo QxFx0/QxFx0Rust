@@ -879,6 +879,42 @@ mod tests {
     }
 
     #[test]
+    fn nan_conatus_leaves_the_floor_and_erosion_intact() {
+        let modulation = EssenceModulation::default();
+        let mut trajectory = empty_trajectory();
+        let nan_energy = crate::conatus::ConatusEnergy {
+            scalar: f64::NAN,
+            components: crate::conatus::ConatusComponents {
+                morphology: 0.0,
+                identity: 0.0,
+                turns: 0.0,
+                penalty: 0.0,
+                self_divergence: 0.0,
+            },
+        };
+        let held = trace(
+            ReconcileRule::RuleHolisticAdvantage,
+            Agreement::PartialAgreement,
+            0.8,
+        );
+        witness(
+            &modulation,
+            1,
+            nan_energy,
+            &field_mid(),
+            &held,
+            &mut trajectory,
+        );
+        assert_eq!(
+            trajectory.conatus_floor, 1.0,
+            "NaN must not poison the floor"
+        );
+        assert_eq!(trajectory.witnesses.len(), 1, "the turn still witnesses");
+        // Erosion stays live: sub-floor scalars afterwards still count.
+        assert!(should_commit(&modulation, &trajectory).is_none());
+    }
+
+    #[test]
     fn release_does_not_recommit_immediately() {
         let modulation = EssenceModulation::default();
         let window = modulation.violation_release_window;

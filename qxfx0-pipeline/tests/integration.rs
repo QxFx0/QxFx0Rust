@@ -753,7 +753,9 @@ fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
     let (canary_output, canary_trace) = process_turn_with_options_and_trace(
         &input,
         &mut canary_state,
-        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+        TurnOptions::new()
+            .with_response_plan_v2(ResponsePlanV2Mode::Canary)
+            .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
     );
     let render = canary_trace
         .steps
@@ -779,7 +781,9 @@ fn response_plan_v2_canary_authority_is_explicit_and_rolls_back_to_v1() {
     let (replay_output, replay_trace) = process_turn_with_options_and_trace(
         &input,
         &mut replay_state,
-        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+        TurnOptions::new()
+            .with_response_plan_v2(ResponsePlanV2Mode::Canary)
+            .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
     );
     assert_eq!(canary_output.response, replay_output.response);
     assert_eq!(
@@ -846,7 +850,9 @@ fn response_plan_v2_behavioral_canary_respects_the_define_only_boundary() {
             let (output, trace) = process_turn_with_options_and_trace(
                 &input,
                 &mut state,
-                TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+                TurnOptions::new()
+                    .with_response_plan_v2(ResponsePlanV2Mode::Canary)
+                    .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
             );
             assert!(!output.blocked, "eligible definition blocked for {topic}");
             assert_eq!(
@@ -863,7 +869,9 @@ fn response_plan_v2_behavioral_canary_respects_the_define_only_boundary() {
         let (_, trace) = process_turn_with_options_and_trace(
             &challenge,
             &mut state,
-            TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+            TurnOptions::new()
+                .with_response_plan_v2(ResponsePlanV2Mode::Canary)
+                .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
         );
         assert_eq!(
             trace.authority_guard_classification.as_deref(),
@@ -890,7 +898,9 @@ fn response_plan_v2_negative_controls_preserve_default_and_rollback_boundaries()
         let (_, trace) = process_turn_with_options_and_trace(
             &input,
             &mut state,
-            TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+            TurnOptions::new()
+                .with_response_plan_v2(ResponsePlanV2Mode::Canary)
+                .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
         );
         assert_eq!(
             trace.authority_guard_classification.as_deref(),
@@ -911,7 +921,9 @@ fn response_plan_v2_negative_controls_preserve_default_and_rollback_boundaries()
     let (_, authority_trace) = process_turn_with_options_and_trace(
         &input,
         &mut authority_state,
-        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+        TurnOptions::new()
+            .with_response_plan_v2(ResponsePlanV2Mode::Canary)
+            .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
     );
     assert_eq!(
         authority_trace.authority_guard_classification.as_deref(),
@@ -2064,6 +2076,7 @@ fn thesis_shadow_does_not_compose_with_v2_authority() {
     };
     let options = TurnOptions::new()
         .with_thesis_projection(ThesisProjectionRollout::Shadow)
+        .with_response_plan_v2(ResponsePlanV2Mode::Canary)
         .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary);
     let mut isolated = test_state(&input.session_id);
     let mut authority_only = test_state(&input.session_id);
@@ -2072,7 +2085,9 @@ fn thesis_shadow_does_not_compose_with_v2_authority() {
     let authority_output = process_turn_with_options(
         &input,
         &mut authority_only,
-        TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
+        TurnOptions::new()
+            .with_response_plan_v2(ResponsePlanV2Mode::Canary)
+            .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary),
     );
     assert_eq!(isolated_output.response, authority_output.response);
     assert_eq!(isolated_output.blocked, authority_output.blocked);

@@ -173,7 +173,17 @@ pub fn run_turn_with_v2_authority_trace(
     let (output, trace) = qxfx0_pipeline::process_turn_with_options_and_trace(
         &input,
         &mut state,
-        qxfx0_pipeline::TurnOptions::new().with_response_plan_v2_authority(authority),
+        qxfx0_pipeline::TurnOptions::new()
+            .with_response_plan_v2_authority(authority)
+            .with_response_plan_v2(
+                // Explicit: authority never implies mode (the builder
+                // coupling was removed; Canary turns need Canary mode).
+                if authority == qxfx0_pipeline::ResponsePlanV2Authority::Canary {
+                    qxfx0_pipeline::ResponsePlanV2Mode::Canary
+                } else {
+                    qxfx0_pipeline::ResponsePlanV2Mode::Off
+                },
+            ),
     );
     save_journal_state(db, session_id, &mut state)?;
     Ok(AuthorityTracedTurn {

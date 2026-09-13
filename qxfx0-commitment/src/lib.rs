@@ -2,6 +2,7 @@ pub mod thesis_lifecycle;
 pub use thesis_lifecycle::{LifecycleApply, LifecycleError, ThesisLifecycleOps};
 
 use qxfx0_types::system_state::*;
+use qxfx0_types::system_state::{MAX_CONTRADICTIONS, MAX_LINEAGE_PER_ID};
 use std::collections::BTreeSet;
 
 /// Result of a commit operation.
@@ -160,13 +161,14 @@ impl CommitmentOps {
         new_store
             .active
             .insert(cid.clone(), (new_payload.clone(), turn));
-        let lineage = new_store.lineage.entry(cid.clone()).or_default();
-        lineage.push(LineageEvent::Revised { turn });
+        Self::push_lineage(&mut new_store, cid, LineageEvent::Revised { turn });
 
         Ok(new_store)
     }
 
-    /// Record a contradiction between two commitments.
+    /// Record a contradiction between two commitments. Bounded: oldest
+    /// events drain past `MAX_CONTRADICTIONS`, so the log can never
+    /// wedge the state permanently invalid.
     pub fn contradict(
         left: &CommitmentId,
         right: &CommitmentId,
@@ -181,7 +183,24 @@ impl CommitmentOps {
             kind,
             turn,
         });
+        let excess = new_store
+            .contradictions
+            .len()
+            .saturating_sub(MAX_CONTRADICTIONS);
+        if excess > 0 {
+            new_store.contradictions.drain(..excess);
+        }
         new_store
+    }
+
+    /// Push one lineage event, draining oldest past the per-id bound.
+    fn push_lineage(store: &mut SemanticCommitmentStore, id: &CommitmentId, event: LineageEvent) {
+        let lineage = store.lineage.entry(id.clone()).or_default();
+        lineage.push(event);
+        let excess = lineage.len().saturating_sub(MAX_LINEAGE_PER_ID);
+        if excess > 0 {
+            lineage.drain(..excess);
+        }
     }
 
     /// Belief revision on a caught contradiction: the weaker live side
@@ -242,23 +261,19 @@ impl CommitmentOps {
             store
                 .quarantine
                 .insert(id.clone(), (payload, committed_turn));
-            store
-                .lineage
-                .entry(id.clone())
-                .or_default()
-                .push(LineageEvent::Retracted {
+            Self::push_lineage(
+                store,
+                id,
+                LineageEvent::Retracted {
                     turn,
                     reason: RetractionReason::ParserContradiction,
-                });
+                },
+            );
         } else {
             let mut revised = payload.clone();
             revised.confidence = weakened;
             store.active.insert(id.clone(), (revised, turn));
-            store
-                .lineage
-                .entry(id.clone())
-                .or_default()
-                .push(LineageEvent::Revised { turn });
+            Self::push_lineage(store, id, LineageEvent::Revised { turn });
         }
     }
 
@@ -383,8 +398,7 @@ impl CommitmentOps {
             }
             if let Some((payload, _)) = new_store.quarantine.remove(&cid) {
                 new_store.active.insert(cid.clone(), (payload, turn));
-                let lineage = new_store.lineage.entry(cid).or_default();
-                lineage.push(LineageEvent::Promoted { turn });
+                Self::push_lineage(&mut new_store, &cid, LineageEvent::Promoted { turn });
             }
         }
 
@@ -825,5 +839,49 @@ mod tests {
             serde_json::to_string(&unchanged).unwrap(),
             serde_json::to_string(&store).unwrap()
         );
+    }
+
+    #[test]
+    fn contradiction_log_drains_oldest_past_the_cap() {
+        let store = revised_store();
+        let mut flooded = store.clone();
+        for turn in 0..(MAX_CONTRADICTIONS + 100) {
+            flooded = CommitmentOps::contradict(
+                &CommitmentId(0),
+                &CommitmentId(1),
+                ContradictionKind::ContradictionStatement,
+                turn,
+                &flooded,
+            );
+        }
+        assert_eq!(flooded.contradictions.len(), MAX_CONTRADICTIONS);
+        assert_eq!(
+            flooded.contradictions.first().map(|event| event.turn),
+            Some(100)
+        );
+        assert_eq!(
+            flooded.contradictions.last().map(|event| event.turn),
+            Some(MAX_CONTRADICTIONS + 99)
+        );
+    }
+
+    #[test]
+    fn lineage_drains_oldest_past_the_per_id_cap() {
+        // Halving quarantines in ≤3 steps, so the cap is exercised
+        // directly: promote-churn paths accumulate over long sessions.
+        let mut store = revised_store();
+        for turn in 0..(MAX_LINEAGE_PER_ID + 10) {
+            CommitmentOps::push_lineage(
+                &mut store,
+                &CommitmentId(0),
+                LineageEvent::Revised { turn },
+            );
+        }
+        let events = store.lineage.get(&CommitmentId(0)).expect("lineage kept");
+        assert_eq!(events.len(), MAX_LINEAGE_PER_ID);
+        assert!(matches!(
+            events.last(),
+            Some(LineageEvent::Revised { turn }) if *turn == MAX_LINEAGE_PER_ID + 9
+        ));
     }
 }

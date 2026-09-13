@@ -1,7 +1,7 @@
 use qxfx0_pipeline::fact_grounded::ThesisProjectionRollout;
 use qxfx0_pipeline::{
     process_turn_with_options, process_turn_with_options_and_trace, RendererAuthority,
-    ResponsePlanV2Authority, TurnInput, TurnOptions,
+    ResponsePlanV2Authority, ResponsePlanV2Mode, TurnInput, TurnOptions,
 };
 use qxfx0_types::{SystemState, ThesisObservationOutcome};
 use serde::Deserialize;
@@ -63,7 +63,9 @@ fn options(case: &Case, shadow: bool) -> TurnOptions {
         options
     };
     if case.v2_authority {
-        options.with_response_plan_v2_authority(ResponsePlanV2Authority::Canary)
+        options
+            .with_response_plan_v2(ResponsePlanV2Mode::Canary)
+            .with_response_plan_v2_authority(ResponsePlanV2Authority::Canary)
     } else {
         options
     }

@@ -672,3 +672,16 @@ exception, two-defaults comments, network scope, stale comments.
 Ritual verdict (`1b373df` + this note): help-dedup done; shadow
 tables, XorShift ×4, prose pins, trace keys, counts retained
 deliberately — determinism pins, not ritual. Audit closed.
+
+### Skeptical audit 2 (landed 2026-09-13, closed)
+
+Probes: perf (clones/allocs/scans), API/types (stringly, errors),
+floats/serde/bounds. Findings fixed: NaN floor poisoning (both
+twins, finite-guard + tests), journal/contradictions/lineage caps
+(10k/10k/256, drain-oldest, validate backstops, gap honesty),
+builder side-effect removed (explicit mode at call sites).
+Confirmed healthy: BPS conversions, deny_unknown_fields placement,
+all recent serde defaults, error-type discipline, float hygiene in
+V2. Deferred with reasons: V1 NaN guards beyond the floor (V1 is
+pinned-comparison surface), path_depth recalibration, recovery_cause
+enum, typed revise errors, response_plan field merge, in-house grid.

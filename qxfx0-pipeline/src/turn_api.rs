@@ -93,10 +93,10 @@ impl TurnOptions {
     }
 
     pub fn with_response_plan_v2_authority(mut self, authority: ResponsePlanV2Authority) -> Self {
+        // No side effects: mode is orthogonal and set explicitly by the
+        // caller (`with_response_plan_v2`). A builder that silently sets
+        // two fields was the coupling the audit flagged.
         self.response_plan_v2_authority = authority;
-        if authority == ResponsePlanV2Authority::Canary {
-            self.response_plan_v2 = ResponsePlanV2Mode::Canary;
-        }
         self
     }
 

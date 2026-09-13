@@ -372,7 +372,12 @@ pub fn witness(
     })
     .clamp(0.0, 1.0);
 
-    trajectory.conatus_floor = trajectory.conatus_floor.min(conatus.scalar);
+    // NaN never poisons the floor: an undecodable scalar leaves it
+    // untouched instead of sticking it at NaN (which would silently
+    // disable the erosion trigger, since `x < NaN` is always false).
+    if conatus.scalar.is_finite() {
+        trajectory.conatus_floor = trajectory.conatus_floor.min(conatus.scalar);
+    }
 }
 
 /// `Some(trigger)` when the trajectory has crossed a commitment threshold.

@@ -11,6 +11,17 @@ use crate::perspective::PerspectiveState;
 use crate::stance::BoundedStanceProvenance;
 use crate::thesis::ThesisState;
 
+/// Bound on journaled turns per session (parity with dialogue history
+/// and the governance log). The journal is drained oldest-first past
+/// this bound — old turns become replay gaps (flagged, never faked),
+/// exactly like pre-journal sessions.
+pub const MAX_JOURNAL_TURNS: usize = 10_000;
+/// Bound on the contradiction log: drained oldest-first, so
+/// challenge-every-turn can never wedge the state permanently invalid.
+pub const MAX_CONTRADICTIONS: usize = 10_000;
+/// Bound on lineage events per commitment id, drained oldest-first.
+pub const MAX_LINEAGE_PER_ID: usize = 256;
+
 /// Dialogue state — multi-turn context, history, last routing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DialogueState {
@@ -307,8 +318,18 @@ impl SystemState {
             if store.active.len() + store.quarantine.len() > 1_024 {
                 violations.push("semantic commitment store exceeds 1024 entries".into());
             }
-            if store.contradictions.len() > 10_000 {
+            if store.contradictions.len() > MAX_CONTRADICTIONS {
                 violations.push("commitment contradiction log exceeds 10000 entries".into());
+            }
+            if store
+                .lineage
+                .values()
+                .any(|events| events.len() > MAX_LINEAGE_PER_ID)
+            {
+                violations.push("commitment lineage exceeds 256 events per id".into());
+            }
+            if self.dialogue.journal.len() > MAX_JOURNAL_TURNS {
+                violations.push("dialogue journal exceeds 10000 turns".into());
             }
         }
         if self.semantic.essence.witnesses.len() > self.semantic.essence.capacity.max(32) {
