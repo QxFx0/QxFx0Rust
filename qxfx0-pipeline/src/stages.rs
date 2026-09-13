@@ -346,7 +346,8 @@ pub fn render_stage(
     }
 
     if routed.family() == CanonicalMoveFamily::CMClarify {
-        let response = clarification_surface(&subject);
+        let focus = routed.prepared().input().input_frame().focus.clone();
+        let response = clarification_surface(&subject, focus.as_deref());
         return Ok(RenderedTurnContext::new(
             planned,
             response,
@@ -555,8 +556,16 @@ pub fn render_stage(
     ))
 }
 
-fn clarification_surface(subject: &str) -> String {
-    format!("Мне нужно уточнение: что именно вы хотите прояснить о «{subject}»?")
+fn clarification_surface(subject: &str, focus: Option<&str>) -> String {
+    // Density doctrine: when the frame isolated an emphasis distinct
+    // from the routed subject, the clarification names it — asking
+    // about the emphasis, not re-asking the topic. Otherwise the
+    // historical wording stands byte-identically.
+    let about = match focus {
+        Some(focus) if focus != subject => focus,
+        _ => subject,
+    };
+    format!("Мне нужно уточнение: что именно вы хотите прояснить о «{about}»?")
 }
 
 fn audited_plan_surface(planned: &PlannedTurnContext) -> Result<Option<String>, String> {
@@ -1439,6 +1448,24 @@ mod tests {
             prepare_stage(&mut again, input, crate::SubjectAuthority::V1Authority).unwrap();
         let rerouted = route_stage(&mut again, prepared, false).unwrap();
         assert_eq!(rerouted.family(), CanonicalMoveFamily::CMReflect);
+    }
+
+    #[test]
+    fn clarification_names_divergent_focus() {
+        assert_eq!(
+            clarification_surface("памяти", None),
+            "Мне нужно уточнение: что именно вы хотите прояснить о «памяти»?"
+        );
+        assert_eq!(
+            clarification_surface("памяти", Some("памяти")),
+            "Мне нужно уточнение: что именно вы хотите прояснить о «памяти»?",
+            "focus equal to the subject keeps the historical wording"
+        );
+        assert_eq!(
+            clarification_surface("памяти", Some("ответственности")),
+            "Мне нужно уточнение: что именно вы хотите прояснить о «ответственности»?",
+            "divergent emphasis is asked about, not re-asked as topic"
+        );
     }
 
     #[test]

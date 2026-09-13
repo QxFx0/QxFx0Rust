@@ -563,7 +563,6 @@ the doctrine: input frame semantics (biggest gap), compositional
 inference, calibrated saliency weights.
 
 ### Input frames v1 (landed 2026-09-11)
-
 Haskell `input_semantic_contract` analog, v1 scope: `raw_text →
 WordUnit[] → InputFrame → route_hint → route/family`, legacy
 detectors as fallback. Frame carries units (lemma + confidence,
@@ -572,8 +571,17 @@ polarity, prepositional topic, focus, agent/target; hint fires only
 at ≥0.8 (greeting shape + second-person mental-verb questions —
 the latter is genuinely new signal: the cascade has no shape for
 `ты помнишь меня?`). Route consults the hint, everything else keeps
-the parser mode: zero drift outside pinned patterns. Next: focus
-and agent/target as response consumers, compositional inference.
+the parser mode: zero drift outside pinned patterns.
+
+### Frame consumers (landed 2026-09-11)
+
+Units carry morphology POS; focus accepts open-class content only
+(verbs/adverbs/closed classes never emphasize; mental verbs name
+the act, not its object). First consumer: clarification names a
+focus distinct from the routed subject, otherwise the historical
+wording stands byte-identically. Agent/target ride as tested API
+awaiting response consumers (same pattern as polarity). Next:
+compositional inference, calibrated saliency weights.
 
 Flip soak (M4): 30-turn smoke green on the flipped binary
 (`turn_failures=0`, `slow_turns=0`); full 1000-turn soak launched

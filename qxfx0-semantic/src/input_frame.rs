@@ -22,11 +22,13 @@ use serde::{Deserialize, Serialize};
 
 /// One classified token: the contract requires exactly one unit per
 /// token, a non-empty lemma, confidence in `[0, 1]` and a non-empty
-/// ambiguity list.
+/// ambiguity list. `pos` is `None` off-dictionary (the word still
+/// counts as a unit, and still can carry focus).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WordUnit {
     pub surface: String,
     pub lemma: String,
+    pub pos: Option<qxfx0_types::morphology::PartOfSpeech>,
     pub confidence: f64,
     pub ambiguity: Vec<String>,
 }
@@ -127,10 +129,12 @@ fn tokens(text: &str) -> Vec<String> {
         .collect()
 }
 
-fn lemmatize(word: &str) -> (String, f64) {
+fn lemmatize(word: &str) -> (String, Option<qxfx0_types::morphology::PartOfSpeech>, f64) {
     match qxfx0_morphology::get_runtime().lemmatize(word) {
-        qxfx0_types::morphology::MorphologyLookup::Resolved(result) => (result.lemma, 1.0),
-        _ => (word.to_string(), 0.5),
+        qxfx0_types::morphology::MorphologyLookup::Resolved(result) => {
+            (result.lemma, Some(result.pos), 1.0)
+        }
+        _ => (word.to_string(), None, 0.5),
     }
 }
 
@@ -146,7 +150,7 @@ pub fn frame_input(raw_text: &str) -> InputFrame {
     let words = tokens(&normalized_text);
     let mut units = Vec::with_capacity(words.len());
     for word in &words {
-        let (lemma, confidence) = lemmatize(word);
+        let (lemma, pos, confidence) = lemmatize(word);
         let mut ambiguity = vec![lemma.clone()];
         if ambiguity[0] != *word {
             ambiguity.push(word.clone());
@@ -154,6 +158,7 @@ pub fn frame_input(raw_text: &str) -> InputFrame {
         units.push(WordUnit {
             surface: word.clone(),
             lemma,
+            pos,
             confidence,
             ambiguity,
         });
@@ -222,21 +227,36 @@ pub fn frame_input(raw_text: &str) -> InputFrame {
         }
     }
 
-    // Focus: first content token after a sentence-initial interrogative,
-    // skipping scaffolding (`такое`, `есть`, `это` are not emphasis).
+    // Focus: first focusable token after a sentence-initial
+    // interrogative. Focusable = open-class content (nouns,
+    // adjectives, unknowns) — verbs, adverbs and closed classes
+    // never carry emphasis, scaffolding (`такое`, `есть`, `это`)
+    // is not emphasis either, and neither are the mental verbs:
+    // they name the thinking act, never its object.
     let focus = if words
         .first()
         .is_some_and(|first| INTERROGATIVES.contains(&first.as_str()))
     {
-        words
+        units
             .iter()
             .skip(1)
-            .find(|word| {
-                word.chars().count() >= 3
-                    && !INTERROGATIVES.contains(&word.as_str())
-                    && !["такое", "есть", "это"].contains(&word.as_str())
+            .filter(|unit| {
+                unit.surface.chars().count() >= 3
+                    && !INTERROGATIVES.contains(&unit.surface.as_str())
+                    && !["такое", "есть", "это"].contains(&unit.surface.as_str())
+                    && !MENTAL_VERBS.contains(&unit.surface.as_str())
             })
-            .cloned()
+            .find(|unit| {
+                use qxfx0_types::morphology::PartOfSpeech as Pos;
+                matches!(
+                    unit.pos,
+                    None | Some(Pos::Noun)
+                        | Some(Pos::Adjective)
+                        | Some(Pos::Numeral)
+                        | Some(Pos::Other)
+                )
+            })
+            .map(|unit| unit.surface.clone())
     } else {
         None
     };
@@ -295,6 +315,14 @@ mod tests {
         assert_eq!(frame.route_hint, Some(PropositionMode::Reflect));
         assert_eq!(frame.target.as_deref(), Some("ты"));
         assert_eq!(frame.polarity, Polarity::Affirmative);
+    }
+
+    #[test]
+    fn focus_skips_verbs_for_nouns() {
+        let frame = frame_input("что ты думаешь о памяти?");
+        assert_eq!(frame.focus.as_deref(), Some("памяти"));
+        let bare = frame_input("что такое свобода?");
+        assert_eq!(bare.focus.as_deref(), Some("свобода"));
     }
 
     #[test]
