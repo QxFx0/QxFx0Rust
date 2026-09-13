@@ -3,8 +3,9 @@
 Status: accepted — U0 complete, U1 complete (serve daemon), U2 complete
 (crate + pipeline wiring + hysteresis landed; ADR-0044 verdict recorded) —
 U3 complete in shadow (salience + blanket + canonical reconcile/doubt-loop
-landed 2026-09-09, all replay-visible, V1 still routes; the dispatch flip
-is a separate release gated on the shadow trace corpus) — U4 complete
+landed 2026-09-09, all replay-visible; the dispatch flip landed as
+ADR-0044 Migration M1–M4 2026-09-11/13 with re-baselining and a closed
+1000-turn soak) — U4 complete
 (U4.1 + U4.2 landed 2026-09-10: `qxfx0-bridge` algebra + worker +
 quarantine + schema v13 + `bridge-maintain`, zero visible behavior change
 gated by corpus equality) — U5 in flight (U5.1 + U5.2 landed 2026-09-10/11: pure
@@ -29,7 +30,11 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
 
 1. **Determinism.** No LLM call ever happens on the turn path. Everything
    nondeterministic lives *between* turns and enters a turn only as data —
-   via a versioned, digest-fingerprinted promotion overlay. The existing
+   via a versioned, digest-fingerprinted promotion overlay. (Recorded
+   correction 2026-09-13: the turn path never reads promotion tables —
+   overlays act only through editorial admission into the embedded pack
+   and offline measurement harnesses. The law's overlay clause describes
+   the admission/review boundary, not a turn-time read.) The existing
    pack-set fingerprint mechanism (a session cannot silently cross a
    semantic-authority change) extends to overlays.
 2. **Fail-closed.** No hypothesis reaches the user without gates and an
@@ -94,8 +99,9 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   the reconciled-vs-applied comparison plus the doubt-loop escalation
   (V2 Conatus-gate floor 0.9, counterfactual ambiguity +0.2,
   same-topic-confirmed suppression) to the same replay-visible
-  `EssenceAdvanceTrace` — V1 remains the routing authority and the flip
-  reads the agreement statistic off the trace corpus.
+  `EssenceAdvanceTrace` — V1 routed until the ADR-0044 M4 flip
+  (2026-09-11); the flip reads the agreement statistic off the trace
+  corpus.
 - **U4 «Мост обучения»** — `qxfx0-bridge` behind a feature flag (default
   build has no network — privacy stays an architectural fact). Runtime
   edge store with reinforce/decay/retire (Haskell `RuntimeLLMFeedback` is
@@ -236,8 +242,9 @@ set digest)`. The Haskell side builds the subject; the Rust side makes it
   `validate_flip_invariants` rides the doctor `Flip readiness` check
   (checks 18 → 19). The draft never flips anything: the migration itself
   stays a human-reviewed code change, and human release is permanent.
-  U6 is now complete; the flip awaits a real sustained practice plus a
-  v2 tuning that the probe blesses.
+  U6 is now complete; the flip landed as ADR-0044 Migration M1–M4
+  (practice archived, probe re-run, default flipped with re-baselining,
+  soak closed 2026-09-13).
 
 ## Anti-goals
 

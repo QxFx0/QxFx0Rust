@@ -1,6 +1,7 @@
 # ADR 0044: Self-layer boundary — `qxfx0-self` vs `qxfx0-self-v2`
 
-Status: proposed
+Status: accepted (flip proposal `flip-1.json` reviewed 2026-09-11;
+migration M1–M4 landed; soak closed 2026-09-13)
 
 ## Context
 
@@ -88,7 +89,7 @@ held position, control suppresses, guard identical across arms.
 Unification still not decided: no product need for v2 as turn
 authority yet.
 
-## Decision (proposed)
+## Decision (accepted; executed as Migration M1–M4 below)
 
 1. Keep both crates (v1 authority, v2 shadow). No unification until v2
    gains hysteresis (commitment budget / per-topic commitment /
@@ -100,14 +101,14 @@ authority yet.
 
 ## Migration (approved 2026-09-11 — flip proposal `flip-1.json` reviewed)
 
-`TurnOptions.subject_authority` (`V1Authority` default, `V2Authority`
-opt-in via `--subject-authority-v2`) gates each retired module; the
+`TurnOptions.subject_authority` (`V2Authority` default since the M4
+flip; `V1Authority` pinned for comparisons) gates each retired module;
 default never drifts without a re-baselining commit plus a soak
 re-run. Module order, by coupling (f64-compatible first):
 
 - **M1 — Conatus+Salience source** (landed 2026-09-11):
-  `TurnOptions.subject_authority` (`V1Authority` default, opt-in
-  `--subject-authority-v2`); Prepare reads the V2 energy scalar and
+  `TurnOptions.subject_authority` (V1 default at landing, flipped to
+  V2 in M4); Prepare reads the V2 energy scalar and
   bias under V2, everything downstream keeps `f64` plumbing.
   Journal records carry the per-turn authority label; diary replay
   honors it per entry (pre-migration artifacts default to V1,

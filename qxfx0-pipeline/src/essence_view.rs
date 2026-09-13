@@ -33,9 +33,11 @@ pub struct EssenceView {
 }
 
 /// Read the live layer. Infallible by contract: an undecodable V2 value
-/// reads as the empty carrier with a warning (the turn itself still
-/// fails closed at the advance site, so corruption can never hide
-/// behind this read for long).
+/// reads as the empty carrier with a warning. Conscious Law-2 exception,
+/// recorded 2026-09-13: read paths (style, tags, anomaly shadow, reports)
+/// cannot fail the turn the way the advance site does — but the advance
+/// site still fails closed on the same corruption, so a broken value can
+/// never hide behind this read for longer than one turn.
 pub fn essence_view(state: &SystemState, authority: SubjectAuthority) -> EssenceView {
     match authority {
         SubjectAuthority::V1Authority => {

@@ -14,14 +14,12 @@ build time into a bincode blob and loaded via `bincode::deserialize` at runtime
 ## Files
 
 - `data/lexemes.json`, `data/manifest.json` — canonical source assets (unchanged).
-- `data/runtime.bin` — generated, committed, `include_bytes!`-ed by
-  `qxfx0-morphology/src/runtime.rs` (`EMBEDDED_RUNTIME_BIN`). Validated at
-  test time by `test_embedded_runtime_blob_is_valid`.
-- `qxfx0-morphology/examples/prebuild_morphology_runtime.rs` — generator.
-- `qxfx0-morphology/src/runtime.rs` `get_runtime()` — prefers the blob, falls
-  back to JSON parse (stderr warning) only if the blob is absent/corrupt, e.g.
-  in a dev tree missing the committed blob. The `QXFX0_DATA_DIR` override path
-  still parses the directory `lexemes.json` directly.
+- `data/runtime.bin` — generated, NOT committed (`.gitignore`d derived
+  artifact, blob-storage policy 2026-09-11), `include_bytes!`-ed by
+  `qxfx0-morphology/src/runtime.rs`. A missing blob fails the build
+  early via `qxfx0-morphology/build.rs` with the regen commands;
+  freshness is enforced at runtime by `doctor` digests. There is no
+  JSON fallback (fail-closed by decision).
 
 ## Regenerating the blob
 
@@ -30,7 +28,6 @@ Whenever `data/lexemes.json` or `data/manifest.json` change:
 ```sh
 cargo run -p qxfx0-morphology --example prebuild_morphology_runtime
 cargo test -p qxfx0-morphology --all-features
-git add data/runtime.bin
 ```
 
 The test asserts the blob's `lexemes_sha256` matches the manifest-recorded hash

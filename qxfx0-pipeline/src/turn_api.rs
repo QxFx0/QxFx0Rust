@@ -16,7 +16,8 @@ use std::time::Instant;
 /// Explicit, default-off feature selection for a single turn.
 ///
 /// Every axis defaults to the standard production path: the legacy renderer
-/// with all staged integrations disabled. A new staged feature extends this
+/// with all staged integrations disabled (struct default; the deployed CLI
+/// selects `AuditedPlan` explicitly). A new staged feature extends this
 /// struct instead of multiplying `process_turn_*` entry points, so behaviour
 /// selection stays data rather than a combinatorial set of function names.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]

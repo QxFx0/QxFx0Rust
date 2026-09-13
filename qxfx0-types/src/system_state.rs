@@ -68,7 +68,11 @@ pub struct JournalRecord {
     pub subject_authority: String,
 }
 
-/// Authority label for journal records predating the migration switch.
+/// Authority label for journal records predating the migration switch
+/// (and for empty journals). This is the *replay* default — old rows
+/// re-render under V1 — distinct from the pipeline's live default
+/// (`SubjectAuthority::default()`, V2 since the M4 flip). Both are
+/// correct in context; do not "unify" them.
 pub fn default_subject_authority() -> String {
     "v1_authority".to_string()
 }

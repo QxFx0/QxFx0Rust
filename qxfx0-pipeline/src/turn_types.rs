@@ -336,9 +336,9 @@ pub struct PipelineStageTimings {
     /// `qxfx0_morphology::runtime_blob_warm_ms`.
     pub morphology_blob_warm_ms: u64,
     /// One-time (process-global) cost of making the adjective lexicon usable
-    /// (blob deserialize on the happy path, JSON parse + index rebuild on the
-    /// fallback), incurred on the first adjective surface resolution. Zero
-    /// when no adjective is ever resolved. Attribute for
+    /// (blob deserialize; there is deliberately no JSON fallback — a stale
+    /// or missing blob fails closed via `build.rs` + `doctor`).
+    /// Zero when no adjective is ever resolved. Attribute for
     /// `input_normalization_ms` spikes that `morphology_init_ms` does not
     /// cover; see `qxfx0_morphology::adjective_lexicon_init_ms`.
     pub adjective_lexicon_init_ms: u64,

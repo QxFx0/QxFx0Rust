@@ -129,10 +129,11 @@ enum Commands {
         /// law (`enabled`).
         #[arg(long, value_enum, default_value_t = EssenceV2AblationArg::Enabled)]
         essence_v2_ablation: EssenceV2AblationArg,
-        /// ADR-0044 migration M1: read the Conatus/Salience source from
-        /// the canonical v2 core instead of the working layer. Opt-in
-        /// measurement surface for the flip soak comparison; the default
-        /// is the law (V1).
+        /// ADR-0044 migration: read the Conatus/Salience source from
+        /// the canonical v2 core. Since the M4 flip this is the
+        /// default; the flag forces it explicitly (no-op today, kept
+        /// for explicitness and soak comparisons). Pinned V1 paths
+        /// (B2, measurement baselines) never read this flag.
         #[arg(long)]
         subject_authority_v2: bool,
         #[arg(long, requires = "cognitive_pilot_trace_jsonl")]

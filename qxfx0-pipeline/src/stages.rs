@@ -66,12 +66,11 @@ fn topic_novelty(raw_text: &str, subject: &str) -> f64 {
 
 /// Stage 1: Prepare — Self Layer: Conatus, Salience, Deliberation.
 ///
-/// ADR-0044 migration M1: `authority` selects the Conatus/Salience
-/// source. `V1Authority` computes exactly as before; `V2Authority`
-/// reads the canonical energy scalar (blanket snapshot) and bias —
-/// same `f64` plumbing downstream (thresholds, divergences,
-/// deliberation input), different source. Deliberation, witness and
-/// commitment stay V1 under both authorities.
+/// ADR-0044 migration (M1+M2 landed): `authority` selects the
+/// Conatus/Salience/Deliberation source. `V1Authority` computes exactly
+/// as before; `V2Authority` reads the canonical energy scalar, bias and
+/// ladder — same `f64` plumbing downstream. Witness and commitment
+/// follow M3 (V1 writes retired under V2).
 pub fn prepare_stage(
     state: &mut SystemState,
     input: TurnInputContext,
@@ -79,11 +78,8 @@ pub fn prepare_stage(
 ) -> Result<PreparedTurnContext, String> {
     let field = state.semantic.field.clone();
     // ADR-0044 migration M1+M2: the Conatus/Salience/Deliberation
-    // source follows one authority. V1 computes exactly as before;
-    // V2 reads the canonical energy scalar, bias and ladder —
-    // same `f64` plumbing downstream (thresholds, divergences,
-    // families, confidences), different source. Witness and
-    // commitment stay V1 under both authorities.
+    // source follows one authority (M3 retires the V1 essence writes;
+    // the V1 trace vocabulary stays as the journal contract).
     let (conatus_energy, salience, deliberation) = match authority {
         crate::SubjectAuthority::V1Authority => {
             let energy = Conatus::compute(&field);
