@@ -1056,6 +1056,17 @@ pub fn finalize_stage(
                             turn,
                             &new_store,
                         );
+                        // Density doctrine, belief revision: a caught
+                        // contradiction weakens the weaker live side
+                        // (quarantining below the floor, propagating one
+                        // level to dependents) — positions move instead
+                        // of standing forever.
+                        new_store = CommitmentOps::revise_on_contradiction(
+                            &new_id,
+                            &counterpart,
+                            turn,
+                            &new_store,
+                        );
                         // A caught contradiction is existential tension by
                         // definition: the practitioner's own beliefs
                         // collided in their journal. It feeds the essence

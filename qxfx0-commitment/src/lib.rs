@@ -19,6 +19,14 @@ pub enum CommitResult {
 /// session cannot grow state indefinitely.
 pub const MAX_COMMITMENTS: usize = 1_024;
 
+/// Revision dynamics (Haskell `Logic/BeliefRevision` analog, bounded):
+/// the weaker side of a contradiction is halved, dependents by a
+/// quarter-step, and anything below the floor is quarantined (never
+/// deleted — the lineage testifies). Single-level propagation only.
+pub const REVISION_WEAKEN_FACTOR: f64 = 0.5;
+pub const REVISION_PROPAGATION_FACTOR: f64 = 0.75;
+pub const REVISION_QUARANTINE_FLOOR: f64 = 0.3;
+
 /// Commitment store operations — commit, revise, retract, contradict.
 /// All operations are pure (return new store, don't mutate).
 pub struct CommitmentOps;
@@ -174,6 +182,84 @@ impl CommitmentOps {
             turn,
         });
         new_store
+    }
+
+    /// Belief revision on a caught contradiction: the weaker live side
+    /// is weakened (halved), its direct dependents by a quarter-step,
+    /// and anything below the quarantine floor moves to quarantine
+    /// with a `ParserContradiction` lineage (never deleted). Ties
+    /// weaken the challenger (`left` by call convention) — held
+    /// positions stand. Missing ids (already retired) are a no-op:
+    /// revision applies to live positions only. Pure and deterministic
+    /// (dependents visit in id order).
+    pub fn revise_on_contradiction(
+        left: &CommitmentId,
+        right: &CommitmentId,
+        turn: usize,
+        store: &SemanticCommitmentStore,
+    ) -> SemanticCommitmentStore {
+        let mut new_store = store.clone();
+        let (left_confidence, right_confidence) =
+            match (new_store.active.get(left), new_store.active.get(right)) {
+                (Some((left_payload, _)), Some((right_payload, _))) => {
+                    (left_payload.confidence, right_payload.confidence)
+                }
+                _ => return new_store,
+            };
+        let weaker = if left_confidence <= right_confidence {
+            left.clone()
+        } else {
+            right.clone()
+        };
+        Self::weaken(&weaker, REVISION_WEAKEN_FACTOR, turn, &mut new_store);
+        let mut dependents: Vec<CommitmentId> = new_store
+            .active
+            .iter()
+            .filter(|(id, (payload, _))| *id != &weaker && payload.deps.contains(&weaker))
+            .map(|(id, _)| id.clone())
+            .collect();
+        dependents.sort();
+        for dependent in dependents {
+            Self::weaken(
+                &dependent,
+                REVISION_PROPAGATION_FACTOR,
+                turn,
+                &mut new_store,
+            );
+        }
+        new_store
+    }
+
+    /// Weaken one live position by `factor`, quarantining below the
+    /// floor. No-op on ids outside `active`.
+    fn weaken(id: &CommitmentId, factor: f64, turn: usize, store: &mut SemanticCommitmentStore) {
+        let Some((payload, _)) = store.active.get(id) else {
+            return;
+        };
+        let weakened = payload.confidence * factor;
+        if weakened < REVISION_QUARANTINE_FLOOR {
+            let (payload, committed_turn) = store.active.remove(id).expect("checked above");
+            store
+                .quarantine
+                .insert(id.clone(), (payload, committed_turn));
+            store
+                .lineage
+                .entry(id.clone())
+                .or_default()
+                .push(LineageEvent::Retracted {
+                    turn,
+                    reason: RetractionReason::ParserContradiction,
+                });
+        } else {
+            let mut revised = payload.clone();
+            revised.confidence = weakened;
+            store.active.insert(id.clone(), (revised, turn));
+            store
+                .lineage
+                .entry(id.clone())
+                .or_default()
+                .push(LineageEvent::Revised { turn });
+        }
     }
 
     /// Retrieve active commitments matching a query (word-set overlap).
@@ -621,5 +707,123 @@ mod tests {
         assert!(!promoted.quarantine.contains_key(&cid));
         assert_eq!(promoted.quarantine.len(), 1);
         assert_eq!(promoted.active.len() + promoted.quarantine.len(), 2);
+    }
+
+    fn revised_store() -> SemanticCommitmentStore {
+        let store = SemanticCommitmentStore::default();
+        let strong = FactualClaimPayload {
+            confidence: 0.9,
+            ..make_payload("свобода", "свобода предполагает выбор")
+        };
+        let weak = FactualClaimPayload {
+            confidence: 0.8,
+            ..make_payload("свобода", "свобода это произвол")
+        };
+        let (store, _) = CommitmentOps::commit(strong, &store);
+        let (store, _) = CommitmentOps::commit(weak, &store);
+        store
+    }
+
+    #[test]
+    fn revision_weakens_the_weaker_live_side() {
+        let store = revised_store();
+        let revised =
+            CommitmentOps::revise_on_contradiction(&CommitmentId(1), &CommitmentId(0), 5, &store);
+        assert_eq!(
+            revised
+                .active
+                .get(&CommitmentId(1))
+                .map(|(payload, _)| payload.confidence),
+            Some(0.4),
+            "0.8 halved"
+        );
+        assert_eq!(
+            revised
+                .active
+                .get(&CommitmentId(0))
+                .map(|(payload, _)| payload.confidence),
+            Some(0.9),
+            "stronger side untouched"
+        );
+        assert!(matches!(
+            revised.lineage.get(&CommitmentId(1)).map(Vec::as_slice),
+            Some([.., LineageEvent::Revised { turn: 5 }])
+        ));
+    }
+
+    #[test]
+    fn revision_ties_weaken_the_challenger() {
+        let store = SemanticCommitmentStore::default();
+        let (store, _) = CommitmentOps::commit(make_payload("свобода", "позиция один"), &store);
+        let (store, _) = CommitmentOps::commit(make_payload("свобода", "позиция два"), &store);
+        let revised =
+            CommitmentOps::revise_on_contradiction(&CommitmentId(1), &CommitmentId(0), 5, &store);
+        // Tie weakens the left (challenger) side: 0.5 halved to 0.25
+        // lands below the floor, so it quarantines with lineage.
+        assert!(!revised.active.contains_key(&CommitmentId(1)));
+        assert!(revised.quarantine.contains_key(&CommitmentId(1)));
+        assert!(
+            revised.active.contains_key(&CommitmentId(0)),
+            "holder stands"
+        );
+    }
+
+    #[test]
+    fn revision_quarantines_below_the_floor_and_propagates_once() {
+        let store = SemanticCommitmentStore::default();
+        let weak = FactualClaimPayload {
+            confidence: 0.5,
+            ..make_payload("свобода", "слабая позиция")
+        };
+        let (store, _) = CommitmentOps::commit(weak, &store);
+        let dependent = FactualClaimPayload {
+            confidence: 0.9,
+            deps: vec![CommitmentId(0)],
+            ..make_payload("свобода", "зависимая позиция")
+        };
+        let (store, _) = CommitmentOps::commit(dependent, &store);
+        let strong = FactualClaimPayload {
+            confidence: 0.9,
+            ..make_payload("свобода", "сильная позиция")
+        };
+        let (store, _) = CommitmentOps::commit(strong, &store);
+        let revised =
+            CommitmentOps::revise_on_contradiction(&CommitmentId(2), &CommitmentId(0), 7, &store);
+        assert!(
+            !revised.active.contains_key(&CommitmentId(0)),
+            "0.5 halved to 0.25 < 0.3 quarantines"
+        );
+        assert!(revised.quarantine.contains_key(&CommitmentId(0)));
+        assert!(matches!(
+            revised.lineage.get(&CommitmentId(0)).map(Vec::as_slice),
+            Some([.., LineageEvent::Retracted { turn: 7, .. }])
+        ));
+        assert_eq!(
+            revised
+                .active
+                .get(&CommitmentId(1))
+                .map(|(payload, _)| payload.confidence),
+            Some(0.675),
+            "dependent quarter-stepped: 0.9 * 0.75"
+        );
+        assert_eq!(
+            revised
+                .active
+                .get(&CommitmentId(2))
+                .map(|(payload, _)| payload.confidence),
+            Some(0.9),
+            "stronger side untouched"
+        );
+    }
+
+    #[test]
+    fn revision_ignores_retired_ids() {
+        let store = revised_store();
+        let unchanged =
+            CommitmentOps::revise_on_contradiction(&CommitmentId(99), &CommitmentId(0), 5, &store);
+        assert_eq!(
+            serde_json::to_string(&unchanged).unwrap(),
+            serde_json::to_string(&store).unwrap()
+        );
     }
 }

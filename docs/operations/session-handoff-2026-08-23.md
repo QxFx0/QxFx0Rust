@@ -573,8 +573,7 @@ the latter is genuinely new signal: the cascade has no shape for
 `ты помнишь меня?`). Route consults the hint, everything else keeps
 the parser mode: zero drift outside pinned patterns.
 
-### Frame consumers (landed 2026-09-11)
-Units carry morphology POS; focus accepts open-class content only
+### Frame consumers (landed 2026-09-11)Units carry morphology POS; focus accepts open-class content only
 (verbs/adverbs/closed classes never emphasize; mental verbs name
 the act, not its object). First consumer: clarification names a
 focus distinct from the routed subject, otherwise the historical
@@ -593,6 +592,17 @@ path and validate; they enrich activation/paths in finalize growth
 (generated text must not self-promote). Unit-locked (chain,
 two-hop fixpoint, symmetry, determinism) + integration through a
 real turn.
+
+### Belief revision (landed 2026-09-11)
+
+Haskell `Logic/BeliefRevision` analog, bounded: a caught
+contradiction weakens the weaker live side (halved; ties weaken the
+challenger — held positions stand), quarter-steps direct dependents
+(one level), quarantines below 0.3 with `ParserContradiction`
+lineage (never deleted; FELT id-accounting holds). Wired into
+Finalize next to the angst accrual. Unit-locked (weaken, tie,
+quarantine+propagation, retired-id no-op). Doctrine loop closed:
+positions now move instead of standing forever.
 
 ### Calibrated saliency weights (landed 2026-09-11)
 
