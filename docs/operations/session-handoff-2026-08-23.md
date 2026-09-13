@@ -589,6 +589,10 @@ Flip soak (M4): 30-turn smoke green on the flipped binary
 log `/tmp/opencode/flip-soak-1000.log`) — converges ~14:00 UTC next
 day; close the gate on its `pilot.status` before declaring M4 done.
 
+Flip soak CLOSED 2026-09-13: 1000/1000, `turn_failures=0`,
+`slow_turns=0`, `health_failures=0`, `final_doctor_ok=1`,
+`final_metrics_ok=1`. M4 done: the flipped binary holds cadence.
+
 ### Migration M3 (ADR-0044, landed 2026-09-11)
 
 The V2 advance is the authority under V2: V1 witness/commit writes
