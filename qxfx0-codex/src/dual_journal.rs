@@ -48,7 +48,9 @@ pub struct SubjectPosition {
 
 /// The practitioner's persisted position on one turn. Input/response text
 /// stays with the diary manifest; the dual journal only carries the
-/// gate-relevant flags, so the two artifacts cross-reference by turn.
+/// gate-relevant flags plus the input frame's observational facets
+/// (polarity, agent/target — evidence, never routing), so the two
+/// artifacts cross-reference by turn.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PractitionerPosition {
     pub topic: Option<String>,
@@ -58,6 +60,21 @@ pub struct PractitionerPosition {
     pub response_empty: bool,
     /// The response is the guard-recovery surface.
     pub recovery: bool,
+    /// Input polarity (`affirmative` / `negative`); `affirmative` for
+    /// unjournaled turns (no input to read).
+    #[serde(default = "default_polarity")]
+    pub polarity: String,
+    /// The input carries a first-person marker (`я`).
+    #[serde(default)]
+    pub agent: bool,
+    /// The input addresses the system (`ты` / `вы`).
+    #[serde(default)]
+    pub target: bool,
+}
+
+/// Polarity label for unjournaled turns and pre-facet exports.
+pub fn default_polarity() -> String {
+    "affirmative".to_string()
 }
 
 /// One zipped turn: both halves of the practice, side by side.
@@ -75,6 +92,38 @@ pub struct DualJournal {
     pub turns: Vec<DualTurn>,
     /// The V2 shadow trajectory was present when the evidence was built.
     pub essence_v2_shadow: bool,
+}
+
+/// Build one practitioner's position, reading the input frame's
+/// observational facets (polarity, agent/target) from the stored input
+/// text. Unjournaled turns take the defaults — flagged, never faked.
+fn practitioner_position(
+    record: Option<&qxfx0_types::system_state::JournalRecord>,
+) -> PractitionerPosition {
+    let Some(record) = record else {
+        return PractitionerPosition {
+            topic: None,
+            journaled: false,
+            response_empty: true,
+            recovery: false,
+            polarity: default_polarity(),
+            agent: false,
+            target: false,
+        };
+    };
+    let frame = qxfx0_semantic::input_frame::frame_input(&record.input);
+    PractitionerPosition {
+        topic: record.topic.clone(),
+        journaled: true,
+        response_empty: record.response.trim().is_empty(),
+        recovery: record.response.trim() == crate::felt::RECOVERY_RESPONSE,
+        polarity: match frame.polarity {
+            qxfx0_semantic::input_frame::Polarity::Affirmative => "affirmative".into(),
+            qxfx0_semantic::input_frame::Polarity::Negative => "negative".into(),
+        },
+        agent: frame.agent.is_some(),
+        target: frame.target.is_some(),
+    }
 }
 
 impl DualJournal {
@@ -105,16 +154,7 @@ impl DualJournal {
             };
             turns.push(DualTurn {
                 turn,
-                practitioner: PractitionerPosition {
-                    topic: record.and_then(|entry| entry.topic.clone()),
-                    journaled: record.is_some(),
-                    response_empty: record
-                        .map(|entry| entry.response.trim().is_empty())
-                        .unwrap_or(true),
-                    recovery: record
-                        .map(|entry| entry.response.trim() == crate::felt::RECOVERY_RESPONSE)
-                        .unwrap_or(false),
-                },
+                practitioner: practitioner_position(record),
                 subject: SubjectPosition {
                     witnessed: witness.is_some(),
                     salience_driver: witness
@@ -240,5 +280,32 @@ mod tests {
         state.dialogue.journal = vec![journal_on(1, Some("память"))];
         state.semantic.essence.witnesses = vec![witness_on(1)];
         assert_eq!(DualJournal::build(&state), DualJournal::build(&state));
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn practitioner_facets_come_from_the_stored_input() {
+        let mut record = journal_on(1, Some("память"));
+        record.input = "я не согласен про память, ты ошибаешься".into();
+        let mut state = SystemState::default();
+        state.session_id = "facets".into();
+        state.dialogue.turn_count = 1;
+        state.dialogue.journal = vec![record];
+        let journal = DualJournal::build(&state);
+        let practitioner = &journal.turns[0].practitioner;
+        assert_eq!(practitioner.polarity, "negative");
+        assert!(practitioner.agent, "я marker");
+        assert!(practitioner.target, "ты marker");
+    }
+
+    #[test]
+    fn pre_facet_exports_deserialize_with_defaults() {
+        // A DualTurn JSON without the facet fields (pre-tail exports)
+        // loads as affirmative/speakerless/addresseeless.
+        let json = r#"{"turn":1,"practitioner":{"topic":null,"journaled":false,"response_empty":true,"recovery":false},"subject":{"witnessed":false,"agreement":"","divergence":0.0,"conatus":0.0,"committed":false,"reset_on_turn":false}}"#;
+        let turn: DualTurn = serde_json::from_str(json).expect("old shape loads");
+        assert_eq!(turn.practitioner.polarity, "affirmative");
+        assert!(!turn.practitioner.agent);
+        assert!(!turn.practitioner.target);
     }
 }

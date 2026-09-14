@@ -699,3 +699,14 @@ all recent serde defaults, error-type discipline, float hygiene in
 V2. Deferred with reasons: V1 NaN guards beyond the floor (V1 is
 pinned-comparison surface), path_depth recalibration, recovery_cause
 enum, typed revise errors, response_plan field merge, in-house grid.
+
+### Frame tail + operation mode (landed 2026-09-13)
+
+Frame tail closed: polarity/agent/target ride the dual journal as
+observational evidence (read off stored inputs, defaults for gaps,
+old exports deserialize). Memory card deliberately untouched
+(topic-centric by design, input-agnostic). Operation loop
+rehearsed live (6 mixed turns incl. challenge + guard-block):
+report/doctor green, felt-verify clean, facets correct per turn
+(negative+agent+target on the challenge, recovery flagged on the
+block), verdict honestly not-proven (recovery turn + <10 turns).
