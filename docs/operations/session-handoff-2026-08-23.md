@@ -721,3 +721,12 @@ over parser subjects/objects (None → byte-identical). 45 golden
 rows; 400-row school corpus green after triaging two real defects
 (verb-headed spans, hyphenated particles). Documented limits:
 unknown adverbs chain, syncretic plurals attach by ending.
+
+### A2 ComposedPair (landed 2026-09-14)
+
+`chunk_all` lists every NP of a span (shared core with the head
+chunker); `comparison_pair` composes the distinction pair from the
+frame's normalized text (first two phrases — a three-way tail never
+glues onto the second). The Distinction branch prefers the composed
+pair, legacy `и`-split as fallback. School corpus (400 rows) green
+with zero drift; golden pair tests pin the triple case.

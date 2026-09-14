@@ -290,6 +290,31 @@ pub fn frame_input(raw_text: &str) -> InputFrame {
     }
 }
 
+/// A composed comparison pair: the two entities a distinction turns
+/// on, in encounter order. Built from NP chunks, not string splits —
+/// `вера и надежда и любовь` yields the first two phrases instead of
+/// gluing the tail onto the second.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ComposedPair {
+    pub left: String,
+    pub right: String,
+}
+
+/// Extract the comparison pair of a distinction turn from the frame's
+/// normalized text (`между`-span chunked; first two phrases win).
+/// `None` when fewer than two phrases are found — the caller keeps
+/// its legacy split as fallback.
+pub fn comparison_pair(frame: &InputFrame) -> Option<ComposedPair> {
+    let (_, after) = frame.normalized_text.split_once("между ")?;
+    let mut chunks = crate::noun_phrase::chunk_all(after);
+    if chunks.len() < 2 {
+        return None;
+    }
+    let right = chunks.remove(1);
+    let left = chunks.remove(0);
+    Some(ComposedPair { left, right })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -315,6 +340,21 @@ mod tests {
         assert_eq!(frame.route_hint, Some(PropositionMode::Reflect));
         assert_eq!(frame.target.as_deref(), Some("ты"));
         assert_eq!(frame.polarity, Polarity::Affirmative);
+    }
+
+    #[test]
+    fn comparison_pair_takes_first_two_chunks() {
+        let frame = frame_input("в чём разница между свободой и волей?");
+        let pair = comparison_pair(&frame).expect("pair found");
+        assert_eq!(pair.left, "свободой");
+        assert_eq!(pair.right, "волей");
+        // Three phrases: first two win, tail never glued.
+        let triple = frame_input("разница между верой и надеждой и любовью");
+        let pair = comparison_pair(&triple).expect("pair found");
+        assert_eq!(pair.left, "верой");
+        assert_eq!(pair.right, "надеждой");
+        // No между-span: no pair, caller falls back.
+        assert!(comparison_pair(&frame_input("что такое свобода?")).is_none());
     }
 
     #[test]

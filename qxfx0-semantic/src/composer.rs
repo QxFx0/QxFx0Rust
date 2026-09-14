@@ -155,6 +155,21 @@ impl PropositionParser {
         // Distinction: "в чем разница между X и Y?"
         if trimmed.contains("разница между") || trimmed.contains("различие между")
         {
+            // Composed pair first (ADR-0045 A2): NP chunks of the
+            // между-span, first two win. Legacy split as fallback
+            // where the chunker declines (<2 phrases).
+            let framed = crate::input_frame::frame_input(trimmed);
+            if let Some(pair) = crate::input_frame::comparison_pair(&framed) {
+                let subject = Self::clean_topic(&pair.left);
+                let object = Self::clean_topic(&pair.right);
+                return ParsedProposition {
+                    subject_resolution: Self::resolve_phrase(&subject),
+                    subject,
+                    object_resolution: Some(Self::resolve_phrase(&object)),
+                    object: Some(object),
+                    mode: PropositionMode::Connect,
+                };
+            }
             let mezi_prefix = "между ";
             let after = if let Some(idx) = trimmed.find(mezi_prefix) {
                 &trimmed[idx + mezi_prefix.len()..]

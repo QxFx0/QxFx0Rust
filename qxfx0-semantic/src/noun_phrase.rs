@@ -223,6 +223,33 @@ fn has_genitive_ending(word: &str) -> bool {
 /// Pure, total, deterministic; morphology-backed with surface
 /// fallbacks, so unknown words still chunk as singletons.
 pub fn chunk_noun_phrase(span: &str) -> Option<String> {
+    let (words, tokens) = tokenize(span);
+    chunk_at(&words, &tokens, 0).map(|(chunk, _)| chunk)
+}
+
+/// Extract every NP chunk of a span in order, skipping separators
+/// (closed classes, punctuation residue) between chunks. Used where
+/// the caller needs a pair, not a head — notably distinction
+/// unpacking (`разница между X и Y`).
+pub fn chunk_all(span: &str) -> Vec<String> {
+    let (words, tokens) = tokenize(span);
+    let mut chunks = Vec::new();
+    let mut from = 0;
+    while from < tokens.len() {
+        match chunk_at(&words, &tokens, from) {
+            Some((chunk, end)) => {
+                chunks.push(chunk);
+                from = end;
+            }
+            None => {
+                from += 1;
+            }
+        }
+    }
+    chunks
+}
+
+fn tokenize(span: &str) -> (Vec<String>, Vec<ChunkToken>) {
     // Hyphenated compounds stay whole (`кем-то`, `что-нибудь`):
     // splitting the particle off loses indefiniteness, and compounds
     // are single chunk units anyway. Only ASCII hyphen joins;
@@ -233,27 +260,40 @@ pub fn chunk_noun_phrase(span: &str) -> Option<String> {
         .map(|token| token.trim_matches('-').to_string())
         .filter(|token| !token.is_empty())
         .collect();
+    let tokens = words.iter().map(|word| classify(word)).collect();
+    (words, tokens)
+}
+
+/// One chunk starting at or after `from`: head search, backward
+/// adjective walk (never before `from`), forward agreement scan.
+/// Returns the surface and the token index just past it.
+fn chunk_at(words: &[String], tokens: &[ChunkToken], from: usize) -> Option<(String, usize)> {
     if words.is_empty() {
         return None;
     }
-    let tokens: Vec<ChunkToken> = words.iter().map(|word| classify(word)).collect();
-    let head = tokens.iter().position(|token| {
-        if is_closed_class(token) {
-            return false;
-        }
-        // Unknown verb forms never head a phrase (dictionary gap, not
-        // a noun — see `looks_like_verb`).
-        if token.pos.is_none() && looks_like_verb(&token.surface) {
-            return false;
-        }
-        (is_nominal(token) || is_adjectival(token))
-            && !(token.pos.is_none() && token.surface.chars().count() < 3)
-    })?;
+    let head = tokens
+        .iter()
+        .enumerate()
+        .skip(from)
+        .find_map(|(index, token)| {
+            if is_closed_class(token) {
+                return None;
+            }
+            // Unknown verb forms never head a phrase (dictionary gap, not
+            // a noun — see `looks_like_verb`).
+            if token.pos.is_none() && looks_like_verb(&token.surface) {
+                return None;
+            }
+            ((is_nominal(token) || is_adjectival(token))
+                && !(token.pos.is_none() && token.surface.chars().count() < 3))
+                .then_some(index)
+        })?;
     // Anchor: the first known noun; without one the head candidate
     // anchors itself (unknown singleton or adjective-led phrase whose
     // agreement reference resolves as the scan proceeds).
     let mut start = head;
-    while start > 0 && is_adjectival(&tokens[start - 1]) && !is_known_nominal(&tokens[start - 1]) {
+    while start > from && is_adjectival(&tokens[start - 1]) && !is_known_nominal(&tokens[start - 1])
+    {
         start -= 1;
     }
     let mut end = start;
@@ -309,7 +349,7 @@ pub fn chunk_noun_phrase(span: &str) -> Option<String> {
     if end == start || (!has_nominal && tokens[start].pos.is_some()) {
         return None;
     }
-    Some(words[start..end].join(" "))
+    Some((words[start..end].join(" "), end))
 }
 
 /// A resolved noun (unknowns are handled by the open-class branch,
@@ -324,6 +364,25 @@ fn is_known_nominal(token: &ChunkToken) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn chunk_all_lists_every_phrase_in_order() {
+        assert_eq!(
+            chunk_all("свободой и волей"),
+            vec!["свободой".to_string(), "волей".to_string()]
+        );
+        assert_eq!(
+            chunk_all("разница между свободой и волей"),
+            vec![
+                "разница".to_string(),
+                "свободой".to_string(),
+                "волей".to_string()
+            ]
+        );
+        assert_eq!(chunk_all("свобода"), vec!["свобода".to_string()]);
+        assert_eq!(chunk_all("и а"), Vec::<String>::new());
+        assert_eq!(chunk_all(""), Vec::<String>::new());
+    }
 
     #[test]
     fn golden_chunks() {
