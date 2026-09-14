@@ -701,7 +701,6 @@ pinned-comparison surface), path_depth recalibration, recovery_cause
 enum, typed revise errors, response_plan field merge, in-house grid.
 
 ### Frame tail + operation mode (landed 2026-09-13)
-
 Frame tail closed: polarity/agent/target ride the dual journal as
 observational evidence (read off stored inputs, defaults for gaps,
 old exports deserialize). Memory card deliberately untouched
@@ -710,3 +709,15 @@ rehearsed live (6 mixed turns incl. challenge + guard-block):
 report/doctor green, felt-verify clean, facets correct per turn
 (negative+agent+target on the challenge, recovery flagged on the
 block), verdict honestly not-proven (recovery turn + <10 turns).
+
+### A1 NP chunker (landed 2026-09-14)
+
+`[Adj* Noun (Gen-Noun)*]` over morphology POS with closed-class
+surfaces independent of the dictionary, verb-suffix detection for
+unknowns (incl. past tense — bare verbs never head), hyphens kept
+whole, lemma-repetition and nominative-agreement breaks, genitive
+surface fallback for syncretic readings. Integrated as post-pass
+over parser subjects/objects (None → byte-identical). 45 golden
+rows; 400-row school corpus green after triaging two real defects
+(verb-headed spans, hyphenated particles). Documented limits:
+unknown adverbs chain, syncretic plurals attach by ending.

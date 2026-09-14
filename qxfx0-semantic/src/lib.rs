@@ -15,6 +15,7 @@ pub mod inference;
 pub mod input_frame;
 pub mod knowledge_pack;
 pub mod network;
+pub mod noun_phrase;
 pub mod pathfinder;
 pub mod response_plan;
 pub mod seed;

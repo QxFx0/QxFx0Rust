@@ -35,7 +35,25 @@ impl PropositionParser {
     }
 
     /// Parse user input into a typed proposition.
+    /// Parse input into a proposition, then normalize subject/object
+    /// spans through the NP chunker (ADR-0045 A1). The chunker returns
+    /// `None` wherever it finds no noun — those spans pass through
+    /// byte-identically — and single-word subjects chunk to themselves,
+    /// so drift is confined to multi-word spans the chunker improves.
     pub fn parse(input: &str) -> ParsedProposition {
+        let mut proposition = Self::parse_inner(input);
+        if let Some(chunked) = crate::noun_phrase::chunk_noun_phrase(&proposition.subject) {
+            proposition.subject = chunked;
+        }
+        if let Some(object) = proposition.object.as_deref() {
+            if let Some(chunked) = crate::noun_phrase::chunk_noun_phrase(object) {
+                proposition.object = Some(chunked);
+            }
+        }
+        proposition
+    }
+
+    fn parse_inner(input: &str) -> ParsedProposition {
         let lower = input.to_lowercase();
         let trimmed = lower.trim();
 
