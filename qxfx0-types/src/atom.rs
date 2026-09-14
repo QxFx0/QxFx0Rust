@@ -78,6 +78,13 @@ pub struct Relation {
     pub en_original: String,
     pub source: RelationSource,
     pub topic: String,
+    /// Inference confidence for derived edges (`None` = unscored legacy:
+    /// seed, curated and runtime edges predate scoring). Inferred edges
+    /// carry chain-decayed confidence (`INFERENCE_DECAY` per hop);
+    /// anything below `INFERENCE_CONFIDENCE_FLOOR` never merges.
+    /// Old rows load `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<f64>,
     pub rationale: Option<String>,
     pub counter: Option<String>,
     pub synthesis: Option<String>,
@@ -439,6 +446,7 @@ mod sense_vector_tests {
             topic: "свобода".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         });
         let v = SenseVector::unit(AtomId::new("свобода")).with_relations(&graph);
@@ -487,6 +495,7 @@ mod sense_vector_tests {
             topic: "a".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         });
         let to_b = graph.relations_to(&AtomId::new("b"));
@@ -552,6 +561,7 @@ mod sense_vector_tests {
             topic: "свобода".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         };
         let cv = ConjugateVector {
@@ -591,6 +601,7 @@ mod sense_vector_tests {
             topic: "x".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         });
         let from_a = graph.relations_from(&AtomId::new("a"));
@@ -611,6 +622,7 @@ mod sense_vector_tests {
             topic: "a".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         }
     }
@@ -671,6 +683,7 @@ mod sense_vector_tests {
             topic: "свобода".into(),
             rationale: Some("axiomatic".into()),
             counter: None,
+            confidence: None,
             synthesis: None,
         });
 

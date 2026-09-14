@@ -2133,6 +2133,7 @@ fn novel_topic_at_runtime_edge_bound_does_not_brick_session() {
             topic: "заполнитель".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         }
     }
@@ -2325,6 +2326,7 @@ fn graph_inference_closes_transitive_chains_through_real_turns() {
             topic: "память".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         });
     }

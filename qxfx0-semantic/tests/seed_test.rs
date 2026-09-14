@@ -63,7 +63,7 @@ fn test_deterministic_graph() {
 
 #[test]
 fn test_relation_type_count() {
-    assert_eq!(RelationType::ALL.len(), 47, "Should have 47 relation types");
+    assert_eq!(RelationType::ALL.len(), 52, "Should have 52 relation types");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

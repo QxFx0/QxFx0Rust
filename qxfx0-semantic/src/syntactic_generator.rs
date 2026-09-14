@@ -290,6 +290,7 @@ mod tests {
             topic: from.to_string(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         }
     }

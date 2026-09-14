@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// 47 typed relation types for the semantic graph.
+/// 52 typed relation types for the semantic graph.
 /// Atom(subject) --RelationType--> Atom(object)
 /// Surface text = function(RelationType, ObjectCase, morphology)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -53,10 +53,15 @@ pub enum RelationType {
     RelBuiltThrough,
     RelReconstructs,
     RelNotJustCopies,
+    RelEnables,
+    RelCauses,
+    RelInfluences,
+    RelPartOf,
+    RelOpposes,
 }
 
 impl RelationType {
-    pub const ALL: [RelationType; 47] = [
+    pub const ALL: [RelationType; 52] = [
         RelationType::RelPresupposes,
         RelationType::RelLimitedBy,
         RelationType::RelRequires,
@@ -104,6 +109,11 @@ impl RelationType {
         RelationType::RelBuiltThrough,
         RelationType::RelReconstructs,
         RelationType::RelNotJustCopies,
+        RelationType::RelEnables,
+        RelationType::RelCauses,
+        RelationType::RelInfluences,
+        RelationType::RelPartOf,
+        RelationType::RelOpposes,
     ];
 
     pub fn verb_ru(&self) -> &'static str {
@@ -155,6 +165,11 @@ impl RelationType {
             RelationType::RelBuiltThrough => "строится через",
             RelationType::RelReconstructs => "реконструирует",
             RelationType::RelNotJustCopies => "не просто копирует",
+            RelationType::RelEnables => "способствует",
+            RelationType::RelCauses => "вызывает",
+            RelationType::RelInfluences => "влияет на",
+            RelationType::RelPartOf => "является частью",
+            RelationType::RelOpposes => "противостоит",
         }
     }
 }

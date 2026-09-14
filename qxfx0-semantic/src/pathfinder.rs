@@ -198,6 +198,12 @@ impl PathFinder {
             RelationType::RelRelatedTo => 0.2,
             RelationType::RelPrecedes => 0.4,
             RelationType::RelReliesOn => 0.5 * consolid,
+            // ADR-0045 A3.1: carried vocabulary, grouped by family.
+            RelationType::RelEnables => 0.3 * consolid,
+            RelationType::RelCauses => conf * 0.6,
+            RelationType::RelInfluences => reson * 0.5,
+            RelationType::RelPartOf => 0.5 * consolid,
+            RelationType::RelOpposes => cf * 0.7,
         }
     }
 

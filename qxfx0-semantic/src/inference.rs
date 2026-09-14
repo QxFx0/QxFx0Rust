@@ -83,14 +83,18 @@ pub fn derive_atoms(tags: &[AtomTag]) -> Vec<DerivedAtom> {
 }
 
 /// Relation types supporting transitive chaining (Haskell
-/// `transitiveRelationTypes`, minus the five with no Rust vocabulary:
-/// Enables, Causes, Influences, PartOf, Opposes-is-symmetric-only).
+/// `transitiveRelationTypes`, now fully carried — ADR-0045 A3.1 closed
+/// the five vocabulary gaps).
 /// A → B and B → C (same type) ⇒ A → C.
 pub const TRANSITIVE_TYPES: &[RelationType] = &[
     RelationType::RelRequires,
     RelationType::RelNecessaryFor,
     RelationType::RelPresupposes,
     RelationType::RelDependsOn,
+    RelationType::RelEnables,
+    RelationType::RelCauses,
+    RelationType::RelInfluences,
+    RelationType::RelPartOf,
     RelationType::RelIncludes,
     RelationType::RelIsA,
     RelationType::RelStructures,
@@ -100,9 +104,10 @@ pub const TRANSITIVE_TYPES: &[RelationType] = &[
 ];
 
 /// Relation types that are symmetric (Haskell `symmetricRelationTypes`,
-/// minus RelOpposes which has no Rust vocabulary): A → B ⇒ B → A.
+/// fully carried): A → B ⇒ B → A.
 pub const SYMMETRIC_TYPES: &[RelationType] = &[
     RelationType::RelContrastsWith,
+    RelationType::RelOpposes,
     RelationType::RelDiffersFrom,
     RelationType::RelNegates,
     RelationType::RelNotReducibleTo,
@@ -113,15 +118,31 @@ pub const SYMMETRIC_TYPES: &[RelationType] = &[
 pub const INFERENCE_MAX_ITERATIONS: usize = 5;
 /// Cap on new edges per call: inference enriches, never floods.
 pub const INFERENCE_MAX_NEW_EDGES: usize = 128;
+/// Per-hop confidence decay for derived edges (weakest-link × decay).
+pub const INFERENCE_DECAY: f64 = 0.7;
+/// Derivations below this confidence never merge (with decay 0.7 this
+/// bites at depth 4+, inside the iteration cap — the floor, not the
+/// cap, stops runaway chains).
+pub const INFERENCE_CONFIDENCE_FLOOR: f64 = 0.25;
 
-fn edge_key(edge: &Relation) -> (AtomId, AtomId, RelationType) {
+type EdgeKey = (AtomId, AtomId, RelationType);
+
+fn edge_key(edge: &Relation) -> EdgeKey {
     (edge.from.clone(), edge.to.clone(), edge.rel_type)
 }
 
+fn edge_confidence(confidences: &std::collections::BTreeMap<EdgeKey, f64>, edge: &Relation) -> f64 {
+    confidences
+        .get(&edge_key(edge))
+        .copied()
+        .or(edge.confidence)
+        .unwrap_or(1.0)
+}
+
 fn transitive_step(
-    known: &std::collections::BTreeSet<(AtomId, AtomId, RelationType)>,
+    known: &std::collections::BTreeMap<EdgeKey, f64>,
     edges: &[Relation],
-) -> Vec<Relation> {
+) -> Vec<(Relation, f64)> {
     let mut out = Vec::new();
     for first in edges {
         if !TRANSITIVE_TYPES.contains(&first.rel_type) {
@@ -135,123 +156,151 @@ fn transitive_step(
                 continue; // no self-loops: A → B → A derives nothing
             }
             let key = (first.from.clone(), second.to.clone(), first.rel_type);
-            if known.contains(&key) {
+            if known.contains_key(&key) {
                 continue; // existing edges win on conflict
             }
-            out.push(Relation {
-                from: first.from.clone(),
-                to: second.to.clone(),
-                rel_type: first.rel_type,
-                object_case: second.object_case,
-                object_text: second.object_text.clone(),
-                verb_override: None,
-                ru_original: format!(
-                    "[выведено: {} —{:?}→ {}]",
-                    first.from.as_str(),
-                    first.rel_type,
-                    second.to.as_str()
-                ),
-                en_original: format!(
-                    "[inferred: {} —{:?}→ {}]",
-                    first.from.as_str(),
-                    first.rel_type,
-                    second.to.as_str()
-                ),
-                source: RelationSource::Inferred,
-                topic: first.topic.clone(),
-                rationale: Some(format!(
-                    "Transitivity: {} —{:?}→ {} —{:?}→ {}",
-                    first.from.as_str(),
-                    first.rel_type,
-                    second.from.as_str(),
-                    second.rel_type,
-                    second.to.as_str()
-                )),
-                counter: None,
-                synthesis: None,
-            });
+            let confidence =
+                INFERENCE_DECAY * edge_confidence(known, first).min(edge_confidence(known, second));
+            out.push((
+                Relation {
+                    from: first.from.clone(),
+                    to: second.to.clone(),
+                    rel_type: first.rel_type,
+                    object_case: second.object_case,
+                    object_text: second.object_text.clone(),
+                    verb_override: None,
+                    ru_original: format!(
+                        "[выведено: {} —{:?}→ {}]",
+                        first.from.as_str(),
+                        first.rel_type,
+                        second.to.as_str()
+                    ),
+                    en_original: format!(
+                        "[inferred: {} —{:?}→ {}]",
+                        first.from.as_str(),
+                        first.rel_type,
+                        second.to.as_str()
+                    ),
+                    source: RelationSource::Inferred,
+                    topic: first.topic.clone(),
+                    rationale: Some(format!(
+                        "Transitivity: {} —{:?}→ {} —{:?}→ {}",
+                        first.from.as_str(),
+                        first.rel_type,
+                        second.from.as_str(),
+                        second.rel_type,
+                        second.to.as_str()
+                    )),
+                    counter: None,
+                    confidence: None,
+                    synthesis: None,
+                },
+                confidence,
+            ));
         }
     }
     out
 }
 
 fn symmetric_step(
-    known: &std::collections::BTreeSet<(AtomId, AtomId, RelationType)>,
+    known: &std::collections::BTreeMap<EdgeKey, f64>,
     edges: &[Relation],
-) -> Vec<Relation> {
+) -> Vec<(Relation, f64)> {
     let mut out = Vec::new();
     for edge in edges {
         if !SYMMETRIC_TYPES.contains(&edge.rel_type) {
             continue;
         }
         let key = (edge.to.clone(), edge.from.clone(), edge.rel_type);
-        if key.0 == key.1 || known.contains(&key) {
+        if key.0 == key.1 || known.contains_key(&key) {
             continue;
         }
-        out.push(Relation {
-            from: edge.to.clone(),
-            to: edge.from.clone(),
-            rel_type: edge.rel_type,
-            object_case: edge.object_case,
-            object_text: edge.object_text.clone(),
-            verb_override: None,
-            ru_original: format!(
-                "[выведено: {} —{:?}→ {}]",
-                edge.to.as_str(),
-                edge.rel_type,
-                edge.from.as_str()
-            ),
-            en_original: format!(
-                "[inferred: {} —{:?}→ {}]",
-                edge.to.as_str(),
-                edge.rel_type,
-                edge.from.as_str()
-            ),
-            source: RelationSource::Inferred,
-            topic: edge.topic.clone(),
-            rationale: Some(format!(
-                "Symmetry: {} —{:?}→ {}",
-                edge.from.as_str(),
-                edge.rel_type,
-                edge.to.as_str()
-            )),
-            counter: None,
-            synthesis: None,
-        });
+        let confidence = INFERENCE_DECAY * edge_confidence(known, edge);
+        out.push((
+            Relation {
+                from: edge.to.clone(),
+                to: edge.from.clone(),
+                rel_type: edge.rel_type,
+                object_case: edge.object_case,
+                object_text: edge.object_text.clone(),
+                verb_override: None,
+                ru_original: format!(
+                    "[выведено: {} —{:?}→ {}]",
+                    edge.to.as_str(),
+                    edge.rel_type,
+                    edge.from.as_str()
+                ),
+                en_original: format!(
+                    "[inferred: {} —{:?}→ {}]",
+                    edge.to.as_str(),
+                    edge.rel_type,
+                    edge.from.as_str()
+                ),
+                source: RelationSource::Inferred,
+                topic: edge.topic.clone(),
+                rationale: Some(format!(
+                    "Symmetry: {} —{:?}→ {}",
+                    edge.from.as_str(),
+                    edge.rel_type,
+                    edge.to.as_str()
+                )),
+                counter: None,
+                confidence: None,
+                synthesis: None,
+            },
+            confidence,
+        ));
     }
     out
 }
 
 /// Derive graph edges to fixpoint (transitivity + symmetry), bounded by
-/// [`INFERENCE_MAX_ITERATIONS`] rounds and [`INFERENCE_MAX_NEW_EDGES`]
-/// new edges. Pure and deterministic: inputs iterate in slice order,
-/// each round's output is sorted by `(from, to, type)` before merging,
-/// so identical graphs infer byte-identical edges. Existing triples
-/// always win; self-loops never derive.
+/// [`INFERENCE_MAX_ITERATIONS`] rounds, [`INFERENCE_MAX_NEW_EDGES`]
+/// new edges, and [`INFERENCE_CONFIDENCE_FLOOR`] (chain-decayed
+/// confidence: `INFERENCE_DECAY` per hop off the weakest parent leg).
+/// Pure and deterministic: inputs iterate in slice order, each round's
+/// output is sorted by `(from, to, type)` before merging, so identical
+/// graphs infer byte-identical edges. Existing triples always win;
+/// self-loops never derive.
 pub fn infer_graph_edges(edges: &[Relation]) -> Vec<Relation> {
-    let mut known: std::collections::BTreeSet<(AtomId, AtomId, RelationType)> =
-        edges.iter().map(edge_key).collect();
+    // Known triples carry working confidence (seeds score 1.0 unless
+    // they already carry a score); derivations below the floor never
+    // merge, so runaway chains die by confidence, not just by caps.
+    let mut known: std::collections::BTreeMap<EdgeKey, f64> = edges
+        .iter()
+        .map(|edge| (edge_key(edge), edge.confidence.unwrap_or(1.0)))
+        .collect();
     let mut workspace: Vec<Relation> = edges.to_vec();
     let mut derived = Vec::new();
     for _ in 0..INFERENCE_MAX_ITERATIONS {
         let mut round = transitive_step(&known, &workspace);
         round.extend(symmetric_step(&known, &workspace));
-        round.sort_by_key(edge_key);
-        round.dedup_by_key(|edge| edge_key(edge));
-        let fresh: Vec<Relation> = round
-            .into_iter()
-            .filter(|edge| !known.contains(&edge_key(edge)))
-            .collect();
+        // Deterministic: sort by triple (stable — transitive paths
+        // precede symmetric ones on ties), dedup keeping the first.
+        round.sort_by_key(|(edge, _)| edge_key(edge));
+        round.dedup_by_key(|(edge, _)| edge_key(edge));
+        let mut fresh: Vec<(Relation, f64)> = Vec::new();
+        for (edge, confidence) in round {
+            if known.contains_key(&edge_key(&edge)) {
+                continue;
+            }
+            if confidence < INFERENCE_CONFIDENCE_FLOOR {
+                continue;
+            }
+            fresh.push((edge, confidence));
+        }
         if fresh.is_empty() {
             break;
         }
-        for edge in fresh {
+        for (edge, confidence) in fresh {
             if derived.len() >= INFERENCE_MAX_NEW_EDGES {
                 break;
             }
-            known.insert(edge_key(&edge));
-            workspace.push(edge.clone());
-            derived.push(edge);
+            let mut merged = edge.clone();
+            merged.confidence = Some(confidence);
+            known.insert(edge_key(&edge), confidence);
+            workspace.push(merged.clone());
+            derived.push(merged);
         }
         if derived.len() >= INFERENCE_MAX_NEW_EDGES {
             break;
@@ -330,6 +379,7 @@ mod tests {
             topic: "t".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         }
     }
@@ -489,5 +539,46 @@ mod tests {
             serde_json::to_string(&second).unwrap()
         );
         assert!(first.len() <= INFERENCE_MAX_NEW_EDGES);
+    }
+
+    #[test]
+    fn new_vocabulary_chains_and_scores() {
+        // ADR-0045 A3.1: the five carried types infer like the rest.
+        let edges = vec![
+            leg("a", "b", RelationType::RelPartOf),
+            leg("b", "c", RelationType::RelPartOf),
+            leg("x", "y", RelationType::RelOpposes),
+        ];
+        let derived = infer_graph_edges(&edges);
+        assert!(derived.iter().any(|edge| edge.from.as_str() == "a"
+            && edge.to.as_str() == "c"
+            && edge.confidence == Some(0.7)));
+        assert!(derived.iter().any(|edge| edge.from.as_str() == "y"
+            && edge.to.as_str() == "x"
+            && edge.confidence == Some(0.7)));
+    }
+
+    #[test]
+    fn confidence_floor_stops_deep_chains() {
+        // Ten-link chain: spans compose round by round from short
+        // high-confidence pieces (0.7, 0.49, 0.343), so the floor
+        // bites only where every split has a weak leg — spans of 9+,
+        // whose best split scores 0.7 × 0.343 < 0.25.
+        let edges: Vec<Relation> = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"]
+            .windows(2)
+            .map(|pair| leg(pair[0], pair[1], RelationType::RelIsA))
+            .collect();
+        let derived = infer_graph_edges(&edges);
+        assert!(derived
+            .iter()
+            .all(|edge| edge.confidence.unwrap_or(0.0) >= INFERENCE_CONFIDENCE_FLOOR));
+        let spans = |from: &str, to: &str| {
+            derived
+                .iter()
+                .any(|edge| edge.from.as_str() == from && edge.to.as_str() == to)
+        };
+        assert!(spans("a", "e"), "four-span composes at 0.49");
+        assert!(!spans("a", "j"), "nine-span drops below the floor");
+        assert!(!spans("a", "k"), "full span unreachable");
     }
 }

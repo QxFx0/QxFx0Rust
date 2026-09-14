@@ -42,6 +42,11 @@ use std::fmt;
 pub const MAX_RUNTIME_ATOMS: usize = 10_000;
 pub const MAX_RUNTIME_EDGES: usize = 20_000;
 
+/// V2-to-V1 energy scale divisor (ADR-0045 A3.2): the canonical scalar
+/// is log-scale while downstream thresholds assume the V1 range.
+/// Monotonic by construction — every consumer compares, none inverts.
+pub const V2_ENERGY_SCALE_DIVISOR: f64 = 10.0;
+
 /// Top-down novelty of a turn's text against its topic's admitted
 /// surfaces (density doctrine, first reviewable signal). Registry
 /// failure reads as 0.0 — no signal, never a spike on broken
@@ -80,6 +85,12 @@ pub fn prepare_stage(
     // ADR-0044 migration M1+M2: the Conatus/Salience/Deliberation
     // source follows one authority (M3 retires the V1 essence writes;
     // the V1 trace vocabulary stays as the journal contract).
+    // ADR-0045 A3.2: the V2 scalar is log-scale (≈4.5–15 healthy)
+    // while every downstream threshold (path_depth, composer bands,
+    // render complexity) is calibrated to the V1 range [0, ~1.73].
+    // Dividing by ten preserves order (all consumers compare against
+    // constants) and maps the healthy band onto the calibrated range.
+    // The unscaled scalar still feeds the V2 advance (floors/erosion).
     let (conatus_energy, salience, deliberation) = match authority {
         crate::SubjectAuthority::V1Authority => {
             let energy = Conatus::compute(&field);
@@ -149,7 +160,11 @@ pub fn prepare_stage(
                 verdict.driver,
                 holistic_dominant,
             );
-            (energy.scalar, verdict.holistic_bias, mapped)
+            (
+                energy.scalar / V2_ENERGY_SCALE_DIVISOR,
+                verdict.holistic_bias,
+                mapped,
+            )
         }
     };
     let holistic_dominant = salience > 0.5;
@@ -890,6 +905,7 @@ pub fn finalize_stage(
                 topic: subject.clone(),
                 rationale: Some(format!("derived via {:?}", da.rule)),
                 counter: None,
+                confidence: None,
                 synthesis: None,
             };
             state.semantic.runtime_graph.add_relation(rel);
@@ -962,6 +978,7 @@ pub fn finalize_stage(
             topic: subject.clone(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         };
         state.semantic.runtime_graph.add_relation(rel);
@@ -1347,13 +1364,13 @@ mod tests {
     fn v2_prepare_reads_the_canonical_source() {
         let v1 = prepared_with(crate::SubjectAuthority::V1Authority);
         let v2 = prepared_with(crate::SubjectAuthority::V2Authority);
-        // The canonical energy is a log-scale scalar over real blanket
-        // substance (morphology runtime is loaded in tests), far above
-        // the working layer's field-local value; the bias is a [0,1]
-        // squash by construction.
+        // The canonical energy is log-scale; Prepare carries it divided
+        // by ten so the V1-calibrated thresholds keep discriminating
+        // (ADR-0045 A3.2). Monotonicity is what matters: same order,
+        // comparable band.
         assert!(
-            v2.conatus_energy() > 5.0,
-            "v2 energy: {}",
+            (0.4..=2.0).contains(&v2.conatus_energy()),
+            "scaled v2 energy in band: {}",
             v2.conatus_energy()
         );
         assert!((0.0..=1.0).contains(&v2.salience()));
@@ -1605,6 +1622,7 @@ mod tests {
                 topic: "заполнитель".into(),
                 rationale: None,
                 counter: None,
+                confidence: None,
                 synthesis: None,
             }
         }

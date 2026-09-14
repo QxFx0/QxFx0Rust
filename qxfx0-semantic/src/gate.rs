@@ -149,6 +149,7 @@ mod tests {
             topic: topic.into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         }
     }

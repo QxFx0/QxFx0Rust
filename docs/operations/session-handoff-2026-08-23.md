@@ -700,8 +700,7 @@ V2. Deferred with reasons: V1 NaN guards beyond the floor (V1 is
 pinned-comparison surface), path_depth recalibration, recovery_cause
 enum, typed revise errors, response_plan field merge, in-house grid.
 
-### Frame tail + operation mode (landed 2026-09-13)
-Frame tail closed: polarity/agent/target ride the dual journal as
+### Frame tail + operation mode (landed 2026-09-13)Frame tail closed: polarity/agent/target ride the dual journal as
 observational evidence (read off stored inputs, defaults for gaps,
 old exports deserialize). Memory card deliberately untouched
 (topic-centric by design, input-agnostic). Operation loop
@@ -730,3 +729,15 @@ frame's normalized text (first two phrases — a three-way tail never
 glues onto the second). The Distinction branch prefers the composed
 pair, legacy `и`-split as fallback. School corpus (400 rows) green
 with zero drift; golden pair tests pin the triple case.
+
+### A3 inference deepening (landed 2026-09-14)
+
+Five carried relation types (Enables/Causes/Influences/PartOf/
+Opposes + русские verb forms + pathfinder biases + ALL 47→52):
+transitive/symmetric sets now match Haskell exactly. V2 energy
+scaled ÷10 at the Prepare boundary (monotonic — all downstream
+consumers compare against V1-calibrated thresholds; unscaled scalar
+still feeds floors/erosion). Inferred edges carry chain-decayed
+confidence (0.7/hop, floor 0.25 enforced — bites at 9+ spans,
+proven by test). Zero re-baseline drift beyond the intended scale
+change.

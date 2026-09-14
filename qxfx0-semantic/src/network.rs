@@ -345,6 +345,7 @@ mod tests {
             topic: "свобода".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         });
         let sn3 = cached_semantic_network(&mut semantic);

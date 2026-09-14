@@ -392,6 +392,7 @@ mod tests {
             topic: "beta".into(),
             rationale: None,
             counter: None,
+            confidence: None,
             synthesis: None,
         });
 
