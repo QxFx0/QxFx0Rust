@@ -928,6 +928,33 @@ pub fn finalize_stage(
         state.semantic.runtime_graph.add_relation(inferred);
     }
 
+    // Provisional lexicon (ADR-0045 C1): observe this turn's unknown
+    // units, evict the silent and the excess, promote the ripe into
+    // `CatProvisional` atoms. Observable and quarantined by
+    // construction — never promotion-admissible (see `known_atoms`).
+    {
+        let units = &rendered
+            .routed()
+            .prepared()
+            .input()
+            .input_frame()
+            .units
+            .clone();
+        qxfx0_semantic::provisional::observe(&mut state.semantic.provisional_atoms, units, turn);
+        qxfx0_semantic::provisional::evict(&mut state.semantic.provisional_atoms, turn);
+        for (surface, atom) in qxfx0_semantic::provisional::promote(
+            &state.semantic.provisional_atoms,
+            &state.semantic.runtime_graph,
+        ) {
+            state
+                .semantic
+                .runtime_graph
+                .atoms
+                .insert(atom.id.clone(), atom);
+            state.semantic.provisional_atoms.remove(&surface);
+        }
+    }
+
     // Anomaly-3 collapse (ADR-0044 M3): the trigger reads the live
     // layer; the collapse applies to it. The collapse journal stays
     // authority-agnostic (identical event shape on both layers).

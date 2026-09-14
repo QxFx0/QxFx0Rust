@@ -28,9 +28,30 @@ pub enum AtomCategory {
     CatConcept,
     CatProperty,
     CatObject,
+    /// Observed-but-unadmitted content (provisional lexicon): visible
+    /// to activation once promoted, never promotion-admissible while
+    /// provisional. See `ProvisionalAtom` and the ADR-0029 refinement.
+    CatProvisional,
 }
 
 /// An atom in the store.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AtomProvisionalMeta {
+    /// Sightings across turns.
+    pub occurrences: u32,
+    /// First and latest turn ordinals (span gates promotion).
+    pub first_turn: usize,
+    pub last_turn: usize,
+}
+
+/// Thresholds of the provisional lexicon (ADR-0045 C1): promote at
+/// three sightings spanning two turns; forget after fifty silent
+/// turns; never hold more than 256 candidates.
+pub const PROVISIONAL_PROMOTE_OCCURRENCES: u32 = 3;
+pub const PROVISIONAL_PROMOTE_MIN_SPAN: usize = 2;
+pub const PROVISIONAL_TTL_TURNS: usize = 50;
+pub const MAX_PROVISIONAL_ATOMS: usize = 256;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Atom {
     pub id: AtomId,

@@ -2362,3 +2362,53 @@ fn graph_inference_closes_transitive_chains_through_real_turns() {
     );
     assert!(state.validate().is_empty());
 }
+
+#[test]
+fn provisional_lexicon_observes_and_promotes_across_turns() {
+    use qxfx0_types::atom::AtomCategory;
+    // "ксеномодус" is mentioned but never the routed subject (topic
+    // registration would admit it instantly as CatTopic): the
+    // provisional path is the only way it enters the graph.
+    let mut state = test_state("provisional");
+    for text in ["ксеномодус мешает свободе", "ксеномодус требует внимания"]
+    {
+        let input = TurnInput {
+            session_id: state.session_id.clone(),
+            raw_text: text.into(),
+        };
+        process_turn_with_options(&input, &mut state, TurnOptions::new());
+    }
+    let meta = &state.semantic.provisional_atoms;
+    assert_eq!(
+        meta.get("ксеномодус").map(|entry| entry.occurrences),
+        Some(2),
+        "two sightings observed, below threshold"
+    );
+    assert!(
+        !state
+            .semantic
+            .runtime_graph
+            .atoms
+            .values()
+            .any(|atom| atom.display == "ксеномодус"),
+        "unripe candidates never enter the graph"
+    );
+    let input = TurnInput {
+        session_id: state.session_id.clone(),
+        raw_text: "ксеномодус тревожит память".into(),
+    };
+    process_turn_with_options(&input, &mut state, TurnOptions::new());
+    let atom = state
+        .semantic
+        .runtime_graph
+        .atoms
+        .values()
+        .find(|atom| atom.display == "ксеномодус")
+        .expect("third sighting spanning two turns promotes");
+    assert_eq!(atom.category, AtomCategory::CatProvisional);
+    assert!(
+        !state.semantic.provisional_atoms.contains_key("ксеномодус"),
+        "promoted candidates leave the quarantine"
+    );
+    assert!(state.validate().is_empty());
+}

@@ -741,3 +741,30 @@ still feeds floors/erosion). Inferred edges carry chain-decayed
 confidence (0.7/hop, floor 0.25 enforced — bites at 9+ spans,
 proven by test). Zero re-baseline drift beyond the intended scale
 change.
+
+### C1 provisional lexicon (landed 2026-09-14)
+
+ADR-0029 refined (not lifted): unknown content words accumulate in
+a bounded TTL quarantine (`provisional_atoms`: 3 sightings spanning
+2 turns, 50-turn TTL, 256 cap) and promote into marked
+`CatProvisional` atoms on threshold without canonical collision.
+Finalize observes/evicts/promotes; admission universe excludes the
+category by construction (tested). Canonical-collision drops
+curated duplicates. Unit-locked (turn-counting, thresholds, TTL,
+caps) + integration through real turns + admission blindness.
+
+### Phase C verdict (2026-09-14): C1 landed, C2 deferred, C3 specified
+
+C1 provisional lexicon above. C2 (V1-pin removal) APPROVED IN
+PRINCIPLE but DEFERRED by engineering judgment: V1 paths are load-
+bearing for B2 comparison, the runtime-AB baseline, and a dozen
+pinned tests — removing them now burns the evidence base that
+validates the M4 flip days after landing. Trigger for removal:
+30 days of V2-default operation or 2 content waves without a
+V1-caught regression, whichever first; then delete (never flag)
+in one commit with B2 retired alongside. C3 (in-house grid) is
+blocked on labeled ground truth, not machinery: the grid needs
+30–50 prompts with editorially-judged expected hemispheres (human
+task, format: prompt<TAB>holistic|formal<TAB>reason); `adapt_`
+functions and the ±0.05 doctor bound already constrain the search
+space. No theater built.

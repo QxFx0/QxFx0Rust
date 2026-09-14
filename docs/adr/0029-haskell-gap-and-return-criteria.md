@@ -32,6 +32,12 @@ independently reviewable vertical slices:
   quarantine, conflict handling, review evidence, activation fingerprint and
   rollback are production contracts. User or generated text must never
   self-promote.
+- **Provisional lexicon refinement (2026-09-14)**: the self-promotion
+  bar is refined, not lifted — unknown content words accumulate in a
+  bounded, TTL-evicted quarantine (`provisional_atoms`, never
+  promotion-admissible while provisional) and promote into marked
+  `CatProvisional` atoms only at threshold (3 sightings spanning 2
+  turns, no canonical collision). Observation without admission.
 - **Topic drift and analogy**: return after property tests prove unknown or
   ambiguous surfaces cannot create graph state and every declarative result
   still resolves to a curated `FactId`.

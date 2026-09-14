@@ -674,6 +674,7 @@ impl Persistence {
                         thesis_state,
                         essence_v2,
                         blanket_v2,
+                        provisional_atoms: Default::default(),
                         cached_edge_count: 0,
                         cached_network: None,
                     }

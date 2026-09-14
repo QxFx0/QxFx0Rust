@@ -252,6 +252,13 @@ pub struct SemanticState {
     /// Missing in pre-U3 snapshots.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub blanket_v2: Option<serde_json::Value>,
+    /// Provisional lexicon (ADR-0045 C1): unknown content words sighted
+    /// across turns, keyed by lowercase surface. Observable and
+    /// quarantined: promoted into graph atoms only at threshold, never
+    /// promotion-admissible while provisional. Missing in pre-C1
+    /// snapshots.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub provisional_atoms: BTreeMap<String, crate::atom::AtomProvisionalMeta>,
     /// Cached edge count — when this differs from runtime_graph.edges.len(),
     /// downstream consumers know the SemanticNetwork/ContentSelector cache
     /// is stale and must be rebuilt.
@@ -330,6 +337,9 @@ impl SystemState {
             }
             if self.dialogue.journal.len() > MAX_JOURNAL_TURNS {
                 violations.push("dialogue journal exceeds 10000 turns".into());
+            }
+            if self.semantic.provisional_atoms.len() > crate::atom::MAX_PROVISIONAL_ATOMS {
+                violations.push("provisional lexicon exceeds 256 candidates".into());
             }
         }
         if self.semantic.essence.witnesses.len() > self.semantic.essence.capacity.max(32) {
@@ -450,6 +460,7 @@ impl SystemState {
                 thesis_state: self.semantic.thesis_state.clone(),
                 essence_v2: self.semantic.essence_v2.clone(),
                 blanket_v2: self.semantic.blanket_v2.clone(),
+                provisional_atoms: self.semantic.provisional_atoms.clone(),
                 cached_edge_count: 0,
                 cached_network: None,
             },

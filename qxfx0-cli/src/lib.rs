@@ -1074,14 +1074,25 @@ impl PromotionSurface {
 
     /// The union of every session's runtime-graph atoms known to this
     /// database — the seed-atom bar's universe (no minting). Deterministic:
-    /// a BTreeSet in atom order.
+    /// a BTreeSet in atom order. Provisional atoms are excluded by
+    /// construction (ADR-0045 C1): observed content is never
+    /// promotion-admissible while provisional.
     fn known_atoms(
         db: &qxfx0_persistence::Persistence,
     ) -> anyhow::Result<std::collections::BTreeSet<qxfx0_types::AtomId>> {
+        use qxfx0_types::atom::AtomCategory;
         let mut known = std::collections::BTreeSet::new();
         for session_id in db.list_sessions()? {
             if let Some(state) = db.load_state(&session_id)? {
-                known.extend(state.semantic.runtime_graph.atoms.keys().cloned());
+                known.extend(
+                    state
+                        .semantic
+                        .runtime_graph
+                        .atoms
+                        .iter()
+                        .filter(|(_, atom)| atom.category != AtomCategory::CatProvisional)
+                        .map(|(id, _)| id.clone()),
+                );
             }
         }
         Ok(known)
@@ -2981,6 +2992,39 @@ mod tests {
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(format!("{}-wal", path.display()));
         let _ = std::fs::remove_file(format!("{}-shm", path.display()));
+    }
+
+    #[test]
+    fn admission_universe_excludes_provisional_atoms() {
+        use qxfx0_types::atom::{Atom, AtomCategory, AtomId};
+        let db = qxfx0_persistence::Persistence::open_memory().expect("open memory db");
+        let mut state = SystemState {
+            session_id: "provisional-blind".into(),
+            ..SystemState::default()
+        };
+        state.semantic.runtime_graph.atoms.insert(
+            AtomId::new("ксеномодус"),
+            Atom {
+                id: AtomId::new("ксеномодус"),
+                display: "ксеномодус".into(),
+                category: AtomCategory::CatProvisional,
+            },
+        );
+        state.semantic.runtime_graph.atoms.insert(
+            AtomId::new("свобода"),
+            Atom {
+                id: AtomId::new("свобода"),
+                display: "свобода".into(),
+                category: AtomCategory::CatConcept,
+            },
+        );
+        db.save_state("provisional-blind", &state).unwrap();
+        let known = PromotionSurface::known_atoms(&db).unwrap();
+        assert!(known.contains(&AtomId::new("свобода")));
+        assert!(
+            !known.contains(&AtomId::new("ксеномодус")),
+            "provisional content is never promotion-admissible"
+        );
     }
 
     #[test]
