@@ -783,3 +783,11 @@ the grid needs 30–50 prompts with editorially-judged expected
 hemispheres (human task, format: prompt<TAB>holistic|formal<TAB>
 reason); `adapt_` functions and the ±0.05 doctor bound already
 constrain the search space. No theater built.
+
+### C3 validator (landed 2026-09-14)
+
+`scripts/validate_label_corpus.py` encodes the mechanical contract
+(format/LF/BOM, 3 columns, closed labels, no dups, no A∩B overlap)
+and reports stats (balance, borderline, length strata as
+informational). v1 passes; re-label/kappa and the grid itself wait
+on the human labeling pass.
