@@ -1167,6 +1167,22 @@ pub fn finalize_stage(
         *store = new_store;
     }
 
+    // Memory M4: governed forgetting runs every turn, not just on new
+    // commitments — a TTL passes on idle turns too. Bounded, lineage-
+    // preserving, exempting the contested and the depended-on; the
+    // CapacityReached path above still never evicts silently.
+    if let Some(store) = state.semantic.semantic_commitments.as_ref() {
+        let (forgotten_store, forgotten) = CommitmentOps::forget_stale(turn, store);
+        if !forgotten.is_empty() {
+            tracing::info!(
+                "forgetting {} stale commitment(s) at turn {turn}: {:?}",
+                forgotten.len(),
+                forgotten
+            );
+        }
+        state.semantic.semantic_commitments = Some(forgotten_store);
+    }
+
     if state.semantic.runtime_graph.edges.len() != edge_count_before {
         state.semantic.cached_network = None;
         state.semantic.cached_edge_count = 0;

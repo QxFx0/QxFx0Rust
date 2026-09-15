@@ -812,3 +812,12 @@ rendering changes. Next: M3 recall events in FELT, M4 forgetting.
 `FeltManifest.recalls`: per discussed topic, shown (top-5) vs
 suppressed with scores; new `Воспоминания` markdown section;
 verify checks disjoint ids + shown score-desc. Next: M4 forgetting.
+
+### Memory M4 governed forgetting (landed 2026-09-14)
+
+`CommitmentOps::forget_stale` in Finalize, every turn: retires
+positions untouched 50+ turns, confidence < 0.5, uncontested, with
+no live dependents (max 8/turn, id order). Lineage keeps
+`Retracted(Forgotten)` — visible, never the silent eviction the
+capacity path refuses. Recall/FELT read `active`, so forgotten
+positions simply stop surfacing. Memory program M1–M4 complete.

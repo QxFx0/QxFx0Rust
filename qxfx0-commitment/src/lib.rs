@@ -28,6 +28,16 @@ pub const REVISION_WEAKEN_FACTOR: f64 = 0.5;
 pub const REVISION_PROPAGATION_FACTOR: f64 = 0.75;
 pub const REVISION_QUARANTINE_FLOOR: f64 = 0.3;
 
+/// Governed forgetting (Memory M4): a live position retires only when
+/// ALL hold — untouched for `FORGET_TTL_TURNS` turns, confidence below
+/// `FORGET_CONFIDENCE_CEILING`, uncontested, no live dependents.
+/// At most `MAX_FORGET_PER_TURN` retire per turn (id order), lineage
+/// records `Retracted(Forgotten)` — forgetting stays visible, never
+/// the silent eviction the capacity path refuses.
+pub const FORGET_TTL_TURNS: usize = 50;
+pub const FORGET_CONFIDENCE_CEILING: f64 = 0.5;
+pub const MAX_FORGET_PER_TURN: usize = 8;
+
 /// Commitment store operations — commit, revise, retract, contradict.
 /// All operations are pure (return new store, don't mutate).
 pub struct CommitmentOps;
@@ -247,6 +257,53 @@ impl CommitmentOps {
             );
         }
         new_store
+    }
+
+    /// Governed forgetting: retire stale, low-confidence, uncontested
+    /// live positions with no live dependents. Returns the new store
+    /// and the retired ids (id order, capped). Retired positions leave
+    /// `active` but keep their lineage with `Retracted(Forgotten)`.
+    /// Pure and deterministic.
+    pub fn forget_stale(
+        turn: usize,
+        store: &SemanticCommitmentStore,
+    ) -> (SemanticCommitmentStore, Vec<CommitmentId>) {
+        let contested: BTreeSet<CommitmentId> = store
+            .contradictions
+            .iter()
+            .flat_map(|event| [event.left.clone(), event.right.clone()])
+            .collect();
+        let depended_on: BTreeSet<CommitmentId> = store
+            .active
+            .values()
+            .flat_map(|(payload, _)| payload.deps.iter().cloned())
+            .collect();
+        let mut candidates: Vec<CommitmentId> = store
+            .active
+            .iter()
+            .filter(|(id, (payload, touched))| {
+                turn.saturating_sub(*touched) >= FORGET_TTL_TURNS
+                    && payload.confidence < FORGET_CONFIDENCE_CEILING
+                    && !contested.contains(*id)
+                    && !depended_on.contains(*id)
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        candidates.sort();
+        candidates.truncate(MAX_FORGET_PER_TURN);
+        let mut new_store = store.clone();
+        for id in &candidates {
+            new_store.active.remove(id);
+            Self::push_lineage(
+                &mut new_store,
+                id,
+                LineageEvent::Retracted {
+                    turn,
+                    reason: RetractionReason::Forgotten,
+                },
+            );
+        }
+        (new_store, candidates)
     }
 
     /// Weaken one live position by `factor`, quarantining below the
@@ -663,6 +720,86 @@ mod tests {
         assert_eq!(unchanged.active.len(), MAX_COMMITMENTS);
         assert!(unchanged.quarantine.is_empty());
         assert_eq!(unchanged.next_id, MAX_COMMITMENTS);
+    }
+
+    fn stale_store() -> SemanticCommitmentStore {
+        // id0: stale + weak -> forgotten. id1: fresh -> kept. id2:
+        // stale but confident -> kept. id3: stale + weak but
+        // contested -> kept. id4: stale + weak but depended-on -> kept.
+        let mut store = SemanticCommitmentStore::default();
+        let mut payload = make_payload("память", "старая слабая позиция");
+        payload.confidence = 0.4;
+        store.active.insert(CommitmentId(0), (payload, 1));
+        let mut fresh = make_payload("память", "свежая позиция");
+        fresh.confidence = 0.4;
+        store.active.insert(CommitmentId(1), (fresh, 100));
+        let mut strong = make_payload("память", "старая сильная позиция");
+        strong.confidence = 0.9;
+        store.active.insert(CommitmentId(2), (strong, 1));
+        let mut contested = make_payload("память", "оспоренная позиция");
+        contested.confidence = 0.4;
+        store.active.insert(CommitmentId(3), (contested, 1));
+        store.contradictions.push(ContradictionEvent {
+            left: CommitmentId(3),
+            right: CommitmentId(2),
+            kind: ContradictionKind::ContradictionStatement,
+            turn: 90,
+        });
+        let mut keeper = make_payload("память", "позиция-опора");
+        keeper.confidence = 0.4;
+        store.active.insert(CommitmentId(4), (keeper, 1));
+        let mut dependent = make_payload("память", "зависимая позиция");
+        dependent.confidence = 0.9;
+        dependent.deps = vec![CommitmentId(4)];
+        store.active.insert(CommitmentId(5), (dependent, 100));
+        store.next_id = 6;
+        store
+    }
+
+    #[test]
+    fn test_forget_stale_retires_only_the_forgettable() {
+        let store = stale_store();
+        let (forgotten_store, forgotten) = CommitmentOps::forget_stale(100, &store);
+        assert_eq!(forgotten, vec![CommitmentId(0)]);
+        assert!(!forgotten_store.active.contains_key(&CommitmentId(0)));
+        for kept in [1, 2, 3, 4, 5] {
+            assert!(
+                forgotten_store.active.contains_key(&CommitmentId(kept)),
+                "id{kept} must survive forgetting"
+            );
+        }
+        // Forgetting is visible: lineage records the retirement.
+        let lineage = forgotten_store.lineage.get(&CommitmentId(0)).unwrap();
+        assert!(matches!(
+            lineage.last(),
+            Some(LineageEvent::Retracted {
+                reason: RetractionReason::Forgotten,
+                turn: 100,
+            })
+        ));
+        // Pure: the input store is untouched.
+        assert!(store.active.contains_key(&CommitmentId(0)));
+    }
+
+    #[test]
+    fn test_forget_stale_caps_per_turn_in_id_order() {
+        let mut store = SemanticCommitmentStore::default();
+        for index in 0..(MAX_FORGET_PER_TURN + 3) {
+            let mut payload = make_payload("память", &format!("старая позиция {index}"));
+            payload.confidence = 0.4;
+            store.active.insert(CommitmentId(index), (payload, 1));
+        }
+        store.next_id = MAX_FORGET_PER_TURN + 3;
+        let (forgotten_store, forgotten) = CommitmentOps::forget_stale(100, &store);
+        assert_eq!(forgotten.len(), MAX_FORGET_PER_TURN);
+        let mut ordered = forgotten.clone();
+        ordered.sort();
+        assert_eq!(forgotten, ordered, "id order, deterministic");
+        assert_eq!(
+            forgotten_store.active.len(),
+            3,
+            "the remainder retires next turn"
+        );
     }
 
     #[test]

@@ -577,6 +577,10 @@ pub enum RetractionReason {
     ParserContradiction,
     OutOfScope,
     Superseded,
+    /// Governed forgetting (Memory M4): a stale, low-confidence,
+    /// uncontested position with no live dependents, retired after
+    /// its TTL. Lineage stays — forgetting is visible, never silent.
+    Forgotten,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
