@@ -443,6 +443,11 @@ pub struct ReflectionReport {
     pub commitments_by_topic: Vec<(String, usize)>,
     /// Latest held positions, newest first.
     pub recent_commitments: Vec<RecentCommitment>,
+    /// Recalled positions for the last topic, ranked (Memory M2).
+    /// Read-only recollection: then (commit turn), now (journal
+    /// mention), and standing (held/stale/contested) side by side.
+    /// Empty when there is no last topic or nothing held on it.
+    pub recalled: Vec<crate::recall::RecallCandidate>,
     /// Per-topic position dynamics: every held position in turn order,
     /// marked when it participated in a caught contradiction. The diary's
     /// own trajectory — what the practitioner actually said, and where it
@@ -586,6 +591,21 @@ pub fn build_reflection_report(state: &SystemState) -> ReflectionReport {
         quarantined_commitments: store.map(|store| store.quarantine.len()).unwrap_or(0),
         commitments_by_topic,
         recent_commitments,
+        recalled: state
+            .dialogue
+            .last_topic
+            .as_deref()
+            .zip(store)
+            .map(|(topic, store)| {
+                crate::recall::recall_candidates(
+                    store,
+                    &state.dialogue.journal,
+                    topic,
+                    state.dialogue.turn_count,
+                    RECENT_COMMITMENT_LIMIT,
+                )
+            })
+            .unwrap_or_default(),
         topic_timelines,
         contradictions: store.map(|store| store.contradictions.len()).unwrap_or(0),
         governance_completed: log.count_by_type(&Event::TurnCompleted),
@@ -643,6 +663,20 @@ pub fn render_report_console(report: &ReflectionReport) -> String {
             out.push_str(&format!(
                 "    [ход {} | {}] {}\n",
                 commitment.turn, commitment.topic, commitment.statement
+            ));
+        }
+    }
+    if !report.recalled.is_empty() {
+        out.push_str("  вспомнилось:\n");
+        for recalled in &report.recalled {
+            let standing = match recalled.status {
+                crate::recall::RecallStatus::Active => "держится",
+                crate::recall::RecallStatus::Quarantined => "в карантине",
+            };
+            let mark = if recalled.contradicted { " ✗" } else { "" };
+            out.push_str(&format!(
+                "    [ход {}{mark} | {} | {standing}] {}\n",
+                recalled.turn, recalled.topic, recalled.statement
             ));
         }
     }
@@ -737,6 +771,21 @@ pub fn render_report_markdown(report: &ReflectionReport) -> String {
             out.push_str(&format!(
                 "> **ход {}, {}** — {}\n\n",
                 commitment.turn, commitment.topic, commitment.statement
+            ));
+        }
+    }
+    if !report.recalled.is_empty() {
+        out.push_str("Вспомнилось:\n\n");
+        out.push_str("Что практика держала и держит по последней теме:\n\n");
+        for recalled in &report.recalled {
+            let standing = match recalled.status {
+                crate::recall::RecallStatus::Active => "держится",
+                crate::recall::RecallStatus::Quarantined => "в карантине",
+            };
+            let mark = if recalled.contradicted { " ✗" } else { "" };
+            out.push_str(&format!(
+                "- ход {}{mark} ({}) — {}\n\n",
+                recalled.turn, standing, recalled.statement
             ));
         }
     }
@@ -1565,6 +1614,25 @@ mod tests {
         assert_eq!(report.governance_completed, 1);
         assert_eq!(report.governance_blocked, 1);
         assert_eq!(report.governance_capacity_reached, 1);
+    }
+
+    #[test]
+    fn report_recalls_last_topic_positions_ranked() {
+        let report = build_reflection_report(&state_with_commitments());
+        // Last topic is свобода: both held positions recalled,
+        // contested first (contradiction bonus outweighs recency here).
+        assert_eq!(report.recalled.len(), 2);
+        assert_eq!(
+            report.recalled[0].statement,
+            "свобода предполагает ответственность"
+        );
+        assert!(report.recalled[0].contradicted);
+        assert_eq!(report.recalled[1].statement, "свобода требует границ");
+        let console = render_report_console(&report);
+        assert!(console.contains("вспомнилось:"));
+        assert!(console.contains("держится"));
+        let markdown = render_report_markdown(&report);
+        assert!(markdown.contains("Вспомнилось:"));
     }
 
     #[test]

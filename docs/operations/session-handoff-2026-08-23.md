@@ -799,3 +799,10 @@ journal — `status × recency + contradiction bonus`, same-topic
 only, total deterministic order, caller takes top N. Unit-locked
 (hand-computed scores, scoping, limits, determinism). No consumers
 yet by design (M2 next).
+
+### Memory M2 recall surface (landed 2026-09-14)
+
+`ReflectionReport.recalled` (top-3 per last topic) rendered in
+console (`вспомнилось:`) and markdown (`Вспомнилось:`) with
+standing (held/stale) and contradiction marks. Read-only: no turn
+rendering changes. Next: M3 recall events in FELT, M4 forgetting.
