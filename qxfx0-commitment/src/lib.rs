@@ -407,19 +407,16 @@ impl CommitmentOps {
             .map(|(cid, _)| cid.clone())
             .collect();
 
-        // Check for contradiction signals in input
+        // Check for contradiction signals in input. Token-based, not
+        // substring-with-space: the old `contains("не ")` went blind on
+        // the most natural Russian disagreement — a leading «нет»
+        // (practice-2 turn 8: «нет свобода первична…» engaged but never
+        // contradicted) — and on «не» before punctuation. A bare «нет»
+        // counts only sentence-initially: «у меня нет ответа» reports
+        // absence, not disagreement. A bare signal without an engaged
+        // counterpart is harmless (no counterpart → no record).
         let lower = input_topic.to_lowercase();
-        let contradicted = lower.contains("не ")
-            || lower.contains("противореч")
-            || lower.contains("ошиба")
-            || lower.contains("не верно")
-            || lower.contains("contradict")
-            || lower.contains("wrong")
-            || lower.contains("error")
-            || lower.contains("refute")
-            || lower.contains("oppose")
-            || lower.contains("deny")
-            || lower.contains("incorrect");
+        let contradicted = has_contradiction_signal(&lower);
 
         let match_kind = if contradicted {
             MatchKind::ContradictedStrong
@@ -485,6 +482,51 @@ fn stem_overlap_count(query: &BTreeSet<&str>, statement: &BTreeSet<&str>) -> usi
                 .count()
         })
         .sum()
+}
+
+/// Word-token signal: `word` present as a standalone token
+/// (unicode-alphanumeric boundaries), so «не» fires before any
+/// punctuation, not just before a space.
+fn tokens_contain(lower: &str, word: &str) -> bool {
+    lower
+        .split(|c: char| !c.is_alphanumeric())
+        .any(|token| token == word)
+}
+
+/// A bare «нет» is disagreement only sentence-initially —
+/// «у меня нет ответа» reports absence. Segments split on sentence
+/// punctuation; quotes and dashes around the first word are skipped
+/// by the non-alphanumeric filter.
+fn sentence_starts_with_net(lower: &str) -> bool {
+    lower.split(['.', '?', '!', ':', ';', '\n']).any(|segment| {
+        segment
+            .split(|c: char| !c.is_alphanumeric())
+            .find(|token| !token.is_empty())
+            == Some("нет")
+    })
+}
+
+/// Pure contradiction-signal half of engagement detection, testable
+/// without a store (the store gate only decides NoMatch vs engaged).
+fn has_contradiction_signal(lower: &str) -> bool {
+    lower.contains("противореч")
+        || lower.contains("ошиб")
+        || lower.contains("возража")
+        || lower.contains("несоглас")
+        || lower.contains("неверно")
+        || lower.contains("не верно")
+        || lower.contains("напротив")
+        || lower.contains("неправ")
+        || lower.contains("contradict")
+        || lower.contains("wrong")
+        || lower.contains("error")
+        || lower.contains("refute")
+        || lower.contains("oppose")
+        || lower.contains("deny")
+        || lower.contains("incorrect")
+        || tokens_contain(lower, "не")
+        || tokens_contain(lower, "no")
+        || sentence_starts_with_net(lower)
 }
 
 /// Engagement result — whether the turn engages or contradicts held commitments.
@@ -640,6 +682,55 @@ mod tests {
         let eng = CommitmentOps::detect_engagement(&store, "that is wrong about свобода");
         assert!(eng.contradicted);
         assert_eq!(eng.match_kind, MatchKind::ContradictedStrong);
+    }
+
+    #[test]
+    fn test_contradiction_signals_russian_matrix() {
+        // (input, contradicted?) — signals must fire on words, not on
+        // space-terminated substrings, and a bare «нет» only initially.
+        for (input, expected) in [
+            // Practice-2 turn 8 regression: leading «нет» disagrees.
+            ("нет свобода первична: без выбора нечего держать", true),
+            ("но ведь выбор под принуждением не свободен?", true),
+            ("выбор не, прямо скажем, свободен", true),
+            ("это неверно", true),
+            ("не верно", true),
+            ("ты ошибаешься", true),
+            ("здесь ошибка", true),
+            ("я несогласен", true),
+            ("напротив, свобода первична", true),
+            ("это неправда", true),
+            ("я возражаю", true),
+            ("противоречишь себе", true),
+            ("no, freedom is primary", true),
+            // No signal: plain statements and mid-sentence «нет».
+            ("свобода это возможность выбора", false),
+            ("у меня нет ответа", false),
+            ("ответа нет, но есть вопрос", false),
+            ("монета лежит на столе", false),
+        ] {
+            assert_eq!(
+                has_contradiction_signal(&input.to_lowercase()),
+                expected,
+                "input: {input}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_turn_eight_regression_end_to_end() {
+        // Practice-2 turn 8 against a held position: engaged AND
+        // contradicted, so the pipeline records the contradiction.
+        let store = SemanticCommitmentStore::default();
+        let payload = make_payload("свобода", "ответственность первична а свобода вторична");
+        let (store, _) = CommitmentOps::commit(payload, &store);
+        let eng = CommitmentOps::detect_engagement(
+            &store,
+            "нет свобода первична: без выбора нечего держать",
+        );
+        assert!(eng.contradicted);
+        assert_eq!(eng.match_kind, MatchKind::ContradictedStrong);
+        assert!(!eng.engaged_ids.is_empty());
     }
 
     #[test]
