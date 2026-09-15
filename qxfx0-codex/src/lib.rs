@@ -16,6 +16,7 @@ pub mod dual_journal;
 pub mod felt;
 pub mod flip;
 pub mod journal;
+pub mod recall;
 
 use qxfx0_pipeline::RendererAuthority;
 use qxfx0_semantic::argued_topic_registry;

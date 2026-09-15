@@ -791,3 +791,11 @@ constrain the search space. No theater built.
 and reports stats (balance, borderline, length strata as
 informational). v1 passes; re-label/kappa and the grid itself wait
 on the human labeling pass.
+
+### Memory M1 recall scoring (landed 2026-09-14)
+
+`qxfx0-codex::recall`: pure ranking over persisted commitments +
+journal — `status × recency + contradiction bonus`, same-topic
+only, total deterministic order, caller takes top N. Unit-locked
+(hand-computed scores, scoping, limits, determinism). No consumers
+yet by design (M2 next).
