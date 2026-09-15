@@ -276,9 +276,38 @@ pub struct FeltManifest {
     pub gates: Vec<FeltGateOutcome>,
     pub verdict_passed: bool,
     pub failed: Vec<String>,
+    /// Recall evidence per discussed topic (Memory M3): shown vs
+    /// suppressed, with scores so verify checks the ordering.
+    /// Empty for sessions with no held positions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub recalls: Vec<RecallRow>,
     /// Stable digest of the final session state (same witness basis as the
     /// diary), so a FELT export cross-checks against the diary export.
     pub session_digest: String,
+}
+
+/// One recalled position inside a recall table row: identity,
+/// standing and score — everything verify needs to check ordering
+/// without the commitment store.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RecallRef {
+    pub id: usize,
+    pub statement: String,
+    pub turn: usize,
+    pub status: String,
+    pub contradicted: bool,
+    pub score: f64,
+}
+
+/// Recall evidence for one discussed topic: what the report surface
+/// shows (top ranked) and what it suppresses as irrelevant (ranked
+/// but beyond the surface limit). Both halves recomputable in shape
+/// by verify: disjoint ids, shown sorted by score desc.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RecallRow {
+    pub topic: String,
+    pub shown: Vec<RecallRef>,
+    pub suppressed: Vec<RecallRef>,
 }
 
 /// The export artifact: the Markdown evidence file, the manifest and the
@@ -293,6 +322,57 @@ pub struct FeltExport {
 /// Build the FELT manifest as a pure function of the persisted state.
 /// Unlike the diary export this never refuses an empty session: testifying
 /// «not proven» is the measurement tool's job.
+/// How many recalled positions the evidence surface shows per topic
+/// (mirrors the report surface limit).
+pub const RECALL_SHOWN_LIMIT: usize = 5;
+
+/// Build the recall table: per discussed topic, the ranked candidates
+/// split into shown (surface) and suppressed (ranked but beyond it).
+/// Deterministic in state; topics in encounter order.
+pub fn build_recall_rows(state: &SystemState) -> Vec<RecallRow> {
+    let Some(store) = state.semantic.semantic_commitments.as_ref() else {
+        return Vec::new();
+    };
+    let mut topics = Vec::new();
+    for record in &state.dialogue.journal {
+        if let Some(topic) = record.topic.as_deref() {
+            if !topics.contains(&topic) {
+                topics.push(topic);
+            }
+        }
+    }
+    topics
+        .into_iter()
+        .map(|topic| {
+            let ranked = crate::recall::recall_candidates(
+                store,
+                &state.dialogue.journal,
+                topic,
+                state.dialogue.turn_count,
+                usize::MAX,
+            );
+            let to_ref = |candidate: &crate::recall::RecallCandidate| RecallRef {
+                id: candidate.id.0,
+                statement: candidate.statement.clone(),
+                turn: candidate.turn,
+                status: match candidate.status {
+                    crate::recall::RecallStatus::Active => "active".to_string(),
+                    crate::recall::RecallStatus::Quarantined => "quarantined".to_string(),
+                },
+                contradicted: candidate.contradicted,
+                score: candidate.score,
+            };
+            let (shown, suppressed) = ranked.split_at(ranked.len().min(RECALL_SHOWN_LIMIT));
+            RecallRow {
+                topic: topic.to_string(),
+                shown: shown.iter().map(to_ref).collect(),
+                suppressed: suppressed.iter().map(to_ref).collect(),
+            }
+        })
+        .filter(|row| !row.shown.is_empty() || !row.suppressed.is_empty())
+        .collect()
+}
+
 pub fn build_felt_manifest(state: &SystemState, renderer: RendererAuthority) -> FeltManifest {
     let journal = DualJournal::build(state);
     let facts = facts_from_state(state);
@@ -320,6 +400,7 @@ pub fn build_felt_manifest(state: &SystemState, renderer: RendererAuthority) -> 
             .iter()
             .map(|gate| gate.name().to_string())
             .collect(),
+        recalls: build_recall_rows(state),
         session_digest: crate::felt_session_digest(state),
     }
 }
@@ -404,6 +485,26 @@ pub fn build_felt_export(state: &SystemState, renderer: RendererAuthority) -> Fe
             },
             turn.subject.conatus
         ));
+    }
+
+    if !manifest.recalls.is_empty() {
+        out.push_str("## Воспоминания\n\n");
+        out.push_str("Что показала бы поверхность отчёта по каждой теме — и что отранжировано, но скрыто:\n\n");
+        for row in &manifest.recalls {
+            out.push_str(&format!(
+                "- **{}**: показано {}, скрыто {}\n",
+                row.topic,
+                row.shown.len(),
+                row.suppressed.len()
+            ));
+            for shown in &row.shown {
+                out.push_str(&format!(
+                    "  - [ид {} | {}] {} (скор {:.3})\n",
+                    shown.id, shown.status, shown.statement, shown.score
+                ));
+            }
+        }
+        out.push('\n');
     }
 
     out.push_str("## Верификация\n\n");
@@ -575,6 +676,42 @@ pub fn verify_felt_export(markdown: &str, passphrase: Option<&str>) -> FeltVerif
             signature_checked,
             "таблица гейтов не совпадает с пересчётом — файл изменён после экспорта".into(),
         );
+    }
+    // Recall table shape: shown and suppressed disjoint per topic,
+    // shown ordered by score desc. Scores embed the ranking, so the
+    // shape check catches edits without the commitment store.
+    for row in &manifest.recalls {
+        let mut ids = std::collections::BTreeSet::new();
+        for entry in row.shown.iter().chain(row.suppressed.iter()) {
+            if !ids.insert(entry.id) {
+                return felt_failed(
+                    &manifest.session_id,
+                    manifest.turns,
+                    recomputed.passed,
+                    signature_checked,
+                    format!(
+                        "дублирующаяся позиция {} в recall-таблице темы «{}» — файл изменён",
+                        entry.id, row.topic
+                    ),
+                );
+            }
+        }
+        let ordered = row
+            .shown
+            .windows(2)
+            .all(|pair| pair[0].score >= pair[1].score);
+        if !ordered {
+            return felt_failed(
+                &manifest.session_id,
+                manifest.turns,
+                recomputed.passed,
+                signature_checked,
+                format!(
+                    "показанные позиции темы «{}» не упорядочены по скору — файл изменён",
+                    row.topic
+                ),
+            );
+        }
     }
     FeltVerification {
         session_id: manifest.session_id,
@@ -764,6 +901,58 @@ mod tests {
         assert!(!verify_felt_export(&export.markdown, None).verified());
         assert!(verify_felt_export(&export.markdown, Some("secret")).verified());
         assert!(!verify_felt_export(&export.markdown, Some("wrong")).verified());
+    }
+
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn recall_table_splits_shown_and_suppressed() {
+        let mut state = journaled_state(3, &[Some("память"), Some("внимание"), Some("память")]);
+        commit_everything(&mut state, 7);
+        // Spread turns and contest one pair so scores strictly differ.
+        if let Some(store) = state.semantic.semantic_commitments.as_mut() {
+            for (id, turn) in [(2usize, 3usize), (4, 2)] {
+                if let Some((payload, _)) = store.active.get_mut(&CommitmentId(id)) {
+                    payload.turn_seq = turn;
+                }
+            }
+            store.contradictions.push(ContradictionEvent {
+                left: CommitmentId(0),
+                right: CommitmentId(1),
+                kind: ContradictionKind::ContradictionStatement,
+                turn: 3,
+            });
+        }
+        let manifest = build_felt_manifest(&state, RendererAuthority::AuditedPlan);
+        // Two topics discussed, but only память holds positions.
+        assert_eq!(manifest.recalls.len(), 1);
+        let row = &manifest.recalls[0];
+        assert_eq!(row.topic, "память");
+        assert_eq!(row.shown.len(), RECALL_SHOWN_LIMIT);
+        assert_eq!(row.shown.len() + row.suppressed.len(), 7);
+        let ordered = row
+            .shown
+            .windows(2)
+            .all(|pair| pair[0].score >= pair[1].score);
+        assert!(ordered, "shown sorted by score desc");
+
+        let export = build_felt_export(&state, RendererAuthority::AuditedPlan);
+        assert!(export.markdown.contains("## Воспоминания"));
+        assert!(verify_felt_export(&export.markdown, None).verified());
+
+        // Reordering the shown half edits the manifest: verify must fail.
+        let mut evil: FeltManifest = serde_json::from_str(&export.manifest_json).unwrap();
+        evil.recalls[0].shown.reverse();
+        let evil_json = serde_json::to_string_pretty(&evil).unwrap();
+        let evil_markdown = export.markdown.replace(&export.manifest_json, &evil_json);
+        assert!(!verify_felt_export(&evil_markdown, None).verified());
+
+        // Duplicating an id into the suppressed half also fails.
+        let mut dup: FeltManifest = serde_json::from_str(&export.manifest_json).unwrap();
+        let clone = dup.recalls[0].shown[0].clone();
+        dup.recalls[0].suppressed.push(clone);
+        let dup_json = serde_json::to_string_pretty(&dup).unwrap();
+        let dup_markdown = export.markdown.replace(&export.manifest_json, &dup_json);
+        assert!(!verify_felt_export(&dup_markdown, None).verified());
     }
 
     #[test]

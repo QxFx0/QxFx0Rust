@@ -806,3 +806,9 @@ yet by design (M2 next).
 console (`вспомнилось:`) and markdown (`Вспомнилось:`) with
 standing (held/stale) and contradiction marks. Read-only: no turn
 rendering changes. Next: M3 recall events in FELT, M4 forgetting.
+
+### Memory M3 recall evidence in FELT (landed 2026-09-14)
+
+`FeltManifest.recalls`: per discussed topic, shown (top-5) vs
+suppressed with scores; new `Воспоминания` markdown section;
+verify checks disjoint ids + shown score-desc. Next: M4 forgetting.
