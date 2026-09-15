@@ -66,8 +66,39 @@ struct RecoverySnapshot {
     path_depth: Option<usize>,
 }
 
+/// Which pipeline stage faulted into recovery (Phase D: typed cause).
+/// One variant per `execute_stage` name — the guard message renders it,
+/// so a blocked recovery names its stage instead of saying only
+/// «stage error».
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecoveryCause {
+    Prepare,
+    Route,
+    PlanShadow,
+    Render,
+    Finalize,
+    Guard,
+}
+
+impl RecoveryCause {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RecoveryCause::Prepare => "prepare",
+            RecoveryCause::Route => "route",
+            RecoveryCause::PlanShadow => "plan_shadow",
+            RecoveryCause::Render => "render",
+            RecoveryCause::Finalize => "finalize",
+            RecoveryCause::Guard => "guard",
+        }
+    }
+}
+
 /// Build a recovery output after a stage fault, using the rolled-back state.
-fn recovery_output(state: &SystemState, recovery: &RecoverySnapshot) -> TurnOutput {
+fn recovery_output(
+    state: &SystemState,
+    recovery: &RecoverySnapshot,
+    cause: RecoveryCause,
+) -> TurnOutput {
     let family = recovery.family.unwrap_or(CanonicalMoveFamily::CMGround);
     let conversation_state = recovery
         .conversation_state
@@ -77,7 +108,7 @@ fn recovery_output(state: &SystemState, recovery: &RecoverySnapshot) -> TurnOutp
     TurnOutput {
         response: "QxFx0: внутренняя ошибка обработки, состояние восстановлено.".into(),
         family,
-        guard_status: GuardStatus::Blocked("stage error".into()),
+        guard_status: GuardStatus::Blocked(format!("stage error: {}", cause.as_str())),
         blocked: true,
         commitment_engaged: false,
         governance_events: state.governance_log.len(),
@@ -394,7 +425,7 @@ pub(crate) fn process_turn_internal(
         Err(error) => {
             tracing::error!("prepare_stage failed: {error}");
             snapshot.apply(state);
-            return recovery_output(state, &recovery);
+            return recovery_output(state, &recovery, RecoveryCause::Prepare);
         }
     };
     recovery.conatus_energy = Some(prepared.conatus_energy());
@@ -412,7 +443,7 @@ pub(crate) fn process_turn_internal(
         Err(error) => {
             tracing::error!("route_stage failed: {error}");
             snapshot.apply(state);
-            return recovery_output(state, &recovery);
+            return recovery_output(state, &recovery, RecoveryCause::Route);
         }
     };
     recovery.family = Some(routed.family());
@@ -447,7 +478,7 @@ pub(crate) fn process_turn_internal(
         Err(error) => {
             tracing::error!("plan_shadow_stage failed: {error}");
             snapshot.apply(state);
-            return recovery_output(state, &recovery);
+            return recovery_output(state, &recovery, RecoveryCause::PlanShadow);
         }
     };
 
@@ -471,7 +502,7 @@ pub(crate) fn process_turn_internal(
         Err(error) => {
             tracing::error!("render_stage failed: {error}");
             snapshot.apply(state);
-            return recovery_output(state, &recovery);
+            return recovery_output(state, &recovery, RecoveryCause::Render);
         }
     };
     recovery.path_depth = Some(rendered.path_depth());
@@ -488,7 +519,7 @@ pub(crate) fn process_turn_internal(
             Err(error) if fact_grounded_rollout.permits_render_authorization() => {
                 tracing::error!("fact-grounded receipt failed: {error}");
                 snapshot.apply(state);
-                return recovery_output(state, &recovery);
+                return recovery_output(state, &recovery, RecoveryCause::Render);
             }
             Err(error) => Err(error),
         }
@@ -521,7 +552,7 @@ pub(crate) fn process_turn_internal(
         Err(error) => {
             tracing::error!("finalize_stage failed: {error}");
             snapshot.apply(state);
-            return recovery_output(state, &recovery);
+            return recovery_output(state, &recovery, RecoveryCause::Finalize);
         }
     };
 
@@ -538,7 +569,7 @@ pub(crate) fn process_turn_internal(
         Err(error) => {
             tracing::error!("guard_stage failed: {error}");
             snapshot.apply(state);
-            return recovery_output(state, &recovery);
+            return recovery_output(state, &recovery, RecoveryCause::Guard);
         }
     };
     if response_plan_v2_authority == ResponsePlanV2Authority::Canary {
@@ -638,7 +669,7 @@ pub(crate) fn process_turn_internal(
             if fact_grounded_rollout.permits_render_authorization() {
                 tracing::error!("fact-grounded finalize failed: {error}");
                 snapshot.apply(state);
-                return recovery_output(state, &recovery);
+                return recovery_output(state, &recovery, RecoveryCause::Finalize);
             }
         }
     }
@@ -800,6 +831,30 @@ fn trim_journal_to_cap(journal: &mut Vec<qxfx0_types::system_state::JournalRecor
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recovery_cause_names_every_stage() {
+        // One variant per execute_stage name: the recovery message must
+        // name the faulted stage, so a blocked recovery is diagnosable
+        // without the trace.
+        for (cause, name) in [
+            (RecoveryCause::Prepare, "prepare"),
+            (RecoveryCause::Route, "route"),
+            (RecoveryCause::PlanShadow, "plan_shadow"),
+            (RecoveryCause::Render, "render"),
+            (RecoveryCause::Finalize, "finalize"),
+            (RecoveryCause::Guard, "guard"),
+        ] {
+            assert_eq!(cause.as_str(), name);
+            let output =
+                recovery_output(&SystemState::default(), &RecoverySnapshot::default(), cause);
+            assert!(output.blocked);
+            let GuardStatus::Blocked(message) = output.guard_status else {
+                panic!("recovery must block");
+            };
+            assert_eq!(message, format!("stage error: {name}"));
+        }
+    }
 
     #[test]
     fn journal_drain_keeps_newest_and_flags_gaps_by_absence() {

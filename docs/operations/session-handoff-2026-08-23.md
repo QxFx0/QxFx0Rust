@@ -845,3 +845,10 @@ engaged, но не contradicted). Фикс — токенные сигналы +
 противоречий новыми сигналами, забывания ид 3/7 на ходах 54/58,
 пара 11/12 разрешилась карантином проигравшего (победитель стоит).
 Все гейты пройдены. Константы памяти 50/0.5/8 — оставляем.
+
+### Phase D1: recovery_cause в enum (landed 2026-09-14)
+
+8 сайтов recovery в `process_turn` типизированы: `RecoveryCause`
+(Prepare/Route/PlanShadow/Render/Finalize/Guard, 1:1 с именами
+`execute_stage`); guard-сообщение — `stage error: {stage}` вместо
+немого «stage error». Тест покрывает все 6 вариантов и блокировку.
