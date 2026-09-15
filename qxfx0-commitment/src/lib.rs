@@ -260,10 +260,12 @@ impl CommitmentOps {
     }
 
     /// Governed forgetting: retire stale, low-confidence, uncontested
-    /// live positions with no live dependents. Returns the new store
-    /// and the retired ids (id order, capped). Retired positions leave
-    /// `active` but keep their lineage with `Retracted(Forgotten)`.
-    /// Pure and deterministic.
+    /// live positions with no live dependents. A contradiction keeps
+    /// its sides alive only while IT is live (within the TTL): an
+    /// ancient dispute is stale history, not an open disagreement.
+    /// Returns the new store and the retired ids (id order, capped).
+    /// Retired positions leave `active` but keep their lineage with
+    /// `Retracted(Forgotten)`. Pure and deterministic.
     pub fn forget_stale(
         turn: usize,
         store: &SemanticCommitmentStore,
@@ -271,6 +273,7 @@ impl CommitmentOps {
         let contested: BTreeSet<CommitmentId> = store
             .contradictions
             .iter()
+            .filter(|event| turn.saturating_sub(event.turn) < FORGET_TTL_TURNS)
             .flat_map(|event| [event.left.clone(), event.right.clone()])
             .collect();
         let depended_on: BTreeSet<CommitmentId> = store
@@ -779,6 +782,23 @@ mod tests {
         ));
         // Pure: the input store is untouched.
         assert!(store.active.contains_key(&CommitmentId(0)));
+    }
+
+    #[test]
+    fn test_forget_stale_ancient_dispute_is_history() {
+        // Same stale weak position, but the contradiction is older than
+        // the TTL: the dispute is stale history, the position retires.
+        let mut store = stale_store();
+        store.contradictions.clear();
+        store.contradictions.push(ContradictionEvent {
+            left: CommitmentId(3),
+            right: CommitmentId(2),
+            kind: ContradictionKind::ContradictionStatement,
+            turn: 10,
+        });
+        let (forgotten_store, forgotten) = CommitmentOps::forget_stale(100, &store);
+        assert!(forgotten.contains(&CommitmentId(3)));
+        assert!(!forgotten_store.active.contains_key(&CommitmentId(3)));
     }
 
     #[test]

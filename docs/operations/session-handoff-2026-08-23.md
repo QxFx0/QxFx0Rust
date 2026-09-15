@@ -821,3 +821,12 @@ no live dependents (max 8/turn, id order). Lineage keeps
 `Retracted(Forgotten)` — visible, never the silent eviction the
 capacity path refuses. Recall/FELT read `active`, so forgotten
 positions simply stop surfacing. Memory program M1–M4 complete.
+
+### Practice-2 + contested-expiry fix (landed 2026-09-14)
+
+Практика-2 (`docs/operations/second-practice-2026-09-14/`, 66 ходов)
+поймала баг дизайна M4: вечное освобождение оспоренных делало
+забвение недостижимым вживую (все sub-0.5 позиции — из revision).
+Фикс: спор держит живым, пока жив сам (внутри TTL); древний спор —
+история. Подтверждено вживую: Forgotten на ходах 55 и 65 ровно по
+touched+50, verify чист. Урок: практики только на свежем release.
