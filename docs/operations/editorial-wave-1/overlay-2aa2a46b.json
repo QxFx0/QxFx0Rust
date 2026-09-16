@@ -1,0 +1,51 @@
+{
+  "schema": "promotion-export-pack-01",
+  "overlay_version": "overlay-2aa2a46bc65c959ca7ed6a741b0a3c775e05ec7c241401d143bd9206af722108",
+  "overlay_checksum": "2aa2a46bc65c959ca7ed6a741b0a3c775e05ec7c241401d143bd9206af722108",
+  "structural_evaluation": "23c108570da20521042236a1f3bfbbc7e8efcbcb84051e730bbeadee072b117e",
+  "runtime_evaluation": "d9f76e9a870846f2e2893b321da8c1129729a14bb907b669e2f851844745b68b",
+  "policy_version": "promotion-v1-artifact-fold",
+  "policy_checksum": "cf2d63340c0600762652c57c94588fb72fc9d512eb3ca97f319add6059a119eb",
+  "predicates": [
+    {
+      "topic": "власть",
+      "subject": "власть",
+      "relation": "is_a",
+      "object": "порядок",
+      "rendered_ru": "власть устанавливает порядок через авторитет",
+      "confidence": 1.0,
+      "support": 1,
+      "semantic_gain": 0.8571428571428572
+    },
+    {
+      "topic": "доверие",
+      "subject": "доверие",
+      "relation": "is_a",
+      "object": "возможность",
+      "rendered_ru": "доверие открывает возможность сотрудничества",
+      "confidence": 1.0,
+      "support": 1,
+      "semantic_gain": 0.8571428571428572
+    },
+    {
+      "topic": "долг",
+      "subject": "долг",
+      "relation": "is_a",
+      "object": "долженствование",
+      "rendered_ru": "долг выражает моральное долженствование",
+      "confidence": 1.0,
+      "support": 1,
+      "semantic_gain": 0.8571428571428572
+    },
+    {
+      "topic": "жизнь",
+      "subject": "жизнь",
+      "relation": "is_a",
+      "object": "процесс",
+      "rendered_ru": "жизнь есть процесс постоянного становления",
+      "confidence": 1.0,
+      "support": 1,
+      "semantic_gain": 0.8
+    }
+  ]
+}

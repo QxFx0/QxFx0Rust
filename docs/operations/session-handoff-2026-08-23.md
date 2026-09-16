@@ -852,3 +852,14 @@ engaged, но не contradicted). Фикс — токенные сигналы +
 (Prepare/Route/PlanShadow/Render/Finalize/Guard, 1:1 с именами
 `execute_stage`); guard-сообщение — `stage error: {stage}` вместо
 немого «stage error». Тест покрывает все 6 вариантов и блокировку.
+
+### B4 wave-1 drill feed (landed 2026-09-14)
+
+Первая editorial-волна сдвинута с мёртвой точки: операторские БД
+пусты структурно (default build без сети — Promoted-рёбрам неоткуда
+взяться), поэтому drill офлайн: 32 хода × pilot-quarantine → overlay
+`overlay-2aa2a46b` (4 предиката, обе ноги прошли, релиз только в
+drill-БД). Фид `docs/operations/editorial-wave-1/overlay-2aa2a46b.json`,
+разбор-скелет `REVIEW.md` — 4 вердикта ПУСТЫ, паки не тронуты.
+Машина отказала: 10 exclusions (5 NovelInformation, 1 SemanticGain,
+4 NoCounterpoint) + 317 UnknownEndpoint. Мяч у человека.

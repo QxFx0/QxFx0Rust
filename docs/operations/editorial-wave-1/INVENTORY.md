@@ -1,6 +1,6 @@
-# Editorial wave 1 — inventory (2026-09-14, no merge)
+# Editorial wave 1 — inventory (2026-09-14) + first drill feed
 
-## Inventory result: empty by evidence
+## Operator-DB finding: empty by evidence
 
 Scanned all operator databases for `promotion_overlays` rows:
 
@@ -13,6 +13,15 @@ No overlay was ever drafted, let alone released, in any operator
 database. There is nothing to export and nothing to merge. This
 directory records the empty finding so the next wave starts from
 fact, not assumption.
+
+## First drill feed (same day, throwaway DB — not operator state)
+
+Because no operator DB will ever grow Promoted edges under the
+default no-network build, wave 1 was drilled offline: 32-turn
+scratch DB × pilot quarantine file → overlay `overlay-2aa2a46b`
+(4 predicates, both evaluation legs passed, released inside the
+drill DB only). Feed: `overlay-2aa2a46b.json`. Human review scaffold:
+`REVIEW.md` — all four verdicts EMPTY, packs untouched.
 
 ## Procedure for a non-empty wave (when Released overlays exist)
 
