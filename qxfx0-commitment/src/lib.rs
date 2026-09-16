@@ -38,6 +38,26 @@ pub const FORGET_TTL_TURNS: usize = 50;
 pub const FORGET_CONFIDENCE_CEILING: f64 = 0.5;
 pub const MAX_FORGET_PER_TURN: usize = 8;
 
+/// Typed revise failure (Phase D2): a revision names a live position
+/// or it names nothing. `Display` reproduces the historical message
+/// byte-for-byte, so diagnostics and stored strings never drift.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReviseError {
+    UnknownCommitment(CommitmentId),
+}
+
+impl std::fmt::Display for ReviseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReviseError::UnknownCommitment(id) => {
+                write!(f, "cid {id:?} not found in active commitments")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ReviseError {}
+
 /// Commitment store operations — commit, revise, retract, contradict.
 /// All operations are pure (return new store, don't mutate).
 pub struct CommitmentOps;
@@ -155,17 +175,19 @@ impl CommitmentOps {
     }
 
     /// Revise a commitment — replace payload, record lineage.
-    /// Returns `Err` if the cid is not found in `active`.
+    /// The only failure is a cid outside `active`, typed as
+    /// [`ReviseError`] (Phase D2) with the historical message kept
+    /// byte-for-byte in its `Display`.
     pub fn revise(
         cid: &CommitmentId,
         new_payload: FactualClaimPayload,
         turn: usize,
         store: &SemanticCommitmentStore,
-    ) -> Result<SemanticCommitmentStore, String> {
+    ) -> Result<SemanticCommitmentStore, ReviseError> {
         let mut new_store = store.clone();
 
         if !new_store.active.contains_key(cid) {
-            return Err(format!("cid {:?} not found in active commitments", cid));
+            return Err(ReviseError::UnknownCommitment(cid.clone()));
         }
 
         new_store
@@ -755,7 +777,14 @@ mod tests {
         let store = SemanticCommitmentStore::default();
         let new_payload = make_payload("x", "y");
         let result = CommitmentOps::revise(&CommitmentId(99), new_payload, 2, &store);
-        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            ReviseError::UnknownCommitment(CommitmentId(99))
+        );
+        assert_eq!(
+            ReviseError::UnknownCommitment(CommitmentId(99)).to_string(),
+            "cid CommitmentId(99) not found in active commitments"
+        );
     }
 
     #[test]

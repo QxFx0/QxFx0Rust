@@ -343,7 +343,7 @@ pub fn finalize_fact_grounded_state(
         &receipt.claims,
         packs.facts(),
     )
-    .map_err(FactGroundedCompositionError::InvalidState)?;
+    .map_err(|error| FactGroundedCompositionError::InvalidState(error.to_string()))?;
     state.semantic.perspective = next_perspective;
     if state.semantic.pack_set_fingerprint.is_empty() {
         state.semantic.pack_set_fingerprint = packs.fingerprint().into();
@@ -386,7 +386,7 @@ pub fn compose_render_decision(
         input.binding.thesis_fact_id(),
         input.packs.facts(),
     )
-    .map_err(FactGroundedCompositionError::InvalidState)?;
+    .map_err(|error| FactGroundedCompositionError::InvalidState(error.to_string()))?;
     let authority = input
         .verified_authority
         .map(|verified| verified.decision().clone());

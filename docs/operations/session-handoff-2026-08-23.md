@@ -863,3 +863,12 @@ drill-БД). Фид `docs/operations/editorial-wave-1/overlay-2aa2a46b.json`,
 разбор-скелет `REVIEW.md` — 4 вердикта ПУСТЫ, паки не тронуты.
 Машина отказала: 10 exclusions (5 NovelInformation, 1 SemanticGain,
 4 NoCounterpoint) + 317 UnknownEndpoint. Мяч у человека.
+
+### Phase D2: typed revise/perspective errors (landed 2026-09-14)
+
+`ReviseError::UnknownCommitment` (1 сайт) + `PerspectiveError`
+(18 вариантов: integrate/resolve/establish/qualify/reinforce/append,
+включая обёртку `FactSelection`); `Display` побайтово повторяет
+исторические сообщения — дрейфа диагностики нет, тесты на `.contains`
+не тронуты. Два call site в `fact_grounded.rs` стрингуют на границе
+в `InvalidState` как раньше. Тесты: вариант + 6 сообщений Display.

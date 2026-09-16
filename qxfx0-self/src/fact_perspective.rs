@@ -1,10 +1,167 @@
-use qxfx0_semantic::{ClaimRole, FactCondition, FactRegistry};
+use qxfx0_semantic::{ClaimRole, FactCondition, FactRegistry, FactRegistryError};
 use qxfx0_types::{
     BeliefPolarity, ConceptId, FactId, OpinionCore, PerspectiveEpisode, PerspectiveEpisodeId,
     PerspectiveRevisionReason, PerspectiveState, MAX_PERSPECTIVE_EPISODES,
     MAX_PERSPECTIVE_OPINIONS,
 };
 use std::collections::BTreeSet;
+
+/// Typed Perspective failure (Phase D2): every `Err` these operators
+/// return is one of these variants. `Display` reproduces each
+/// historical message byte-for-byte, so pipeline diagnostics and
+/// persistence rejections never drift.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PerspectiveError {
+    DialogueActRejected,
+    FactSelection(FactRegistryError),
+    MultiSubject,
+    OpinionCapacity {
+        max: usize,
+    },
+    ThesisTopicMismatch {
+        fact: FactId,
+        topic: ConceptId,
+    },
+    OpinionKeyMismatch {
+        key: ConceptId,
+        payload: ConceptId,
+    },
+    PrimaryMismatch {
+        topic: ConceptId,
+        primary: FactId,
+        thesis: FactId,
+    },
+    GroundingOmitsThesis {
+        topic: ConceptId,
+        thesis: FactId,
+    },
+    GroundingTopicMismatch {
+        grounding: FactId,
+        topic: ConceptId,
+    },
+    AffirmedDespiteCounterpoint {
+        topic: ConceptId,
+    },
+    QualifiedWithoutCounterpoint {
+        topic: ConceptId,
+    },
+    OpposedUnsupported {
+        topic: ConceptId,
+    },
+    PrimaryConflict {
+        subject: ConceptId,
+        existing: FactId,
+        new: FactId,
+    },
+    NoThesisForCounterpoint {
+        fact: FactId,
+    },
+    CounterpointDoesNotCite {
+        fact: FactId,
+        primary: FactId,
+    },
+    NoThesisForConsequence {
+        fact: FactId,
+    },
+    ConsequenceDoesNotCite {
+        fact: FactId,
+        primary: FactId,
+    },
+    RevisionOverflow,
+    EpisodeOverflow,
+}
+
+impl std::fmt::Display for PerspectiveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PerspectiveError::DialogueActRejected => {
+                write!(f, "dialogue acts cannot enter Perspective evidence")
+            }
+            PerspectiveError::FactSelection(error) => write!(f, "{error}"),
+            PerspectiveError::MultiSubject => {
+                write!(f, "Perspective evidence spans multiple concept subjects")
+            }
+            PerspectiveError::OpinionCapacity { max } => {
+                write!(f, "Perspective opinion capacity {max} reached")
+            }
+            PerspectiveError::ThesisTopicMismatch { fact, topic } => write!(
+                f,
+                "Perspective thesis '{fact}' is not about topic '{}'",
+                topic.0
+            ),
+            PerspectiveError::OpinionKeyMismatch { key, payload } => write!(
+                f,
+                "Perspective opinion key '{}' differs from payload topic '{}'",
+                key.0, payload.0
+            ),
+            PerspectiveError::PrimaryMismatch {
+                topic,
+                primary,
+                thesis,
+            } => write!(
+                f,
+                "Perspective opinion for '{}' cites primary fact '{primary}' instead of rendered thesis '{thesis}'",
+                topic.0
+            ),
+            PerspectiveError::GroundingOmitsThesis { topic, thesis } => write!(
+                f,
+                "Perspective opinion for '{}' omits rendered thesis '{thesis}' from its grounding",
+                topic.0
+            ),
+            PerspectiveError::GroundingTopicMismatch { grounding, topic } => write!(
+                f,
+                "Perspective grounding fact '{grounding}' is not about topic '{}'",
+                topic.0
+            ),
+            PerspectiveError::AffirmedDespiteCounterpoint { topic } => write!(
+                f,
+                "Perspective opinion for '{}' is affirmed despite a curated counterpoint",
+                topic.0
+            ),
+            PerspectiveError::QualifiedWithoutCounterpoint { topic } => write!(
+                f,
+                "Perspective opinion for '{}' is qualified without a curated counterpoint",
+                topic.0
+            ),
+            PerspectiveError::OpposedUnsupported { topic } => write!(
+                f,
+                "Perspective opinion for '{}' uses unsupported opposed polarity",
+                topic.0
+            ),
+            PerspectiveError::PrimaryConflict {
+                subject,
+                existing,
+                new,
+            } => write!(
+                f,
+                "Perspective primary fact conflict for '{}': '{existing}' versus '{new}'",
+                subject.0
+            ),
+            PerspectiveError::NoThesisForCounterpoint { fact } => write!(
+                f,
+                "Perspective counterpoint '{fact}' has no established thesis"
+            ),
+            PerspectiveError::CounterpointDoesNotCite { fact, primary } => write!(
+                f,
+                "Perspective counterpoint '{fact}' does not cite primary fact '{primary}'"
+            ),
+            PerspectiveError::NoThesisForConsequence { fact } => write!(
+                f,
+                "Perspective consequence '{fact}' has no established thesis"
+            ),
+            PerspectiveError::ConsequenceDoesNotCite { fact, primary } => write!(
+                f,
+                "Perspective consequence '{fact}' does not cite primary fact '{primary}'"
+            ),
+            PerspectiveError::RevisionOverflow => {
+                write!(f, "Perspective revision sequence overflow")
+            }
+            PerspectiveError::EpisodeOverflow => write!(f, "Perspective episode id overflow"),
+        }
+    }
+}
+
+impl std::error::Error for PerspectiveError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PerspectiveUpdate {
@@ -42,7 +199,7 @@ pub fn integrate_curated_claims(
     turn_seq: usize,
     claims: &[(ClaimRole, FactId)],
     facts: &FactRegistry,
-) -> Result<(PerspectiveState, PerspectiveUpdate), String> {
+) -> Result<(PerspectiveState, PerspectiveUpdate), PerspectiveError> {
     if claims.is_empty() {
         return Ok((state.clone(), PerspectiveUpdate::unchanged()));
     }
@@ -51,12 +208,14 @@ pub fn integrate_curated_claims(
     let mut topic = None;
     for (role, fact_id) in claims {
         if *role == ClaimRole::DialogueAct {
-            return Err("dialogue acts cannot enter Perspective evidence".into());
+            return Err(PerspectiveError::DialogueActRejected);
         }
-        let fact = facts.select(fact_id).map_err(|error| error.to_string())?;
+        let fact = facts
+            .select(fact_id)
+            .map_err(PerspectiveError::FactSelection)?;
         if let Some(expected) = &topic {
             if expected != &fact.subject {
-                return Err("Perspective evidence spans multiple concept subjects".into());
+                return Err(PerspectiveError::MultiSubject);
             }
         } else {
             topic = Some(fact.subject.clone());
@@ -65,9 +224,9 @@ pub fn integrate_curated_claims(
     }
     let topic = topic.expect("non-empty claims must select one subject");
     if !state.opinions.contains_key(&topic) && state.opinions.len() >= MAX_PERSPECTIVE_OPINIONS {
-        return Err(format!(
-            "Perspective opinion capacity {MAX_PERSPECTIVE_OPINIONS} reached"
-        ));
+        return Err(PerspectiveError::OpinionCapacity {
+            max: MAX_PERSPECTIVE_OPINIONS,
+        });
     }
 
     let mut next = state.clone();
@@ -108,49 +267,50 @@ pub fn resolve_render_stance(
     topic: &ConceptId,
     thesis_fact_id: &FactId,
     facts: &FactRegistry,
-) -> Result<PerspectiveRenderStance, String> {
+) -> Result<PerspectiveRenderStance, PerspectiveError> {
     let thesis = facts
         .select(thesis_fact_id)
-        .map_err(|error| error.to_string())?;
+        .map_err(PerspectiveError::FactSelection)?;
     if &thesis.subject != topic {
-        return Err(format!(
-            "Perspective thesis '{}' is not about topic '{}'",
-            thesis_fact_id, topic.0
-        ));
+        return Err(PerspectiveError::ThesisTopicMismatch {
+            fact: thesis_fact_id.clone(),
+            topic: topic.clone(),
+        });
     }
 
     let Some(opinion) = state.opinions.get(topic) else {
         return Ok(PerspectiveRenderStance::Neutral);
     };
     if &opinion.topic != topic {
-        return Err(format!(
-            "Perspective opinion key '{}' differs from payload topic '{}'",
-            topic.0, opinion.topic.0
-        ));
+        return Err(PerspectiveError::OpinionKeyMismatch {
+            key: topic.clone(),
+            payload: opinion.topic.clone(),
+        });
     }
     if &opinion.primary_fact != thesis_fact_id {
-        return Err(format!(
-            "Perspective opinion for '{}' cites primary fact '{}' instead of rendered thesis '{}'",
-            topic.0, opinion.primary_fact, thesis_fact_id
-        ));
+        return Err(PerspectiveError::PrimaryMismatch {
+            topic: topic.clone(),
+            primary: opinion.primary_fact.clone(),
+            thesis: thesis_fact_id.clone(),
+        });
     }
     if !opinion.grounding_facts.contains(thesis_fact_id) {
-        return Err(format!(
-            "Perspective opinion for '{}' omits rendered thesis '{}' from its grounding",
-            topic.0, thesis_fact_id
-        ));
+        return Err(PerspectiveError::GroundingOmitsThesis {
+            topic: topic.clone(),
+            thesis: thesis_fact_id.clone(),
+        });
     }
 
     let mut has_curated_counterpoint = false;
     for grounding_id in &opinion.grounding_facts {
         let grounding = facts
             .select(grounding_id)
-            .map_err(|error| error.to_string())?;
+            .map_err(PerspectiveError::FactSelection)?;
         if &grounding.subject != topic {
-            return Err(format!(
-                "Perspective grounding fact '{}' is not about topic '{}'",
-                grounding_id, topic.0
-            ));
+            return Err(PerspectiveError::GroundingTopicMismatch {
+                grounding: grounding_id.clone(),
+                topic: topic.clone(),
+            });
         }
         has_curated_counterpoint |= grounding.conditions.iter().any(|condition| {
             matches!(condition, FactCondition::Counters(target) if target == thesis_fact_id)
@@ -161,21 +321,18 @@ pub fn resolve_render_stance(
         BeliefPolarity::Affirmed if !has_curated_counterpoint => {
             Ok(PerspectiveRenderStance::Affirmed)
         }
-        BeliefPolarity::Affirmed => Err(format!(
-            "Perspective opinion for '{}' is affirmed despite a curated counterpoint",
-            topic.0
-        )),
+        BeliefPolarity::Affirmed => Err(PerspectiveError::AffirmedDespiteCounterpoint {
+            topic: topic.clone(),
+        }),
         BeliefPolarity::Qualified if has_curated_counterpoint => {
             Ok(PerspectiveRenderStance::Qualified)
         }
-        BeliefPolarity::Qualified => Err(format!(
-            "Perspective opinion for '{}' is qualified without a curated counterpoint",
-            topic.0
-        )),
-        BeliefPolarity::Opposed => Err(format!(
-            "Perspective opinion for '{}' uses unsupported opposed polarity",
-            topic.0
-        )),
+        BeliefPolarity::Qualified => Err(PerspectiveError::QualifiedWithoutCounterpoint {
+            topic: topic.clone(),
+        }),
+        BeliefPolarity::Opposed => Err(PerspectiveError::OpposedUnsupported {
+            topic: topic.clone(),
+        }),
     }
 }
 
@@ -382,13 +539,14 @@ fn establish_opinion(
     state: &mut PerspectiveState,
     turn_seq: usize,
     fact: &qxfx0_semantic::FactRecord,
-) -> Result<bool, String> {
+) -> Result<bool, PerspectiveError> {
     if let Some(existing) = state.opinions.get(&fact.subject) {
         if existing.primary_fact != fact.id {
-            return Err(format!(
-                "Perspective primary fact conflict for '{}': '{}' versus '{}'",
-                fact.subject.0, existing.primary_fact, fact.id
-            ));
+            return Err(PerspectiveError::PrimaryConflict {
+                subject: fact.subject.clone(),
+                existing: existing.primary_fact.clone(),
+                new: fact.id.clone(),
+            });
         }
         return Ok(false);
     }
@@ -418,21 +576,20 @@ fn qualify_opinion(
     state: &mut PerspectiveState,
     turn_seq: usize,
     fact: &qxfx0_semantic::FactRecord,
-) -> Result<bool, String> {
+) -> Result<bool, PerspectiveError> {
     let opinion = state.opinions.get_mut(&fact.subject).ok_or_else(|| {
-        format!(
-            "Perspective counterpoint '{}' has no established thesis",
-            fact.id
-        )
+        PerspectiveError::NoThesisForCounterpoint {
+            fact: fact.id.clone(),
+        }
     })?;
     let counters_primary = fact.conditions.iter().any(|condition| {
         matches!(condition, FactCondition::Counters(target) if target == &opinion.primary_fact)
     });
     if !counters_primary {
-        return Err(format!(
-            "Perspective counterpoint '{}' does not cite primary fact '{}'",
-            fact.id, opinion.primary_fact
-        ));
+        return Err(PerspectiveError::CounterpointDoesNotCite {
+            fact: fact.id.clone(),
+            primary: opinion.primary_fact.clone(),
+        });
     }
     if opinion.grounding_facts.contains(&fact.id) {
         return Ok(false);
@@ -448,7 +605,7 @@ fn qualify_opinion(
     opinion.revision_seq = opinion
         .revision_seq
         .checked_add(1)
-        .ok_or_else(|| "Perspective revision sequence overflow".to_string())?;
+        .ok_or(PerspectiveError::RevisionOverflow)?;
     let resulting = opinion.polarity;
     append_episode(
         state,
@@ -466,21 +623,20 @@ fn reinforce_opinion(
     state: &mut PerspectiveState,
     turn_seq: usize,
     fact: &qxfx0_semantic::FactRecord,
-) -> Result<bool, String> {
+) -> Result<bool, PerspectiveError> {
     let opinion = state.opinions.get_mut(&fact.subject).ok_or_else(|| {
-        format!(
-            "Perspective consequence '{}' has no established thesis",
-            fact.id
-        )
+        PerspectiveError::NoThesisForConsequence {
+            fact: fact.id.clone(),
+        }
     })?;
     let follows_primary = fact.conditions.iter().any(|condition| {
         matches!(condition, FactCondition::FollowsFrom(target) if target == &opinion.primary_fact)
     });
     if !follows_primary {
-        return Err(format!(
-            "Perspective consequence '{}' does not cite primary fact '{}'",
-            fact.id, opinion.primary_fact
-        ));
+        return Err(PerspectiveError::ConsequenceDoesNotCite {
+            fact: fact.id.clone(),
+            primary: opinion.primary_fact.clone(),
+        });
     }
     if opinion.grounding_facts.contains(&fact.id) {
         return Ok(false);
@@ -495,7 +651,7 @@ fn reinforce_opinion(
     opinion.revision_seq = opinion
         .revision_seq
         .checked_add(1)
-        .ok_or_else(|| "Perspective revision sequence overflow".to_string())?;
+        .ok_or(PerspectiveError::RevisionOverflow)?;
     append_episode(
         state,
         turn_seq,
@@ -517,12 +673,12 @@ fn append_episode(
     resulting_polarity: BeliefPolarity,
     cited_facts: Vec<FactId>,
     reason: PerspectiveRevisionReason,
-) -> Result<(), String> {
+) -> Result<(), PerspectiveError> {
     let episode_id = state.next_episode_id;
     state.next_episode_id = state
         .next_episode_id
         .checked_add(1)
-        .ok_or_else(|| "Perspective episode id overflow".to_string())?;
+        .ok_or(PerspectiveError::EpisodeOverflow)?;
     state.episodes.push(PerspectiveEpisode {
         id: PerspectiveEpisodeId(episode_id),
         turn_seq,
@@ -701,6 +857,64 @@ mod tests {
             .remove(&FactId::try_new("fact.forged").unwrap());
         state.opinions.get_mut(&topic).unwrap().polarity = BeliefPolarity::Opposed;
         assert!(resolve_render_stance(&state, &topic, &thesis, facts).is_err());
+    }
+
+    #[test]
+    fn typed_errors_carry_variants_and_historical_messages() {
+        let facts = qxfx0_semantic::active_pack_set().facts();
+        // DialogueAct never enters evidence: typed, not a string.
+        let dialogue = vec![(
+            ClaimRole::DialogueAct,
+            FactId::try_new("fact.freedom_choice").unwrap(),
+        )];
+        assert_eq!(
+            integrate_curated_claims(&PerspectiveState::default(), 1, &dialogue, facts)
+                .unwrap_err(),
+            PerspectiveError::DialogueActRejected
+        );
+        // Unknown fact wraps the registry error; Display still names it.
+        let unknown = vec![(
+            ClaimRole::Thesis,
+            FactId::try_new("fact.no-such-fact").unwrap(),
+        )];
+        let error =
+            integrate_curated_claims(&PerspectiveState::default(), 1, &unknown, facts).unwrap_err();
+        assert!(matches!(error, PerspectiveError::FactSelection(_)));
+        assert!(error.to_string().contains("fact.no-such-fact"));
+        // Every Display reproduces the historical message byte-for-byte.
+        let topic = ConceptId("concept.свобода".into());
+        for (error, message) in [
+            (
+                PerspectiveError::MultiSubject,
+                "Perspective evidence spans multiple concept subjects",
+            ),
+            (
+                PerspectiveError::OpinionCapacity { max: 16 },
+                "Perspective opinion capacity 16 reached",
+            ),
+            (
+                PerspectiveError::QualifiedWithoutCounterpoint {
+                    topic: topic.clone(),
+                },
+                "Perspective opinion for 'concept.свобода' is qualified without a curated counterpoint",
+            ),
+            (
+                PerspectiveError::OpposedUnsupported {
+                    topic: topic.clone(),
+                },
+                "Perspective opinion for 'concept.свобода' uses unsupported opposed polarity",
+            ),
+            (
+                PerspectiveError::RevisionOverflow,
+                "Perspective revision sequence overflow",
+            ),
+            (
+                PerspectiveError::EpisodeOverflow,
+                "Perspective episode id overflow",
+            ),
+        ] {
+            assert_eq!(error.to_string(), message);
+        }
     }
 
     #[test]
