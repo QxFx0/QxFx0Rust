@@ -73,13 +73,24 @@ pub struct Holistic(pub f64);
 pub struct Formal(pub f64);
 
 impl Holistic {
+    /// Weighted resonance/counterfactual blend. A non-finite component
+    /// poisons the blend, so — like `Conatus::compute` — poisoned input
+    /// fails to neutral 0.0 instead of emitting NaN downstream.
     pub fn from_field(field: &Field) -> Self {
+        if !field.resonance.is_finite() || !field.counterfactual.is_finite() {
+            return Holistic(0.0);
+        }
         Holistic(field.resonance * 0.6 + field.counterfactual * 0.4)
     }
 }
 
 impl Formal {
+    /// Weighted confidence/consolidation blend. Same poison rule as
+    /// `Holistic::from_field`: non-finite input → neutral 0.0.
     pub fn from_field(field: &Field) -> Self {
+        if !field.confidence.is_finite() || !field.consolidation.is_finite() {
+            return Formal(0.0);
+        }
         Formal(field.confidence * 0.7 + field.consolidation * 0.3)
     }
 }
@@ -93,12 +104,19 @@ impl Formal {
 ///
 /// This helper intentionally does not model a categorical adjunction —
 /// it is a normalization utility that prevents division by zero while
-/// keeping the non-degenerate path transparent.
+/// keeping the non-degenerate path transparent. A non-finite composition
+/// (poisoned field, or +inf/inf from an unbounded one) falls back to the
+/// neutral identity 1.0 — no claim — instead of emitting NaN.
 pub fn combine_modes(field: &Field) -> f64 {
     let h = Holistic::from_field(field);
     let f = Formal::from_field(field);
     let composed = h.0 * f.0;
-    composed / composed.max(0.01)
+    let scaled = composed / composed.max(0.01);
+    if scaled.is_finite() {
+        scaled
+    } else {
+        1.0
+    }
 }
 
 /// Adjunction: Holistic ⊣ Formal
@@ -368,10 +386,22 @@ impl SelfBlanket {
 }
 
 /// Salience controller — biases Holistic/Formal balance.
+///
+/// A non-finite component fails to neutral 0.0 (the `Conatus::compute`
+/// poison rule): downstream `bias > 0.5` then reads false and the turn
+/// grounds instead of deliberating on NaN.
 pub struct Salience;
 
 impl Salience {
     pub fn compute(field: &Field) -> f64 {
+        if !field.resonance.is_finite()
+            || !field.confidence.is_finite()
+            || !field.counterfactual.is_finite()
+            || !field.consolidation.is_finite()
+            || !field.atmosphere.arousal.is_finite()
+        {
+            return 0.0;
+        }
         field.resonance * 0.35 + (1.0 - field.confidence) * 0.25 + field.counterfactual * 0.25
             - field.consolidation * 0.15
             + field.atmosphere.arousal * 0.15
@@ -444,6 +474,69 @@ mod tests {
         let field = Field::default();
         let energy = Conatus::compute(&field);
         assert!(energy > 0.0);
+    }
+
+    #[test]
+    fn test_v1_scalar_constructors_never_emit_nan() {
+        // Phase D4: every V1 scalar source fails to a neutral finite
+        // value on poisoned input — NaN must not originate here.
+        for poison in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(
+                Holistic::from_field(&Field {
+                    resonance: poison,
+                    ..Default::default()
+                }),
+                Holistic(0.0)
+            );
+            assert_eq!(
+                Formal::from_field(&Field {
+                    confidence: poison,
+                    ..Default::default()
+                }),
+                Formal(0.0)
+            );
+            assert_eq!(
+                Salience::compute(&Field {
+                    consolidation: poison,
+                    ..Default::default()
+                }),
+                0.0
+            );
+            // Guarded constructors compose to finite 0.0 — no NaN
+            // originates even before the output guard.
+            let combined = combine_modes(&Field {
+                counterfactual: poison,
+                ..Default::default()
+            });
+            assert!(combined.is_finite(), "poison {poison}: {combined}");
+        }
+        // Overflow-scale (finite but absurd) fields compose to +inf/inf;
+        // the output guard falls back to the neutral identity 1.0.
+        assert_eq!(
+            combine_modes(&Field {
+                resonance: 1e200,
+                confidence: 1e200,
+                consolidation: 1e200,
+                counterfactual: 1e200,
+                ..Default::default()
+            }),
+            1.0
+        );
+        // Finite behavior locked: the guards change nothing healthy.
+        let field = Field {
+            resonance: 0.8,
+            confidence: 0.6,
+            consolidation: 0.4,
+            counterfactual: 0.5,
+            ..Default::default()
+        };
+        assert_eq!(
+            Holistic::from_field(&field),
+            Holistic(0.8 * 0.6 + 0.5 * 0.4)
+        );
+        assert_eq!(Formal::from_field(&field), Formal(0.6 * 0.7 + 0.4 * 0.3));
+        assert!(Salience::compute(&field).is_finite());
+        assert_eq!(combine_modes(&field), 1.0);
     }
 
     #[test]

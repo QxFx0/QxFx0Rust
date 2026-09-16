@@ -16,8 +16,8 @@ use qxfx0_render::{content_plan::render_audited_plan, RenderEngine};
 use qxfx0_self::{
     collapse_essence, commit_essence,
     deliberation::{self, DeliberationModulation, Plan},
-    should_commit_essence, witness_essence, Conatus, EssenceMode, EssenceModulation, Salience,
-    SelfBlanket,
+    should_commit_essence, witness_essence, Conatus, EssenceMode, EssenceModulation, Formal,
+    Holistic, Salience, SelfBlanket,
 };
 use qxfx0_self_v2::{
     advance_essence, check_blanket_transition, check_initial_blanket, compute_conatus_energy,
@@ -105,13 +105,16 @@ pub fn prepare_stage(
                 },
                 holistic_dominant: true,
                 recovery_cause: None,
-                confidence: (field.resonance * 0.6 + field.counterfactual * 0.4).clamp(0.0, 1.0),
+                // Plan confidences read through the NaN-guarded V1
+                // constructors (identical arithmetic on finite fields;
+                // `clamp` alone lets NaN through, the guard fails to 0.0).
+                confidence: Holistic::from_field(&field).0.clamp(0.0, 1.0),
             };
             let formal_plan = Plan {
                 family: CanonicalMoveFamily::CMDefine,
                 holistic_dominant: false,
                 recovery_cause: None,
-                confidence: (field.confidence * 0.7 + field.consolidation * 0.3).clamp(0.0, 1.0),
+                confidence: Formal::from_field(&field).0.clamp(0.0, 1.0),
             };
             let reconciled = deliberation::reconcile(
                 &modln,
@@ -168,8 +171,11 @@ pub fn prepare_stage(
         }
     };
     let holistic_dominant = salience > 0.5;
-    let holistic_prop = field.resonance * 0.6 + field.counterfactual * 0.4;
-    let formal_prop = field.confidence * 0.7 + field.consolidation * 0.3;
+    // Adjunction state reads through the same NaN-guarded constructors:
+    // these values persist into state and legitimacy, so raw arithmetic
+    // here would write a poisoned field straight into the journal.
+    let holistic_prop = Holistic::from_field(&field).0;
+    let formal_prop = Formal::from_field(&field).0;
 
     let violations = SelfBlanket::check(&field, conatus_energy);
     if !violations.is_empty() {
