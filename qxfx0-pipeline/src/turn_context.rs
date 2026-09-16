@@ -102,20 +102,37 @@ pub struct PreparedTurnContext {
     same_topic_decision_confirmed: bool,
 }
 
+/// Grouped arguments for `PreparedTurnContext::new` (Phase D5): the
+/// ten prepare-stage values travel as one struct so the constructor
+/// needs no argument-count escape hatch. Same-crate construction only.
+#[derive(Debug, Clone)]
+pub(crate) struct PreparedParams {
+    pub(crate) input: TurnInputContext,
+    pub(crate) conatus_energy: f64,
+    pub(crate) salience: f64,
+    pub(crate) holistic_dominant: bool,
+    pub(crate) essence_strength: f64,
+    pub(crate) deliberation_family: CanonicalMoveFamily,
+    pub(crate) deliberation_rule: ReconcileRule,
+    pub(crate) deliberation_trace: DeliberationTrace,
+    pub(crate) has_enough: bool,
+    pub(crate) same_topic_decision_confirmed: bool,
+}
+
 impl PreparedTurnContext {
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
-        input: TurnInputContext,
-        conatus_energy: f64,
-        salience: f64,
-        holistic_dominant: bool,
-        essence_strength: f64,
-        deliberation_family: CanonicalMoveFamily,
-        deliberation_rule: ReconcileRule,
-        deliberation_trace: DeliberationTrace,
-        has_enough: bool,
-        same_topic_decision_confirmed: bool,
-    ) -> Self {
+    pub(crate) fn new(params: PreparedParams) -> Self {
+        let PreparedParams {
+            input,
+            conatus_energy,
+            salience,
+            holistic_dominant,
+            essence_strength,
+            deliberation_family,
+            deliberation_rule,
+            deliberation_trace,
+            has_enough,
+            same_topic_decision_confirmed,
+        } = params;
         Self {
             input,
             conatus_energy,

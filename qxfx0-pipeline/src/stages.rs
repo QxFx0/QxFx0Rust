@@ -6,8 +6,8 @@ use crate::conversation_fsm::{
 };
 use crate::turn_context::{
     FinalizedTurnContext, GuardedTurnContext, PersistedTurnContext, PlannedTurnContext,
-    PreparedTurnContext, RenderEvidence, RenderedTurnContext, RendererSource, RoutedTurnContext,
-    TurnInputContext,
+    PreparedParams, PreparedTurnContext, RenderEvidence, RenderedTurnContext, RendererSource,
+    RoutedTurnContext, TurnInputContext,
 };
 use crate::RendererAuthority;
 use qxfx0_commitment::{CommitResult, CommitmentOps};
@@ -231,18 +231,18 @@ pub fn prepare_stage(
                 .is_some_and(|previous| previous == input.subject())
     };
 
-    Ok(PreparedTurnContext::new(
+    Ok(PreparedTurnContext::new(PreparedParams {
         input,
         conatus_energy,
         salience,
         holistic_dominant,
         essence_strength,
-        deliberation.plan.family,
-        deliberation.trace.rule,
-        deliberation.trace,
+        deliberation_family: deliberation.plan.family,
+        deliberation_rule: deliberation.trace.rule,
+        deliberation_trace: deliberation.trace,
         has_enough,
         same_topic_decision_confirmed,
-    ))
+    }))
 }
 
 /// Stage 2: Route — FSM-driven move family selection (persisted across turns).
