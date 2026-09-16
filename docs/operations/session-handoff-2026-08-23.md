@@ -872,3 +872,24 @@ drill-БД). Фид `docs/operations/editorial-wave-1/overlay-2aa2a46b.json`,
 исторические сообщения — дрейфа диагностики нет, тесты на `.contains`
 не тронуты. Два call site в `fact_grounded.rs` стрингуют на границе
 в `InvalidState` как раньше. Тесты: вариант + 6 сообщений Display.
+
+### Phase D done: D3–D5 (landed 2026-09-14, three commits)
+
+- D3: `ResponsePlanV2Config { mode, authority }` — одно значение
+  вместо двух полей `TurnOptions`; билдеры имён не меняли, все
+  call sites untouched; тест на ортогональность осей.
+- D4: NaN-гарды V1-скаляров сверх пола — `Holistic/Formal::from_field`
+  и `Salience::compute` валятся в 0.0 (доктрина `Conatus::compute`),
+  `combine_modes` страхует выход в 1.0; prepare читает через
+  конструкторы (убит clamp-passthrough и сырая запись в state).
+  Поймано тестом: ожидал 1.0 от отравленной композиции — реально
+  0.0 через гарды; ветка 1.0 только для overflow-масштаба (1e200),
+  тест зафиксировал оба пути. `Adjunction::reconcile` не тронут:
+  без коллеров, причин нет.
+- D5: `PreparedParams` — 10 аргументов `new` в структуру, `allow`
+  снят. Чистый рефактор: ни один тест не тронут, все зелёные.
+- Гейт по финалу: 1097 тестов, fmt/clippy, release, census,
+  покрытие 89.06%, audit, deny, doctor OK.
+
+Фаза D закрыта целиком (D1 recovery_cause, D2 revise/perspective).
+Остаток ADR-0045: B4-вердикты (человек), C2 (решение), C3 (grid search).
