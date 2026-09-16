@@ -5,7 +5,7 @@
 
 use crate::turn_types::{
     AnomalyShadowMode, ClarificationMode, DoubtShadowMode, PipelineStageTimings, RendererAuthority,
-    ResponsePlanV2Authority, ResponsePlanV2Mode, SameTopicSuppressionMode,
+    ResponsePlanV2Authority, ResponsePlanV2Config, ResponsePlanV2Mode, SameTopicSuppressionMode,
     SignedStanceDecisionOutcome, StanceProvenanceMode, SubjectAuthority, TurnInput, TurnOutput,
 };
 use crate::{execution_trace, fact_grounded, EssenceAblation};
@@ -29,8 +29,7 @@ pub struct TurnOptions {
     pub suppression: SameTopicSuppressionMode,
     pub fact_grounded: fact_grounded::FactGroundedRollout,
     pub thesis_projection: fact_grounded::ThesisProjectionRollout,
-    pub response_plan_v2: ResponsePlanV2Mode,
-    pub response_plan_v2_authority: ResponsePlanV2Authority,
+    pub response_plan_v2: ResponsePlanV2Config,
     /// B2 ablation arm of the V2 subject core (ADR-0043 U2). `Enabled` is
     /// the law and the default; `CommitDisabled` is set only by explicit
     /// test/CLI switches for the ablated control group — never persisted,
@@ -88,7 +87,7 @@ impl TurnOptions {
     }
 
     pub fn with_response_plan_v2(mut self, mode: ResponsePlanV2Mode) -> Self {
-        self.response_plan_v2 = mode;
+        self.response_plan_v2.mode = mode;
         self
     }
 
@@ -96,7 +95,7 @@ impl TurnOptions {
         // No side effects: mode is orthogonal and set explicitly by the
         // caller (`with_response_plan_v2`). A builder that silently sets
         // two fields was the coupling the audit flagged.
-        self.response_plan_v2_authority = authority;
+        self.response_plan_v2.authority = authority;
         self
     }
 

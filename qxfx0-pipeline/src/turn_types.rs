@@ -98,6 +98,16 @@ pub enum ResponsePlanV2Authority {
     Canary,
 }
 
+/// The V2 rollout switch as one value (Phase D3): observation mode and
+/// authority travel together so a call site can never set one without
+/// seeing the other. The builder still sets each axis explicitly —
+/// grouping is structural, not a default coupling.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub struct ResponsePlanV2Config {
+    pub mode: ResponsePlanV2Mode,
+    pub authority: ResponsePlanV2Authority,
+}
+
 /// Enables observation-only doubt evidence in an explicit execution trace.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 pub enum DoubtShadowMode {

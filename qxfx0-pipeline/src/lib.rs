@@ -335,8 +335,11 @@ pub(crate) fn process_turn_internal(
         suppression,
         fact_grounded: fact_grounded_rollout,
         thesis_projection,
-        response_plan_v2,
-        response_plan_v2_authority,
+        response_plan_v2:
+            ResponsePlanV2Config {
+                mode: response_plan_v2,
+                authority: response_plan_v2_authority,
+            },
         essence_v2_ablation,
         subject_authority,
     } = options;
@@ -854,6 +857,34 @@ mod tests {
             };
             assert_eq!(message, format!("stage error: {name}"));
         }
+    }
+
+    #[test]
+    fn response_plan_v2_config_groups_mode_and_authority() {
+        // Phase D3: one value, two orthogonal axes. Each builder sets
+        // exactly its axis; defaults stay Disabled/Disabled.
+        use crate::turn_api::TurnOptions;
+        let default = TurnOptions::new().response_plan_v2;
+        assert_eq!(default.mode, ResponsePlanV2Mode::default());
+        assert_eq!(default.authority, ResponsePlanV2Authority::Disabled);
+
+        let mode_only = TurnOptions::new().with_response_plan_v2(ResponsePlanV2Mode::Shadow);
+        assert_eq!(mode_only.response_plan_v2.mode, ResponsePlanV2Mode::Shadow);
+        assert_eq!(
+            mode_only.response_plan_v2.authority,
+            ResponsePlanV2Authority::Disabled
+        );
+
+        let authority_only =
+            TurnOptions::new().with_response_plan_v2_authority(ResponsePlanV2Authority::Canary);
+        assert_eq!(
+            authority_only.response_plan_v2.mode,
+            ResponsePlanV2Mode::default()
+        );
+        assert_eq!(
+            authority_only.response_plan_v2.authority,
+            ResponsePlanV2Authority::Canary
+        );
     }
 
     #[test]
