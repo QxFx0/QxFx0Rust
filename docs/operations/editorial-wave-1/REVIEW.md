@@ -18,10 +18,10 @@
 
 | # | topic | triple | ru surface | source | Решение | Основание |
 |---|-------|--------|------------|--------|---------|-----------|
-| 1 | власть | власть is_a порядок | власть устанавливает порядок через авторитет | quarantine line 142 (prop) | _пусто_ | _пусто_ |
-| 2 | доверие | доверие is_a возможность | доверие открывает возможность сотрудничества | quarantine line 146 (prop) | _пусто_ | _пусто_ |
-| 3 | долг | долг is_a долженствование | долг выражает моральное долженствование | quarantine line 147 (prop) | _пусто_ | _пусто_ |
-| 4 | жизнь | жизнь is_a процесс | жизнь есть процесс постоянного становления | quarantine line 72 (prop) | _пусто_ | _пусто_ |
+| 1 | власть | власть is_a порядок | власть устанавливает порядок через авторитет | quarantine line 142 (prop) | admit (reworded): «порядок это способ власти навязать свой ход ссобытий» [sic — пробел?] | _пусто (записать)_ |
+| 2 | доверие | доверие is_a возможность | доверие открывает возможность сотрудничества | quarantine line 146 (prop) | admit (reworded): «Доверие вызывает возможность отсутствия страха» | _пусто (записать)_ |
+| 3 | долг | долг is_a долженствование | долг выражает моральное долженствование | quarantine line 147 (prop) | admit (reworded): «ощущение долга выражает моральное долженствование» | _пусто (записать)_ |
+| 4 | жизнь | жизнь is_a процесс | жизнь есть процесс постоянного становления | quarantine line 72 (prop) | _пусто (не тронут редактором)_ | _пусто_ |
 
 Decisions: admit (merge into pack sources, naming target file),
 refuse (reason), defer (condition for revisit). All four are
@@ -54,9 +54,15 @@ never promotion-admissible while provisional).
 
 ## Human next steps
 
-1. Fill the verdict table above.
+1. ~~Fill the verdict table above.~~ Done 2026-09-14 for #1–#3
+   (admit with rewording, rationale pending); #4 untouched, no
+   verdict — do NOT merge it by assumption.
 2. Merge admitted predicates into pack sources (target files TBD by
    reviewer), bump manifests, rebuild.
+   NOTE 2026-09-14: the editor's first instinct was to reword the
+   feed file itself — reverted (`overlay-2aa2a46b.json` is byte-
+   identical to the machine export again). Feed files are evidence
+   and never edited; rewording happens here and in pack sources.
 3. Pack gates must pass: census (`generate_census.py --check`),
    parse, doctor.
 4. Only then: next promotion cycle may reference admitted content.
